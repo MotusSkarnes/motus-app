@@ -81,9 +81,20 @@ function MealPlanDayPanel({ day }: { day: MealPlanDay }) {
                     key={item.id}
                     className="flex items-start justify-between gap-2 rounded-lg border border-slate-100 bg-slate-50/80 px-2.5 py-2 text-sm"
                   >
-                    <div>
+                    <div className="flex min-w-0 items-start gap-2">
+                      {item.imageUrl ? (
+                        <img
+                          src={item.imageUrl}
+                          alt=""
+                          className="h-10 w-10 shrink-0 rounded-lg object-cover"
+                          loading="lazy"
+                          decoding="async"
+                        />
+                      ) : null}
+                      <div className="min-w-0">
                       <div className="font-medium text-slate-800">{item.foodName}</div>
                       <div className="text-xs text-slate-500">{item.grams} g{item.note ? ` · ${item.note}` : ""}</div>
+                      </div>
                     </div>
                     <div className="shrink-0 text-right text-[10px] font-medium text-slate-500">
                       {formatMacroTotals(computeEntryMacros(item))}

@@ -1,5 +1,5 @@
 import { Fragment } from "react";
-import { MoreHorizontal, Plus, Soup, UtensilsCrossed } from "lucide-react";
+import { Eye, MoreHorizontal, Plus, Soup, UtensilsCrossed } from "lucide-react";
 import type { InspirationRecipeItem } from "../../app/inspirationRecipeItems";
 import {
   PLANNER_MEAL_SLOTS,
@@ -20,6 +20,8 @@ type TrainerMealPlanWeekGridProps = {
   recipesById: Map<string, InspirationRecipeItem>;
   selection: MealGridSelection | null;
   onSelect: (selection: MealGridSelection) => void;
+  onPreview: (selection: MealGridSelection) => void;
+  onCloseMenu: () => void;
   onAddFood: (selection: MealGridSelection) => void;
   onAddRecipe: (selection: MealGridSelection) => void;
   onClearMeal: (selection: MealGridSelection) => void;
@@ -31,6 +33,8 @@ export function TrainerMealPlanWeekGrid({
   recipesById,
   selection,
   onSelect,
+  onPreview,
+  onCloseMenu,
   onAddFood,
   onAddRecipe,
   onClearMeal,
@@ -100,6 +104,19 @@ export function TrainerMealPlanWeekGrid({
                     )}
                   </button>
                   <div className="motus-pt-planner-grid__menu">
+                    {hasFood ? (
+                      <button
+                        type="button"
+                        className="motus-pt-planner-grid__menu-btn motus-pressable"
+                        aria-label={`Se innhold ${slot} ${day.label}`}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onPreview(cellSelection);
+                        }}
+                      >
+                        <Eye className="h-4 w-4" />
+                      </button>
+                    ) : null}
                     <button
                       type="button"
                       className="motus-pt-planner-grid__menu-btn motus-pressable"
@@ -113,16 +130,34 @@ export function TrainerMealPlanWeekGrid({
                     </button>
                     {selected ? (
                       <div className="motus-pt-planner-grid__dropdown">
-                        <button type="button" onClick={() => onAddFood(cellSelection)}>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            onAddFood(cellSelection);
+                            onCloseMenu();
+                          }}
+                        >
                           <Plus className="h-3.5 w-3.5" aria-hidden />
                           Matvare
                         </button>
-                        <button type="button" onClick={() => onAddRecipe(cellSelection)}>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            onAddRecipe(cellSelection);
+                            onCloseMenu();
+                          }}
+                        >
                           <Soup className="h-3.5 w-3.5" aria-hidden />
                           Oppskrift
                         </button>
                         {hasFood ? (
-                          <button type="button" onClick={() => onClearMeal(cellSelection)}>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              onClearMeal(cellSelection);
+                              onCloseMenu();
+                            }}
+                          >
                             Tøm celle
                           </button>
                         ) : null}

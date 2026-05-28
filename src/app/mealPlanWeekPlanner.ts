@@ -37,6 +37,7 @@ export function resolveMealCellImage(
   recipesById: Map<string, InspirationRecipeItem>,
 ): string | null {
   for (const item of meal.items) {
+    if (item.imageUrl?.trim()) return item.imageUrl.trim();
     const recipeId = parseInspirationRecipeFoodId(item.foodId);
     if (recipeId) {
       const url = recipesById.get(recipeId)?.imageUrl?.trim();

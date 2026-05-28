@@ -31,6 +31,7 @@ import {
   distributeDailyTargetsToMeals,
   previewFoodAddition,
   remainingMacros,
+  suggestMealMacroAdjustments,
   suggestFoodsForMacros,
   sumDayMacros,
 } from "../app/mealPlanTrainerMacros";
@@ -45,7 +46,7 @@ import { MealMacroMiniBar, TrainerMealPlanMacroPanel } from "./TrainerMealPlanMa
 import { TrainerMealPlanNutritionOverview } from "./nutrition/TrainerMealPlanNutritionOverview";
 import { TrainerMealPlanWeekGrid, type MealGridSelection } from "./nutrition/TrainerMealPlanWeekGrid";
 import { autoFillWeekFromMonday, averageWeekMacros } from "../app/mealPlanWeekPlanner";
-import { recipeToMealPlanEntry } from "../app/mealPlanRecipeEntry";
+import { parseInspirationRecipeFoodId, recipeToMealPlanEntry } from "../app/mealPlanRecipeEntry";
 import { resolveRecipeMealSlot } from "../app/recipeMealCategory";
 import { buildScaledRecipeView, resolveRecipeScalingMode } from "../app/recipeMealScaling";
 import type { MealPlan, MealPlanFoodEntry, MealPlanMeal, MealPlanTargets } from "../app/mealPlanTypes";
@@ -102,6 +103,8 @@ export function TrainerMealPlanEditor({
   const [copyMeal, setCopyMeal] = useState<{ dayId: string; mealId: string; mealName: string } | null>(null);
   const [copyTargetDayIds, setCopyTargetDayIds] = useState<string[]>([]);
   const [gridSelection, setGridSelection] = useState<MealGridSelection | null>(null);
+  const [previewSelection, setPreviewSelection] = useState<MealGridSelection | null>(null);
+  const [recipeReadOnlyId, setRecipeReadOnlyId] = useState<string | null>(null);
   const [planWeeks, setPlanWeeks] = useState<"1" | "2" | "4" | "custom">("1");
   const reloadInFlightRef = useRef(false);
   const hasLoadedOnceRef = useRef(false);
@@ -209,6 +212,20 @@ export function TrainerMealPlanEditor({
     return plan.days.find((row) => row.id === gridSelection.dayId) ?? null;
   }, [plan, gridSelection]);
 
+  const previewMeal = useMemo(() => {
+    if (!plan || !previewSelection) return null;
+    const day = plan.days.find((row) => row.id === previewSelection.dayId);
+    if (!day) return null;
+    const meal = day.meals.find((row) => row.id === previewSelection.mealId);
+    if (!meal) return null;
+    return { day, meal };
+  }, [plan, previewSelection]);
+
+  const recipeReadOnly = useMemo(
+    () => (recipeReadOnlyId ? recipeItems.find((row) => row.id === recipeReadOnlyId) ?? null : null),
+    [recipeReadOnlyId, recipeItems],
+  );
+
   const dayUsed = useMemo(
     () => (activeDay ? sumDayMacros(activeDay, foodById) : { kcal: 0, protein: 0, carbs: 0, fat: 0 }),
     [activeDay, foodById],
@@ -216,6 +233,10 @@ export function TrainerMealPlanEditor({
   const dayRemaining = useMemo(
     () => remainingMacros(plan?.targets, dayUsed),
     [plan?.targets, dayUsed],
+  );
+  const macroAdjustmentSuggestions = useMemo(
+    () => (activeDay ? suggestMealMacroAdjustments(activeDay, plan?.targets, foodItems, foodById) : []),
+    [activeDay, plan?.targets, foodItems, foodById],
   );
 
   const pickerMeal = useMemo(() => {
@@ -691,6 +712,12 @@ export function TrainerMealPlanEditor({
     setActiveDayId(selection.dayId);
   }
 
+  function previewGridCell(selection: MealGridSelection) {
+    setPreviewSelection(selection);
+    setGridSelection(selection);
+    setActiveDayId(selection.dayId);
+  }
+
   function clearGridMeal(selection: MealGridSelection) {
     if (!plan) return;
     updatePlan({
@@ -856,6 +883,8 @@ export function TrainerMealPlanEditor({
               recipesById={recipesById}
               selection={gridSelection}
               onSelect={selectGridCell}
+              onPreview={previewGridCell}
+              onCloseMenu={() => setGridSelection(null)}
               onAddFood={(sel) => openFoodPicker(sel.dayId, sel.mealId)}
               onAddRecipe={(sel) => {
                 setRecipePicker(sel);
@@ -947,6 +976,7 @@ export function TrainerMealPlanEditor({
                 dayRemaining={dayRemaining}
                 onDistribute={handleDistributeMeals}
                 onClearMealTargets={handleClearMealTargets}
+                adjustmentSuggestions={macroAdjustmentSuggestions}
               />
             ) : null}
           </section>
@@ -1417,6 +1447,108 @@ export function TrainerMealPlanEditor({
               <GradientButton type="button" onClick={handleConfirmCopyMeal}>
                 Kopier
               </GradientButton>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {previewMeal ? (
+        <div
+          className="motus-foodbank-modal-backdrop"
+          role="presentation"
+          onMouseDown={(e) => {
+            if (e.target === e.currentTarget) setPreviewSelection(null);
+          }}
+        >
+          <div
+            className="motus-foodbank-modal"
+            role="dialog"
+            aria-label="Se måltidsinnhold"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="motus-foodbank-modal-head">
+              <h3>
+                {previewMeal.meal.name} · {previewMeal.day.label}
+              </h3>
+              <button
+                type="button"
+                className="motus-foodbank-icon-btn"
+                onClick={() => setPreviewSelection(null)}
+                aria-label="Lukk"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            <div className="motus-foodbank-modal-body space-y-3">
+              <p className="text-xs text-slate-600">
+                {previewMeal.meal.items.length
+                  ? `Innhold: ${previewMeal.meal.items.length} matvare(r) · ${formatMacroTotals(
+                      computeMealMacros(previewMeal.meal, foodById),
+                    )}`
+                  : "Ingen matvarer i dette måltidet enda."}
+              </p>
+              {previewMeal.meal.items.length > 0 ? (
+                <ul className="space-y-2">
+                  {previewMeal.meal.items.map((item) => {
+                    const recipeId = parseInspirationRecipeFoodId(item.foodId);
+                    const hasRecipe = Boolean(recipeId && recipesById.has(recipeId));
+                    return (
+                      <li
+                        key={item.id}
+                        className="flex items-center justify-between gap-2 rounded-xl border border-slate-100 bg-slate-50 px-3 py-2"
+                      >
+                        <div className="min-w-0">
+                          <div className="truncate text-sm font-semibold text-slate-900">{item.foodName}</div>
+                          <div className="text-xs text-slate-600">
+                            {formatMacro(item.grams, 0)} g{item.note ? ` · ${item.note}` : ""}
+                          </div>
+                        </div>
+                        {hasRecipe && recipeId ? (
+                          <OutlineButton type="button" className="text-xs" onClick={() => setRecipeReadOnlyId(recipeId)}>
+                            Se oppskrift
+                          </OutlineButton>
+                        ) : null}
+                      </li>
+                    );
+                  })}
+                </ul>
+              ) : null}
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {recipeReadOnly ? (
+        <div
+          className="motus-foodbank-modal-backdrop"
+          role="presentation"
+          onMouseDown={(e) => {
+            if (e.target === e.currentTarget) setRecipeReadOnlyId(null);
+          }}
+        >
+          <div
+            className="motus-foodbank-modal motus-foodbank-modal--wide"
+            role="dialog"
+            aria-label="Se oppskrift"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="motus-foodbank-modal-head">
+              <h3>{recipeReadOnly.title}</h3>
+              <button
+                type="button"
+                className="motus-foodbank-icon-btn"
+                onClick={() => setRecipeReadOnlyId(null)}
+                aria-label="Lukk"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            <div className="motus-foodbank-modal-body space-y-3">
+              {recipeReadOnly.description ? <p className="text-sm text-slate-600">{recipeReadOnly.description}</p> : null}
+              <RecipeIngredientList body={recipeReadOnly.body} foodItems={foodItemsForMacros} recipeId={recipeReadOnly.id} />
+              {computeRecipeMacros(recipeReadOnly.body, foodItemsForMacros) ? (
+                <RecipeMacroBlocks result={computeRecipeMacros(recipeReadOnly.body, foodItemsForMacros)!} />
+              ) : null}
             </div>
           </div>
         </div>

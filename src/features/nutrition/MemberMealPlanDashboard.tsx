@@ -370,6 +370,7 @@ export function MemberMealPlanDashboard({ plan, memberId, onOpenAvoidances }: Me
 
   const resolveMealImage = (meal: MealPlanMeal): string | null => {
     for (const item of meal.items) {
+      if (item.imageUrl?.trim()) return item.imageUrl.trim();
       const food = foodById.get(item.foodId);
       if (food?.imageUrl) return food.imageUrl;
     }

@@ -58,6 +58,7 @@ function parseFoodEntry(value: unknown): MealPlanFoodEntry | null {
     foodId: String(row.foodId ?? row.food_id ?? ""),
     foodName,
     grams: Number(row.grams) > 0 ? Number(row.grams) : 0,
+    imageUrl: String(row.imageUrl ?? row.image_url ?? "").trim() || undefined,
     note: typeof row.note === "string" ? row.note : undefined,
     nutritionPer100g: {
       kcal: Number(n.kcal) || 0,

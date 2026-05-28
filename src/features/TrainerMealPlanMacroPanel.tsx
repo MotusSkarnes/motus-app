@@ -2,6 +2,7 @@ import { formatMacro } from "../app/foodBankTypes";
 import type { MacroTotals } from "../app/mealPlanMacros";
 import { formatMacroTotals } from "../app/mealPlanMacros";
 import type { MacroRemaining } from "../app/mealPlanTrainerMacros";
+import type { MealMacroAdjustmentSuggestion } from "../app/mealPlanTrainerMacros";
 import { macroUsagePct } from "../app/mealPlanTrainerMacros";
 import type { MealPlanTargets } from "../app/mealPlanTypes";
 import { OutlineButton } from "../app/ui";
@@ -54,6 +55,7 @@ type TrainerMealPlanMacroPanelProps = {
   dayRemaining: MacroRemaining;
   onDistribute: (mode: "equal" | "standard") => void;
   onClearMealTargets: () => void;
+  adjustmentSuggestions?: MealMacroAdjustmentSuggestion[];
 };
 
 export function TrainerMealPlanMacroPanel({
@@ -63,6 +65,7 @@ export function TrainerMealPlanMacroPanel({
   dayRemaining,
   onDistribute,
   onClearMealTargets,
+  adjustmentSuggestions = [],
 }: TrainerMealPlanMacroPanelProps) {
   if (!dayRemaining.hasTargets || !dailyTargets) {
     return (
@@ -109,6 +112,18 @@ export function TrainerMealPlanMacroPanel({
           <MacroBar label="Fett" used={dayUsed.fat} target={dailyTargets.fat} unit="g" tone="pink" />
         ) : null}
       </div>
+      {adjustmentSuggestions.length > 0 ? (
+        <div className="mt-3 rounded-xl border border-amber-200 bg-amber-50/70 px-3 py-2">
+          <p className="text-xs font-semibold text-amber-900">Forslag for å nå makromål</p>
+          <ul className="mt-1 space-y-1 text-xs text-amber-900">
+            {adjustmentSuggestions.map((row) => (
+              <li key={`${row.mealId}-${row.foodName}`}>
+                Legg til ca. {formatMacro(row.grams, 0)} g {row.foodName} i {row.mealName.toLowerCase()} {row.reason}.
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
     </section>
   );
 }

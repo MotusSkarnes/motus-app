@@ -132,6 +132,14 @@ export type FoodSuggestion = {
   reason: string;
 };
 
+export type MealMacroAdjustmentSuggestion = {
+  mealId: string;
+  mealName: string;
+  foodName: string;
+  grams: number;
+  reason: string;
+};
+
 export function suggestFoodsForMacros(
   foods: FoodItem[],
   remaining: MacroRemaining,
@@ -272,4 +280,100 @@ export function sumDayMacros(day: MealPlanDay, foodById?: Map<string, FoodItem>)
 export function mealRemaining(meal: MealPlanMeal, foodById?: Map<string, FoodItem>): MacroRemaining {
   const used = computeMealMacros(meal, foodById);
   return remainingMacros(meal.targets, used);
+}
+
+function normalizeKey(value: string): string {
+  return value
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/\p{M}/gu, "")
+    .replace(/[^a-z0-9]+/g, "");
+}
+
+function mealSlotFromName(name: string): "frokost" | "lunsj" | "middag" | "snacks" {
+  const key = normalizeMealKey(name);
+  if (key === "frokost" || key === "lunsj" || key === "middag" || key === "snacks") return key;
+  return "snacks";
+}
+
+function findFoodByName(foods: FoodItem[], target: string): FoodItem | undefined {
+  const targetKey = normalizeKey(target);
+  return foods.find((food) => normalizeKey(food.name).includes(targetKey));
+}
+
+function gramsForDeficit(deficit: number, per100g: number): number {
+  if (!(deficit > 0) || !(per100g > 0)) return 0;
+  const raw = (deficit / per100g) * 100;
+  const rounded = Math.round(raw / 5) * 5;
+  return Math.max(10, Math.min(250, rounded));
+}
+
+export function suggestMealMacroAdjustments(
+  day: MealPlanDay,
+  dailyTargets: MealPlanTargets | undefined,
+  foods: FoodItem[],
+  foodById?: Map<string, FoodItem>,
+): MealMacroAdjustmentSuggestion[] {
+  if (!dailyTargets || !day.meals.length || !foods.length) return [];
+  const distributed = distributeDailyTargetsToMeals(day, dailyTargets, "standard");
+  const distributedById = new Map(distributed.map((meal) => [meal.id, meal.targets]));
+  const suggestions: MealMacroAdjustmentSuggestion[] = [];
+
+  for (const meal of day.meals) {
+    const targets = distributedById.get(meal.id);
+    if (!targets) continue;
+    const rem = remainingMacros(targets, computeMealMacros(meal, foodById));
+    if (!rem.hasTargets) continue;
+    if (rem.kcal <= 0 && rem.protein <= 0 && rem.carbs <= 0 && rem.fat <= 0) continue;
+
+    const slot = mealSlotFromName(meal.name);
+    const macroNeeds: Array<"protein" | "carbs" | "fat"> = ["protein", "carbs", "fat"].sort((a, b) => {
+      const av = rem[a];
+      const bv = rem[b];
+      return bv - av;
+    });
+    const primary = macroNeeds.find((key) => rem[key] > (key === "protein" ? 8 : key === "carbs" ? 12 : 5));
+    if (!primary) continue;
+
+    const fallbackByMacro: Record<"protein" | "carbs" | "fat", string> = {
+      protein: "skyr naturell",
+      carbs: "basmatiris tørr",
+      fat: "mandler",
+    };
+    const slotPreference: Record<"frokost" | "lunsj" | "middag" | "snacks", Record<"protein" | "carbs" | "fat", string>> = {
+      frokost: { protein: "skyr naturell", carbs: "havregryn", fat: "mandler" },
+      lunsj: { protein: "cottage cheese", carbs: "grovt brød", fat: "mandler" },
+      middag: { protein: "kyllingbryst", carbs: "basmatiris tørr", fat: "olivenolje" },
+      snacks: { protein: "skyr naturell", carbs: "banana", fat: "mandler" },
+    };
+    const preferredName = slotPreference[slot][primary];
+    const chosen = findFoodByName(foods, preferredName) ?? findFoodByName(foods, fallbackByMacro[primary]);
+    if (!chosen) continue;
+
+    const per100 =
+      primary === "protein"
+        ? chosen.nutritionPer100g.protein
+        : primary === "carbs"
+          ? chosen.nutritionPer100g.carbs
+          : chosen.nutritionPer100g.fat;
+    const grams = gramsForDeficit(rem[primary], per100);
+    if (!grams) continue;
+
+    const reason =
+      primary === "protein"
+        ? "for å treffe proteinmålet"
+        : primary === "carbs"
+          ? "for å treffe karbohydratmålet"
+          : "for å treffe fettmålet";
+
+    suggestions.push({
+      mealId: meal.id,
+      mealName: meal.name,
+      foodName: chosen.name,
+      grams,
+      reason,
+    });
+  }
+
+  return suggestions.slice(0, 4);
 }

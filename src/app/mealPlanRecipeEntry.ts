@@ -79,6 +79,7 @@ export function recipeToMealPlanEntry(
       foodId: `inspo-recipe-${recipe.id}`,
       foodName: recipe.title,
       grams: RECIPE_PORTION_GRAMS,
+      imageUrl: recipe.imageUrl?.trim() || undefined,
       note: partial
         ? `Oppskrift · ${partial}${adjustedNote}`
         : `Oppskrift · 1 porsjon${adjustedNote}`,
@@ -105,6 +106,7 @@ export function recipeToMealPlanEntry(
     foodId: `inspo-recipe-${recipe.id}`,
     foodName: recipe.title,
     grams: RECIPE_PORTION_GRAMS,
+    imageUrl: recipe.imageUrl?.trim() || undefined,
     note,
     nutritionPer100g: { ...EMPTY_NUTRITION },
   };

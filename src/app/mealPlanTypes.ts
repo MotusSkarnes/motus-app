@@ -22,6 +22,7 @@ export type MealPlanFoodEntry = {
   foodId: string;
   foodName: string;
   grams: number;
+  imageUrl?: string;
   note?: string;
   /** Snapshot ved lagring — medlem trenger ikke matvarebank. */
   nutritionPer100g: FoodNutrition;
