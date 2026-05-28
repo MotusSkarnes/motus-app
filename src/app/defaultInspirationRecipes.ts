@@ -5,6 +5,7 @@ export type DefaultInspirationRecipe = {
   description: string;
   body: string;
   tag: string;
+  imageUrl?: string;
   createdAt: string;
   /** flexible = mengder kan skaleres mot kundens måltids-kcal; fixed = behold oppskriftens balanse. */
   scalingMode?: "flexible" | "fixed";
@@ -15,6 +16,7 @@ export const DEFAULT_INSPIRATION_RECIPES: DefaultInspirationRecipe[] = [
     id: "default-recipe-1",
     title: "Proteinrik frokostbolle",
     description: "Enkel frokost etter morgenøkt.",
+    imageUrl: "/recipe-images/proteinrik-frokostbolle.png",
     body: "**Til 1 porsjon · ca. 5 min**\n\n**Ingredienser**\n- 1 dl gresk yoghurt\n- 3 ss havregryn\n- 1 håndfull bær\n- 1 ss mandler\n- 1 ts honning\n- Kanel (valgfritt)\n\n**Slik gjør du**\n1. Bland yoghurt og havregryn i en bolle.\n2. Topp med bær, hakkede mandler og honning.\n3. Strø over kanel og la stå 5 minutter før servering.",
     tag: "5 min · Frokost",
     createdAt: "2026-05-01",

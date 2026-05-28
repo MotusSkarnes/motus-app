@@ -302,6 +302,96 @@ export function TrainerMealPlanEditor({
     return previewFoodAddition(pickerSelectedFood, grams, pickerRemaining);
   }, [foodPicker, foodGrams, pickerSelectedFood, pickerRemaining]);
 
+  function suggestAiDayPlan() {
+    if (!plan || !activeDay || recipeItems.length === 0) {
+      setSaveStatus("AI-forslag krever en aktiv dag og tilgjengelige oppskrifter.");
+      return;
+    }
+
+    const mealTargets = activeDay.meals.length
+      ? distributeDailyTargetsToMeals(activeDay, plan.targets, "standard")
+      : activeDay.meals;
+    const targetByMealId = new Map(mealTargets.map((meal) => [meal.id, meal.targets]));
+
+    const pickRecipeForMeal = (meal: MealPlanMeal): (typeof recipeItems)[number] | null => {
+      const mealNameKey = meal.name.trim().toLowerCase();
+      const preferredSlot =
+        mealNameKey.includes("frokost")
+          ? "frokost"
+          : mealNameKey.includes("lunsj")
+            ? "lunsj"
+            : mealNameKey.includes("middag")
+              ? "middag"
+              : mealNameKey.includes("kveld")
+                ? "kveldsmat"
+                : null;
+
+      const scoped = preferredSlot
+        ? recipeItems.filter(
+            (recipe) => resolveRecipeMealSlot(recipe.tag, recipe.title, recipe.description) === preferredSlot,
+          )
+        : recipeItems;
+      const candidates = scoped.length > 0 ? scoped : recipeItems;
+      if (!candidates.length) return null;
+
+      const mealTargetKcal =
+        targetByMealId.get(meal.id)?.kcal ??
+        (typeof plan.targets?.kcal === "number" && activeDay.meals.length > 0
+          ? plan.targets.kcal / activeDay.meals.length
+          : 0);
+
+      const ranked = candidates
+        .map((recipe) => {
+          const mealSlot = resolveRecipeMealSlot(recipe.tag, recipe.title, recipe.description);
+          const scalingMode = resolveRecipeScalingMode({
+            id: recipe.id,
+            scalingMode: recipe.scalingMode,
+            body: recipe.body,
+            title: recipe.title,
+            tag: recipe.tag,
+          });
+          const scaled = buildScaledRecipeView(recipe.body, foodItemsForMacros, {
+            scalingMode,
+            dailyTargets: plan.targets,
+            mealSlot,
+          });
+          const kcal = scaled?.macros?.perServing.kcal ?? computeRecipeMacros(recipe.body, foodItemsForMacros)?.perServing.kcal ?? 0;
+          const distance = mealTargetKcal > 0 ? Math.abs(kcal - mealTargetKcal) : 0;
+          return { recipe, distance };
+        })
+        .sort((a, b) => a.distance - b.distance);
+
+      return ranked[0]?.recipe ?? null;
+    };
+
+    const nextDayMeals = activeDay.meals.map((meal) => {
+      const picked = pickRecipeForMeal(meal);
+      if (!picked) return meal;
+      const mealSlot = resolveRecipeMealSlot(picked.tag, picked.title, picked.description);
+      const entry = recipeToMealPlanEntry(picked, foodItems, {
+        dailyTargets: plan.targets,
+        mealSlot,
+      });
+      return {
+        ...meal,
+        items: [entry],
+      };
+    });
+
+    updatePlan({
+      ...plan,
+      days: plan.days.map((day) =>
+        day.id === activeDay.id
+          ? {
+              ...day,
+              meals: nextDayMeals,
+            }
+          : day,
+      ),
+    });
+    setSaveStatus(`AI-forslag la inn oppskriftsforslag for ${activeDay.label}.`);
+  }
+
   function updatePlan(next: MealPlan, options?: { flushCloud?: boolean }) {
     const stamped: MealPlan = { ...next, updatedAt: new Date().toISOString() };
     setPlan(stamped);
@@ -747,7 +837,7 @@ export function TrainerMealPlanEditor({
               <span className="motus-pt-planner-step__num">3</span> Bygg matplan
             </h2>
             <div className="motus-pt-planner-toolbar">
-              <OutlineButton type="button" disabled className="opacity-60">
+              <OutlineButton type="button" onClick={suggestAiDayPlan}>
                 <Sparkles className="h-4 w-4" aria-hidden />
                 AI-forslag
               </OutlineButton>
@@ -923,7 +1013,7 @@ export function TrainerMealPlanEditor({
             <h3 className="motus-pt-planner-sidebar-title">Verktøy</h3>
             <ul className="motus-pt-planner-tools">
               <li>
-                <button type="button" disabled className="motus-pt-planner-tool">
+                <button type="button" className="motus-pt-planner-tool" onClick={suggestAiDayPlan}>
                   <Sparkles className="h-4 w-4" /> AI-generer dag
                 </button>
               </li>

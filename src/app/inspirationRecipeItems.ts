@@ -24,6 +24,21 @@ export type InspirationRecipeItem = {
   scalingMode?: "flexible" | "fixed";
 };
 
+function pickPreferredRecipeVariant(
+  current: InspirationRecipeItem,
+  candidate: InspirationRecipeItem,
+  options?: { preferCandidate?: boolean },
+): InspirationRecipeItem {
+  const currentHasImage = Boolean(current.imageUrl?.trim());
+  const candidateHasImage = Boolean(candidate.imageUrl?.trim());
+  if (options?.preferCandidate) {
+    return candidateHasImage ? candidate : currentHasImage ? { ...candidate, imageUrl: current.imageUrl } : candidate;
+  }
+  if (candidateHasImage && !currentHasImage) return candidate;
+  if (currentHasImage && !candidateHasImage) return { ...candidate, imageUrl: current.imageUrl };
+  return current;
+}
+
 function normalizeRecipeItem(raw: unknown): InspirationRecipeItem | null {
   if (!raw || typeof raw !== "object") return null;
   const row = raw as Record<string, unknown>;
@@ -52,11 +67,18 @@ export function filterRecipeInspirationItems(items: unknown[]): InspirationRecip
   const byId = new Map<string, InspirationRecipeItem>();
   for (const raw of DEFAULT_RECIPE_FEED_ROWS) {
     const normalized = normalizeRecipeItem(raw);
-    if (normalized) byId.set(normalized.id, normalized);
+    if (!normalized) continue;
+    const existing = byId.get(normalized.id);
+    byId.set(normalized.id, existing ? pickPreferredRecipeVariant(existing, normalized) : normalized);
   }
   for (const raw of items) {
     const normalized = normalizeRecipeItem(raw);
-    if (normalized) byId.set(normalized.id, normalized);
+    if (!normalized) continue;
+    const existing = byId.get(normalized.id);
+    byId.set(
+      normalized.id,
+      existing ? pickPreferredRecipeVariant(existing, normalized, { preferCandidate: true }) : normalized,
+    );
   }
   const patched = applyCanonicalRecipeBodies(
     Array.from(byId.values()).map((item) => ({ ...item, category: "recipes" })),
