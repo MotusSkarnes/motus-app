@@ -37,6 +37,7 @@ describe("recipeMacros", () => {
     expect(result!.matchedCount).toBeGreaterThanOrEqual(4);
     expect(result!.perServing.kcal).toBeGreaterThan(400);
     expect(result!.perServing.protein).toBeGreaterThan(15);
+    expect(result!.perServingMicronutrients.calcium).toBeGreaterThanOrEqual(0);
   });
 
   it("finner ingredienser uten fet skrift på overskrift", () => {

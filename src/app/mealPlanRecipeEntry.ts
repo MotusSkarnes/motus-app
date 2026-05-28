@@ -92,6 +92,7 @@ export function recipeToMealPlanEntry(
         sugar: 0,
         saturatedFat: 0,
         sodium: 0,
+        micronutrients: { ...scaled.macros.perServingMicronutrients },
       },
     };
   }

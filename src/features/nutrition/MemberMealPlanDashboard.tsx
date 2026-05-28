@@ -207,6 +207,7 @@ export function MemberMealPlanDashboard({ plan, memberId, onOpenAvoidances }: Me
         sugar: 0,
         saturatedFat: 0,
         sodium: 0,
+        micronutrients: { ...macros.perServingMicronutrients },
       });
     }
     return byId;

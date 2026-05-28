@@ -112,6 +112,7 @@ export function MemberQuickFoodLogPanel({ memberId, readOnly = false }: MemberQu
           sugar: 0,
           saturatedFat: 0,
           sodium: 0,
+          micronutrients: { ...macros.perServingMicronutrients },
         },
       };
       persist([entry, ...logs]);
