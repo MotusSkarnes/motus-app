@@ -64,7 +64,7 @@ export function TrainerRecipeComposer({
     if (!open) return;
     const source = duplicateFromItem ?? editItem;
     const duplicateTitle = duplicateFromItem?.title?.trim() ? `${duplicateFromItem.title.trim()} (kopi)` : "";
-    setTitle(duplicateTitle || source?.title ?? "");
+    setTitle(duplicateTitle || (source?.title ?? ""));
     setDescription(source?.description ?? "");
     setTag(source?.tag ?? "Oppskrift");
     setBody(source?.body ?? "");
