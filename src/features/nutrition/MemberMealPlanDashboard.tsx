@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Check,
   ChevronRight,
@@ -11,7 +11,6 @@ import {
   Plus,
   Share2,
   ShoppingCart,
-  Sparkles,
   UtensilsCrossed,
   Wheat,
   X,
@@ -70,6 +69,11 @@ import "../../foodbank.css";
 const WATER_TARGET_L = 2.5;
 const WATER_STEP_L = 0.2;
 const RECIPE_PORTION_GRAMS = 100;
+
+function hasMacroValues(nutrition: FoodItem["nutritionPer100g"] | undefined): boolean {
+  if (!nutrition) return false;
+  return nutrition.kcal > 0 || nutrition.protein > 0 || nutrition.carbs > 0 || nutrition.fat > 0;
+}
 
 type MemberMealPlanDashboardProps = {
   plan: MealPlan;
@@ -159,6 +163,24 @@ export function MemberMealPlanDashboard({ plan, memberId, onOpenAvoidances }: Me
     () => new Map(inspirationRecipes.map((recipe) => [recipe.id, recipe])),
     [inspirationRecipes],
   );
+  const recipeNutritionById = useMemo(() => {
+    const byId = new Map<string, FoodItem["nutritionPer100g"]>();
+    for (const recipe of inspirationRecipes) {
+      const macros = computeRecipeMacros(recipe.body, foodItems);
+      if (!macros) continue;
+      byId.set(recipe.id, {
+        kcal: Math.round(macros.perServing.kcal),
+        protein: Math.round(macros.perServing.protein * 10) / 10,
+        carbs: Math.round(macros.perServing.carbs * 10) / 10,
+        fat: Math.round(macros.perServing.fat * 10) / 10,
+        fiber: 0,
+        sugar: 0,
+        saturatedFat: 0,
+        sodium: 0,
+      });
+    }
+    return byId;
+  }, [inspirationRecipes, foodItems]);
 
   const today = useMemo(() => new Date(), []);
   const todayKey = toIsoDateKey(today);
@@ -175,6 +197,7 @@ export function MemberMealPlanDashboard({ plan, memberId, onOpenAvoidances }: Me
   const [expandedMealId, setExpandedMealId] = useState<string | null>(null);
   const [mealMenuId, setMealMenuId] = useState<string | null>(null);
   const [activeRecipeId, setActiveRecipeId] = useState<string | null>(null);
+  const mealSectionRef = useRef<HTMLDivElement | null>(null);
 
   const totalFoodInPlan = useMemo(() => countMealPlanFoodItems(plan), [plan]);
 
@@ -225,8 +248,21 @@ export function MemberMealPlanDashboard({ plan, memberId, onOpenAvoidances }: Me
 
   const todayMealsResolved = useMemo(
     () =>
-      todayDay.meals.map((meal) => resolveMealWithSwaps(plan, meal, todayKey, tracking.mealSwaps)),
-    [plan, todayDay.meals, todayKey, tracking.mealSwaps],
+      todayDay.meals.map((meal) => {
+        const resolvedMeal = resolveMealWithSwaps(plan, meal, todayKey, tracking.mealSwaps);
+        return {
+          ...resolvedMeal,
+          items: resolvedMeal.items.map((item) => {
+            if (hasMacroValues(item.nutritionPer100g)) return item;
+            const recipeId = parseInspirationRecipeFoodId(item.foodId);
+            if (!recipeId) return item;
+            const fallbackNutrition = recipeNutritionById.get(recipeId);
+            if (!fallbackNutrition) return item;
+            return { ...item, nutritionPer100g: { ...fallbackNutrition } };
+          }),
+        };
+      }),
+    [plan, todayDay.meals, todayKey, tracking.mealSwaps, recipeNutritionById],
   );
   const todayDayResolved = useMemo(
     () => ({ ...todayDay, meals: todayMealsResolved }),
@@ -235,10 +271,21 @@ export function MemberMealPlanDashboard({ plan, memberId, onOpenAvoidances }: Me
 
   const selectedMealsResolved = useMemo(
     () =>
-      (selectedDay?.meals ?? []).map((meal) =>
-        resolveMealWithSwaps(plan, meal, selectedDateKey, tracking.mealSwaps),
-      ),
-    [plan, selectedDay?.meals, selectedDateKey, tracking.mealSwaps],
+      (selectedDay?.meals ?? []).map((meal) => {
+        const resolvedMeal = resolveMealWithSwaps(plan, meal, selectedDateKey, tracking.mealSwaps);
+        return {
+          ...resolvedMeal,
+          items: resolvedMeal.items.map((item) => {
+            if (hasMacroValues(item.nutritionPer100g)) return item;
+            const recipeId = parseInspirationRecipeFoodId(item.foodId);
+            if (!recipeId) return item;
+            const fallbackNutrition = recipeNutritionById.get(recipeId);
+            if (!fallbackNutrition) return item;
+            return { ...item, nutritionPer100g: { ...fallbackNutrition } };
+          }),
+        };
+      }),
+    [plan, selectedDay?.meals, selectedDateKey, tracking.mealSwaps, recipeNutritionById],
   );
   const selectedDayResolved = useMemo(
     () => (selectedDay ? { ...selectedDay, meals: selectedMealsResolved } : null),
@@ -471,6 +518,19 @@ export function MemberMealPlanDashboard({ plan, memberId, onOpenAvoidances }: Me
     };
   }, [activeRecipe, showCoachTips, swapMeal]);
 
+  useEffect(() => {
+    if (!mealMenuId) return;
+    const handlePointerDown = (event: MouseEvent) => {
+      const root = mealSectionRef.current;
+      if (!root) return;
+      const target = event.target;
+      if (!(target instanceof Node)) return;
+      if (!root.contains(target)) setMealMenuId(null);
+    };
+    document.addEventListener("mousedown", handlePointerDown);
+    return () => document.removeEventListener("mousedown", handlePointerDown);
+  }, [mealMenuId]);
+
   return (
     <div className="motus-matplan motus-matplan--v2 motus-fade-in-up">
       <div className="motus-matplan-progress-head" aria-label="Måltidsfremdrift i dag">
@@ -535,7 +595,7 @@ export function MemberMealPlanDashboard({ plan, memberId, onOpenAvoidances }: Me
         </button>
       </section>
 
-      <section className="motus-matplan-section" aria-label="Måltider">
+      <section className="motus-matplan-section" aria-label="Måltider" ref={mealSectionRef}>
         <div className="motus-matplan-section-head">
           <h2 className="motus-matplan-section-title">
             {isSelectedToday ? "Dagens måltider" : `Måltider — ${selectedDay?.label ?? ""}`}
@@ -800,11 +860,6 @@ export function MemberMealPlanDashboard({ plan, memberId, onOpenAvoidances }: Me
             Del
           </button>
         </div>
-        <button type="button" className="motus-matplan-footer__ai motus-pressable" disabled aria-disabled="true">
-          <Sparkles className="h-4 w-4" aria-hidden />
-          AI-generer dagens matplan
-          <span className="motus-matplan-footer__ai-badge">Kommer snart</span>
-        </button>
       </div>
 
       {/* Coach */}
