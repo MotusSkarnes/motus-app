@@ -24,8 +24,8 @@ type MealPlanTemplateItem = {
   name: string;
   createdAt: string;
 };
-type TemplateApplyMode = "replace" | "merge";
-type TemplateApplyPreview = {
+export type TemplateApplyMode = "replace" | "merge";
+export type TemplateApplyPreview = {
   daysTouched: number;
   mealsWithTemplateItems: number;
   overwriteMeals: number;
@@ -82,7 +82,7 @@ function makeTemplateId(): string {
   return `__mealplan_template_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 7)}__`;
 }
 
-function cloneTemplateToMember(templatePlan: MealPlan, memberId: string): MealPlan {
+export function cloneTemplateToMember(templatePlan: MealPlan, memberId: string): MealPlan {
   return {
     ...templatePlan,
     id: `mealplan-${memberId}`,
@@ -92,7 +92,7 @@ function cloneTemplateToMember(templatePlan: MealPlan, memberId: string): MealPl
   };
 }
 
-function buildTemplateApplyPreview(templatePlan: MealPlan, targetPlan: MealPlan | null): TemplateApplyPreview {
+export function buildTemplateApplyPreview(templatePlan: MealPlan, targetPlan: MealPlan | null): TemplateApplyPreview {
   let mealsWithTemplateItems = 0;
   let overwriteMeals = 0;
   let addMeals = 0;
@@ -116,7 +116,12 @@ function buildTemplateApplyPreview(templatePlan: MealPlan, targetPlan: MealPlan 
   };
 }
 
-function applyTemplateWithMode(templatePlan: MealPlan, targetMemberId: string, targetExistingPlan: MealPlan | null, mode: TemplateApplyMode): MealPlan {
+export function applyTemplateWithMode(
+  templatePlan: MealPlan,
+  targetMemberId: string,
+  targetExistingPlan: MealPlan | null,
+  mode: TemplateApplyMode,
+): MealPlan {
   if (mode === "replace" || !targetExistingPlan) {
     return cloneTemplateToMember(templatePlan, targetMemberId);
   }
