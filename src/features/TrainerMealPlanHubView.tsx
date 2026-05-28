@@ -24,6 +24,13 @@ type MealPlanTemplateItem = {
   name: string;
   createdAt: string;
 };
+type TemplateApplyMode = "replace" | "merge";
+type TemplateApplyPreview = {
+  daysTouched: number;
+  mealsWithTemplateItems: number;
+  overwriteMeals: number;
+  addMeals: number;
+};
 
 const MEAL_PLAN_TEMPLATE_LIST_KEY = "motus_meal_plan_templates_v1";
 const DEFAULT_TEMPLATE_ID = "__mealplan_template_library__";
@@ -73,6 +80,65 @@ function cloneTemplateToMember(templatePlan: MealPlan, memberId: string): MealPl
   };
 }
 
+function buildTemplateApplyPreview(templatePlan: MealPlan, targetPlan: MealPlan | null): TemplateApplyPreview {
+  let mealsWithTemplateItems = 0;
+  let overwriteMeals = 0;
+  let addMeals = 0;
+  for (let dayIndex = 0; dayIndex < templatePlan.days.length; dayIndex += 1) {
+    const templateDay = templatePlan.days[dayIndex];
+    const targetDay = targetPlan?.days[dayIndex];
+    for (let mealIndex = 0; mealIndex < templateDay.meals.length; mealIndex += 1) {
+      const templateMeal = templateDay.meals[mealIndex];
+      if (!templateMeal.items.length) continue;
+      mealsWithTemplateItems += 1;
+      const targetMeal = targetDay?.meals[mealIndex];
+      if (!targetMeal || !targetMeal.items.length) addMeals += 1;
+      else overwriteMeals += 1;
+    }
+  }
+  return {
+    daysTouched: templatePlan.days.length,
+    mealsWithTemplateItems,
+    overwriteMeals,
+    addMeals,
+  };
+}
+
+function applyTemplateWithMode(templatePlan: MealPlan, targetMemberId: string, targetExistingPlan: MealPlan | null, mode: TemplateApplyMode): MealPlan {
+  if (mode === "replace" || !targetExistingPlan) {
+    return cloneTemplateToMember(templatePlan, targetMemberId);
+  }
+  const mergedDays = templatePlan.days.map((templateDay, dayIndex) => {
+    const existingDay = targetExistingPlan.days[dayIndex];
+    if (!existingDay) return templateDay;
+    return {
+      ...existingDay,
+      label: templateDay.label,
+      meals: templateDay.meals.map((templateMeal, mealIndex) => {
+        const existingMeal = existingDay.meals[mealIndex];
+        if (!existingMeal) return templateMeal;
+        if (!templateMeal.items.length) return existingMeal;
+        if (existingMeal.items.length) return existingMeal;
+        return {
+          ...existingMeal,
+          ...templateMeal,
+          id: existingMeal.id,
+        };
+      }),
+    };
+  });
+  return {
+    ...targetExistingPlan,
+    memberId: targetMemberId,
+    id: `mealplan-${targetMemberId}`,
+    title: targetExistingPlan.title || templatePlan.title,
+    notes: targetExistingPlan.notes || templatePlan.notes,
+    targets: targetExistingPlan.targets ?? templatePlan.targets,
+    days: mergedDays,
+    updatedAt: new Date().toISOString(),
+  };
+}
+
 export function TrainerMealPlanHubView({
   members,
   selectedMemberId,
@@ -86,6 +152,7 @@ export function TrainerMealPlanHubView({
   const [activeTemplateId, setActiveTemplateId] = useState(DEFAULT_TEMPLATE_ID);
   const [templateAssignStatus, setTemplateAssignStatus] = useState<string | null>(null);
   const [templateTargetMemberId, setTemplateTargetMemberId] = useState("");
+  const [templateApplyMode, setTemplateApplyMode] = useState<TemplateApplyMode>("replace");
 
   useEffect(() => {
     const loaded = readTemplateLibrary();
@@ -138,6 +205,18 @@ export function TrainerMealPlanHubView({
   const templateTargetMember = useMemo(
     () => assignableMembers.find((member) => member.id === templateTargetMemberId) ?? null,
     [assignableMembers, templateTargetMemberId],
+  );
+  const templatePlan = useMemo(
+    () => (activeTemplate ? loadMealPlanForMember(activeTemplate.id) : null),
+    [activeTemplate],
+  );
+  const targetExistingPlan = useMemo(
+    () => (templateTargetMember ? loadMealPlanForMember(templateTargetMember.id) : null),
+    [templateTargetMember],
+  );
+  const templatePreview = useMemo(
+    () => (templatePlan ? buildTemplateApplyPreview(templatePlan, targetExistingPlan) : null),
+    [templatePlan, targetExistingPlan],
   );
 
   useEffect(() => {
@@ -322,21 +401,55 @@ export function TrainerMealPlanHubView({
                   disabled={!templateTargetMember}
                   onClick={() => {
                     if (!activeTemplate || !templateTargetMember) return;
-                    const templatePlan = loadMealPlanForMember(activeTemplate.id);
                     if (!templatePlan) {
                       setTemplateAssignStatus("Fant ingen lagret plan i valgt mal ennå.");
                       return;
                     }
-                    const nextPlan = cloneTemplateToMember(templatePlan, templateTargetMember.id);
+                    const nextPlan = applyTemplateWithMode(templatePlan, templateTargetMember.id, targetExistingPlan, templateApplyMode);
                     persistMealPlanLocalAndScheduleCloud(trainerOwnerUserId, nextPlan);
                     setTemplateAssignStatus(
-                      `Malen «${activeTemplate.name}» er kopiert til ${templateTargetMember.name.trim() || "kunden"}.`,
+                      templateApplyMode === "replace"
+                        ? `Malen «${activeTemplate.name}» erstattet planen for ${templateTargetMember.name.trim() || "kunden"}.`
+                        : `Malen «${activeTemplate.name}» er flettet inn for ${templateTargetMember.name.trim() || "kunden"}.`,
                     );
                   }}
                   className="mt-2 inline-flex w-full items-center justify-center rounded-lg border border-teal-200 bg-teal-50 px-3 py-2 text-xs font-semibold text-teal-900 transition hover:bg-teal-100 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   Bruk på valgt klient
                 </button>
+                <div className="mt-2 grid grid-cols-2 gap-1">
+                  <button
+                    type="button"
+                    onClick={() => setTemplateApplyMode("replace")}
+                    className={`rounded-md border px-2 py-1 text-[11px] font-medium ${
+                      templateApplyMode === "replace"
+                        ? "border-teal-300 bg-teal-50 text-teal-900"
+                        : "border-slate-200 text-slate-600 hover:bg-slate-50"
+                    }`}
+                  >
+                    Erstatt plan
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setTemplateApplyMode("merge")}
+                    className={`rounded-md border px-2 py-1 text-[11px] font-medium ${
+                      templateApplyMode === "merge"
+                        ? "border-teal-300 bg-teal-50 text-teal-900"
+                        : "border-slate-200 text-slate-600 hover:bg-slate-50"
+                    }`}
+                  >
+                    Flett inn tomme
+                  </button>
+                </div>
+                {templatePreview ? (
+                  <p className="mt-2 text-[11px] text-slate-600">
+                    Forhåndsvisning: {templatePreview.daysTouched} dager, {templatePreview.mealsWithTemplateItems} måltider med innhold,{" "}
+                    {templateApplyMode === "replace"
+                      ? `${templatePreview.overwriteMeals + templatePreview.addMeals} vil settes fra mal`
+                      : `${templatePreview.addMeals} tomme måltider fylles (${templatePreview.overwriteMeals} beholdes uendret)`}
+                    .
+                  </p>
+                ) : null}
                 {templateAssignStatus ? <p className="mt-2 text-xs text-teal-700">{templateAssignStatus}</p> : null}
               </div>
             </aside>
