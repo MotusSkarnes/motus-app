@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import {
   cacheInspirationFeedSnapshot,
   filterSuppressedInspirationItems,
+  INSPIRATION_LOCAL_WRITE_AT_KEY,
   INSPIRATION_STORAGE_KEY,
   INSPIRATION_SUPPRESSED_IDS_KEY,
   loadSuppressedInspirationIds,
@@ -13,6 +14,7 @@ import {
 describe("saveInspirationItemsToStorage", () => {
   afterEach(() => {
     window.localStorage.removeItem(INSPIRATION_STORAGE_KEY);
+    window.localStorage.removeItem(INSPIRATION_LOCAL_WRITE_AT_KEY);
     window.localStorage.removeItem(INSPIRATION_SUPPRESSED_IDS_KEY);
   });
 
@@ -21,6 +23,17 @@ describe("saveInspirationItemsToStorage", () => {
     expect(result.ok).toBe(true);
     if (result.ok) expect(result.cloudSynced).toBe(false);
     expect(window.localStorage.getItem(INSPIRATION_STORAGE_KEY)).toContain('"Test"');
+    expect(Number(window.localStorage.getItem(INSPIRATION_LOCAL_WRITE_AT_KEY) ?? 0)).toBeGreaterThan(0);
+  });
+
+  it("does not bump local write marker for remote cache writes", () => {
+    window.localStorage.setItem(INSPIRATION_LOCAL_WRITE_AT_KEY, "123");
+    cacheInspirationFeedSnapshot({
+      items: [{ id: "remote-1", title: "Hei" }],
+      suppressedItemIds: [],
+      updatedAt: Date.now(),
+    });
+    expect(window.localStorage.getItem(INSPIRATION_LOCAL_WRITE_AT_KEY)).toBe("123");
   });
 
   it("returns error when payload is too large", () => {

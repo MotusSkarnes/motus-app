@@ -7,6 +7,7 @@ export const INSPIRATION_CHANGED_EVENT = "motus:inspiration-changed";
 export const INSPIRATION_FEED_ROW_ID = "shared";
 export const INSPIRATION_HERO_ROW_ID = "hero";
 export const INSPIRATION_SUPPRESSED_IDS_KEY = "motus.inspiration.suppressedIds.v1";
+export const INSPIRATION_LOCAL_WRITE_AT_KEY = "motus.inspiration.localWriteAt.v1";
 export const INSPIRATION_HERO_STORAGE_KEY = "motus.inspiration.hero.v1";
 export const INSPIRATION_HERO_CHANGED_EVENT = "motus:inspiration-hero-changed";
 
@@ -142,7 +143,9 @@ export function saveInspirationItemsToStorage(
       };
     }
     window.localStorage.setItem(INSPIRATION_STORAGE_KEY, serialized);
-    void options;
+    if (options?.trackLocalWrite !== false) {
+      window.localStorage.setItem(INSPIRATION_LOCAL_WRITE_AT_KEY, String(Date.now()));
+    }
     return { ok: true, cloudSynced: false };
   } catch (error) {
     const isQuota =
@@ -155,6 +158,13 @@ export function saveInspirationItemsToStorage(
         : "Kunne ikke lagre inspirasjon. Prøv igjen.",
     };
   }
+}
+
+function readInspirationLocalWriteAt(): number {
+  if (typeof window === "undefined") return 0;
+  const raw = window.localStorage.getItem(INSPIRATION_LOCAL_WRITE_AT_KEY);
+  const value = Number(raw ?? 0);
+  return Number.isFinite(value) ? value : 0;
 }
 
 export function mapRawToInspirationNotificationItems(items: unknown[]): InspirationNotificationItem[] {
@@ -335,13 +345,17 @@ export async function fetchInspirationItemsForHub<T>(): Promise<T[] | null> {
   if (!isSupabaseConfigured) {
     return loadInspirationItemsFromLocalStorage<T>();
   }
+  const local = loadInspirationItemsFromLocalStorage<T>();
+  const snapshot = await fetchInspirationFeedFromSupabase();
+  if (!snapshot) return local;
 
-  const snapshot = await pullInspirationFeedFromRemote();
-  if (snapshot) {
-    return filterSuppressedInspirationItems(snapshot.items as Array<T & { id: string }>) as T[];
+  const localWriteAt = readInspirationLocalWriteAt();
+  if (localWriteAt > snapshot.updatedAt && local) {
+    return filterSuppressedInspirationItems(local as Array<T & { id: string }>) as T[];
   }
 
-  return loadInspirationItemsFromLocalStorage<T>();
+  cacheInspirationFeedSnapshot(snapshot);
+  return filterSuppressedInspirationItems(snapshot.items as Array<T & { id: string }>) as T[];
 }
 
 /** PT: sky tom, men lokalt innhold finnes — fyll skyen én gang. */
