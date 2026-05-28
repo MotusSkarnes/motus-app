@@ -27,6 +27,7 @@ import {
 import { MealPlanDisplay } from "../MealPlanDisplay";
 import { buildWeeklyShoppingList } from "../../app/mealPlanShoppingList";
 import { useInspirationRecipeItems } from "../../app/inspirationRecipeItems";
+import type { InspirationRecipeItem } from "../../app/inspirationRecipeItems";
 import { computeRecipeMacros } from "../../app/recipeMacros";
 import { RecipeIngredientList } from "../../components/RecipeIngredientList";
 import { RecipeMacroBlocks } from "../../components/RecipeMacroBlocks";
@@ -58,7 +59,7 @@ import {
   toIsoDateKey,
   weekdayShortLabel,
 } from "../../app/memberMealPlanTracking";
-import type { MealPlan, MealPlanDay, MealPlanMeal, MealPlanTargets } from "../../app/mealPlanTypes";
+import type { MealPlan, MealPlanDay, MealPlanFoodEntry, MealPlanMeal, MealPlanTargets } from "../../app/mealPlanTypes";
 import { useFoodBankItems } from "../../app/useFoodBankItems";
 import { Card } from "../../app/ui";
 import { MotusFlameIcon } from "../MotusFlameIcon";
@@ -107,9 +108,34 @@ function mealMacroLine(macros: MacroTotals): string {
   return `${formatMacro(macros.kcal, 0)} kcal · ${formatMacro(macros.protein, 0)}g protein`;
 }
 
-function firstRecipeIdFromMeal(meal: MealPlanMeal): string | null {
+function normalizeRecipeLookupKey(value: string): string {
+  return value
+    .toLowerCase()
+    .replace(/&/g, "og")
+    .replace(/[^a-z0-9æøå]+/g, "")
+    .trim();
+}
+
+function resolveRecipeIdFromEntry(
+  item: MealPlanFoodEntry,
+  recipesById: Map<string, InspirationRecipeItem>,
+  recipeIdByTitleKey: Map<string, string>,
+): string | null {
+  const parsed = parseInspirationRecipeFoodId(item.foodId);
+  if (parsed && recipesById.has(parsed)) return parsed;
+  const rawFoodId = item.foodId.trim();
+  if (rawFoodId && recipesById.has(rawFoodId)) return rawFoodId;
+  const fromTitle = recipeIdByTitleKey.get(normalizeRecipeLookupKey(item.foodName));
+  return fromTitle ?? null;
+}
+
+function firstRecipeIdFromMeal(
+  meal: MealPlanMeal,
+  recipesById: Map<string, InspirationRecipeItem>,
+  recipeIdByTitleKey: Map<string, string>,
+): string | null {
   for (const item of meal.items) {
-    const recipeId = parseInspirationRecipeFoodId(item.foodId);
+    const recipeId = resolveRecipeIdFromEntry(item, recipesById, recipeIdByTitleKey);
     if (recipeId) return recipeId;
   }
   return null;
@@ -161,6 +187,10 @@ export function MemberMealPlanDashboard({ plan, memberId, onOpenAvoidances }: Me
   const foodById = useMemo(() => new Map(foodItems.map((f) => [f.id, f])), [foodItems]);
   const recipesById = useMemo(
     () => new Map(inspirationRecipes.map((recipe) => [recipe.id, recipe])),
+    [inspirationRecipes],
+  );
+  const recipeIdByTitleKey = useMemo(
+    () => new Map(inspirationRecipes.map((recipe) => [normalizeRecipeLookupKey(recipe.title), recipe.id])),
     [inspirationRecipes],
   );
   const recipeNutritionById = useMemo(() => {
@@ -254,7 +284,7 @@ export function MemberMealPlanDashboard({ plan, memberId, onOpenAvoidances }: Me
           ...resolvedMeal,
           items: resolvedMeal.items.map((item) => {
             if (hasMacroValues(item.nutritionPer100g)) return item;
-            const recipeId = parseInspirationRecipeFoodId(item.foodId);
+            const recipeId = resolveRecipeIdFromEntry(item, recipesById, recipeIdByTitleKey);
             if (!recipeId) return item;
             const fallbackNutrition = recipeNutritionById.get(recipeId);
             if (!fallbackNutrition) return item;
@@ -262,7 +292,7 @@ export function MemberMealPlanDashboard({ plan, memberId, onOpenAvoidances }: Me
           }),
         };
       }),
-    [plan, todayDay.meals, todayKey, tracking.mealSwaps, recipeNutritionById],
+    [plan, todayDay.meals, todayKey, tracking.mealSwaps, recipeNutritionById, recipesById, recipeIdByTitleKey],
   );
   const todayDayResolved = useMemo(
     () => ({ ...todayDay, meals: todayMealsResolved }),
@@ -277,7 +307,7 @@ export function MemberMealPlanDashboard({ plan, memberId, onOpenAvoidances }: Me
           ...resolvedMeal,
           items: resolvedMeal.items.map((item) => {
             if (hasMacroValues(item.nutritionPer100g)) return item;
-            const recipeId = parseInspirationRecipeFoodId(item.foodId);
+            const recipeId = resolveRecipeIdFromEntry(item, recipesById, recipeIdByTitleKey);
             if (!recipeId) return item;
             const fallbackNutrition = recipeNutritionById.get(recipeId);
             if (!fallbackNutrition) return item;
@@ -285,7 +315,7 @@ export function MemberMealPlanDashboard({ plan, memberId, onOpenAvoidances }: Me
           }),
         };
       }),
-    [plan, selectedDay?.meals, selectedDateKey, tracking.mealSwaps, recipeNutritionById],
+    [plan, selectedDay?.meals, selectedDateKey, tracking.mealSwaps, recipeNutritionById, recipesById, recipeIdByTitleKey],
   );
   const selectedDayResolved = useMemo(
     () => (selectedDay ? { ...selectedDay, meals: selectedMealsResolved } : null),
@@ -468,7 +498,7 @@ export function MemberMealPlanDashboard({ plan, memberId, onOpenAvoidances }: Me
   const resolveMealImage = (meal: MealPlanMeal): string | null => {
     for (const item of meal.items) {
       if (item.imageUrl?.trim()) return item.imageUrl.trim();
-      const recipeId = parseInspirationRecipeFoodId(item.foodId);
+      const recipeId = resolveRecipeIdFromEntry(item, recipesById, recipeIdByTitleKey);
       if (recipeId) {
         const recipeUrl = recipesById.get(recipeId)?.imageUrl?.trim();
         if (recipeUrl) return recipeUrl;
@@ -686,7 +716,7 @@ export function MemberMealPlanDashboard({ plan, memberId, onOpenAvoidances }: Me
             const logged = meal.items.length > 0 && loggedFoodCount === meal.items.length;
             const hasPartialLog = loggedFoodCount > 0 && !logged;
             const hasFood = meal.items.length > 0;
-            const recipeId = firstRecipeIdFromMeal(meal);
+            const recipeId = firstRecipeIdFromMeal(meal, recipesById, recipeIdByTitleKey);
             const hasRecipe = Boolean(recipeId && recipesById.has(recipeId));
             const imageSrc = resolveMealImage(meal);
             const isSwapped = Boolean(tracking.mealSwaps[mealSwapKey(selectedDateKey, meal.id)]);
@@ -789,7 +819,7 @@ export function MemberMealPlanDashboard({ plan, memberId, onOpenAvoidances }: Me
                             </div>
                             <div className="motus-matplan-meal-food-actions">
                               {(() => {
-                                const recipeId = parseInspirationRecipeFoodId(item.foodId);
+                                const recipeId = resolveRecipeIdFromEntry(item, recipesById, recipeIdByTitleKey);
                                 const hasRecipe = Boolean(recipeId && recipesById.has(recipeId));
                                 if (!hasRecipe || !recipeId) return null;
                                 return (

@@ -5,18 +5,53 @@ import { planMatchesTargets } from "../../app/mealPlanWeekPlanner";
 import type { MealPlanTargets } from "../../app/mealPlanTypes";
 import { MacroProgressBar } from "./MacroProgressBar";
 import { MacroProgressRing } from "./MacroProgressRing";
+import { formatMicronutrientValue, FOOD_MICRONUTRIENT_FIELDS } from "../../app/foodBankMicronutrients";
+import type { FoodMicronutrientKey } from "../../app/foodBankMicronutrients";
+
+export const MICRONUTRIENT_DAILY_TARGETS: Record<FoodMicronutrientKey, number> = {
+  vitaminA: 700,
+  vitaminD: 10,
+  vitaminE: 8,
+  vitaminC: 75,
+  vitaminB1: 1.1,
+  vitaminB2: 1.3,
+  niacin: 14,
+  vitaminB6: 1.4,
+  folate: 300,
+  vitaminB12: 2,
+  calcium: 800,
+  iron: 9,
+  potassium: 3500,
+  magnesium: 350,
+  phosphorus: 600,
+  zinc: 9,
+  selenium: 50,
+  iodine: 150,
+  copper: 0.9,
+};
+
+export type MicronutrientOverviewRow = {
+  key: FoodMicronutrientKey;
+  label: string;
+  unit: string;
+  value: number;
+  target: number;
+  coveragePct: number;
+};
 
 type TrainerMealPlanNutritionOverviewProps = {
   averageUsed: MacroTotals;
   targets?: MealPlanTargets;
+  micronutrients?: MicronutrientOverviewRow[];
 };
 
-export function TrainerMealPlanNutritionOverview({ averageUsed, targets }: TrainerMealPlanNutritionOverviewProps) {
+export function TrainerMealPlanNutritionOverview({ averageUsed, targets, micronutrients = [] }: TrainerMealPlanNutritionOverviewProps) {
   const targetKcal = targets?.kcal ?? 0;
   const targetProtein = targets?.protein ?? 0;
   const targetCarbs = targets?.carbs ?? 0;
   const targetFat = targets?.fat ?? 0;
   const onTrack = planMatchesTargets(averageUsed, targets);
+  const hasMicronutrients = micronutrients.some((row) => row.value > 0);
 
   if (!targetKcal) {
     return (
@@ -55,6 +90,28 @@ export function TrainerMealPlanNutritionOverview({ averageUsed, targets }: Train
           </>
         )}
       </p>
+      <div className="mt-4 rounded-xl border border-slate-200 bg-white p-3">
+        <p className="text-xs font-semibold uppercase tracking-wide text-slate-600">Mikronæringsstoffer (snitt per dag)</p>
+        {!hasMicronutrients ? (
+          <p className="mt-2 text-xs text-slate-500">Ingen mikronæringsdata funnet i planens matvarer ennå.</p>
+        ) : (
+          <div className="mt-2 space-y-1.5">
+            {micronutrients.map((row) => (
+              <div key={row.key} className="grid grid-cols-[1fr_auto_auto] items-center gap-2 text-xs">
+                <span className="text-slate-700">{row.label}</span>
+                <span className="text-slate-900">
+                  {formatMicronutrientValue(row.value, FOOD_MICRONUTRIENT_FIELDS.find((f) => f.key === row.key)?.decimals ?? 1)} {row.unit}
+                </span>
+                <span className="text-slate-500">
+                  av {formatMicronutrientValue(row.target, FOOD_MICRONUTRIENT_FIELDS.find((f) => f.key === row.key)?.decimals ?? 1)} {row.unit} (
+                  {formatMacro(row.coveragePct, 0)}%)
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
+        <p className="mt-2 text-[11px] text-slate-500">Anbefalte dagsmengder er generelle voksenreferanser.</p>
+      </div>
     </div>
   );
 }
