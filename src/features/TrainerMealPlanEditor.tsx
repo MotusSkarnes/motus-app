@@ -1140,7 +1140,7 @@ export function TrainerMealPlanEditor({
             <Sparkles className="h-5 w-5 shrink-0" aria-hidden />
             <div className="min-w-0 flex-1">
               <div className="font-bold text-sm">AI-assistent for matplanlegging</div>
-              <div className="text-xs opacity-90">Kommer snart — generer hele uken basert på mål og preferanser.</div>
+              <div className="text-xs opacity-90">Generer hele uken basert på mål og preferanser.</div>
             </div>
             <OutlineButton type="button" className="!border-white/40 !text-white opacity-90" onClick={suggestAiWeekPlan}>
               AI-generer hele uken
