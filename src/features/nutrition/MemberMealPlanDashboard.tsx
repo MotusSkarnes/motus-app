@@ -421,6 +421,11 @@ export function MemberMealPlanDashboard({ plan, memberId, onOpenAvoidances }: Me
   const resolveMealImage = (meal: MealPlanMeal): string | null => {
     for (const item of meal.items) {
       if (item.imageUrl?.trim()) return item.imageUrl.trim();
+      const recipeId = parseInspirationRecipeFoodId(item.foodId);
+      if (recipeId) {
+        const recipeUrl = recipesById.get(recipeId)?.imageUrl?.trim();
+        if (recipeUrl) return recipeUrl;
+      }
       const food = foodById.get(item.foodId);
       if (food?.imageUrl) return food.imageUrl;
     }
@@ -1040,6 +1045,7 @@ export function MemberMealPlanDashboard({ plan, memberId, onOpenAvoidances }: Me
             role="dialog"
             aria-label="Se oppskrift"
             onClick={(e) => e.stopPropagation()}
+            style={{ maxHeight: "calc(100dvh - 2rem)", overflow: "hidden" }}
           >
             <div className="motus-foodbank-modal-head">
               <h3>{activeRecipe.title}</h3>
@@ -1052,7 +1058,10 @@ export function MemberMealPlanDashboard({ plan, memberId, onOpenAvoidances }: Me
                 <X className="h-4 w-4" />
               </button>
             </div>
-            <div className="motus-foodbank-modal-body max-h-[min(80vh,40rem)] space-y-3 overflow-y-auto overscroll-contain">
+            <div
+              className="motus-foodbank-modal-body space-y-3 overflow-y-auto overscroll-contain pb-6"
+              style={{ maxHeight: "calc(100dvh - 8rem)", paddingBottom: "max(1.5rem, env(safe-area-inset-bottom))" }}
+            >
               {activeRecipe.description ? <p className="text-sm text-slate-600">{activeRecipe.description}</p> : null}
               <RecipeIngredientList body={activeRecipe.body} foodItems={foodItems} recipeId={activeRecipe.id} />
               {activeRecipeSteps.length > 0 ? (
