@@ -165,6 +165,8 @@ import {
   upsertMemberPeriodPlansForTrainer,
 } from "../services/supabaseRepository";
 import { isSupabaseConfigured, supabaseClient } from "../services/supabaseClient";
+import { patchMemberAppUiStateInPersonalGoals } from "../app/memberAppUiState";
+import { pickBestMemberDisplayName } from "../app/memberOnboarding";
 import { pickBestPersonalGoals } from "../app/memberProfileGoals";
 import { memberEffectivelyInvited } from "../app/memberInviteStatus";
 import { resolveMemberTrainerDisplayName } from "../app/trainerProfile";
@@ -1001,24 +1003,24 @@ function pickFirstName(value: unknown): string {
       }
       return "";
     };
-    const names = prioritized.map((member) => member.name);
     const phones = prioritized.map((member) => member.phone);
     const birthDates = prioritized.map((member) => member.birthDate);
     const goals = prioritized.map((member) => member.goal);
     const injuries = prioritized.map((member) => member.injuries);
     const focuses = prioritized.map((member) => member.focus);
     const personalGoalsList = candidates.map((member) => member.personalGoals);
+    const personalGoals = pickBestPersonalGoals(personalGoalsList) || base.personalGoals;
     const roster = mergeRosterFieldsFromMemberCandidates(candidates, currentTrainerOwnerUserId);
     return {
       ...base,
       ...roster,
-      name: pickPreferredNonEmpty(names) || base.name,
+      name: pickBestMemberDisplayName(base, candidates, personalGoals) || base.name,
       phone: pickPreferredNonEmpty(phones) || base.phone,
       birthDate: pickPreferredNonEmpty(birthDates) || base.birthDate,
       goal: pickPreferredNonEmpty(goals) || base.goal,
       focus: pickPreferredNonEmpty(focuses) || base.focus,
       injuries: pickPreferredNonEmpty(injuries) || base.injuries,
-      personalGoals: pickBestPersonalGoals(personalGoalsList) || base.personalGoals,
+      personalGoals,
     };
   }
   const deduplicatedMembers = useMemo(() => {
@@ -1069,7 +1071,6 @@ function pickFirstName(value: unknown): string {
       });
       const base = sorted[0] ?? group[0];
       if (!base) continue;
-      const names = group.map((member) => member.name);
       const phones = group.map((member) => member.phone);
       const birthDates = group.map((member) => member.birthDate);
       const goals = group.map((member) => member.goal);
@@ -1082,6 +1083,7 @@ function pickFirstName(value: unknown): string {
       const isTombstoned =
         identityEmail.includes("@") && archiveTombstones.has(identityEmail) && !groupHasActiveRow;
       const roster = mergeRosterFieldsFromMemberCandidates(group, currentTrainerOwnerUserId);
+      const personalGoals = pickBestPersonalGoals(personalGoalsList) || base.personalGoals;
       const trainerId = currentTrainerOwnerUserId.trim();
       const canonicalId =
         (selectedMemberId && group.some((member) => member.id === selectedMemberId) ? selectedMemberId : "") ||
@@ -1096,12 +1098,12 @@ function pickFirstName(value: unknown): string {
         ...base,
         id: canonicalId,
         ...roster,
-        name: pickLatestNonEmpty(names) || base.name,
+        name: pickBestMemberDisplayName(base, group, personalGoals) || base.name,
         phone: pickLatestNonEmpty(phones) || base.phone,
         birthDate: pickLatestNonEmpty(birthDates) || base.birthDate,
         goal: pickLatestNonEmpty(goals) || base.goal,
         injuries: pickLatestNonEmpty(injuries) || base.injuries,
-        personalGoals: pickBestPersonalGoals(personalGoalsList) || base.personalGoals,
+        personalGoals,
         invitedAt: pickLatestNonEmpty(group.map((member) => member.invitedAt)) || base.invitedAt,
         isActive: !isTombstoned && group.some((member) => member.isActive !== false),
       });
@@ -3073,6 +3075,10 @@ function pickFirstName(value: unknown): string {
       isPrivatePtRosterCustomerType(nextCustomerType) && Boolean(currentTrainerOwnerUserId);
     const normalizedBirthDate = trimmedBirthDateDraft ? normalizeBirthDate(trimmedBirthDateDraft) : "";
     uniqueTargetIds.forEach((memberId) => {
+      const targetRow = members.find((member) => member.id === memberId);
+      const personalGoals = patchMemberAppUiStateInPersonalGoals(targetRow?.personalGoals, {
+        profileDisplayName: nextName,
+      });
       updateMember({
         memberId,
         changes: {
@@ -3085,6 +3091,7 @@ function pickFirstName(value: unknown): string {
           membershipType: nextMembershipType,
           customerType: nextCustomerType,
           nutritionAccess: memberEditNutritionAccess,
+          personalGoals,
           ...(assignOwnerToSession ? { ownerUserId: currentTrainerOwnerUserId } : {}),
         },
       });

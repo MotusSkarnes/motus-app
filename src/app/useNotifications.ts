@@ -29,6 +29,7 @@ import {
   mergeMemberNotificationPreferences,
   mergeTrainerNotificationPreferences,
   readMemberNotificationPreferencesFromPersonalGoals,
+  syncMemberNotificationPrefsToLocalStorage,
   readTrainerNotificationPreferencesFromUserMetadata,
   TRAINER_NOTIFICATION_PREFS_METADATA_KEY,
   type MemberNotificationPreferences,
@@ -339,8 +340,8 @@ export function useNotifications({
     setSeenMemberInspirationIds(preferences.seenMemberInspirationIds);
     setSeenMemberPeriodPlanKeys(preferences.seenMemberPeriodPlanKeys ?? []);
     setDismissedMemberCheckInMonths(preferences.dismissedMemberCheckInMonths);
-    if (preferences.memberInspirationBaselineAt > 0 && typeof window !== "undefined") {
-      window.localStorage.setItem(MEMBER_INSPIRATION_BASELINE_KEY, String(preferences.memberInspirationBaselineAt));
+    if (typeof window !== "undefined") {
+      syncMemberNotificationPrefsToLocalStorage(preferences);
     }
     window.setTimeout(() => {
       skipMemberPersistRef.current = false;

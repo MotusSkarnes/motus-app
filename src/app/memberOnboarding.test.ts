@@ -10,6 +10,7 @@ import {
   markMemberWelcomeSeen,
   mergeOnboardingIntoPersonalGoals,
   mergePersonalGoalsFromCandidates,
+  pickBestMemberDisplayName,
   onboardingAnswersAreSubstantive,
   primaryGoalFromOnboarding,
   findMembersByEmail,
@@ -18,6 +19,7 @@ import {
   hasLocalOnboardingComplete,
   resolveMemberOnboarding,
 } from "./memberOnboarding";
+import { patchMemberAppUiStateInPersonalGoals } from "./memberAppUiState";
 import type { Member } from "./types";
 
 describe("memberOnboarding", () => {
@@ -326,5 +328,38 @@ describe("memberOnboarding", () => {
     expect(findMembersByEmail(msn, [msn, gmail]).map((row) => row.id)).toEqual(["msn-row"]);
     expect(resolveMemberOnboarding(msn, [msn, gmail])).toBeNull();
     expect(resolveMemberOnboarding(gmail, [msn, gmail])?.trainingGoals).toEqual(["Styrke"]);
+  });
+
+  it("prefers profileDisplayName over stale duplicate row names", () => {
+    const personalGoals = patchMemberAppUiStateInPersonalGoals("", {
+      profileDisplayName: "Karen H. Østergard",
+    });
+    const authRow: Member = {
+      id: "auth-karen",
+      name: "Karen Hancke",
+      email: "karen@example.com",
+      personalGoals: "",
+      goal: "",
+      focus: "",
+      injuries: "",
+      level: "Nybegynner",
+      membershipType: "Premium",
+      customerType: "PT-kunde",
+      daysSinceActivity: 0,
+      phone: "",
+      birthDate: "",
+      coachNotes: "",
+      avatarUrl: "",
+      invitedAt: "",
+      isActive: true,
+    };
+    const realRow: Member = {
+      ...authRow,
+      id: "member-karen",
+      name: "Karen Hancke",
+      personalGoals,
+    };
+    expect(pickBestMemberDisplayName(authRow, [authRow, realRow], personalGoals)).toBe("Karen H. Østergard");
+    expect(enrichMemberWithBestProfile(authRow, [authRow, realRow]).name).toBe("Karen H. Østergard");
   });
 });

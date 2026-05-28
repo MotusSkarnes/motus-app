@@ -2,9 +2,11 @@ import { describe, expect, it } from "vitest";
 import {
   CONDITIONING_TRAINING_COVER_IMAGE,
   MOBILITY_TRAINING_COVER_IMAGE,
+  SENIORS_GROUP_COVER_IMAGE,
   STRENGTH_TRAINING_COVER_IMAGE,
   mergeProgramImageUrl,
   programCoverUsesPhotoStyle,
+  resolveGroupWorkoutCoverImage,
   resolveProgramImageSrc,
 } from "./programImage";
 import { RUNNER_STRENGTH_COVER_IMAGE, RUNNER_MOBILITY_COVER_IMAGE, SUB60_PROGRAM_TITLES } from "./inspirationRunningPlans";
@@ -84,6 +86,12 @@ describe("resolveProgramImageSrc", () => {
 
   it("falls back to exercise illustration for other program types", () => {
     expect(resolveProgramImageSrc(program(), strengthExercise)).toBe("/exercises/bench.png");
+  });
+});
+
+describe("resolveGroupWorkoutCoverImage", () => {
+  it("maps Godt voksen gruppetime to seniors cover", () => {
+    expect(resolveGroupWorkoutCoverImage("Godt voksen")).toBe(SENIORS_GROUP_COVER_IMAGE);
   });
 });
 

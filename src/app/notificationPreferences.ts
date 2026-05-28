@@ -180,6 +180,36 @@ export function mergeMemberNotificationPreferencesIntoPersonalGoals(
   return `${PROFILE_METRICS_PREFIX}${JSON.stringify(payload)}`;
 }
 
+/** Skriv sky-synkede preferanser til localStorage slik at ny enhet ikke starter med tomme lister. */
+export function syncMemberNotificationPrefsToLocalStorage(preferences: MemberNotificationPreferences): void {
+  if (typeof window === "undefined") return;
+  window.localStorage.setItem("motus.notifications.memberSeenAt", String(preferences.memberAlertsSeenAt || 0));
+  window.localStorage.setItem("motus.notifications.memberSeenProgramIds", JSON.stringify(preferences.seenMemberProgramIds));
+  window.localStorage.setItem(
+    "motus.notifications.memberSeenWorkoutCommentKeys",
+    JSON.stringify(preferences.seenMemberWorkoutCommentKeys),
+  );
+  window.localStorage.setItem("motus.notifications.memberOpenedAlertIds", JSON.stringify(preferences.openedMemberAlertIds));
+  window.localStorage.setItem(
+    "motus.notifications.memberSeenInspirationIds",
+    JSON.stringify(preferences.seenMemberInspirationIds),
+  );
+  window.localStorage.setItem(
+    "motus.notifications.memberSeenPeriodPlanKeys",
+    JSON.stringify(preferences.seenMemberPeriodPlanKeys),
+  );
+  window.localStorage.setItem(
+    "motus.notifications.memberDismissedCheckInMonths",
+    JSON.stringify(preferences.dismissedMemberCheckInMonths),
+  );
+  if (preferences.memberInspirationBaselineAt > 0) {
+    window.localStorage.setItem(
+      "motus.notifications.memberInspirationBaselineAt",
+      String(preferences.memberInspirationBaselineAt),
+    );
+  }
+}
+
 export function mergeMemberNotificationPreferences(
   local: MemberNotificationPreferences,
   remote: MemberNotificationPreferences | null | undefined,

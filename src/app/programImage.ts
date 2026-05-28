@@ -12,6 +12,7 @@ export const CYCLING_GROUP_COVER_IMAGE = "/program-covers/sykkel-gruppetime.png"
 export const TREADMILL_GROUP_COVER_IMAGE = "/program-covers/molle-45.png";
 export const YOGA_GROUP_COVER_IMAGE = "/program-covers/yoga-gruppetime.png";
 export const CIRCUIT_GROUP_COVER_IMAGE = "/program-covers/sirkeltrening.png";
+export const SENIORS_GROUP_COVER_IMAGE = "/program-covers/godt-voksen-gruppetime.png";
 export const REST_RECOVERY_COVER_IMAGE = "/program-covers/hvile-restitusjon.png";
 export const STRENGTH_TRAINING_COVER_IMAGE = "/program-covers/styrketrening.png";
 export const CONDITIONING_TRAINING_COVER_IMAGE = "/program-covers/kondisjon.png";
@@ -34,6 +35,7 @@ const GROUP_WORKOUT_COVER_IMAGES: Record<string, string> = {
   yoga: YOGA_GROUP_COVER_IMAGE,
   sirkel: CIRCUIT_GROUP_COVER_IMAGE,
   sirkeltrening: CIRCUIT_GROUP_COVER_IMAGE,
+  "godt voksen": SENIORS_GROUP_COVER_IMAGE,
 };
 
 const PROGRAM_TITLE_COVER_IMAGES: Record<string, string> = {

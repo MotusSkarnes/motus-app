@@ -45,14 +45,15 @@ import {
 import { isSupabaseConfigured } from "../services/supabaseClient";
 import { isHoldBasedExerciseCategory, programExerciseHoldSeconds } from "../app/exerciseCategories";
 import { MEMBER_GOAL_OPTIONS } from "../app/memberGoals";
+import { patchMemberAppUiStateInPersonalGoals } from "../app/memberAppUiState";
 import {
   enrichMemberWithBestProfile,
   hasSubstantiveOnboardingAnswers,
   isMemberOnboardingSubmitted,
+  mergePersonalGoalsFromCandidates,
   parsePersonalGoalsJson,
   pickCanonicalMemberRowForProfile,
   readProfileExtensions,
-  mergePersonalGoalsFromCandidates,
   resolveMemberPersonalGoals,
 } from "../app/memberOnboarding";
 import { pickBestPersonalGoals } from "../app/memberProfileGoals";
@@ -1157,6 +1158,10 @@ export function MemberPortal(props: MemberPortalProps) {
   const [memberFocusDraft, setMemberFocusDraft] = useState("");
   const [memberInjuriesDraft, setMemberInjuriesDraft] = useState("");
   const [groupWorkoutClassName, setGroupWorkoutClassName] = useState("Smilepuls");
+  const groupWorkoutLoggerCoverSrc = useMemo(
+    () => resolveGroupWorkoutCoverImage(groupWorkoutClassName) ?? "/program-covers/logg-gruppetrening.png",
+    [groupWorkoutClassName],
+  );
   const [groupWorkoutDateIso, setGroupWorkoutDateIso] = useState(() => toIsoDateInputValue(new Date()));
   const [groupWorkoutEnergyLevel, setGroupWorkoutEnergyLevel] = useState<1 | 2 | 3 | 4 | 5>(3);
   const [groupWorkoutDifficultyLevel, setGroupWorkoutDifficultyLevel] = useState<1 | 2 | 3 | 4 | 5>(3);
@@ -2811,7 +2816,7 @@ export function MemberPortal(props: MemberPortalProps) {
       targetWeight: profileTargetWeight.trim(),
       currentDailySteps: profileCurrentDailySteps.trim(),
     };
-    const metricsForSync = encodeMemberProfileMetrics(
+    let metricsForSync = encodeMemberProfileMetrics(
       next,
       {
         homeVisibility,
@@ -2819,6 +2824,12 @@ export function MemberPortal(props: MemberPortalProps) {
       },
       resolveMemberPersonalGoals(editableMember, members),
     );
+    const trimmedDisplayName = memberNameDraft.trim();
+    if (trimmedDisplayName) {
+      metricsForSync = patchMemberAppUiStateInPersonalGoals(metricsForSync, {
+        profileDisplayName: trimmedDisplayName,
+      });
+    }
     const profileAnchor = pickCanonicalMemberRowForProfile(editableMember, members);
     window.localStorage.setItem(getProfileStorageKey(profileAnchor.id), JSON.stringify(next));
     const targetMemberIds = Array.from(
@@ -6791,8 +6802,8 @@ export function MemberPortal(props: MemberPortalProps) {
                 <article className="motus-training-hero motus-image-frame motus-image-frame--training-hero">
                   <img
                     className="motus-training-hero-cover motus-image-media"
-                    src="/program-covers/logg-gruppetrening.png"
-                    alt=""
+                    src={groupWorkoutLoggerCoverSrc}
+                    alt={groupWorkoutClassName ? `Gruppetime ${groupWorkoutClassName}` : "Logg gruppetrening"}
                     loading="lazy"
                   />
                   <div className="motus-training-hero-overlay" aria-hidden />

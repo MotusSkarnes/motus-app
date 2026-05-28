@@ -1,3 +1,4 @@
+import { readMemberAppUiState, readProfileDisplayName } from "./memberAppUiState";
 import { pickBestPersonalGoals } from "./memberProfileGoals";
 import { mergeRosterFieldsFromMemberCandidates } from "../services/memberAccessRules";
 import { supabaseClient } from "../services/supabaseClient";
@@ -220,6 +221,12 @@ export function readProfileExtensions(personalGoals: string | undefined): Record
   if (payload.foodAvoidances && typeof payload.foodAvoidances === "object") {
     extensions.foodAvoidances = payload.foodAvoidances;
   }
+  if (payload.memberAppUi && typeof payload.memberAppUi === "object") {
+    extensions.memberAppUi = payload.memberAppUi;
+  }
+  if (typeof payload.profileDisplayName === "string" && payload.profileDisplayName.trim()) {
+    extensions.profileDisplayName = payload.profileDisplayName.trim();
+  }
   return extensions;
 }
 
@@ -328,9 +335,10 @@ export function memberOnboardingIdentityKey(member: Member): string {
   return member.id.trim() || member.email.trim().toLowerCase();
 }
 
-export function hasSeenOnboardingGate(identityKey: string): boolean {
+export function hasSeenOnboardingGate(identityKey: string, personalGoals?: string): boolean {
   if (typeof window === "undefined" || !identityKey) return false;
-  return window.localStorage.getItem(`${ONBOARDING_GATE_SEEN_KEY_PREFIX}${identityKey}`) === "1";
+  if (window.localStorage.getItem(`${ONBOARDING_GATE_SEEN_KEY_PREFIX}${identityKey}`) === "1") return true;
+  return Boolean(readMemberAppUiState(personalGoals).onboardingGateSeenAt);
 }
 
 export function markOnboardingGateSeen(identityKey: string): void {
@@ -353,9 +361,10 @@ export function clearLocalOnboardingComplete(identityKey: string): void {
   window.localStorage.removeItem(`${ONBOARDING_COMPLETE_KEY_PREFIX}${identityKey}`);
 }
 
-export function hasSeenMemberWelcome(identityKey: string): boolean {
+export function hasSeenMemberWelcome(identityKey: string, personalGoals?: string): boolean {
   if (typeof window === "undefined" || !identityKey) return false;
-  return window.localStorage.getItem(`${MEMBER_WELCOME_SEEN_KEY_PREFIX}${identityKey}`) === "1";
+  if (window.localStorage.getItem(`${MEMBER_WELCOME_SEEN_KEY_PREFIX}${identityKey}`) === "1") return true;
+  return Boolean(readMemberAppUiState(personalGoals).welcomeSeenAt);
 }
 
 export function markMemberWelcomeSeen(identityKey: string): void {
@@ -474,6 +483,21 @@ function pickProfileScalarField(
   return pickPreferredNonEmptyProfileField(candidates);
 }
 
+export function pickBestMemberDisplayName(member: Member, candidates: Member[], personalGoals: string): string {
+  const fromProfile = readProfileDisplayName(personalGoals);
+  if (fromProfile) return fromProfile;
+
+  const realRowNames = candidates
+    .filter((row) => row.id.trim() && !row.id.startsWith("auth-"))
+    .map((row) => row.name.trim())
+    .filter(Boolean);
+  if (realRowNames.length) {
+    return realRowNames.sort((a, b) => b.length - a.length)[0];
+  }
+
+  return pickProfileScalarField(member.name, candidates.map((row) => row.name));
+}
+
 /** Slå sammen profil fra duplikat-rader slik at lagret skjema ikke «forsvinner». */
 export function enrichMemberWithBestProfile(member: Member, allMembers: Member[]): Member {
   const candidates = allMembers.length ? findMembersByEmail(member, allMembers) : [member];
@@ -485,7 +509,7 @@ export function enrichMemberWithBestProfile(member: Member, allMembers: Member[]
   const goal = pickProfileScalarField(canonical.goal, candidates.map((row) => row.goal));
   const focus = pickProfileScalarField(canonical.focus, candidates.map((row) => row.focus));
   const injuries = pickProfileScalarField(canonical.injuries, candidates.map((row) => row.injuries));
-  const name = pickProfileScalarField(canonical.name, candidates.map((row) => row.name));
+  const name = pickBestMemberDisplayName(canonical, candidates, personalGoals);
   const roster = mergeRosterFieldsFromMemberCandidates(candidates);
   return {
     ...canonical,

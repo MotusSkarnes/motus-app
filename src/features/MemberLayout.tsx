@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import type { ComponentProps } from "react";
 import { MOTUS } from "../app/data";
+import { patchMemberAppUiStateInPersonalGoals, type MemberAppUiState } from "../app/memberAppUiState";
 import {
   enrichMemberWithBestProfile,
   fetchOnboardingSubmittedFromSupabase,
@@ -219,9 +220,25 @@ export function MemberLayout({
 
   useEffect(() => {
     if (currentUserRole !== "member" || !activeMember || !onboardingIdentityKey) return;
-    if (hasSeenMemberWelcome(onboardingIdentityKey)) return;
+    if (hasSeenMemberWelcome(onboardingIdentityKey, activeMember.personalGoals)) return;
     setWelcomeModalOpen(true);
   }, [activeMember, currentUserRole, onboardingIdentityKey]);
+
+  const persistMemberUiStateToCloud = (patch: Partial<MemberAppUiState>) => {
+    if (!activeMember) return;
+    const canonical = pickCanonicalMemberRowForProfile(activeMember, appState.members);
+    const personalGoals = patchMemberAppUiStateInPersonalGoals(canonical.personalGoals, patch);
+    const emailKey = activeMember.email.trim().toLowerCase();
+    const targets = appState.members.filter((member) => {
+      if (member.id === canonical.id) return true;
+      if (emailKey && member.email.trim().toLowerCase() === emailKey) return true;
+      return false;
+    });
+    const uniqueTargets = targets.length ? targets : [canonical];
+    for (const row of uniqueTargets) {
+      updateMember({ memberId: row.id, changes: { personalGoals } });
+    }
+  };
 
   useEffect(() => {
     if (!activeMember || !onboardingIdentityKey) return;
@@ -264,14 +281,18 @@ export function MemberLayout({
 
   function dismissWelcomeModal() {
     if (!onboardingIdentityKey) return;
+    const seenAt = new Date().toISOString();
     markMemberWelcomeSeen(onboardingIdentityKey);
     markOnboardingGateSeen(onboardingIdentityKey);
+    persistMemberUiStateToCloud({ welcomeSeenAt: seenAt, onboardingGateSeenAt: seenAt });
     setWelcomeModalOpen(false);
   }
 
   function startOnboardingFromWelcome() {
     if (!onboardingIdentityKey) return;
+    const seenAt = new Date().toISOString();
     markMemberWelcomeSeen(onboardingIdentityKey);
+    persistMemberUiStateToCloud({ welcomeSeenAt: seenAt });
     setWelcomeModalOpen(false);
     if (needsOnboardingPrompt) {
       setOnboardingGateOpen(true);

@@ -59,7 +59,11 @@ import {
   registerDeletedProgram,
   unregisterDeletedProgram,
 } from "./deletedProgramTombstones";
-import { enrichMemberWithBestProfile, mergePersonalGoalsFromCandidates } from "./memberOnboarding";
+import {
+  enrichMemberWithBestProfile,
+  mergePersonalGoalsFromCandidates,
+  pickBestMemberDisplayName,
+} from "./memberOnboarding";
 import {
   addArchiveTombstone,
   reconcileArchiveTombstonesWithRemoteMembers,
@@ -175,6 +179,7 @@ function mergeTwoMemberSnapshots(primary: Member, secondary: Member): Member {
   merged.personalGoals =
     mergePersonalGoalsFromCandidates([primary.personalGoals, secondary.personalGoals, merged.personalGoals]) ||
     merged.personalGoals;
+  merged.name = pickBestMemberDisplayName(merged, [primary, secondary], merged.personalGoals);
   merged.phone = secondary.phone.trim() || primary.phone.trim() || merged.phone;
   merged.birthDate = secondary.birthDate.trim() || primary.birthDate.trim() || merged.birthDate;
   merged.goal = secondary.goal.trim() || primary.goal.trim() || merged.goal;
@@ -1246,7 +1251,10 @@ export function useAppState() {
             next.members.find((member) => member.id === next.selectedMemberId) ??
             next.members.find((member) => member.email.trim().toLowerCase() === normalizedCurrentEmail) ??
             null;
-          const hydratedName = hydratedMember?.name.trim() ?? "";
+          const enrichedMember = hydratedMember
+            ? enrichMemberWithBestProfile(hydratedMember, next.members)
+            : null;
+          const hydratedName = enrichedMember?.name.trim() ?? "";
           if (hydratedName && hydratedName !== prevStripped.currentUser.name) {
             next.currentUser = {
               ...prevStripped.currentUser,
@@ -2003,14 +2011,31 @@ export function useAppState() {
   function updateMember(input: UpdateMemberInput) {
     setAppState((prev) => {
       const nextState = repository.updateMember(prev, input);
-      if (
-        prev.currentUser?.role === "trainer" &&
-        (input.changes.customerType !== undefined ||
+      if (prev.currentUser?.role === "trainer") {
+        const trainerProfileOrRosterChanged =
+          input.changes.customerType !== undefined ||
           input.changes.membershipType !== undefined ||
-          input.changes.ownerUserId !== undefined)
-      ) {
-        const updatedMember = nextState.members.find((member) => member.id === input.memberId);
-        if (updatedMember) pinTrainerMember(updatedMember);
+          input.changes.ownerUserId !== undefined ||
+          input.changes.name !== undefined ||
+          input.changes.email !== undefined ||
+          input.changes.phone !== undefined ||
+          input.changes.birthDate !== undefined ||
+          input.changes.goal !== undefined ||
+          input.changes.injuries !== undefined ||
+          input.changes.personalGoals !== undefined ||
+          input.changes.nutritionAccess !== undefined;
+        if (trainerProfileOrRosterChanged) {
+          const updatedMember = nextState.members.find((member) => member.id === input.memberId);
+          if (updatedMember) {
+            pinTrainerMember(updatedMember);
+            const email = updatedMember.email.trim().toLowerCase();
+            if (email.includes("@")) {
+              nextState.members
+                .filter((member) => member.email.trim().toLowerCase() === email)
+                .forEach((member) => pinTrainerMember(member));
+            }
+          }
+        }
       }
       const currentUser = prev.currentUser;
       if (!currentUser || currentUser.role !== "member") return nextState;

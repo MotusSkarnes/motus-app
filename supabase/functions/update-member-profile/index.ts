@@ -530,5 +530,17 @@ Deno.serve(async (req) => {
     }
   }
 
+  const syncedDisplayName = normalizeString(changes?.name);
+  if (syncedDisplayName && userRole === "member" && updatedIds.size > 0) {
+    try {
+      const existingMeta = (user.user_metadata ?? {}) as Record<string, unknown>;
+      await adminClient.auth.admin.updateUserById(user.id, {
+        user_metadata: { ...existingMeta, full_name: syncedDisplayName, name: syncedDisplayName },
+      });
+    } catch (syncError) {
+      console.warn("update-member-profile: could not sync auth display name:", syncError);
+    }
+  }
+
   return jsonResponse(200, { message: "Member profile synced", updated: updatedIds.size });
 });
