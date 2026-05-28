@@ -11,6 +11,7 @@ import { Card } from "../app/ui";
 import { pickCanonicalMemberRowForProfile, resolveMemberPersonalGoals } from "../app/memberOnboarding";
 import type { Member } from "../app/types";
 import { MemberFoodAvoidancesPanel } from "./nutrition/MemberFoodAvoidancesPanel";
+import { MemberQuickFoodLogPanel } from "./nutrition/MemberQuickFoodLogPanel";
 import { MemberMealPlanDashboard } from "./nutrition/MemberMealPlanDashboard";
 import { NutritionHub } from "./nutrition/NutritionHub";
 
@@ -74,11 +75,14 @@ export function MemberNutritionView({ member, members, onSavePersonalGoals }: Me
     }
     if (!plan) {
       return (
-        <Card className="p-6 text-center">
-          <Apple className="mx-auto h-10 w-10 text-teal-500" aria-hidden />
-          <h2 className="mt-3 text-lg font-bold text-slate-900">Matplan</h2>
-          <p className="mt-2 text-sm text-slate-600">Treneren har ikke lagt ut en matplan til deg ennå.</p>
-        </Card>
+        <div className="space-y-3">
+          <Card className="p-6 text-center">
+            <Apple className="mx-auto h-10 w-10 text-teal-500" aria-hidden />
+            <h2 className="mt-3 text-lg font-bold text-slate-900">Matplan</h2>
+            <p className="mt-2 text-sm text-slate-600">Treneren har ikke lagt ut en matplan til deg ennå.</p>
+          </Card>
+          <MemberQuickFoodLogPanel memberId={memberId} />
+        </div>
       );
     }
     const hasFood = plan.days.some((day) => day.meals.some((meal) => meal.items.length > 0));
@@ -95,6 +99,7 @@ export function MemberNutritionView({ member, members, onSavePersonalGoals }: Me
           memberName={memberName}
           onOpenAvoidances={() => setNutritionTab("avoidances")}
         />
+        <MemberQuickFoodLogPanel memberId={memberId} />
       </>
     );
   }, [loading, plan, cloudSynced, memberId, memberName, setNutritionTab]);

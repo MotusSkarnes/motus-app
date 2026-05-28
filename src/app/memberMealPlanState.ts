@@ -5,6 +5,24 @@ export type MealSwapRef = {
   sourceMealId: string;
 };
 
+export type MemberQuickFoodLogEntry = {
+  id: string;
+  name: string;
+  grams: number;
+  source: "food" | "recipe" | "ai";
+  loggedAt: string;
+  nutritionPer100g: {
+    kcal: number;
+    protein: number;
+    carbs: number;
+    fat: number;
+    fiber: number;
+    sugar: number;
+    saturatedFat: number;
+    sodium: number;
+  };
+};
+
 export type MemberMealPlanState = {
   loggedMeals: Record<string, string[]>;
   /** dateKey → meal plan food entry ids (enkeltmatvarer logget i løpet av dagen) */
@@ -15,6 +33,8 @@ export type MemberMealPlanState = {
   recipePortions: Record<string, number>;
   /** `${dateKey}:${targetMealId}` → kilde-måltid fra planen */
   mealSwaps: Record<string, MealSwapRef>;
+  /** dateKey → frie matlogger uten matplan */
+  quickFoodLogs: Record<string, MemberQuickFoodLogEntry[]>;
   updatedAt?: string;
 };
 
@@ -25,6 +45,7 @@ export const EMPTY_MEMBER_MEAL_PLAN_STATE: MemberMealPlanState = {
   checkedShopping: [],
   recipePortions: {},
   mealSwaps: {},
+  quickFoodLogs: {},
 };
 
 export const MEAL_PLAN_STATE_CHANGED_EVENT = "motus-meal-plan-state-changed";
@@ -37,6 +58,7 @@ const STATE_KEYS: Array<keyof MemberMealPlanState> = [
   "checkedShopping",
   "recipePortions",
   "mealSwaps",
+  "quickFoodLogs",
 ];
 
 function storageKey(memberId: string): string {
@@ -104,6 +126,12 @@ export function parseMemberMealPlanState(value: unknown): MemberMealPlanState {
             )
           : {},
     mealSwaps,
+    quickFoodLogs:
+      row.quickFoodLogs && typeof row.quickFoodLogs === "object"
+        ? (row.quickFoodLogs as Record<string, MemberQuickFoodLogEntry[]>)
+        : row.quick_food_logs && typeof row.quick_food_logs === "object"
+          ? (row.quick_food_logs as Record<string, MemberQuickFoodLogEntry[]>)
+          : {},
     updatedAt: typeof row.updatedAt === "string" ? row.updatedAt : typeof row.updated_at === "string" ? row.updated_at : undefined,
   };
 }
@@ -111,7 +139,7 @@ export function parseMemberMealPlanState(value: unknown): MemberMealPlanState {
 function needsStateNormalization(raw: unknown): boolean {
   if (!raw || typeof raw !== "object") return false;
   const row = raw as Record<string, unknown>;
-  if ("logged_meals" in row || "logged_food_ids" in row || "water_liters" in row || "checked_shopping" in row || "recipe_portions" in row || "meal_swaps" in row) {
+  if ("logged_meals" in row || "logged_food_ids" in row || "water_liters" in row || "checked_shopping" in row || "recipe_portions" in row || "meal_swaps" in row || "quick_food_logs" in row) {
     return true;
   }
   return STATE_KEYS.some((key) => !(key in row));
@@ -242,6 +270,7 @@ export function mergeMemberMealPlanStates(local: MemberMealPlanState, remote: Me
     checkedShopping: [...new Set([...remote.checkedShopping, ...local.checkedShopping])],
     recipePortions: { ...remote.recipePortions, ...local.recipePortions },
     mealSwaps: { ...remote.mealSwaps, ...local.mealSwaps },
+    quickFoodLogs: { ...remote.quickFoodLogs, ...local.quickFoodLogs },
     updatedAt: new Date(Math.max(localMs, remoteMs, Date.now())).toISOString(),
   };
 }

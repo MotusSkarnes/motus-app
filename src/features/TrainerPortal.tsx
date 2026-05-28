@@ -113,6 +113,7 @@ import { TrainerExerciseBankView } from "./TrainerExerciseBankView";
 import { TrainerPeriodPlanCalendar } from "./TrainerPeriodPlanCalendar";
 import { TrainerMealPlanEditor } from "./TrainerMealPlanEditor";
 import { MemberFoodAvoidancesPanel } from "./nutrition/MemberFoodAvoidancesPanel";
+import { MemberQuickFoodLogPanel } from "./nutrition/MemberQuickFoodLogPanel";
 import { NutritionHub } from "./nutrition/NutritionHub";
 import { TrainerProgramBuilderView } from "./TrainerProgramBuilderView";
 import { TrainerPtHomeScreen } from "./trainer-home/TrainerPtHomeScreen";
@@ -6552,25 +6553,28 @@ function pickFirstName(value: unknown): string {
                 ) : null}
 
                 {customerSubTab === "nutrition" && selectedMember && selectedMemberNutritionAccess ? (
-                  <NutritionHub
-                    avoidances={
-                      <MemberFoodAvoidancesPanel
-                        memberId={selectedMember.id}
-                        personalGoals={selectedMemberProfile?.personalGoals ?? selectedMember.personalGoals ?? ""}
-                        onSavePersonalGoals={() => {}}
-                        readOnly
-                      />
-                    }
-                    mealPlan={
-                      <TrainerMealPlanEditor
-                        memberId={selectedMember.id}
-                        memberName={selectedMemberProfile?.name ?? selectedMember.name}
-                        memberGoal={selectedMemberProfile?.goal ?? selectedMember.goal}
-                        memberPersonalGoals={selectedMemberProfile?.personalGoals ?? selectedMember.personalGoals ?? ""}
-                        trainerOwnerUserId={currentTrainerOwnerUserId}
-                      />
-                    }
-                  />
+                  <div className="space-y-3">
+                    <NutritionHub
+                      avoidances={
+                        <MemberFoodAvoidancesPanel
+                          memberId={selectedMember.id}
+                          personalGoals={selectedMemberProfile?.personalGoals ?? selectedMember.personalGoals ?? ""}
+                          onSavePersonalGoals={() => {}}
+                          readOnly
+                        />
+                      }
+                      mealPlan={
+                        <TrainerMealPlanEditor
+                          memberId={selectedMember.id}
+                          memberName={selectedMemberProfile?.name ?? selectedMember.name}
+                          memberGoal={selectedMemberProfile?.goal ?? selectedMember.goal}
+                          memberPersonalGoals={selectedMemberProfile?.personalGoals ?? selectedMember.personalGoals ?? ""}
+                          trainerOwnerUserId={currentTrainerOwnerUserId}
+                        />
+                      }
+                    />
+                    <MemberQuickFoodLogPanel memberId={selectedMember.id} readOnly />
+                  </div>
                 ) : null}
 
                 {customerSubTab === "messages" ? (

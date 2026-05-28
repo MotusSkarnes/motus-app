@@ -170,22 +170,29 @@ export function extractRecipeIngredientLines(body: string): string[] {
   const marker = normalized.match(INGREDIENT_SECTION_MARKER);
   if (!marker || marker.index === undefined) return [];
   const after = normalized.slice(marker.index + marker[0].length);
-  const nextSection = after.search(/\n\*\*[^*]+\*\*/);
+  const nextSection = after.search(/\n(?:\*\*[^*]+\*\*|#{1,3}\s+\S+|Slik gjør du\b|Fremgangsmåte\b|Fremgangsmate\b)/i);
   const section = nextSection >= 0 ? after.slice(0, nextSection) : after;
   return section
     .split("\n")
     .map((line) => line.trim())
-    .filter((line) => /^[-*•]\s+/.test(line))
-    .map((line) => line.replace(/^[-*•]\s+/, "").trim())
+    .map((line) => line.replace(/^[-*•]\s+/, "").replace(/^\d+[\).]\s+/, "").trim())
     .filter(
       (line) =>
         line.length > 0 &&
+        !/^slik gjør du\b/i.test(line) &&
+        !/^fremgangsmate\b/i.test(line) &&
+        !/^tips\b/i.test(line) &&
         !isNegligibleIngredientLine(line) &&
         !/\(valgfritt\)/i.test(line),
     );
 }
 
 function parseLeadingQuantity(raw: string): { quantity: number; rest: string } | null {
+  const wordQuantity = raw.match(/^(en|ei|et|ett)\s+/i);
+  if (wordQuantity) {
+    return { quantity: 1, rest: raw.slice(wordQuantity[0].length).trim() };
+  }
+
   const fraction = raw.match(/^(\d+)\s*\/\s*(\d+)\s+/);
   if (fraction) {
     const num = Number.parseInt(fraction[1], 10);
@@ -208,6 +215,14 @@ function parseLeadingQuantity(raw: string): { quantity: number; rest: string } |
       quantity: Number.parseFloat(simple[1].replace(",", ".")),
       rest: raw.slice(simple[0].length).trim(),
     };
+  }
+
+  const trailing = raw.match(/^(.+?)\s+(\d+(?:[.,]\d+)?)$/);
+  if (trailing) {
+    const quantity = Number.parseFloat(trailing[2].replace(",", "."));
+    if (Number.isFinite(quantity) && quantity > 0) {
+      return { quantity, rest: trailing[1].trim() };
+    }
   }
 
   return null;

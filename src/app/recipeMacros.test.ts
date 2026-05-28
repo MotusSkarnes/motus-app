@@ -52,6 +52,35 @@ Slik gjør du
     expect(computeRecipeMacros(body, foods)).not.toBeNull();
   });
 
+  it("tolerates numbered/non-bullet ingredient lines", () => {
+    const body = `Til 1 porsjon
+
+Ingredienser:
+1. 150 g gresk yoghurt
+2. 40 g havregryn
+3. 1 banan
+
+Slik gjør du
+1. Bland.`;
+    const result = computeRecipeMacros(body, foods);
+    expect(result).not.toBeNull();
+    expect(result!.matchedCount).toBeGreaterThanOrEqual(3);
+  });
+
+  it("parses norwegian word quantity like 'en banan'", () => {
+    const body = `**Til 1 porsjon**
+
+**Ingredienser**
+- en banan
+- 200 g skyr naturell
+
+**Slik gjør du**
+1. Bland.`;
+    const result = computeRecipeMacros(body, foods);
+    expect(result).not.toBeNull();
+    expect(result!.matchedCount).toBeGreaterThanOrEqual(2);
+  });
+
   it("deler på antall porsjoner", () => {
     const salmonBody = `**Til 2 porsjoner · ca. 30 min**
 
