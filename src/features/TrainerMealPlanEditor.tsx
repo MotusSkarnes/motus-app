@@ -200,6 +200,16 @@ export function TrainerMealPlanEditor({
     () => plan?.days.find((day) => day.id === activeDayId) ?? plan?.days[0] ?? null,
     [plan, activeDayId],
   );
+  const totalWeeks = useMemo(() => Math.max(1, Math.ceil((plan?.days.length ?? 0) / 7)), [plan?.days.length]);
+  const visibleWeekStart = visibleWeekIndex * 7;
+  const visibleWeekDays = useMemo(
+    () => (plan ? plan.days.slice(visibleWeekStart, visibleWeekStart + 7) : []),
+    [plan, visibleWeekStart],
+  );
+  const visibleWeekPlan = useMemo(
+    () => (plan ? { ...plan, days: visibleWeekDays } : null),
+    [plan, visibleWeekDays],
+  );
 
   useEffect(() => {
     if (!plan?.days.length) return;
@@ -266,17 +276,6 @@ export function TrainerMealPlanEditor({
     if (!plan || !gridSelection) return null;
     return plan.days.find((row) => row.id === gridSelection.dayId) ?? null;
   }, [plan, gridSelection]);
-
-  const totalWeeks = useMemo(() => Math.max(1, Math.ceil((plan?.days.length ?? 0) / 7)), [plan?.days.length]);
-  const visibleWeekStart = visibleWeekIndex * 7;
-  const visibleWeekDays = useMemo(
-    () => (plan ? plan.days.slice(visibleWeekStart, visibleWeekStart + 7) : []),
-    [plan, visibleWeekStart],
-  );
-  const visibleWeekPlan = useMemo(
-    () => (plan ? { ...plan, days: visibleWeekDays } : null),
-    [plan, visibleWeekDays],
-  );
 
   const previewMeal = useMemo(() => {
     if (!plan || !previewSelection) return null;
