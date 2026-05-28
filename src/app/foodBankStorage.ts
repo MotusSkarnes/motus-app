@@ -20,7 +20,10 @@ function normalizeFoodNameKey(value: string): string {
   return value
     .toLowerCase()
     .normalize("NFD")
-    .replace(/\p{M}/gu, "")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/ø/g, "o")
+    .replace(/å/g, "a")
+    .replace(/æ/g, "ae")
     .replace(/[^a-z0-9]+/g, "")
     .trim();
 }
