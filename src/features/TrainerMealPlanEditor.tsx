@@ -323,14 +323,25 @@ export function TrainerMealPlanEditor({
     return previewFoodAddition(pickerSelectedFood, grams, pickerRemaining);
   }, [foodPicker, foodGrams, pickerSelectedFood, pickerRemaining]);
 
+  const aiHash = useCallback((value: string) => {
+    let hash = 0;
+    for (let index = 0; index < value.length; index += 1) {
+      hash = (hash * 31 + value.charCodeAt(index)) >>> 0;
+    }
+    return hash;
+  }, []);
+
   const suggestAiPlanForDay = useCallback(
-    (dayId: string): MealPlan | null => {
-      if (!plan || recipeItems.length === 0) return null;
-      const day = plan.days.find((row) => row.id === dayId);
+    (dayId: string, basePlan?: MealPlan, carriedUsedRecipeIds?: Set<string>): MealPlan | null => {
+      const sourcePlan = basePlan ?? plan;
+      if (!sourcePlan || recipeItems.length === 0) return null;
+      const day = sourcePlan.days.find((row) => row.id === dayId);
       if (!day) return null;
+      const usedRecipeIds = carriedUsedRecipeIds ?? new Set<string>();
+      const pickedForCurrentDay = new Set<string>();
 
       const mealTargets = day.meals.length
-        ? distributeDailyTargetsToMeals(day, plan.targets, "standard")
+        ? distributeDailyTargetsToMeals(day, sourcePlan.targets, "standard")
         : day.meals;
       const targetByMealId = new Map(mealTargets.map((meal) => [meal.id, meal.targets]));
 
@@ -357,8 +368,8 @@ export function TrainerMealPlanEditor({
 
         const mealTargetKcal =
           targetByMealId.get(meal.id)?.kcal ??
-          (typeof plan.targets?.kcal === "number" && day.meals.length > 0
-            ? plan.targets.kcal / day.meals.length
+          (typeof sourcePlan.targets?.kcal === "number" && day.meals.length > 0
+            ? sourcePlan.targets.kcal / day.meals.length
             : 0);
 
         const ranked = candidates
@@ -373,24 +384,34 @@ export function TrainerMealPlanEditor({
             });
             const scaled = buildScaledRecipeView(recipe.body, foodItemsForMacros, {
               scalingMode,
-              dailyTargets: plan.targets,
+              dailyTargets: sourcePlan.targets,
               mealSlot,
             });
             const kcal = scaled?.macros?.perServing.kcal ?? computeRecipeMacros(recipe.body, foodItemsForMacros)?.perServing.kcal ?? 0;
             const distance = mealTargetKcal > 0 ? Math.abs(kcal - mealTargetKcal) : 0;
-            return { recipe, distance };
+            const repeatPenalty = usedRecipeIds.has(recipe.id) ? 180 : 0;
+            const sameDayPenalty = pickedForCurrentDay.has(recipe.id) ? 260 : 0;
+            const score = distance + repeatPenalty + sameDayPenalty;
+            return { recipe, score };
           })
-          .sort((a, b) => a.distance - b.distance);
+          .sort((a, b) => a.score - b.score);
 
-        return ranked[0]?.recipe ?? null;
+        const poolSize = Math.min(3, ranked.length);
+        const pool = ranked.slice(0, poolSize);
+        if (!pool.length) return null;
+        const seed = `${day.id}:${meal.id}:${day.label}`;
+        const selected = pool[aiHash(seed) % pool.length]?.recipe ?? pool[0]?.recipe ?? null;
+        return selected;
       };
 
       const nextDayMeals = day.meals.map((meal) => {
         const picked = pickRecipeForMeal(meal);
         if (!picked) return meal;
+        pickedForCurrentDay.add(picked.id);
+        usedRecipeIds.add(picked.id);
         const mealSlot = resolveRecipeMealSlot(picked.tag, picked.title, picked.description);
         const entry = recipeToMealPlanEntry(picked, foodItems, {
-          dailyTargets: plan.targets,
+          dailyTargets: sourcePlan.targets,
           mealSlot,
         });
         return {
@@ -400,8 +421,8 @@ export function TrainerMealPlanEditor({
       });
 
       return {
-        ...plan,
-        days: plan.days.map((row) =>
+        ...sourcePlan,
+        days: sourcePlan.days.map((row) =>
           row.id === day.id
             ? {
                 ...row,
@@ -411,7 +432,7 @@ export function TrainerMealPlanEditor({
         ),
       };
     },
-    [plan, recipeItems, foodItemsForMacros, foodItems],
+    [plan, recipeItems, foodItemsForMacros, foodItems, aiHash],
   );
 
   function suggestAiDayPlan() {
@@ -433,9 +454,18 @@ export function TrainerMealPlanEditor({
       setSaveStatus("AI-generer uke krever tilgjengelige oppskrifter.");
       return;
     }
+    const usedRecipeIds = new Set<string>();
+    for (const day of plan.days) {
+      for (const meal of day.meals) {
+        for (const item of meal.items) {
+          const recipeId = parseInspirationRecipeFoodId(item.foodId);
+          if (recipeId) usedRecipeIds.add(recipeId);
+        }
+      }
+    }
     let nextPlan: MealPlan = plan;
     for (const day of plan.days) {
-      nextPlan = suggestAiPlanForDay(day.id) ?? nextPlan;
+      nextPlan = suggestAiPlanForDay(day.id, nextPlan, usedRecipeIds) ?? nextPlan;
     }
     updatePlan(nextPlan);
     setSaveStatus("AI-genererte forslag lagt inn for hele uken.");
