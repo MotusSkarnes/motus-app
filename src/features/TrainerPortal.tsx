@@ -4825,7 +4825,7 @@ function pickFirstName(value: unknown): string {
                 </PillButton>
                 {selectedMemberNutritionAccess ? (
                   <PillButton active={customerSubTab === "nutrition"} onClick={() => setCustomerSubTab("nutrition")}>
-                    Matplan
+                    Ernæring
                   </PillButton>
                 ) : null}
               </div>
@@ -5619,7 +5619,7 @@ function pickFirstName(value: unknown): string {
                     <PillButton active={customerSubTab === "messages"} onClick={() => setCustomerSubTab("messages")}>Meldinger</PillButton>
                     {selectedMemberNutritionAccess ? (
                       <PillButton active={customerSubTab === "nutrition"} onClick={() => setCustomerSubTab("nutrition")}>
-                        Matplan
+                        Ernæring
                       </PillButton>
                     ) : null}
                   </div>
