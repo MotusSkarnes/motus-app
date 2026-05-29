@@ -1,8 +1,8 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Printer, X } from "lucide-react";
 import { formatMacro } from "../../app/foodBankTypes";
 import { formatMicronutrientValue } from "../../app/foodBankMicronutrients";
-import { HEALTH_DIRECTORATE_OTHER_DAILY } from "../../app/healthDirectorateNutritionReferences";
+import { openNutritionReportPrintWindow } from "../../app/memberFoodLogNutritionReportPrint";
 import {
   buildMemberFoodLogNutritionPeriodReport,
   dateKeysWithLogs,
@@ -13,12 +13,16 @@ import {
 } from "../../app/memberFoodLogNutritionReport";
 import type { MemberQuickFoodLogEntry } from "../../app/memberMealPlanState";
 import {
+  buildMacroDisplayRows,
+  DEFAULT_DAILY_KCAL_TARGET,
+  macroCoveragePct,
+  type MacroDisplayRow,
+} from "../../app/nutritionReportDisplay";
+import {
   micronutrientRowsFromLogTotals,
-  type FoodLogNutritionTotals,
   type MicronutrientDailyRow,
 } from "../../app/quickFoodLogNutrition";
 import type { MealPlanTargets } from "../../app/mealPlanTypes";
-import { DEFAULT_DAILY_KCAL_TARGET } from "./DailyLoggedMacrosSummary";
 import { GradientButton, OutlineButton } from "../../app/ui";
 
 type PeriodPreset = "selected" | "7" | "14" | "30" | "custom";
@@ -34,57 +38,12 @@ type MemberFoodLogNutritionReportModalProps = {
   mealPlanTargets?: MealPlanTargets | null;
 };
 
-type MacroDisplayRow = {
-  label: string;
-  value: number;
-  unit: string;
-  target: number;
-  decimals: number;
-  lowerIsBetter?: boolean;
-};
-
-function buildMacroRows(totals: FoodLogNutritionTotals, targets: MealPlanTargets | null | undefined): MacroDisplayRow[] {
-  const kcalTarget = targets?.kcal && targets.kcal > 0 ? targets.kcal : DEFAULT_DAILY_KCAL_TARGET;
-  return [
-    { label: "Kalorier", value: totals.kcal, unit: "kcal", target: kcalTarget, decimals: 0 },
-    { label: "Protein", value: totals.protein, unit: "g", target: targets?.protein ?? 0, decimals: 1 },
-    { label: "Karbohydrater", value: totals.carbs, unit: "g", target: targets?.carbs ?? 0, decimals: 1 },
-    { label: "Fett", value: totals.fat, unit: "g", target: targets?.fat ?? 0, decimals: 1 },
-    { label: "Fiber", value: totals.fiber, unit: "g", target: HEALTH_DIRECTORATE_OTHER_DAILY.fiber, decimals: 1 },
-    { label: "Sukker", value: totals.sugar, unit: "g", target: 0, decimals: 1 },
-    {
-      label: "Mettet fett",
-      value: totals.saturatedFat,
-      unit: "g",
-      target: HEALTH_DIRECTORATE_OTHER_DAILY.saturatedFat,
-      decimals: 1,
-    },
-    {
-      label: "Natrium",
-      value: totals.sodium,
-      unit: "mg",
-      target: HEALTH_DIRECTORATE_OTHER_DAILY.sodium,
-      decimals: 0,
-      lowerIsBetter: true,
-    },
-  ];
-}
-
-function coveragePct(value: number, target: number, lowerIsBetter?: boolean): number {
-  if (target <= 0) return 0;
-  if (lowerIsBetter) {
-    if (value <= target) return 100;
-    return Math.max(0, Math.round((target / value) * 100));
-  }
-  return Math.min(100, Math.round((value / target) * 100));
-}
-
 function MacroReportTable({ rows }: { rows: MacroDisplayRow[] }) {
   return (
     <div className="motus-nutrition-report__macro-grid">
       {rows.map((row) => {
         const hasTarget = row.target > 0;
-        const pct = hasTarget ? coveragePct(row.value, row.target, row.lowerIsBetter) : 0;
+        const pct = hasTarget ? macroCoveragePct(row.value, row.target, row.lowerIsBetter) : 0;
         return (
           <div key={row.label} className="motus-nutrition-report__macro-card">
             <div className="motus-nutrition-report__macro-card-head">
@@ -163,6 +122,7 @@ export function MemberFoodLogNutritionReportModal({
   const [customTo, setCustomTo] = useState(selectedDateKey);
   const [aggregateMode, setAggregateMode] = useState<AggregateMode>("average");
   const [tab, setTab] = useState<ReportTab>("macro");
+  const [printError, setPrintError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!open) return;
@@ -171,6 +131,7 @@ export function MemberFoodLogNutritionReportModal({
     setPeriodPreset("7");
     setAggregateMode("average");
     setTab("macro");
+    setPrintError(null);
   }, [open, selectedDateKey]);
 
   const periodDateKeys = useMemo(() => {
@@ -191,7 +152,7 @@ export function MemberFoodLogNutritionReportModal({
     return aggregateMode === "average" ? report.dailyAverage : report.periodSum;
   }, [aggregateMode, report]);
 
-  const macroRows = useMemo(() => buildMacroRows(displayTotals, mealPlanTargets), [displayTotals, mealPlanTargets]);
+  const macroRows = useMemo(() => buildMacroDisplayRows(displayTotals, mealPlanTargets), [displayTotals, mealPlanTargets]);
   const microRows = useMemo(() => micronutrientRowsFromLogTotals(displayTotals), [displayTotals]);
 
   const periodSummary =
@@ -202,6 +163,28 @@ export function MemberFoodLogNutritionReportModal({
         : aggregateMode === "average"
           ? `Snitt per dag · ${report.daysWithLogs} dager (${formatPeriodLabel(report.dateKeys)})`
           : `Sum for perioden · ${report.daysWithLogs} dager (${formatPeriodLabel(report.dateKeys)})`;
+
+  const handlePrint = useCallback(() => {
+    const ok = openNutritionReportPrintWindow({
+      memberName: displayName,
+      periodSummary,
+      totals: displayTotals,
+      mealPlanTargets,
+      microRows,
+      dailyKcal:
+        report.daysWithLogs > 1
+          ? report.dailyTotals.map(({ dateKey, totals: dayTotals }) => ({
+              dateLabel: formatShortDateKey(dateKey),
+              kcal: dayTotals.kcal,
+            }))
+          : undefined,
+    });
+    if (!ok) {
+      setPrintError("Kunne ikke åpne utskrift. Tillat popup-vinduer for Motus i nettleseren.");
+      return;
+    }
+    setPrintError(null);
+  }, [displayName, displayTotals, mealPlanTargets, microRows, periodSummary, report]);
 
   if (!open) return null;
 
@@ -344,7 +327,8 @@ export function MemberFoodLogNutritionReportModal({
         </div>
 
         <footer className="motus-nutrition-report-modal__footer motus-nutrition-report-no-print">
-          <OutlineButton type="button" className="gap-1.5" onClick={() => window.print()}>
+          {printError ? <p className="w-full text-xs text-rose-700">{printError}</p> : null}
+          <OutlineButton type="button" className="gap-1.5" onClick={handlePrint} disabled={report.daysWithLogs === 0}>
             <Printer className="h-4 w-4" aria-hidden />
             Skriv ut / PDF
           </OutlineButton>

@@ -2,9 +2,10 @@ import { Droplets, Dumbbell, Wheat } from "lucide-react";
 import { formatMacro } from "../../app/foodBankTypes";
 import type { MacroTotals } from "../../app/mealPlanMacros";
 import type { MealPlanTargets } from "../../app/mealPlanTypes";
+import { DEFAULT_DAILY_KCAL_TARGET } from "../../app/nutritionReportDisplay";
 import { MacroProgressRing } from "./MacroProgressRing";
 
-export const DEFAULT_DAILY_KCAL_TARGET = 1900;
+export { DEFAULT_DAILY_KCAL_TARGET } from "../../app/nutritionReportDisplay";
 
 type DailyLoggedMacrosSummaryProps = {
   macros: MacroTotals;
