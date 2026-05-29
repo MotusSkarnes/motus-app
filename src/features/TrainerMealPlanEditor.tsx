@@ -100,7 +100,7 @@ export function TrainerMealPlanEditor({
   const [plan, setPlan] = useState<MealPlan | null>(null);
   const [activeDayId, setActiveDayId] = useState("");
   const [loading, setLoading] = useState(true);
-  const [planLoadStatus, setPlanLoadStatus] = useState<"loading" | "none" | "ready" | "error">("loading");
+  const [planLoadStatus, setPlanLoadStatus] = useState<"loading" | "none" | "ready" | "uncertain" | "error">("loading");
   const [planSource, setPlanSource] = useState<"cloud" | "local" | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [creatingPlan, setCreatingPlan] = useState(false);
@@ -197,6 +197,13 @@ export function TrainerMealPlanEditor({
         setPlanLoadStatus("none");
         return;
       }
+      if (result.status === "uncertain") {
+        setPlan(null);
+        setPlanSource(null);
+        setPlanLoadStatus("uncertain");
+        setLoadError(null);
+        return;
+      }
       const hydratedRaw = applyLoadedPlan(result.plan);
       setPlanSource(result.status);
       setPlanLoadStatus("ready");
@@ -209,7 +216,7 @@ export function TrainerMealPlanEditor({
       setPlan(null);
       setPlanSource(null);
       setPlanLoadStatus("error");
-      setLoadError("Kunne ikke sjekke om klienten har matplan. Prøv igjen, eller opprett en ny plan.");
+      setLoadError("Noe gikk galt i appen ved lasting av matplan. Prøv igjen.");
     } finally {
       if (generation === loadGenerationRef.current) {
         setLoading(false);
@@ -995,13 +1002,51 @@ export function TrainerMealPlanEditor({
         </div>
         <h3 className="mt-4 text-lg font-semibold text-slate-950">Ingen matplan</h3>
         <p className="mx-auto mt-2 max-w-md text-sm text-slate-600">
-          <span className="font-medium text-slate-800">{memberName}</span> har ikke fått en matplan i appen ennå. Opprett en
+          Vi fant ingen matplan for <span className="font-medium text-slate-800">{memberName}</span> i systemet. Opprett en
           ukeplan for å legge inn måltider og makromål.
         </p>
         <GradientButton type="button" className="mt-5" disabled={creatingPlan} onClick={() => void handleCreateMealPlan()}>
           <Plus className="h-4 w-4" aria-hidden />
           {creatingPlan ? "Oppretter …" : "Lag matplan"}
         </GradientButton>
+      </div>
+    );
+  }
+
+  if (planLoadStatus === "uncertain") {
+    return (
+      <div className="rounded-2xl border border-sky-200 bg-sky-50 px-5 py-6 text-sm text-sky-950">
+        <h3 className="text-base font-semibold text-sky-950">Matplanen vises ikke akkurat nå</h3>
+        <p className="mt-2 max-w-lg text-sky-900/90">
+          Vi klarte ikke å hente matplan fra databasen (nettverk eller midlertidig feil). Det kan finnes en plan for{" "}
+          <span className="font-medium">{memberName}</span> som ikke vises her — prøv gjerne igjen før du oppretter noe nytt.
+        </p>
+        <p className="mt-2 text-xs text-sky-800/80">
+          Tips: Sjekk at du har valgt riktig klient, særlig ved duplikat e-post eller flere medlemsrader.
+        </p>
+        <div className="mt-4 flex flex-wrap gap-2">
+          <GradientButton type="button" className="text-xs" onClick={() => void reload()}>
+            Prøv igjen
+          </GradientButton>
+        </div>
+        <details className="mt-4 text-left">
+          <summary className="cursor-pointer text-xs font-medium text-sky-900 underline-offset-2 hover:underline">
+            Er du sikker på at klienten ikke har matplan?
+          </summary>
+          <p className="mt-2 text-xs text-sky-800/90">
+            Da kan du opprette en ny tom ukeplan. Dette overskriver ikke en eksisterende plan i sky med mindre du lagrer
+            over den.
+          </p>
+          <OutlineButton
+            type="button"
+            className="mt-3 text-xs"
+            disabled={creatingPlan}
+            onClick={() => void handleCreateMealPlan()}
+          >
+            <Plus className="h-4 w-4" aria-hidden />
+            {creatingPlan ? "Oppretter …" : "Lag ny matplan"}
+          </OutlineButton>
+        </details>
       </div>
     );
   }
@@ -1014,10 +1059,6 @@ export function TrainerMealPlanEditor({
           <OutlineButton type="button" className="text-xs" onClick={() => void reload()}>
             Prøv igjen
           </OutlineButton>
-          <GradientButton type="button" className="text-xs" disabled={creatingPlan} onClick={() => void handleCreateMealPlan()}>
-            <Plus className="h-4 w-4" aria-hidden />
-            Lag matplan
-          </GradientButton>
         </div>
       </div>
     );

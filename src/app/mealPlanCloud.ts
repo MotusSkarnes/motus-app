@@ -146,35 +146,50 @@ export function mealPlanFromRow(memberId: string, row: Record<string, unknown>):
   };
 }
 
-async function fetchMealPlanRow(memberId: string): Promise<MealPlan | null> {
-  if (!supabaseClient || !memberId.trim()) return null;
-  const { data, error } = await withTimeout(
-    supabaseClient
-      .from("member_meal_plans")
-      .select("member_id, title, notes, days, targets, updated_at")
-      .eq("member_id", memberId.trim())
-      .maybeSingle(),
-    MEAL_PLAN_FETCH_TIMEOUT_MS,
-    "member_meal_plans fetch",
-  );
-  if (error) {
-    if (!isMealPlanTableMissing(error.message)) {
-      console.warn("member_meal_plans fetch failed:", memberId, error.message);
+type MealPlanRowFetch = { plan: MealPlan | null; failed: boolean };
+
+async function fetchMealPlanRow(memberId: string): Promise<MealPlanRowFetch> {
+  if (!supabaseClient || !memberId.trim()) return { plan: null, failed: false };
+  try {
+    const { data, error } = await withTimeout(
+      supabaseClient
+        .from("member_meal_plans")
+        .select("member_id, title, notes, days, targets, updated_at")
+        .eq("member_id", memberId.trim())
+        .maybeSingle(),
+      MEAL_PLAN_FETCH_TIMEOUT_MS,
+      "member_meal_plans fetch",
+    );
+    if (error) {
+      if (!isMealPlanTableMissing(error.message)) {
+        console.warn("member_meal_plans fetch failed:", memberId, error.message);
+      }
+      return { plan: null, failed: true };
     }
-    return null;
+    if (!data) return { plan: null, failed: false };
+    const rowMemberId = String((data as { member_id?: string }).member_id ?? memberId).trim() || memberId;
+    const plan = mealPlanFromRow(rowMemberId, data as Record<string, unknown>);
+    if (!plan.days.length) return { plan: null, failed: false };
+    return { plan, failed: false };
+  } catch (error) {
+    console.warn("member_meal_plans fetch threw:", memberId, error);
+    return { plan: null, failed: true };
   }
-  if (!data) return null;
-  const rowMemberId = String((data as { member_id?: string }).member_id ?? memberId).trim() || memberId;
-  const plan = mealPlanFromRow(rowMemberId, data as Record<string, unknown>);
-  if (!plan.days.length) return null;
-  return plan;
 }
 
-export async function fetchMealPlanFromSupabase(memberIds: string | string[]): Promise<MealPlan | null> {
+export type MealPlanSupabaseFetch = {
+  plan: MealPlan | null;
+  /** True når minst ett oppslag feilet (timeout/nettverk) — ikke det samme som «ingen rad». */
+  hadFetchErrors: boolean;
+};
+
+export async function fetchMealPlanFromSupabase(memberIds: string | string[]): Promise<MealPlanSupabaseFetch> {
   const ids = [...new Set((Array.isArray(memberIds) ? memberIds : [memberIds]).map((id) => id.trim()).filter(Boolean))];
-  if (!ids.length) return null;
+  if (!ids.length) return { plan: null, hadFetchErrors: false };
   const results = await Promise.all(ids.map((id) => fetchMealPlanRow(id)));
-  return pickPreferredMealPlan(results.filter((plan): plan is MealPlan => Boolean(plan)));
+  const hadFetchErrors = results.some((row) => row.failed);
+  const plans = results.map((row) => row.plan).filter((plan): plan is MealPlan => Boolean(plan));
+  return { plan: pickPreferredMealPlan(plans), hadFetchErrors };
 }
 
 export async function readLinkedMealPlanMemberIds(primaryMemberId: string): Promise<string[]> {
@@ -348,7 +363,7 @@ export async function syncMealPlanForMember(
     forTrainerView: Boolean(ownerUserId.trim()),
   });
   const trimmedMemberId = memberId.trim() || lookupIds[0] || "";
-  const remote = await fetchMealPlanFromSupabase(lookupIds);
+  const { plan: remote } = await fetchMealPlanFromSupabase(lookupIds);
   const local = loadBestLocalMealPlan(lookupIds);
 
   if (remote) {
@@ -382,7 +397,8 @@ export async function syncMealPlanForMember(
 export type TrainerMealPlanLoadResult =
   | { status: "cloud"; plan: MealPlan }
   | { status: "local"; plan: MealPlan }
-  | { status: "none" };
+  | { status: "none" }
+  | { status: "uncertain" };
 
 /** PT-redigering: ikke opprett tom standardplan automatisk — vis «Lag matplan» når status er none. */
 export async function loadMealPlanForTrainerEditor(
@@ -396,7 +412,7 @@ export async function loadMealPlanForTrainerEditor(
   const trimmedMemberId = memberId.trim() || lookupIds[0] || "";
   if (!trimmedMemberId) return { status: "none" };
 
-  const remote = await fetchMealPlanFromSupabase(lookupIds);
+  const { plan: remote, hadFetchErrors } = await fetchMealPlanFromSupabase(lookupIds);
   if (remote) {
     const normalized = { ...remote, memberId: trimmedMemberId };
     if (!mealPlansEqual(loadMealPlanForMember(trimmedMemberId), normalized)) {
@@ -410,6 +426,10 @@ export async function loadMealPlanForTrainerEditor(
     const normalized = { ...local, memberId: trimmedMemberId };
     persistMealPlan(normalized, { notify: false });
     return { status: "local", plan: normalized };
+  }
+
+  if (hadFetchErrors) {
+    return { status: "uncertain" };
   }
 
   return { status: "none" };
