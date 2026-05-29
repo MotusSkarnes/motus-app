@@ -2,6 +2,12 @@
 alter table public.exercise_bank
   add column if not exists prescription_fields jsonb not null default '[]'::jsonb;
 
+alter table public.exercise_bank
+  add column if not exists custom_field_1_label text not null default '';
+
+alter table public.exercise_bank
+  add column if not exists custom_field_2_label text not null default '';
+
 -- Egen standard per kategori (hver øvelse får egen kopi — kan tilpasses individuelt etterpå).
 update public.exercise_bank
 set prescription_fields = case category

@@ -2676,6 +2676,7 @@ export function InspirationHub({
                         <ProgramExercisePrescriptionFields
                           fields={prescriptionFields}
                           item={item}
+                          exercise={linkedExercise}
                           onUpdate={(field, value) => updateProgramExercise(item.id, field, value)}
                           trailing={
                             isCardio && isTreadmill ? (

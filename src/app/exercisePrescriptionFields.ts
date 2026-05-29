@@ -19,6 +19,8 @@ export const EXERCISE_PRESCRIPTION_FIELD_OPTIONS: ExercisePrescriptionFieldDef[]
   { key: "reps", label: "Reps", shortLabel: "reps", programField: "reps", placeholder: "Reps" },
   { key: "pause", label: "Pause", shortLabel: "pause", programField: "restSeconds", placeholder: "Sek" },
   { key: "seatSettings", label: "Seteinnstillinger", shortLabel: "sete", programField: "seatSetting", placeholder: "F.eks. høyde 4" },
+  { key: "custom1", label: "Egendefinert 1", shortLabel: "e1", programField: "customField1", placeholder: "Verdi" },
+  { key: "custom2", label: "Egendefinert 2", shortLabel: "e2", programField: "customField2", placeholder: "Verdi" },
 ];
 
 const FIELD_KEYS = new Set(EXERCISE_PRESCRIPTION_FIELD_OPTIONS.map((option) => option.key));
@@ -72,6 +74,21 @@ export function exercisePrescriptionFieldDef(key: ExercisePrescriptionFieldKey):
   return EXERCISE_PRESCRIPTION_FIELD_OPTIONS.find((option) => option.key === key)!;
 }
 
+export function resolvePrescriptionFieldLabel(
+  key: ExercisePrescriptionFieldKey,
+  exercise?: Pick<Exercise, "customField1Label" | "customField2Label">,
+): string {
+  if (key === "custom1") {
+    const label = exercise?.customField1Label?.trim();
+    return label || exercisePrescriptionFieldDef(key).label;
+  }
+  if (key === "custom2") {
+    const label = exercise?.customField2Label?.trim();
+    return label || exercisePrescriptionFieldDef(key).label;
+  }
+  return exercisePrescriptionFieldDef(key).label;
+}
+
 export function toggleExercisePrescriptionField(
   current: ExercisePrescriptionFieldKey[],
   key: ExercisePrescriptionFieldKey,
@@ -97,6 +114,8 @@ export function buildProgramExerciseFromBank(exercise: Exercise): ProgramExercis
     holdSeconds: "",
     durationMinutes: "",
     seatSetting: "",
+    customField1: "",
+    customField2: "",
     speed: isTreadmill && exercise.category === "Kondisjon" ? "8" : "",
     incline: isTreadmill && exercise.category === "Kondisjon" ? "1" : "",
     restSeconds: fields.includes("pause") ? (fields.includes("seconds") && !fields.includes("reps") ? "30" : "90") : "",
@@ -113,4 +132,10 @@ export function programExerciseFieldValue(item: ProgramExercise, key: ExercisePr
   const field = exercisePrescriptionFieldDef(key).programField;
   const raw = item[field];
   return typeof raw === "string" ? raw : "";
+}
+
+export function formatCustomPrescriptionSuffix(exercise: ProgramExercise, fieldKey: "custom1" | "custom2", label: string): string {
+  const value = fieldKey === "custom1" ? exercise.customField1?.trim() : exercise.customField2?.trim();
+  if (!value) return "";
+  return ` · ${label} ${value}`;
 }

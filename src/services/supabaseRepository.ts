@@ -1780,6 +1780,8 @@ async function persistExercise(exercise: Exercise) {
       description: exercise.description,
       image_url: exercise.imageUrl ?? null,
       prescription_fields: prescriptionFieldsForExerciseSave(exercise.prescriptionFields, exercise.category),
+      custom_field_1_label: exercise.customField1Label?.trim() ?? "",
+      custom_field_2_label: exercise.customField2Label?.trim() ?? "",
       is_active: true,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
@@ -3742,6 +3744,8 @@ function mapExerciseBankRow(row: Record<string, unknown>): Exercise {
     imageUrl: String(row.image_url ?? ""),
     prescriptionFields:
       parsePrescriptionFieldsFromDb(row.prescription_fields) ?? prescriptionFieldsForExerciseSave(undefined, category),
+    customField1Label: String(row.custom_field_1_label ?? ""),
+    customField2Label: String(row.custom_field_2_label ?? ""),
   };
 }
 
@@ -3749,7 +3753,7 @@ export async function fetchExercisesFromSupabase(): Promise<Exercise[] | null> {
   if (!supabaseClient) return null;
   const { data, error } = await supabaseClient
     .from("exercise_bank")
-    .select("id, name, category, muscle_group, equipment, level, description, image_url, prescription_fields")
+    .select("id, name, category, muscle_group, equipment, level, description, image_url, prescription_fields, custom_field_1_label, custom_field_2_label")
     .or("is_active.is.null,is_active.eq.true")
     .order("name", { ascending: true });
 

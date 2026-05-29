@@ -454,6 +454,7 @@ export function TrainerProgramBuilderView({
                       <ProgramExercisePrescriptionFields
                         fields={prescriptionFields}
                         item={item}
+                        exercise={linkedExercise}
                         onUpdate={(field, value) => onUpdateDraftExercise(item.id, field, value)}
                         setsLabel={isCardio ? cardioSetLabel() : "Sett"}
                         setsPlaceholder={isCardio ? cardioSetPlaceholder() : "Sett"}

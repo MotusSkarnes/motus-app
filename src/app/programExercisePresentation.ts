@@ -1,4 +1,9 @@
 import { isHoldBasedExerciseCategory, programExerciseHoldSeconds } from "./exerciseCategories";
+import {
+  formatCustomPrescriptionSuffix,
+  resolveExercisePrescriptionFields,
+  resolvePrescriptionFieldLabel,
+} from "./exercisePrescriptionFields";
 import { EXERCISE_BLOCK_LABELS, isLegacyIntervalCooldownDrag, type WorkoutResultGroup } from "./programBlocks";
 import { resolveWorkoutLoadUnit, resolveWorkoutRepsUnit } from "./workoutResultUnits";
 import type { Exercise, ProgramExercise, TrainingProgram, WorkoutExerciseResult } from "./types";
@@ -10,6 +15,19 @@ export type ProgramExercisePrescriptionOptions = {
   /** Programbygger: mobilitet/rehab-fane. */
   treatAsHold?: boolean;
 };
+
+function appendCustomPrescriptionParts(row: ProgramExercise, bank?: Exercise): string {
+  if (!bank) return "";
+  const fields = resolveExercisePrescriptionFields(bank);
+  let suffix = "";
+  if (fields.includes("custom1")) {
+    suffix += formatCustomPrescriptionSuffix(row, "custom1", resolvePrescriptionFieldLabel("custom1", bank));
+  }
+  if (fields.includes("custom2")) {
+    suffix += formatCustomPrescriptionSuffix(row, "custom2", resolvePrescriptionFieldLabel("custom2", bank));
+  }
+  return suffix;
+}
 
 function cardioTargetHrPrescriptionSuffix(targetHrPercent: string | undefined): string {
   const raw = String(targetHrPercent ?? "").trim();
@@ -55,23 +73,23 @@ export function formatProgramExercisePrescription(
     if (cardioMinutes) timeParts.push(`${cardioMinutes} min`);
     if (cardioSeconds) timeParts.push(`${cardioSeconds} sek`);
     const timeLabel = timeParts.length ? timeParts.join(" ") : "—";
-    return `${exercise.sets || "-"} ${dragLabel} × ${timeLabel}${exercise.speed ? ` · ${exercise.speed} km/t` : ""}${exercise.incline ? ` · ${exercise.incline}% incline` : ""} · ${restSeconds}s${pauseLabel}${cardioTargetHrPrescriptionSuffix(exercise.targetHrPercent)}`;
+    return `${exercise.sets || "-"} ${dragLabel} × ${timeLabel}${exercise.speed ? ` · ${exercise.speed} km/t` : ""}${exercise.incline ? ` · ${exercise.incline}% incline` : ""} · ${restSeconds}s${pauseLabel}${cardioTargetHrPrescriptionSuffix(exercise.targetHrPercent)}${appendCustomPrescriptionParts(exercise, linkedExercise)}`;
   }
 
   const isHold =
     options?.treatAsHold ?? Boolean(category && isHoldBasedExerciseCategory(category));
   if (isHold && category) {
-    return `${exercise.sets || "-"} sett × ${programExerciseHoldSeconds(exercise, category) || "-"} sek · ${restSeconds}s${pauseLabel}`;
+    return `${exercise.sets || "-"} sett × ${programExerciseHoldSeconds(exercise, category) || "-"} sek · ${restSeconds}s${pauseLabel}${appendCustomPrescriptionParts(exercise, linkedExercise)}`;
   }
   if (isHold) {
     const hold = programExerciseHoldSeconds(exercise, undefined) || exercise.holdSeconds || exercise.weight || "-";
-    return `${exercise.sets || "-"} sett × ${hold} sek · ${restSeconds}s${pauseLabel}`;
+    return `${exercise.sets || "-"} sett × ${hold} sek · ${restSeconds}s${pauseLabel}${appendCustomPrescriptionParts(exercise, linkedExercise)}`;
   }
 
   const repsUnit = exercise.repsUnit === "minutes" ? "min" : "reps";
   const weightUnit = exercise.weightUnit === "seconds" ? "sek" : "kg";
   const seatSuffix = exercise.seatSetting?.trim() ? ` · sete ${exercise.seatSetting.trim()}` : "";
-  return `${exercise.sets || "-"}×${exercise.reps || "-"} ${repsUnit} · ${exercise.weight || "0"} ${weightUnit} · ${restSeconds}s${pauseLabel}${seatSuffix}`;
+  return `${exercise.sets || "-"}×${exercise.reps || "-"} ${repsUnit} · ${exercise.weight || "0"} ${weightUnit} · ${restSeconds}s${pauseLabel}${seatSuffix}${appendCustomPrescriptionParts(exercise, linkedExercise)}`;
 }
 
 function workoutRowsToProgramExercise(rows: WorkoutExerciseResult[]): ProgramExercise | null {

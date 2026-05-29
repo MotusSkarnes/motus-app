@@ -4,6 +4,7 @@ import {
   defaultPrescriptionFieldsForCategory,
   normalizeExercisePrescriptionFields,
   resolveExercisePrescriptionFields,
+  resolvePrescriptionFieldLabel,
   toggleExercisePrescriptionField,
 } from "./exercisePrescriptionFields";
 import type { Exercise } from "./types";
@@ -39,6 +40,12 @@ describe("exercisePrescriptionFields", () => {
 
   it("normalizes unknown keys", () => {
     expect(normalizeExercisePrescriptionFields(["reps", "bogus", "kg"], "Styrke")).toEqual(["reps", "kg"]);
+  });
+
+  it("uses custom labels when set", () => {
+    expect(
+      resolvePrescriptionFieldLabel("custom1", { customField1Label: "Tempo", customField2Label: "" }),
+    ).toBe("Tempo");
   });
 
   it("keeps per-exercise fields independent", () => {

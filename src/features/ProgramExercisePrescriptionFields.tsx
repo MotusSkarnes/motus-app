@@ -1,13 +1,17 @@
-import { exercisePrescriptionFieldDef, programExerciseFieldValue } from "../app/exercisePrescriptionFields";
-import type { ExercisePrescriptionFieldKey } from "../app/types";
+import {
+  exercisePrescriptionFieldDef,
+  programExerciseFieldValue,
+  resolvePrescriptionFieldLabel,
+} from "../app/exercisePrescriptionFields";
+import type { Exercise, ExercisePrescriptionFieldKey, ProgramExercise } from "../app/types";
 import type { ReactNode } from "react";
 import { TextInput } from "../app/ui";
-import type { ProgramExercise } from "../app/types";
 
 type ProgramExercisePrescriptionFieldsProps = {
   fields: ExercisePrescriptionFieldKey[];
   item: ProgramExercise;
   onUpdate: (field: keyof ProgramExercise, value: string) => void;
+  exercise?: Pick<Exercise, "customField1Label" | "customField2Label">;
   showSets?: boolean;
   setsLabel?: string;
   setsPlaceholder?: string;
@@ -19,6 +23,7 @@ export function ProgramExercisePrescriptionFields({
   fields,
   item,
   onUpdate,
+  exercise,
   showSets = true,
   setsLabel = "Sett",
   setsPlaceholder = "Sett",
@@ -35,9 +40,10 @@ export function ProgramExercisePrescriptionFields({
       ) : null}
       {fields.map((key) => {
         const def = exercisePrescriptionFieldDef(key);
+        const label = resolvePrescriptionFieldLabel(key, exercise);
         return (
           <div key={key} className="space-y-1">
-            <div className="text-[11px] font-medium text-slate-500">{def.label}</div>
+            <div className="text-[11px] font-medium text-slate-500">{label}</div>
             <TextInput
               value={programExerciseFieldValue(item, key)}
               onChange={(e) => onUpdate(def.programField, e.target.value)}

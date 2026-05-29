@@ -172,6 +172,8 @@ export type SaveExerciseInput = {
   description: string;
   imageUrl?: string;
   prescriptionFields?: Exercise["prescriptionFields"];
+  customField1Label?: string;
+  customField2Label?: string;
 };
 
 export type UpdateMemberInput = {
@@ -958,6 +960,8 @@ export function saveExerciseInState(state: AppState, input: SaveExerciseInput): 
               description: normalizedDescription,
               imageUrl: normalizedImageUrl,
               prescriptionFields: savedPrescriptionFields,
+              customField1Label: input.customField1Label?.trim() ?? "",
+              customField2Label: input.customField2Label?.trim() ?? "",
             }
           : exercise
       ),
@@ -974,6 +978,8 @@ export function saveExerciseInState(state: AppState, input: SaveExerciseInput): 
     description: normalizedDescription,
     imageUrl: normalizedImageUrl,
     prescriptionFields: savedPrescriptionFields,
+    customField1Label: input.customField1Label?.trim() ?? "",
+    customField2Label: input.customField2Label?.trim() ?? "",
   };
   return { ...state, exercises: [nextExercise, ...state.exercises] };
 }

@@ -126,6 +126,10 @@ export type TrainerExerciseBankViewProps = {
   onExerciseFormDescriptionChange: (value: string) => void;
   exerciseFormPrescriptionFields: ExercisePrescriptionFieldKey[];
   onExerciseFormPrescriptionFieldsChange: (value: ExercisePrescriptionFieldKey[]) => void;
+  exerciseFormCustomField1Label: string;
+  exerciseFormCustomField2Label: string;
+  onExerciseFormCustomField1LabelChange: (value: string) => void;
+  onExerciseFormCustomField2LabelChange: (value: string) => void;
   exerciseFormGroupOptions: string[];
   exerciseFormEquipmentOptions: string[];
   exerciseFormStatus: string | null;
@@ -167,6 +171,10 @@ export function TrainerExerciseBankView({
   onExerciseFormDescriptionChange,
   exerciseFormPrescriptionFields,
   onExerciseFormPrescriptionFieldsChange,
+  exerciseFormCustomField1Label,
+  exerciseFormCustomField2Label,
+  onExerciseFormCustomField1LabelChange,
+  onExerciseFormCustomField2LabelChange,
   exerciseFormGroupOptions,
   exerciseFormEquipmentOptions,
   exerciseFormStatus,
@@ -412,6 +420,10 @@ export function TrainerExerciseBankView({
               <ExercisePrescriptionFieldsEditor
                 value={exerciseFormPrescriptionFields}
                 onChange={onExerciseFormPrescriptionFieldsChange}
+                customField1Label={exerciseFormCustomField1Label}
+                customField2Label={exerciseFormCustomField2Label}
+                onCustomField1LabelChange={onExerciseFormCustomField1LabelChange}
+                onCustomField2LabelChange={onExerciseFormCustomField2LabelChange}
               />
             </FormSection>
 

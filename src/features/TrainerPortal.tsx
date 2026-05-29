@@ -333,6 +333,8 @@ type TrainerPortalProps = {
     description: string;
     imageUrl?: string;
     prescriptionFields?: ExercisePrescriptionFieldKey[];
+    customField1Label?: string;
+    customField2Label?: string;
   }) => void;
   deleteExercise: (exerciseId: string) => void;
   openCustomerMessagesSignal?: number;
@@ -956,6 +958,8 @@ function pickFirstName(value: unknown): string {
   const [exerciseFormDescription, setExerciseFormDescription] = useState("");
   const [exerciseFormImageUrl, setExerciseFormImageUrl] = useState("");
   const [exerciseFormPrescriptionFields, setExerciseFormPrescriptionFields] = useState<ExercisePrescriptionFieldKey[]>([]);
+  const [exerciseFormCustomField1Label, setExerciseFormCustomField1Label] = useState("");
+  const [exerciseFormCustomField2Label, setExerciseFormCustomField2Label] = useState("");
   const [isUploadingExerciseImage, setIsUploadingExerciseImage] = useState(false);
   const [exerciseFormStatus, setExerciseFormStatus] = useState<string | null>(null);
   const [expandedExerciseId, setExpandedExerciseId] = useState<string | null>(null);
@@ -3858,6 +3862,8 @@ function pickFirstName(value: unknown): string {
     setExerciseFormDescription("");
     setExerciseFormImageUrl("");
     setExerciseFormPrescriptionFields(defaultPrescriptionFieldsForCategory(defaultCategoryForExerciseBankTab(exerciseBankSubTab)));
+    setExerciseFormCustomField1Label("");
+    setExerciseFormCustomField2Label("");
   }
 
   function startEditExercise(exercise: Exercise) {
@@ -3872,6 +3878,8 @@ function pickFirstName(value: unknown): string {
     setExerciseFormDescription(exercise.description);
     setExerciseFormImageUrl(exercise.imageUrl ?? "");
     setExerciseFormPrescriptionFields(resolveExercisePrescriptionFields(exercise));
+    setExerciseFormCustomField1Label(exercise.customField1Label ?? "");
+    setExerciseFormCustomField2Label(exercise.customField2Label ?? "");
     setExerciseFormStatus(null);
   }
 
@@ -3895,6 +3903,8 @@ function pickFirstName(value: unknown): string {
       description,
       imageUrl: exerciseFormImageUrl.trim(),
       prescriptionFields: prescriptionFieldsForExerciseSave(exerciseFormPrescriptionFields, exerciseFormCategory),
+      customField1Label: exerciseFormCustomField1Label,
+      customField2Label: exerciseFormCustomField2Label,
     });
 
     setExerciseFormStatus(editingExerciseId ? "Øvelsen ble oppdatert." : "Ny øvelse ble lagt til i banken.");
@@ -3911,6 +3921,8 @@ function pickFirstName(value: unknown): string {
       description: exercise.description,
       imageUrl: exercise.imageUrl?.trim() ?? "",
       prescriptionFields: resolveExercisePrescriptionFields(exercise),
+      customField1Label: exercise.customField1Label,
+      customField2Label: exercise.customField2Label,
     });
     setExerciseFormStatus(`Kopi av «${exercise.name}» ble lagt til.`);
     resetExerciseForm();
@@ -6222,6 +6234,7 @@ function pickFirstName(value: unknown): string {
                                 <ProgramExercisePrescriptionFields
                                   fields={prescriptionFields}
                                   item={item}
+                                  exercise={linkedExercise}
                                   onUpdate={(field, value) => updateDraftExercise(item.id, field, value)}
                                   setsLabel={isCardio ? cardioSetLabel() : "Antall sett"}
                                   setsPlaceholder={isCardio ? cardioSetPlaceholder() : "Sett"}
@@ -6795,6 +6808,10 @@ function pickFirstName(value: unknown): string {
           onExerciseFormDescriptionChange={setExerciseFormDescription}
           exerciseFormPrescriptionFields={exerciseFormPrescriptionFields}
           onExerciseFormPrescriptionFieldsChange={setExerciseFormPrescriptionFields}
+          exerciseFormCustomField1Label={exerciseFormCustomField1Label}
+          exerciseFormCustomField2Label={exerciseFormCustomField2Label}
+          onExerciseFormCustomField1LabelChange={setExerciseFormCustomField1Label}
+          onExerciseFormCustomField2LabelChange={setExerciseFormCustomField2Label}
           exerciseFormGroupOptions={exerciseFormGroupOptions}
           exerciseFormEquipmentOptions={exerciseFormEquipmentOptions}
           exerciseFormStatus={exerciseFormStatus}

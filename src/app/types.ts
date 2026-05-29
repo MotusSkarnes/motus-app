@@ -116,7 +116,15 @@ export type Member = {
 };
 
 /** Variabler PT kan konfigurere per øvelse i øvelsesbanken. */
-export type ExercisePrescriptionFieldKey = "minutes" | "seconds" | "kg" | "reps" | "pause" | "seatSettings";
+export type ExercisePrescriptionFieldKey =
+  | "minutes"
+  | "seconds"
+  | "kg"
+  | "reps"
+  | "pause"
+  | "seatSettings"
+  | "custom1"
+  | "custom2";
 
 export type Exercise = {
   id: string;
@@ -130,6 +138,10 @@ export type Exercise = {
   favorite?: boolean;
   /** Hvilke programfelter som vises når øvelsen legges i et program (tom = standard for kategori). */
   prescriptionFields?: ExercisePrescriptionFieldKey[];
+  /** Egendefinert felt 1 — navnet vises i programbygger (f.eks. «Tempo», «ROM»). */
+  customField1Label?: string;
+  /** Egendefinert felt 2 — navnet vises i programbygger. */
+  customField2Label?: string;
 };
 
 export type ProgramExercise = {
@@ -152,6 +164,8 @@ export type ProgramExercise = {
   targetHrPercent?: string;
   /** Maskin: sete/høyde/backrest (fra øvelsesbank «seteinnstillinger»). */
   seatSetting?: string;
+  customField1?: string;
+  customField2?: string;
   restSeconds: string;
   notes: string;
   /** Supersett, trisett eller sirkel – delt blockId med andre øvelser i samme blokk. */

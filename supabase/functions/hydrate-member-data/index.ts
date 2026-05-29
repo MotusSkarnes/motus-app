@@ -454,7 +454,7 @@ Deno.serve(async (req) => {
   let exercises: Array<Record<string, unknown>> = [];
   const { data: exerciseRows, error: exercisesError } = await adminClient
     .from("exercise_bank")
-    .select("id, name, category, muscle_group, equipment, level, description, image_url, prescription_fields")
+    .select("id, name, category, muscle_group, equipment, level, description, image_url, prescription_fields, custom_field_1_label, custom_field_2_label")
     .or("is_active.is.null,is_active.eq.true")
     .order("name", { ascending: true });
   if (exercisesError) {
