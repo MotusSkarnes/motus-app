@@ -98,6 +98,8 @@ const MEMBERS_SELECT_WITH_AVATAR = `${MEMBERS_SELECT_BASE}, avatar_url`;
 const MEMBERS_SELECT_WITHOUT_NUTRITION =
   "id, owner_user_id, name, email, is_active, invited_at, phone, birth_date, weight, height, level, membership_type, customer_type, days_since_activity, goal, focus, personal_goals, injuries, coach_notes";
 const MEMBERS_SELECT_WITH_AVATAR_WITHOUT_NUTRITION = `${MEMBERS_SELECT_WITHOUT_NUTRITION}, avatar_url`;
+const EXERCISES_SELECT_BASE = "id, name, category, muscle_group, equipment, level, description, image_url";
+const EXERCISES_SELECT_WITH_PRESCRIPTION_FIELDS = `${EXERCISES_SELECT_BASE}, prescription_fields, custom_field_1_label, custom_field_2_label`;
 
 function isMissingDbColumnError(message: string, column: string): boolean {
   const lower = message.toLowerCase();
@@ -105,6 +107,14 @@ function isMissingDbColumnError(message: string, column: string): boolean {
   return (
     lower.includes(col) &&
     (lower.includes("does not exist") || lower.includes("schema cache") || lower.includes("could not find"))
+  );
+}
+
+function isMissingExercisePrescriptionColumnError(message: string): boolean {
+  return (
+    isMissingDbColumnError(message, "prescription_fields") ||
+    isMissingDbColumnError(message, "custom_field_1_label") ||
+    isMissingDbColumnError(message, "custom_field_2_label")
   );
 }
 
@@ -1769,25 +1779,32 @@ async function persistMember(member: Member, previousPersonalGoals?: string) {
 
 async function persistExercise(exercise: Exercise) {
   if (!supabaseClient) return;
-  const { error } = await supabaseClient.from("exercise_bank").upsert(
-    {
-      id: exercise.id,
-      name: exercise.name,
-      category: exercise.category,
-      muscle_group: exercise.group,
-      equipment: exercise.equipment,
-      level: exercise.level,
-      description: exercise.description,
-      image_url: exercise.imageUrl ?? null,
-      prescription_fields: prescriptionFieldsForExerciseSave(exercise.prescriptionFields, exercise.category),
-      custom_field_1_label: exercise.customField1Label?.trim() ?? "",
-      custom_field_2_label: exercise.customField2Label?.trim() ?? "",
-      is_active: true,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    },
-    { onConflict: "id" }
-  );
+  const payload = {
+    id: exercise.id,
+    name: exercise.name,
+    category: exercise.category,
+    muscle_group: exercise.group,
+    equipment: exercise.equipment,
+    level: exercise.level,
+    description: exercise.description,
+    image_url: exercise.imageUrl ?? null,
+    prescription_fields: prescriptionFieldsForExerciseSave(exercise.prescriptionFields, exercise.category),
+    custom_field_1_label: exercise.customField1Label?.trim() ?? "",
+    custom_field_2_label: exercise.customField2Label?.trim() ?? "",
+    is_active: true,
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+  };
+  let { error } = await supabaseClient.from("exercise_bank").upsert(payload, { onConflict: "id" });
+  if (error && isMissingExercisePrescriptionColumnError(error.message)) {
+    const {
+      prescription_fields: _prescriptionFields,
+      custom_field_1_label: _customField1Label,
+      custom_field_2_label: _customField2Label,
+      ...legacyPayload
+    } = payload;
+    ({ error } = await supabaseClient.from("exercise_bank").upsert(legacyPayload, { onConflict: "id" }));
+  }
   if (error) {
     console.warn("Supabase exercise persist failed:", error.message);
   }
@@ -3751,18 +3768,25 @@ function mapExerciseBankRow(row: Record<string, unknown>): Exercise {
 
 export async function fetchExercisesFromSupabase(): Promise<Exercise[] | null> {
   if (!supabaseClient) return null;
-  const { data, error } = await supabaseClient
+  let result = await supabaseClient
     .from("exercise_bank")
-    .select("id, name, category, muscle_group, equipment, level, description, image_url, prescription_fields, custom_field_1_label, custom_field_2_label")
+    .select(EXERCISES_SELECT_WITH_PRESCRIPTION_FIELDS)
     .or("is_active.is.null,is_active.eq.true")
     .order("name", { ascending: true });
+  if (result.error && isMissingExercisePrescriptionColumnError(result.error.message)) {
+    result = await supabaseClient
+      .from("exercise_bank")
+      .select(EXERCISES_SELECT_BASE)
+      .or("is_active.is.null,is_active.eq.true")
+      .order("name", { ascending: true });
+  }
 
-  if (error) {
-    console.warn("Supabase exercises fetch failed:", error.message);
+  if (result.error) {
+    console.warn("Supabase exercises fetch failed:", result.error.message);
     return null;
   }
 
-  return (data ?? []).map((row) => mapExerciseBankRow(row));
+  return (result.data ?? []).map((row) => mapExerciseBankRow(row));
 }
 
 function mapEdgeMemberPayload(value: unknown): Member | null {
