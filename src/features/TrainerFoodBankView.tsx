@@ -56,6 +56,9 @@ import {
   parseMicronutrientForm,
 } from "./FoodMicronutrientSection";
 import { FoodImageField } from "./FoodImageField";
+import { FoodLabelScanButton } from "./FoodLabelScanButton";
+import { TrainerFoodSubmissionQueue } from "./TrainerFoodSubmissionQueue";
+import type { FoodLabelScanResult } from "../app/foodLabelScanTypes";
 import type { FoodMicronutrientKey } from "../app/foodBankMicronutrients";
 import type { Member } from "../app/types";
 import { TrainerRecipesPanel } from "./nutrition/TrainerRecipesPanel";
@@ -323,6 +326,43 @@ export function TrainerFoodBankView({
     }
   };
 
+  const applyScanToForm = (scan: FoodLabelScanResult, imageDataUrl: string) => {
+    const next: FoodFormState = {
+      ...emptyForm(),
+      name: scan.name,
+      portionLabel: scan.portionLabel,
+      portionGrams: String(scan.portionGrams),
+      category: scan.category,
+      origin: "Etikett",
+      source: "egen",
+      imageUrl: imageDataUrl,
+      imageEmoji: "🏷️",
+      kcal: String(scan.kcal),
+      protein: String(scan.protein),
+      carbs: String(scan.carbs),
+      fat: String(scan.fat),
+      fiber: String(scan.fiber),
+      sugar: String(scan.sugar),
+      saturatedFat: String(scan.saturatedFat),
+      sodium: String(scan.sodium),
+    };
+    formBaselineRef.current = snapshotFoodForm(next);
+    setForm(next);
+    setFormStatus("Sjekk at tallene stemmer før du lagrer.");
+    setImageUploading(false);
+    setFormOpen(true);
+  };
+
+  const reloadFoodBankFromCloud = useCallback(async () => {
+    if (!trainerOwnerUserId?.trim()) return;
+    const remote = await syncTrainerFoodBankFromRemote(trainerOwnerUserId);
+    if (remote?.items) {
+      setItems(remote.items);
+      setFavoriteIds(remote.favoriteIds);
+      setRecentIds(remote.recentIds);
+    }
+  }, [trainerOwnerUserId]);
+
   const openCreateForm = () => {
     const next = emptyForm();
     formBaselineRef.current = snapshotFoodForm(next);
@@ -451,6 +491,13 @@ export function TrainerFoodBankView({
 
   return (
     <div className="motus-foodbank">
+      {section === "foods" && trainerOwnerUserId?.trim() ? (
+        <TrainerFoodSubmissionQueue
+          ownerUserId={trainerOwnerUserId}
+          trainerName={trainerName}
+          onChanged={() => void reloadFoodBankFromCloud()}
+        />
+      ) : null}
       <header className="motus-foodbank-header">
         <div>
           <h1 className="motus-foodbank-title">Matvarebank</h1>
@@ -462,6 +509,11 @@ export function TrainerFoodBankView({
         </div>
         {section === "foods" ? (
           <div className="motus-foodbank-header-actions">
+            <FoodLabelScanButton
+              onScanned={applyScanToForm}
+              onError={setFormStatus}
+              label="Scan etikett"
+            />
             <GradientButton onClick={openCreateForm} className="motus-foodbank-add-btn">
               <Plus className="h-4 w-4" aria-hidden />
               Legg til matvare
@@ -851,9 +903,16 @@ export function TrainerFoodBankView({
           <div className="motus-foodbank-modal motus-foodbank-modal--wide" role="dialog" aria-labelledby="food-form-title" aria-modal="true">
             <div className="motus-foodbank-modal-head">
               <h2 id="food-form-title">{form.id ? "Rediger matvare" : "Ny matvare"}</h2>
-              <button type="button" className="motus-foodbank-icon-btn" onClick={closeFoodForm} aria-label="Lukk">
-                <X className="h-4 w-4" />
-              </button>
+              <div className="flex items-center gap-2">
+                <FoodLabelScanButton
+                  onScanned={applyScanToForm}
+                  onError={setFormStatus}
+                  label="Scan etikett"
+                />
+                <button type="button" className="motus-foodbank-icon-btn" onClick={closeFoodForm} aria-label="Lukk">
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
             </div>
             <div className="motus-foodbank-modal-body motus-foodbank-form-grid">
               <div className="motus-foodbank-form-span-all">

@@ -12,6 +12,7 @@ import { pickCanonicalMemberRowForProfile, resolveMemberPersonalGoals } from "..
 import type { Member } from "../app/types";
 import { MemberFoodAvoidancesPanel } from "./nutrition/MemberFoodAvoidancesPanel";
 import { MemberQuickFoodLogPanel } from "./nutrition/MemberQuickFoodLogPanel";
+import { MemberSubmitFoodPanel } from "./MemberSubmitFoodPanel";
 import { MemberMealPlanDashboard } from "./nutrition/MemberMealPlanDashboard";
 import { NutritionHub } from "./nutrition/NutritionHub";
 
@@ -82,6 +83,7 @@ export function MemberNutritionView({ member, members, onSavePersonalGoals }: Me
             <p className="mt-2 text-sm text-slate-600">Treneren har ikke lagt ut en matplan til deg ennå.</p>
           </Card>
           <MemberQuickFoodLogPanel memberId={memberId} />
+          <MemberSubmitFoodPanel member={member} />
         </div>
       );
     }
@@ -99,6 +101,7 @@ export function MemberNutritionView({ member, members, onSavePersonalGoals }: Me
           memberName={memberName}
           onOpenAvoidances={() => setNutritionTab("avoidances")}
         />
+        <MemberSubmitFoodPanel member={member} />
       </>
     );
   }, [loading, plan, cloudSynced, memberId, memberName, setNutritionTab]);
