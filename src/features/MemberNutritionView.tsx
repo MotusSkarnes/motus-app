@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { NutritionHubTab } from "./nutrition/NutritionHub";
 import { Apple } from "lucide-react";
+import { syncMemberFoodBankFromTrainer } from "../app/foodBankCloud";
 import { buildDefaultFoodBankItems } from "../app/foodBankSeed";
 import { hydrateMealPlanFoodNutrition } from "../app/mealPlanFoodNutrition";
 import { mealPlansEqual, syncMealPlanForMember } from "../app/mealPlanCloud";
@@ -56,6 +57,12 @@ export function MemberNutritionView({ member, members, onSavePersonalGoals }: Me
       if (showLoading) setLoading(false);
     }
   }, [memberId, memberEmail, foodItemsForMacros]);
+
+  useEffect(() => {
+    const ptOwnerUserId = member.ownerUserId?.trim() ?? "";
+    if (!ptOwnerUserId) return;
+    void syncMemberFoodBankFromTrainer(ptOwnerUserId);
+  }, [member.ownerUserId, member.id]);
 
   useEffect(() => {
     hasLoadedOnceRef.current = false;

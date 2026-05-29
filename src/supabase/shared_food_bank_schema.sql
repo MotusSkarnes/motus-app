@@ -42,5 +42,19 @@ create policy "shared_food_bank_items_update_trainers"
     or auth.jwt() -> 'user_metadata' ->> 'role' = 'trainer'
   );
 
+drop policy if exists "shared_food_bank_items_select_members" on public.shared_food_bank_items;
+create policy "shared_food_bank_items_select_members"
+  on public.shared_food_bank_items
+  for select
+  to authenticated
+  using (
+    exists (
+      select 1
+      from public.members m
+      where m.id = auth.uid()::text
+        or lower(coalesce(m.email, '')) = lower(coalesce(auth.jwt() ->> 'email', ''))
+    )
+  );
+
 comment on table public.shared_food_bank_items is 'Felles importerte matvarer (Matvaretabellen/USDA) som alle PT-er kan lese. item=FoodItem snapshot.';
 

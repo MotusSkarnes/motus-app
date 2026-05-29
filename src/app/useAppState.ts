@@ -47,7 +47,7 @@ import {
   resumePausedWorkoutInState,
 } from "./pausedWorkoutSession";
 import { getPausedWorkoutById, purgeExpiredPausedWorkouts } from "./pausedWorkoutStorage";
-import { syncTrainerFoodBankFromRemote } from "./foodBankCloud";
+import { syncMemberFoodBankFromTrainer, syncTrainerFoodBankFromRemote } from "./foodBankCloud";
 import { applyHydratedMealPlan } from "./mealPlanCloud";
 import { applyHydratedMemberMealPlanState } from "./memberMealPlanStateCloud";
 import { MEAL_PLAN_STATE_CHANGED_EVENT } from "./memberMealPlanState";
@@ -1057,6 +1057,16 @@ export function useAppState() {
       }
       if (isTrainerSession && ownerUserId) {
         void syncTrainerFoodBankFromRemote(ownerUserId);
+      }
+      if (isMemberLikeSession && hydratedMember?.members?.length) {
+        const memberRow =
+          hydratedMember.members.find((m) => m.email.trim().toLowerCase() === sessionEmail) ??
+          hydratedMember.members.find((m) => m.nutritionAccess === true) ??
+          hydratedMember.members[0];
+        const ptOwnerUserId = memberRow?.ownerUserId?.trim() ?? "";
+        if (ptOwnerUserId) {
+          void syncMemberFoodBankFromTrainer(ptOwnerUserId);
+        }
       }
       if (hydratedMember) {
         const periodPlanRows = hydratedMember.periodPlanRows ?? [];

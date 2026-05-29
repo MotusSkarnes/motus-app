@@ -37,3 +37,20 @@ create policy "trainer_food_bank_delete_own"
   for delete
   to authenticated
   using (auth.uid() = owner_user_id);
+
+drop policy if exists "trainer_food_bank_select_member_pt" on public.trainer_food_bank;
+create policy "trainer_food_bank_select_member_pt"
+  on public.trainer_food_bank
+  for select
+  to authenticated
+  using (
+    exists (
+      select 1
+      from public.members m
+      where m.owner_user_id = trainer_food_bank.owner_user_id
+        and (
+          m.id = auth.uid()::text
+          or lower(coalesce(m.email, '')) = lower(coalesce(auth.jwt() ->> 'email', ''))
+        )
+    )
+  );

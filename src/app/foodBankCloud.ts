@@ -1,6 +1,7 @@
 import { compressImageDataUrl, dataUrlToBlob } from "./imageCompress";
 import {
   FOOD_BANK_CHANGED_EVENT,
+  FOOD_BANK_STORAGE_KEY,
   loadFavoriteFoodIds,
   loadFoodBankItems,
   loadRecentFoodIds,
@@ -257,6 +258,39 @@ export async function syncTrainerFoodBankFromRemote(
     cacheTrainerFoodBankSnapshot({ items: prepared, favoriteIds, recentIds, updatedAt: Date.now() });
   }
   return { ok: uploaded, source: uploaded ? "local" : "none" };
+}
+
+/** Medlem: hent PT sin matvarebank + felles varer inn i lokal søkeliste. */
+export async function syncMemberFoodBankFromTrainer(ownerUserId: string): Promise<{ ok: boolean }> {
+  if (!isSupabaseConfigured || !ownerUserId.trim()) return { ok: false };
+
+  const [sharedItems, remote] = await Promise.all([
+    fetchSharedFoodItemsFromSupabase(),
+    fetchTrainerFoodBankFromSupabase(ownerUserId),
+  ]);
+
+  const baseItems = loadFoodBankItems();
+  const ptItems = remote?.items ?? [];
+  const mergedItems = mergeFoodItems(mergeFoodItems(ptItems, sharedItems), baseItems);
+
+  const previousRaw =
+    typeof window !== "undefined" ? window.localStorage.getItem(FOOD_BANK_STORAGE_KEY) ?? "" : "";
+
+  cacheTrainerFoodBankSnapshot({
+    items: mergedItems,
+    favoriteIds: loadFavoriteFoodIds(),
+    recentIds: loadRecentFoodIds(),
+    updatedAt: Date.now(),
+  });
+
+  if (typeof window !== "undefined") {
+    const nextRaw = window.localStorage.getItem(FOOD_BANK_STORAGE_KEY) ?? "";
+    if (nextRaw !== previousRaw) notifyFoodBankChanged();
+  } else {
+    notifyFoodBankChanged();
+  }
+
+  return { ok: true };
 }
 
 let cloudSaveTimer: ReturnType<typeof setTimeout> | null = null;

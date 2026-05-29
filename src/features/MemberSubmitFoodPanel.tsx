@@ -12,6 +12,7 @@ import {
   submitMemberFoodForApproval,
   updateMemberFoodSubmission,
 } from "../app/memberFoodSubmissionsCloud";
+import { syncMemberFoodBankFromTrainer } from "../app/foodBankCloud";
 import type { Member } from "../app/types";
 import { FoodLabelScanButton } from "./FoodLabelScanButton";
 import { Card, GradientButton, OutlineButton, SelectBox, TextInput } from "../app/ui";
@@ -154,16 +155,21 @@ export function MemberSubmitFoodPanel({ member }: MemberSubmitFoodPanelProps) {
   const [submitting, setSubmitting] = useState(false);
   const [history, setHistory] = useState<MemberFoodSubmission[]>([]);
 
+  const ownerUserId = member.ownerUserId?.trim() ?? "";
+
   const reloadHistory = useCallback(async () => {
     const rows = await fetchMemberFoodSubmissions(member.id);
     setHistory(rows);
-  }, [member.id]);
+    const hasApproved = rows.some((row) => row.status === "approved");
+    if (hasApproved && ownerUserId) {
+      await syncMemberFoodBankFromTrainer(ownerUserId);
+    }
+  }, [member.id, ownerUserId]);
 
   useEffect(() => {
     void reloadHistory();
   }, [reloadHistory]);
 
-  const ownerUserId = member.ownerUserId?.trim() ?? "";
   if (!ownerUserId) return null;
 
   const closeForms = () => {
@@ -327,7 +333,7 @@ export function MemberSubmitFoodPanel({ member }: MemberSubmitFoodPanelProps) {
                   {row.status === "pending"
                     ? "Venter"
                     : row.status === "approved"
-                      ? "Godkjent"
+                      ? "Godkjent — søk etter navnet når du logger mat"
                       : "Avslått"}
                 </span>
               </div>
