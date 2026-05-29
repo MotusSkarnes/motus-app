@@ -87,6 +87,7 @@ type MemberMealPlanDashboardProps = {
   memberId: string;
   memberName: string;
   onOpenAvoidances?: () => void;
+  onRefreshFoodBank?: () => void;
 };
 
 function mealSlotLabel(name: string): string {
@@ -229,7 +230,7 @@ function isMealComplete(
   return selfLogs.length > 0;
 }
 
-export function MemberMealPlanDashboard({ plan, memberId, onOpenAvoidances }: MemberMealPlanDashboardProps) {
+export function MemberMealPlanDashboard({ plan, memberId, onOpenAvoidances, onRefreshFoodBank }: MemberMealPlanDashboardProps) {
   const foodItems = useFoodBankItems();
   const { items: inspirationRecipes } = useInspirationRecipeItems();
   const foodById = useMemo(() => new Map(foodItems.map((f) => [f.id, f])), [foodItems]);
@@ -1090,6 +1091,7 @@ export function MemberMealPlanDashboard({ plan, memberId, onOpenAvoidances }: Me
                         compact
                         autoOpen
                         onAdd={(draft) => handleAddSelfLog(draft)}
+                        onPanelOpen={onRefreshFoodBank}
                       />
                   </div>
                 ) : null}

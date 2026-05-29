@@ -285,8 +285,8 @@ export async function syncMemberFoodBankFromTrainer(
   const baseItems = loadFoodBankItems();
   const ptItems = remote?.items ?? [];
   const mergedItems = mergeFoodItems(
-    mergeFoodItems(mergeFoodItems(approvedItems, ptItems), sharedItems),
-    baseItems,
+    mergeFoodItems(mergeFoodItems(baseItems, sharedItems), ptItems),
+    approvedItems,
   );
 
   notifyFoodBankChangedIfNeeded(baseItems, mergedItems);
@@ -298,6 +298,18 @@ export async function syncMemberFoodBankFromTrainer(
   });
 
   return { ok: true };
+}
+
+let memberFoodBankSyncTimer: ReturnType<typeof setTimeout> | null = null;
+
+/** Debounced matbank-sync for medlem (etter PT-godkjenning, ved logging, osv.). */
+export function scheduleMemberFoodBankSync(ownerUserId: string, memberId?: string): void {
+  if (!ownerUserId.trim()) return;
+  if (memberFoodBankSyncTimer) clearTimeout(memberFoodBankSyncTimer);
+  memberFoodBankSyncTimer = setTimeout(() => {
+    memberFoodBankSyncTimer = null;
+    void syncMemberFoodBankFromTrainer(ownerUserId, memberId);
+  }, 350);
 }
 
 /** Slå sammen nye varer inn i lokal matbank og varsle UI (uten å overskrive med gammel sky-kø). */

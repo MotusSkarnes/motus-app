@@ -12,13 +12,13 @@ import {
   submitMemberFoodForApproval,
   updateMemberFoodSubmission,
 } from "../app/memberFoodSubmissionsCloud";
-import { syncMemberFoodBankFromTrainer } from "../app/foodBankCloud";
 import type { Member } from "../app/types";
 import { FoodLabelScanButton } from "./FoodLabelScanButton";
 import { Card, GradientButton, OutlineButton, SelectBox, TextInput } from "../app/ui";
 
 type MemberSubmitFoodPanelProps = {
   member: Member;
+  onRefreshFoodBank?: () => void;
 };
 
 function emptyDraft(): FoodSubmissionDraft {
@@ -147,7 +147,7 @@ function MemberFoodDraftForm({
   );
 }
 
-export function MemberSubmitFoodPanel({ member }: MemberSubmitFoodPanelProps) {
+export function MemberSubmitFoodPanel({ member, onRefreshFoodBank }: MemberSubmitFoodPanelProps) {
   const [createOpen, setCreateOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [draft, setDraft] = useState<FoodSubmissionDraft>(() => emptyDraft());
@@ -158,16 +158,11 @@ export function MemberSubmitFoodPanel({ member }: MemberSubmitFoodPanelProps) {
   const ownerUserId = member.ownerUserId?.trim() ?? "";
   const panelRef = useRef<HTMLDivElement | null>(null);
 
-  const reloadHistory = useCallback(
-    async (options?: { syncFoodBank?: boolean }) => {
-      const rows = await fetchMemberFoodSubmissions(member.id);
-      setHistory(rows);
-      if (options?.syncFoodBank && ownerUserId) {
-        await syncMemberFoodBankFromTrainer(ownerUserId, member.id);
-      }
-    },
-    [member.id, ownerUserId],
-  );
+  const reloadHistory = useCallback(async () => {
+    const rows = await fetchMemberFoodSubmissions(member.id);
+    setHistory(rows);
+    onRefreshFoodBank?.();
+  }, [member.id, onRefreshFoodBank]);
 
   useEffect(() => {
     void reloadHistory();

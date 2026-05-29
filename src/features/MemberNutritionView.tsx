@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { NutritionHubTab } from "./nutrition/NutritionHub";
 import { Apple } from "lucide-react";
-import { syncMemberFoodBankFromTrainer } from "../app/foodBankCloud";
+import { scheduleMemberFoodBankSync } from "../app/foodBankCloud";
 import { buildDefaultFoodBankItems } from "../app/foodBankSeed";
 import { hydrateMealPlanFoodNutrition } from "../app/mealPlanFoodNutrition";
 import { mealPlansEqual, syncMealPlanForMember } from "../app/mealPlanCloud";
@@ -66,16 +66,24 @@ export function MemberNutritionView({ member, members, onSavePersonalGoals }: Me
     [memberId, memberEmail],
   );
 
-  const foodBankSyncedForMemberRef = useRef("");
-
-  useEffect(() => {
+  const refreshMemberFoodBank = useCallback(() => {
     const ptOwnerUserId = member.ownerUserId?.trim() ?? "";
     if (!ptOwnerUserId) return;
-    const syncKey = `${ptOwnerUserId}:${member.id}`;
-    if (foodBankSyncedForMemberRef.current === syncKey) return;
-    foodBankSyncedForMemberRef.current = syncKey;
-    void syncMemberFoodBankFromTrainer(ptOwnerUserId, member.id);
+    scheduleMemberFoodBankSync(ptOwnerUserId, member.id);
   }, [member.ownerUserId, member.id]);
+
+  useEffect(() => {
+    refreshMemberFoodBank();
+    const onVisible = () => {
+      if (document.visibilityState === "visible") refreshMemberFoodBank();
+    };
+    window.addEventListener("focus", refreshMemberFoodBank);
+    document.addEventListener("visibilitychange", onVisible);
+    return () => {
+      window.removeEventListener("focus", refreshMemberFoodBank);
+      document.removeEventListener("visibilitychange", onVisible);
+    };
+  }, [refreshMemberFoodBank]);
 
   useEffect(() => {
     hasLoadedOnceRef.current = false;
@@ -111,7 +119,7 @@ export function MemberNutritionView({ member, members, onSavePersonalGoals }: Me
             <h2 className="mt-3 text-lg font-bold text-slate-900">Matplan</h2>
             <p className="mt-2 text-sm text-slate-600">Treneren har ikke lagt ut en matplan til deg ennå.</p>
           </Card>
-          <MemberQuickFoodLogPanel memberId={memberId} />
+          <MemberQuickFoodLogPanel memberId={memberId} onRefreshFoodBank={refreshMemberFoodBank} />
         </div>
       );
     }
@@ -128,10 +136,11 @@ export function MemberNutritionView({ member, members, onSavePersonalGoals }: Me
           memberId={memberId}
           memberName={memberName}
           onOpenAvoidances={() => setNutritionTab("avoidances")}
+          onRefreshFoodBank={refreshMemberFoodBank}
         />
       </>
     );
-  }, [loading, plan, cloudSynced, memberId, memberName, setNutritionTab]);
+  }, [loading, plan, cloudSynced, memberId, memberName, setNutritionTab, refreshMemberFoodBank]);
 
   const profileMember = pickCanonicalMemberRowForProfile(member, members);
   const resolvedPersonalGoals = useMemo(
@@ -146,7 +155,7 @@ export function MemberNutritionView({ member, members, onSavePersonalGoals }: Me
       mealPlan={
         <>
           {mealPlanContent}
-          <MemberSubmitFoodPanel member={member} />
+          <MemberSubmitFoodPanel member={member} onRefreshFoodBank={refreshMemberFoodBank} />
         </>
       }
       mealPlanTargets={plan?.targets}

@@ -13,13 +13,14 @@ import { Card, OutlineButton, TextInput } from "../../app/ui";
 type MemberQuickFoodLogPanelProps = {
   memberId: string;
   readOnly?: boolean;
+  onRefreshFoodBank?: () => void;
 };
 
 function todayKey(): string {
   return toIsoDateKey(new Date());
 }
 
-export function MemberQuickFoodLogPanel({ memberId, readOnly = false }: MemberQuickFoodLogPanelProps) {
+export function MemberQuickFoodLogPanel({ memberId, readOnly = false, onRefreshFoodBank }: MemberQuickFoodLogPanelProps) {
   const foodItems = useFoodBankItems();
   const { items: recipes } = useInspirationRecipeItems();
   const [search, setSearch] = useState("");
@@ -30,6 +31,10 @@ export function MemberQuickFoodLogPanel({ memberId, readOnly = false }: MemberQu
 
   const key = todayKey();
   const logs = state.quickFoodLogs[key] ?? [];
+
+  useEffect(() => {
+    onRefreshFoodBank?.();
+  }, [onRefreshFoodBank]);
 
   useEffect(() => {
     let mounted = true;
@@ -44,8 +49,12 @@ export function MemberQuickFoodLogPanel({ memberId, readOnly = false }: MemberQu
 
   const filteredFoods = useMemo(() => {
     const q = search.trim().toLowerCase();
-    if (!q) return foodItems.slice(0, 20);
-    return foodItems.filter((item) => item.name.toLowerCase().includes(q)).slice(0, 20);
+    const matches = (item: FoodItem) => {
+      const haystack = `${item.name} ${item.origin}`.toLowerCase();
+      return !q || haystack.includes(q);
+    };
+    const matched = q ? foodItems.filter(matches) : foodItems;
+    return matched.slice(0, 25);
   }, [foodItems, search]);
 
   const selectedFood = useMemo(

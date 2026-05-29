@@ -13,6 +13,7 @@ type InlineMealSelfLogProps = {
   onAdd: (entry: SelfLogDraft) => void;
   compact?: boolean;
   autoOpen?: boolean;
+  onPanelOpen?: () => void;
 };
 
 export function createSelfLogEntry(
@@ -29,7 +30,7 @@ export function createSelfLogEntry(
   };
 }
 
-export function InlineMealSelfLog({ mealId, onAdd, compact = false, autoOpen = false }: InlineMealSelfLogProps) {
+export function InlineMealSelfLog({ mealId, onAdd, compact = false, autoOpen = false, onPanelOpen }: InlineMealSelfLogProps) {
   const foodItems = useFoodBankItems();
   const [open, setOpen] = useState(autoOpen);
   const [search, setSearch] = useState("");
@@ -37,10 +38,18 @@ export function InlineMealSelfLog({ mealId, onAdd, compact = false, autoOpen = f
   const [gramsInput, setGramsInput] = useState("100");
   const [error, setError] = useState<string | null>(null);
 
+  useEffect(() => {
+    if (open) onPanelOpen?.();
+  }, [open, onPanelOpen]);
+
   const filteredFoods = useMemo(() => {
     const q = search.trim().toLowerCase();
-    if (!q) return foodItems.slice(0, 15);
-    return foodItems.filter((item) => item.name.toLowerCase().includes(q)).slice(0, 15);
+    const matches = (item: FoodItem) => {
+      const haystack = `${item.name} ${item.origin} ${item.createdBy}`.toLowerCase();
+      return !q || haystack.includes(q);
+    };
+    const matched = q ? foodItems.filter(matches) : foodItems;
+    return matched.slice(0, 20);
   }, [foodItems, search]);
 
   const selectedFood = useMemo(
@@ -76,7 +85,10 @@ export function InlineMealSelfLog({ mealId, onAdd, compact = false, autoOpen = f
       <button
         type="button"
         className="motus-matplan-self-log-trigger motus-pressable"
-        onClick={() => setOpen(true)}
+        onClick={() => {
+          onPanelOpen?.();
+          setOpen(true);
+        }}
       >
         <Plus className="h-3.5 w-3.5" aria-hidden />
         Logg noe annet
