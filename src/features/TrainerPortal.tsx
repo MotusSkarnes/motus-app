@@ -52,6 +52,12 @@ import {
   type TrainingSubTab,
 } from "../app/exerciseCategories";
 import {
+  buildProgramExerciseFromBank,
+  defaultPrescriptionFieldsForCategory,
+  resolveExercisePrescriptionFields,
+} from "../app/exercisePrescriptionFields";
+import { ProgramExercisePrescriptionFields } from "./ProgramExercisePrescriptionFields";
+import {
   formatProgramExercisePrescription,
   formatWorkoutResultPerformedLabel,
   formatWorkoutResultSetPlanLabel,
@@ -73,6 +79,7 @@ import type {
   StartWorkoutModeOptions,
   UpdateMemberInput,
 } from "../services/appRepository";
+import type { ExercisePrescriptionFieldKey } from "../app/types";
 import {
   filterMemberIdsForRosterSave,
   isMemberIdentityVisibleToTrainer,
@@ -291,6 +298,7 @@ type TrainerPortalProps = {
     targetOwnerUserId: string;
   }) => Promise<{ ok: boolean; message: string }>;
   restoreMissingTestData: () => Promise<{ ok: boolean; message: string }>;
+  restoreMembersFromRosterBackup: () => Promise<{ ok: boolean; message: string }>;
   restoreOriginalExerciseBank: () => Promise<{ ok: boolean; message: string }>;
   saveProgramForMember: (input: {
     id?: string;
@@ -306,6 +314,7 @@ type TrainerPortalProps = {
   deleteProgramById: (programId: string, context?: DeleteProgramContext) => void;
   sendTrainerMessage: (memberId: string, text: string) => void;
   toggleChatMessageReaction: (messageId: string, emoji: ChatReactionEmoji, actor: ChatReactionActor) => void;
+  markChatConversationRead: (memberId: string, reader: "trainer" | "member") => void;
   updateWorkoutLogTrainerComment?: (input: {
     logId: string;
     trainerComment: string;
@@ -322,6 +331,7 @@ type TrainerPortalProps = {
     level: Exercise["level"];
     description: string;
     imageUrl?: string;
+    prescriptionFields?: ExercisePrescriptionFieldKey[];
   }) => void;
   deleteExercise: (exerciseId: string) => void;
   openCustomerMessagesSignal?: number;
@@ -712,11 +722,13 @@ function pickFirstName(value: unknown): string {
     restoreMemberByEmail,
     reassignMemberOwner,
     restoreMissingTestData,
+    restoreMembersFromRosterBackup,
     restoreOriginalExerciseBank,
     saveProgramForMember,
   deleteProgramById,
   sendTrainerMessage,
   toggleChatMessageReaction,
+  markChatConversationRead,
   updateWorkoutLogTrainerComment,
     clearLocalChatCache,
     saveExercise,
@@ -892,6 +904,8 @@ function pickFirstName(value: unknown): string {
   const [isReassigningMember, setIsReassigningMember] = useState(false);
   const [restoreDataStatus, setRestoreDataStatus] = useState<string | null>(null);
   const [isRestoringTestData, setIsRestoringTestData] = useState(false);
+  const [rosterBackupStatus, setRosterBackupStatus] = useState<string | null>(null);
+  const [isRestoringRosterBackup, setIsRestoringRosterBackup] = useState(false);
   const [restoreExerciseBankStatus, setRestoreExerciseBankStatus] = useState<string | null>(null);
   const [isRestoringExerciseBank, setIsRestoringExerciseBank] = useState(false);
   const [dashboardMonth, setDashboardMonth] = useState(() => {
@@ -940,6 +954,7 @@ function pickFirstName(value: unknown): string {
   const [exerciseFormLevel, setExerciseFormLevel] = useState<Exercise["level"]>("Nybegynner");
   const [exerciseFormDescription, setExerciseFormDescription] = useState("");
   const [exerciseFormImageUrl, setExerciseFormImageUrl] = useState("");
+  const [exerciseFormPrescriptionFields, setExerciseFormPrescriptionFields] = useState<ExercisePrescriptionFieldKey[]>([]);
   const [isUploadingExerciseImage, setIsUploadingExerciseImage] = useState(false);
   const [exerciseFormStatus, setExerciseFormStatus] = useState<string | null>(null);
   const [expandedExerciseId, setExpandedExerciseId] = useState<string | null>(null);
@@ -2171,29 +2186,7 @@ function pickFirstName(value: unknown): string {
   }
 
   function addExerciseToDraft(exercise: Exercise) {
-    const isCardio = exercise.category === "Kondisjon";
-    const isStretch = isHoldBasedExerciseCategory(exercise.category);
-    const isStrength = exercise.category === "Styrke";
-    const isTreadmill = exercise.equipment.trim().toLowerCase().includes("tredem");
-    setProgramExercisesDraft((prev) => [
-      ...prev,
-      {
-        id: uid("draft-ex"),
-        exerciseId: exercise.id,
-        exerciseName: exercise.name,
-        sets: isStretch ? "2" : "3",
-        repsUnit: isStrength ? "reps" : undefined,
-        reps: isCardio ? "" : isStretch ? "1" : "10",
-        weightUnit: isStrength ? "kg" : undefined,
-        weight: isCardio || isStretch ? "" : "0",
-        holdSeconds: isStretch ? "30" : "",
-        durationMinutes: isCardio ? "20" : "",
-        speed: isTreadmill ? "8" : "",
-        incline: isTreadmill ? "1" : "",
-        restSeconds: isStretch ? "30" : "90",
-        notes: "",
-      },
-    ]);
+    setProgramExercisesDraft((prev) => [...prev, buildProgramExerciseFromBank(exercise)]);
   }
 
   function moveDraftExercise(sourceId: string, targetId: string) {
@@ -2769,7 +2762,7 @@ function pickFirstName(value: unknown): string {
     const member = members.find((entry) => entry.id === memberId);
     setConfirmDialog({
       title: "Slette kunde permanent",
-      message: `Dette sletter ${member?.name?.trim() || "kunden"} permanent, inkludert programmer, logger og meldinger. Handlingen kan ikke angres. Vurder «Arkiver kunde» i stedet hvis du bare vil skjule kunden.`,
+      message: `Dette arkiverer ${member?.name?.trim() || "kunden"} og fjerner vedkommende fra aktiv kundeliste. Programmer og logger beholdes. Vurder «Arkiver kunde» i stedet — det er det vanlige valget.`,
       confirmLabel: "Slett permanent",
       cancelLabel: "Avbryt",
       tone: "danger",
@@ -3475,6 +3468,17 @@ function pickFirstName(value: unknown): string {
     setIsRestoringTestData(false);
   }
 
+  async function handleRestoreMembersFromRosterBackup() {
+    setIsRestoringRosterBackup(true);
+    setRosterBackupStatus("Henter kunder fra lokal sikkerhetskopi...");
+    const result = await restoreMembersFromRosterBackup();
+    setRosterBackupStatus(result.message);
+    setIsRestoringRosterBackup(false);
+    if (result.ok) {
+      setTrainerTab("customers");
+    }
+  }
+
   async function handleRestoreOriginalExerciseBank() {
     setIsRestoringExerciseBank(true);
     setRestoreExerciseBankStatus("Gjenoppretter original øvelsesbank...");
@@ -3852,6 +3856,7 @@ function pickFirstName(value: unknown): string {
     setExerciseFormLevel("Nybegynner");
     setExerciseFormDescription("");
     setExerciseFormImageUrl("");
+    setExerciseFormPrescriptionFields(defaultPrescriptionFieldsForCategory(defaultCategoryForExerciseBankTab(exerciseBankSubTab)));
   }
 
   function startEditExercise(exercise: Exercise) {
@@ -3865,6 +3870,7 @@ function pickFirstName(value: unknown): string {
     setExerciseFormLevel(exercise.level);
     setExerciseFormDescription(exercise.description);
     setExerciseFormImageUrl(exercise.imageUrl ?? "");
+    setExerciseFormPrescriptionFields(resolveExercisePrescriptionFields(exercise));
     setExerciseFormStatus(null);
   }
 
@@ -3887,6 +3893,7 @@ function pickFirstName(value: unknown): string {
       level: exerciseFormLevel,
       description,
       imageUrl: exerciseFormImageUrl.trim(),
+      prescriptionFields: exerciseFormPrescriptionFields,
     });
 
     setExerciseFormStatus(editingExerciseId ? "Øvelsen ble oppdatert." : "Ny øvelse ble lagt til i banken.");
@@ -3902,6 +3909,7 @@ function pickFirstName(value: unknown): string {
       level: exercise.level,
       description: exercise.description,
       imageUrl: exercise.imageUrl?.trim() ?? "",
+      prescriptionFields: resolveExercisePrescriptionFields(exercise),
     });
     setExerciseFormStatus(`Kopi av «${exercise.name}» ble lagt til.`);
     resetExerciseForm();
@@ -4880,6 +4888,25 @@ function pickFirstName(value: unknown): string {
           />
           <div className="rounded-xl border bg-slate-50 p-3 text-sm text-slate-600" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
             Under Klienter finner du søk, filter og vis/skjul inaktive kunder. PT-kortet over styrer navnet kundene ser i appen.
+          </div>
+          <div className="rounded-xl border bg-amber-50/80 p-3 space-y-2.5" style={{ borderColor: "rgba(245,158,11,0.35)" }}>
+            <div className="text-sm font-medium text-amber-950">Gjenopprett kunder fra sikkerhetskopi</div>
+            <div className="text-xs text-amber-900">
+              Hvis en kunde har forsvunnet fra listen, kan denne enheten ha en automatisk kopi (opptil 90 dager). Bruk
+              dette før du oppretter kunden på nytt.
+            </div>
+            {rosterBackupStatus ? (
+              <div className="rounded-xl border border-amber-200 bg-white px-3 py-2 text-xs text-amber-900">
+                {rosterBackupStatus}
+              </div>
+            ) : null}
+            <OutlineButton
+              onClick={() => void handleRestoreMembersFromRosterBackup()}
+              className="w-full"
+              disabled={isRestoringRosterBackup}
+            >
+              {isRestoringRosterBackup ? "Gjenoppretter..." : "Gjenopprett fra sikkerhetskopi"}
+            </OutlineButton>
           </div>
           <div className="rounded-xl border bg-slate-50 p-3 space-y-2.5" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
             <div className="text-sm font-medium text-slate-700">Gjenopprett testmedlemmer</div>
@@ -6188,77 +6215,42 @@ function pickFirstName(value: unknown): string {
                             {(() => {
                               const linkedExercise = exercisesById.get(item.exerciseId);
                               const isCardio = isCardioDraftRow(item, linkedExercise);
-                              const isStretch = programDraftUsesHoldFields(linkedExercise?.category, programsSubTab);
                               const isTreadmill = (linkedExercise?.equipment ?? "").trim().toLowerCase().includes("tredem");
+                              const prescriptionFields = resolveExercisePrescriptionFields(linkedExercise);
                               return (
-                            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-                              <div className="space-y-1">
-                                <div className="text-[11px] font-medium text-slate-500">{isCardio ? cardioSetLabel() : "Antall sett"}</div>
-                                <TextInput value={item.sets} onChange={(e) => updateDraftExercise(item.id, "sets", e.target.value)} placeholder={isCardio ? cardioSetPlaceholder() : "Sett"} />
-                              </div>
-                              {isCardio ? (
-                                <>
-                                  <div className="space-y-1">
-                                    <div className="text-[11px] font-medium text-slate-500">Tid (min)</div>
-                                    <TextInput value={item.durationMinutes ?? ""} onChange={(e) => updateDraftExercise(item.id, "durationMinutes", e.target.value)} placeholder="Minutter" />
-                                  </div>
-                                  <div className="space-y-1">
-                                    <div className="text-[11px] font-medium text-slate-500">Tid (sek)</div>
-                                    <TextInput value={item.holdSeconds ?? ""} onChange={(e) => updateDraftExercise(item.id, "holdSeconds", e.target.value)} placeholder="Sekunder" />
-                                  </div>
-                                </>
-                              ) : isStretch ? (
-                                <div className="space-y-1">
-                                  <div className="text-[11px] font-medium text-slate-500">Hold (sek)</div>
-                                  <TextInput
-                                    value={item.holdSeconds ?? ""}
-                                    onChange={(e) => updateDraftExercise(item.id, "holdSeconds", e.target.value)}
-                                    placeholder="Sekunder"
-                                  />
-                                </div>
-                              ) : (
-                                <>
-                                  <div className="space-y-1">
-                                    <div className="text-[11px] font-medium text-slate-500">Antall reps</div>
-                                    <TextInput value={item.reps} onChange={(e) => updateDraftExercise(item.id, "reps", e.target.value)} placeholder="Reps" />
-                                  </div>
-                                  <div className="space-y-1">
-                                    <div className="text-[11px] font-medium text-slate-500">Kg</div>
-                                    <TextInput value={item.weight} onChange={(e) => updateDraftExercise(item.id, "weight", e.target.value)} placeholder="Kg" />
-                                  </div>
-                                </>
-                              )}
-                              {isCardio && isTreadmill ? (
-                                <>
-                                  <div className="space-y-1">
-                                    <div className="text-[11px] font-medium text-slate-500">Fart (km/t)</div>
-                                    <TextInput value={item.speed ?? ""} onChange={(e) => updateDraftExercise(item.id, "speed", e.target.value)} placeholder="Fart" />
-                                  </div>
-                                  <div className="space-y-1">
-                                    <div className="text-[11px] font-medium text-slate-500">Incline (%)</div>
-                                    <TextInput value={item.incline ?? ""} onChange={(e) => updateDraftExercise(item.id, "incline", e.target.value)} placeholder="Incline" />
-                                  </div>
-                                </>
-                              ) : null}
-                              {isCardio ? (
-                                <div className="space-y-1">
-                                  <div className="text-[11px] font-medium text-slate-500">Puls (% av makspuls)</div>
-                                  <TextInput
-                                    value={item.targetHrPercent ?? ""}
-                                    onChange={(e) => updateDraftExercise(item.id, "targetHrPercent", e.target.value)}
-                                    placeholder="f.eks. 85–90"
-                                  />
-                                </div>
-                              ) : null}
-                              <div className="space-y-1">
-                                <div className="text-[11px] font-medium text-slate-500">Hvile (sekunder)</div>
-                                <TextInput value={item.restSeconds} onChange={(e) => updateDraftExercise(item.id, "restSeconds", e.target.value)} placeholder="Hvile sek" />
-                              </div>
-                              <div className="space-y-1">
-                                <div className="text-[11px] font-medium text-slate-500">Notat til øvelsen</div>
-                                <TextInput value={item.notes} onChange={(e) => updateDraftExercise(item.id, "notes", e.target.value)} placeholder="Notat" />
-                              </div>
-                            </div>
+                                <ProgramExercisePrescriptionFields
+                                  fields={prescriptionFields}
+                                  item={item}
+                                  onUpdate={(field, value) => updateDraftExercise(item.id, field, value)}
+                                  setsLabel={isCardio ? cardioSetLabel() : "Antall sett"}
+                                  setsPlaceholder={isCardio ? cardioSetPlaceholder() : "Sett"}
+                                  trailing={
+                                    <>
+                                      {isCardio && isTreadmill ? (
+                                        <>
+                                          <div className="space-y-1">
+                                            <div className="text-[11px] font-medium text-slate-500">Fart (km/t)</div>
+                                            <TextInput value={item.speed ?? ""} onChange={(e) => updateDraftExercise(item.id, "speed", e.target.value)} placeholder="Fart" />
+                                          </div>
+                                          <div className="space-y-1">
+                                            <div className="text-[11px] font-medium text-slate-500">Incline (%)</div>
+                                            <TextInput value={item.incline ?? ""} onChange={(e) => updateDraftExercise(item.id, "incline", e.target.value)} placeholder="Incline" />
+                                          </div>
+                                        </>
+                                      ) : null}
+                                      {isCardio ? (
+                                        <div className="space-y-1">
+                                          <div className="text-[11px] font-medium text-slate-500">Puls (% av makspuls)</div>
+                                          <TextInput
+                                            value={item.targetHrPercent ?? ""}
+                                            onChange={(e) => updateDraftExercise(item.id, "targetHrPercent", e.target.value)}
+                                            placeholder="f.eks. 85–90"
+                                          />
+                                        </div>
+                                      ) : null}
+                                    </>
+                                  }
+                                />
                               );
                             })()}
                           </div>
@@ -6606,6 +6598,11 @@ function pickFirstName(value: unknown): string {
                     messagesContainerRef={trainerMessagesContainerRef}
                     quickActions={trainerChatQuickActions}
                     onToggleReaction={toggleChatMessageReaction}
+                    onMarkConversationRead={
+                      selectedMemberId && !selectedMemberMessagesLocked
+                        ? () => markChatConversationRead(selectedMemberId, "trainer")
+                        : undefined
+                    }
                     headerExtra={
                       chatShareProgramPickerOpen && selectedPrograms.length > 1 ? (
                         <div className="motus-chat-share-panel">
@@ -6795,6 +6792,8 @@ function pickFirstName(value: unknown): string {
           onExerciseFormImageUrlChange={setExerciseFormImageUrl}
           exerciseFormDescription={exerciseFormDescription}
           onExerciseFormDescriptionChange={setExerciseFormDescription}
+          exerciseFormPrescriptionFields={exerciseFormPrescriptionFields}
+          onExerciseFormPrescriptionFieldsChange={setExerciseFormPrescriptionFields}
           exerciseFormGroupOptions={exerciseFormGroupOptions}
           exerciseFormEquipmentOptions={exerciseFormEquipmentOptions}
           exerciseFormStatus={exerciseFormStatus}

@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Check, Pencil, X } from "lucide-react";
-import { FOOD_BANK_CATEGORIES, type FoodCategoryId } from "../app/foodBankTypes";
+import { mergeFoodItemsIntoLocalCache } from "../app/foodBankCloud";
 import {
+  foodItemFromSubmission,
   foodSubmissionDraftFromScan,
   type FoodLabelScanResult,
   type FoodSubmissionDraft,
@@ -14,7 +15,8 @@ import {
 } from "../app/memberFoodSubmissionsCloud";
 import type { Member } from "../app/types";
 import { FoodLabelScanButton } from "./FoodLabelScanButton";
-import { Card, GradientButton, OutlineButton, SelectBox, TextInput } from "../app/ui";
+import { FoodSubmissionDraftForm } from "./FoodSubmissionDraftForm";
+import { Card, OutlineButton } from "../app/ui";
 
 type MemberSubmitFoodPanelProps = {
   member: Member;
@@ -52,99 +54,6 @@ function cloneDraft(draft: FoodSubmissionDraft): FoodSubmissionDraft {
     ...draft,
     nutritionPer100g: { ...draft.nutritionPer100g },
   };
-}
-
-type MemberFoodDraftFormProps = {
-  draft: FoodSubmissionDraft;
-  onDraftChange: (draft: FoodSubmissionDraft) => void;
-  onScanned: (scan: FoodLabelScanResult, imageDataUrl: string) => void;
-  onScanError: (message: string) => void;
-  submitLabel: string;
-  onSubmit: () => void;
-  onCancel: () => void;
-  submitting: boolean;
-};
-
-function MemberFoodDraftForm({
-  draft,
-  onDraftChange,
-  onScanned,
-  onScanError,
-  submitLabel,
-  onSubmit,
-  onCancel,
-  submitting,
-}: MemberFoodDraftFormProps) {
-  return (
-    <div className="space-y-3 rounded-xl border border-slate-200 bg-slate-50 p-3">
-      {draft.imageUrl ? (
-        <img src={draft.imageUrl} alt="" className="max-h-40 rounded-lg border border-slate-200 object-contain" />
-      ) : null}
-      <div className="flex flex-wrap gap-2">
-        <FoodLabelScanButton onScanned={onScanned} onError={onScanError} label="Scan etikett på nytt" />
-      </div>
-      <label className="block space-y-1">
-        <span className="text-xs font-semibold text-slate-700">Navn</span>
-        <TextInput
-          value={draft.name}
-          onChange={(e) => onDraftChange({ ...draft, name: e.target.value })}
-        />
-      </label>
-      <div className="grid gap-2 sm:grid-cols-2">
-        <label className="block space-y-1">
-          <span className="text-xs font-semibold text-slate-700">Porsjon</span>
-          <TextInput
-            value={draft.portionLabel}
-            onChange={(e) => onDraftChange({ ...draft, portionLabel: e.target.value })}
-          />
-        </label>
-        <label className="block space-y-1">
-          <span className="text-xs font-semibold text-slate-700">Gram</span>
-          <TextInput
-            value={String(draft.portionGrams)}
-            onChange={(e) =>
-              onDraftChange({ ...draft, portionGrams: Number(e.target.value.replace(",", ".")) || 0 })
-            }
-          />
-        </label>
-      </div>
-      <label className="block space-y-1">
-        <span className="text-xs font-semibold text-slate-700">Kategori</span>
-        <SelectBox
-          value={draft.category}
-          onChange={(value) => onDraftChange({ ...draft, category: value as FoodCategoryId })}
-          options={FOOD_BANK_CATEGORIES.map((c) => ({ value: c.id, label: c.label }))}
-        />
-      </label>
-      <div className="grid gap-2 sm:grid-cols-2">
-        {(["kcal", "protein", "carbs", "fat"] as const).map((key) => (
-          <label key={key} className="block space-y-1">
-            <span className="text-xs font-semibold text-slate-700">{key} / 100g</span>
-            <TextInput
-              value={String(draft.nutritionPer100g[key])}
-              onChange={(e) =>
-                onDraftChange({
-                  ...draft,
-                  nutritionPer100g: {
-                    ...draft.nutritionPer100g,
-                    [key]: Number(e.target.value.replace(",", ".")) || 0,
-                  },
-                })
-              }
-            />
-          </label>
-        ))}
-      </div>
-      <div className="flex flex-wrap gap-2">
-        <GradientButton type="button" onClick={onSubmit} disabled={submitting}>
-          {submitLabel}
-        </GradientButton>
-        <OutlineButton type="button" onClick={onCancel} disabled={submitting}>
-          Avbryt
-        </OutlineButton>
-      </div>
-    </div>
-  );
 }
 
 export function MemberSubmitFoodPanel({ member, onRefreshFoodBank }: MemberSubmitFoodPanelProps) {
@@ -224,7 +133,9 @@ export function MemberSubmitFoodPanel({ member, onRefreshFoodBank }: MemberSubmi
       setStatus(result.error);
       return;
     }
-    setStatus("Sendt til PT for godkjenning.");
+    const item = foodItemFromSubmission(result.submission);
+    if (item) mergeFoodItemsIntoLocalCache([item]);
+    setStatus("Sendt til PT. Du kan søke etter matvaren med en gang når du logger mat.");
     closeForms();
     void reloadHistory();
   };
@@ -248,7 +159,9 @@ export function MemberSubmitFoodPanel({ member, onRefreshFoodBank }: MemberSubmi
       setStatus(result.error);
       return;
     }
-    setStatus("Forslaget er oppdatert.");
+    const item = foodItemFromSubmission(result.submission);
+    if (item) mergeFoodItemsIntoLocalCache([item]);
+    setStatus("Forslaget er oppdatert — fortsatt tilgjengelig i logging.");
     closeForms();
     void reloadHistory();
   };
@@ -263,7 +176,8 @@ export function MemberSubmitFoodPanel({ member, onRefreshFoodBank }: MemberSubmi
         <div>
           <h3 className="text-sm font-semibold text-slate-900">Foreslå ny matvare</h3>
           <p className="text-xs text-slate-600">
-            Ta bilde av næringsinnholdet — PT godkjenner før det legges i matbanken.
+            Ta bilde av næringsinnholdet. Du kan bruke matvaren med en gang; PT godkjenner før den legges i felles
+            matbank.
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -281,7 +195,7 @@ export function MemberSubmitFoodPanel({ member, onRefreshFoodBank }: MemberSubmi
       {status ? (
         <p
           className={`text-xs ${
-            status.includes("Sendt") || status.includes("oppdatert")
+            status.includes("Sendt") || status.includes("oppdatert") || status.includes("tilgjengelig")
               ? "text-teal-800"
               : status.includes("Sjekk") || status.includes("Etikett")
                 ? "text-slate-700"
@@ -293,7 +207,7 @@ export function MemberSubmitFoodPanel({ member, onRefreshFoodBank }: MemberSubmi
       ) : null}
 
       {createOpen ? (
-        <MemberFoodDraftForm
+        <FoodSubmissionDraftForm
           draft={draft}
           onDraftChange={setDraft}
           onScanned={handleRescanInForm}
@@ -306,7 +220,7 @@ export function MemberSubmitFoodPanel({ member, onRefreshFoodBank }: MemberSubmi
       ) : null}
 
       {editingId ? (
-        <MemberFoodDraftForm
+        <FoodSubmissionDraftForm
           draft={draft}
           onDraftChange={setDraft}
           onScanned={handleRescanInForm}
@@ -333,9 +247,9 @@ export function MemberSubmitFoodPanel({ member, onRefreshFoodBank }: MemberSubmi
                 <span className="truncate">
                   {row.draftItem.name} ·{" "}
                   {row.status === "pending"
-                    ? "Venter"
+                    ? "Tilgjengelig for deg · venter på PT"
                     : row.status === "approved"
-                      ? "Godkjent — søk etter navnet når du logger mat"
+                      ? "Godkjent — i felles matbank"
                       : "Avslått"}
                 </span>
               </div>

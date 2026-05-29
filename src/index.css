@@ -7314,6 +7314,13 @@ button.motus-progress-status-banner {
   color: #be123c;
 }
 
+.motus-exbank-chip--active {
+  border-color: #30e3be;
+  background: rgba(48, 227, 190, 0.14);
+  color: #0f766e;
+  font-weight: 600;
+}
+
 .motus-exbank-upload-zone {
   display: block;
   cursor: pointer;
@@ -8691,7 +8698,12 @@ button.motus-progress-status-banner {
 
 .motus-chat-read-mark {
   font-size: 0.625rem;
-  color: rgba(15, 118, 110, 0.75);
+  letter-spacing: -0.12em;
+  color: rgba(100, 116, 139, 0.85);
+}
+
+.motus-chat-read-mark--read {
+  color: rgba(13, 148, 136, 0.95);
 }
 
 .motus-chat-reactions {

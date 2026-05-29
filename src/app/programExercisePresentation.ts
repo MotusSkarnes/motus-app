@@ -70,7 +70,8 @@ export function formatProgramExercisePrescription(
 
   const repsUnit = exercise.repsUnit === "minutes" ? "min" : "reps";
   const weightUnit = exercise.weightUnit === "seconds" ? "sek" : "kg";
-  return `${exercise.sets || "-"}×${exercise.reps || "-"} ${repsUnit} · ${exercise.weight || "0"} ${weightUnit} · ${restSeconds}s${pauseLabel}`;
+  const seatSuffix = exercise.seatSetting?.trim() ? ` · sete ${exercise.seatSetting.trim()}` : "";
+  return `${exercise.sets || "-"}×${exercise.reps || "-"} ${repsUnit} · ${exercise.weight || "0"} ${weightUnit} · ${restSeconds}s${pauseLabel}${seatSuffix}`;
 }
 
 function workoutRowsToProgramExercise(rows: WorkoutExerciseResult[]): ProgramExercise | null {

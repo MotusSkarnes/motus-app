@@ -396,7 +396,7 @@ Deno.serve(async (req) => {
     memberDataLookupList.length > 0
       ? await adminClient
           .from("chat_messages")
-          .select("id, member_id, sender, text, created_at")
+          .select("id, member_id, sender, text, created_at, read_by_member_at, read_by_trainer_at")
           .in("member_id", memberDataLookupList)
           .order("created_at", { ascending: true })
       : { data: [], error: null };
@@ -404,7 +404,7 @@ Deno.serve(async (req) => {
     requesterUserId
       ? await adminClient
           .from("chat_messages")
-          .select("id, member_id, sender, text, created_at")
+          .select("id, member_id, sender, text, created_at, read_by_member_at, read_by_trainer_at")
           .eq("owner_user_id", requesterUserId)
           .order("created_at", { ascending: true })
       : { data: [], error: null };
@@ -454,7 +454,7 @@ Deno.serve(async (req) => {
   let exercises: Array<Record<string, unknown>> = [];
   const { data: exerciseRows, error: exercisesError } = await adminClient
     .from("exercise_bank")
-    .select("id, name, category, muscle_group, equipment, level, description, image_url")
+    .select("id, name, category, muscle_group, equipment, level, description, image_url, prescription_fields")
     .or("is_active.is.null,is_active.eq.true")
     .order("name", { ascending: true });
   if (exercisesError) {

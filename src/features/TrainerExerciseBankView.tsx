@@ -1,5 +1,6 @@
 import { useMemo, useRef, useState, type ReactNode } from "react";
 import {
+  ClipboardList,
   Copy,
   Dumbbell,
   Eye,
@@ -23,9 +24,11 @@ import {
 } from "../app/exerciseCategories";
 import { isPopularExercise, isRecommendedExercise } from "../app/exerciseBankStats";
 import { splitMuscleGroupLabel } from "./muscleSplitStats";
+import { defaultPrescriptionFieldsForCategory } from "../app/exercisePrescriptionFields";
 import { ExerciseBankBadges } from "./ExerciseBankListCard";
+import { ExercisePrescriptionFieldsEditor } from "./ExercisePrescriptionFieldsEditor";
 import { EmptyState, GradientButton, OutlineButton, SelectBox, TextArea, TextInput } from "../app/ui";
-import type { Exercise } from "../app/types";
+import type { Exercise, ExercisePrescriptionFieldKey } from "../app/types";
 
 function splitMultiValue(value: string): string[] {
   return Array.from(
@@ -121,6 +124,8 @@ export type TrainerExerciseBankViewProps = {
   onExerciseFormImageUrlChange: (value: string) => void;
   exerciseFormDescription: string;
   onExerciseFormDescriptionChange: (value: string) => void;
+  exerciseFormPrescriptionFields: ExercisePrescriptionFieldKey[];
+  onExerciseFormPrescriptionFieldsChange: (value: ExercisePrescriptionFieldKey[]) => void;
   exerciseFormGroupOptions: string[];
   exerciseFormEquipmentOptions: string[];
   exerciseFormStatus: string | null;
@@ -160,6 +165,8 @@ export function TrainerExerciseBankView({
   onExerciseFormImageUrlChange,
   exerciseFormDescription,
   onExerciseFormDescriptionChange,
+  exerciseFormPrescriptionFields,
+  onExerciseFormPrescriptionFieldsChange,
   exerciseFormGroupOptions,
   exerciseFormEquipmentOptions,
   exerciseFormStatus,
@@ -360,7 +367,13 @@ export function TrainerExerciseBankView({
                   <span className="motus-exbank-field-label">Type</span>
                   <SelectBox
                     value={exerciseFormCategory}
-                    onChange={(value) => onExerciseFormCategoryChange(value as Exercise["category"])}
+                    onChange={(value) => {
+                      const nextCategory = value as Exercise["category"];
+                      onExerciseFormCategoryChange(nextCategory);
+                      if (!editingExerciseId) {
+                        onExerciseFormPrescriptionFieldsChange(defaultPrescriptionFieldsForCategory(nextCategory));
+                      }
+                    }}
                     options={EXERCISE_CATEGORY_OPTIONS}
                   />
                 </label>
@@ -393,6 +406,13 @@ export function TrainerExerciseBankView({
                 placeholder: "Velg utstyr",
                 emptyText: "Valgfritt",
               })}
+            </FormSection>
+
+            <FormSection icon={<ClipboardList className="h-4 w-4" />} title="Programvariabler">
+              <ExercisePrescriptionFieldsEditor
+                value={exerciseFormPrescriptionFields}
+                onChange={onExerciseFormPrescriptionFieldsChange}
+              />
             </FormSection>
 
             <FormSection icon={<ImageIcon className="h-4 w-4" />} title="Media">

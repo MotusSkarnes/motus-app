@@ -47,13 +47,11 @@ Deno.serve(async (req) => {
 
   const targetMemberIds = new Set<string>([memberId]);
 
+  // Arkiver kun — slett aldri programmer/logger/meldinger (gjenoppretting og PT-synlighet).
   for (const id of targetMemberIds) {
-    await adminClient.from("members").update({ is_active: false }).eq("id", id);
-    await adminClient.from("chat_messages").delete().eq("member_id", id);
-    await adminClient.from("workout_logs").delete().eq("member_id", id);
-    await adminClient.from("training_programs").delete().eq("member_id", id);
+    await adminClient.from("members").update({ is_active: false, updated_at: new Date().toISOString() }).eq("id", id);
   }
 
-  return jsonResponse(200, { message: "Member deletion completed" });
+  return jsonResponse(200, { message: "Member archived", archived: true });
 });
 

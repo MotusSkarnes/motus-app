@@ -37,6 +37,8 @@ import {
   mergeHubItemsPreservingRecipes,
 } from "../app/inspirationHubItems";
 import { EXERCISE_CATEGORY_OPTIONS, exerciseCategoryAccentColor } from "../app/exerciseCategories";
+import { buildProgramExerciseFromBank, resolveExercisePrescriptionFields } from "../app/exercisePrescriptionFields";
+import { ProgramExercisePrescriptionFields } from "./ProgramExercisePrescriptionFields";
 import { formatProgramExercisePrescription, resolveProgramExerciseName } from "../app/programExercisePresentation";
 import { EXERCISE_IMAGE_THUMB_CLASS } from "../app/exerciseIllustrations/constants";
 import { getMedicalSketchFallbackDataUri, resolveExerciseImageSrc } from "../app/exerciseIllustrations";
@@ -412,23 +414,7 @@ function getExercisePreviewSrc(exercise: Exercise): string {
 }
 
 function programExerciseFromBank(exercise: Exercise): ProgramExercise {
-  const isCardio = exercise.category === "Kondisjon";
-  const isStretch = isHoldBasedExerciseCategory(exercise.category);
-  const isTreadmill = exercise.equipment.trim().toLowerCase().includes("tredem");
-  return {
-    id: uid("inspo-prog-ex"),
-    exerciseId: exercise.id,
-    exerciseName: exercise.name,
-    sets: isStretch ? "2" : "3",
-    reps: isCardio ? "" : isStretch ? "1" : "10",
-    weight: isCardio || isStretch ? "" : "0",
-    holdSeconds: isStretch ? "30" : "",
-    durationMinutes: isCardio ? "20" : "",
-    speed: isTreadmill ? "8" : "",
-    incline: isTreadmill ? "1" : "",
-    restSeconds: isStretch ? "30" : "90",
-    notes: "",
-  };
+  return { ...buildProgramExerciseFromBank(exercise), id: uid("inspo-prog-ex") };
 }
 
 function linkProgramExercisesToBank(exercises: ProgramExercise[], bank: Exercise[]): ProgramExercise[] {
@@ -2668,8 +2654,8 @@ export function InspirationHub({
                   {(programTemplateDraft?.exercises ?? []).map((item) => {
                     const linkedExercise = exercisesById.get(item.exerciseId);
                     const isCardio = linkedExercise?.category === "Kondisjon";
-                    const isStretch = Boolean(linkedExercise?.category && isHoldBasedExerciseCategory(linkedExercise.category));
                     const isTreadmill = (linkedExercise?.equipment ?? "").trim().toLowerCase().includes("tredem");
+                    const prescriptionFields = resolveExercisePrescriptionFields(linkedExercise);
                     return (
                       <div key={item.id} className="rounded-xl border bg-white p-3 space-y-3" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
                         <div className="flex items-start justify-between gap-2">
@@ -2687,60 +2673,25 @@ export function InspirationHub({
                             <Trash2 className="h-4 w-4" />
                           </button>
                         </div>
-                        <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
-                          <div className="space-y-1">
-                            <div className="text-[11px] font-medium text-slate-500">Sett</div>
-                            <TextInput value={item.sets} onChange={(e) => updateProgramExercise(item.id, "sets", e.target.value)} placeholder="Sett" />
-                          </div>
-                          {isCardio ? (
-                            <>
-                              <div className="space-y-1">
-                                <div className="text-[11px] font-medium text-slate-500">Tid (min)</div>
-                                <TextInput value={item.durationMinutes ?? ""} onChange={(e) => updateProgramExercise(item.id, "durationMinutes", e.target.value)} placeholder="Min" />
-                              </div>
-                              <div className="space-y-1">
-                                <div className="text-[11px] font-medium text-slate-500">Tid (sek)</div>
-                                <TextInput value={item.holdSeconds ?? ""} onChange={(e) => updateProgramExercise(item.id, "holdSeconds", e.target.value)} placeholder="Sek" />
-                              </div>
-                            </>
-                          ) : isStretch ? (
-                            <div className="space-y-1">
-                              <div className="text-[11px] font-medium text-slate-500">Hold (sek)</div>
-                              <TextInput value={item.holdSeconds ?? ""} onChange={(e) => updateProgramExercise(item.id, "holdSeconds", e.target.value)} placeholder="Sek" />
-                            </div>
-                          ) : (
-                            <>
-                              <div className="space-y-1">
-                                <div className="text-[11px] font-medium text-slate-500">Reps</div>
-                                <TextInput value={item.reps} onChange={(e) => updateProgramExercise(item.id, "reps", e.target.value)} placeholder="Reps" />
-                              </div>
-                              <div className="space-y-1">
-                                <div className="text-[11px] font-medium text-slate-500">Kg</div>
-                                <TextInput value={item.weight} onChange={(e) => updateProgramExercise(item.id, "weight", e.target.value)} placeholder="Kg" />
-                              </div>
-                            </>
-                          )}
-                          {isCardio && isTreadmill ? (
-                            <>
-                              <div className="space-y-1">
-                                <div className="text-[11px] font-medium text-slate-500">Fart</div>
-                                <TextInput value={item.speed ?? ""} onChange={(e) => updateProgramExercise(item.id, "speed", e.target.value)} placeholder="km/t" />
-                              </div>
-                              <div className="space-y-1">
-                                <div className="text-[11px] font-medium text-slate-500">Stigning</div>
-                                <TextInput value={item.incline ?? ""} onChange={(e) => updateProgramExercise(item.id, "incline", e.target.value)} placeholder="%" />
-                              </div>
-                            </>
-                          ) : null}
-                          <div className="space-y-1">
-                            <div className="text-[11px] font-medium text-slate-500">Hvile (sek)</div>
-                            <TextInput value={item.restSeconds} onChange={(e) => updateProgramExercise(item.id, "restSeconds", e.target.value)} placeholder="Sek" />
-                          </div>
-                          <div className={`space-y-1 ${isCardio ? "sm:col-span-2 lg:col-span-3" : "sm:col-span-2 lg:col-span-4"}`}>
-                            <div className="text-[11px] font-medium text-slate-500">Notat</div>
-                            <TextInput value={item.notes} onChange={(e) => updateProgramExercise(item.id, "notes", e.target.value)} placeholder="Notat" />
-                          </div>
-                        </div>
+                        <ProgramExercisePrescriptionFields
+                          fields={prescriptionFields}
+                          item={item}
+                          onUpdate={(field, value) => updateProgramExercise(item.id, field, value)}
+                          trailing={
+                            isCardio && isTreadmill ? (
+                              <>
+                                <div className="space-y-1">
+                                  <div className="text-[11px] font-medium text-slate-500">Fart</div>
+                                  <TextInput value={item.speed ?? ""} onChange={(e) => updateProgramExercise(item.id, "speed", e.target.value)} placeholder="km/t" />
+                                </div>
+                                <div className="space-y-1">
+                                  <div className="text-[11px] font-medium text-slate-500">Stigning</div>
+                                  <TextInput value={item.incline ?? ""} onChange={(e) => updateProgramExercise(item.id, "incline", e.target.value)} placeholder="%" />
+                                </div>
+                              </>
+                            ) : null
+                          }
+                        />
                         {!linkedExercise && !usesExerciseBank ? (
                           <TextInput value={item.exerciseName} onChange={(e) => updateProgramExercise(item.id, "exerciseName", e.target.value)} placeholder="Øvelsesnavn" />
                         ) : null}

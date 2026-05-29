@@ -52,11 +52,19 @@ function canIncludeLinkedMemberRow(
   linkedMemberIds: Set<string>,
 ): boolean {
   const id = String((row as { id?: string }).id ?? "").trim();
-  if (!id || !linkedMemberIds.has(id)) return false;
-  if (isVisibleToTrainer(row, ownerUserId)) return true;
-  // Security-first: never surface private roster rows through link-based fallback
-  // unless they are already visible to the trainer via ownership/shared rules above.
-  return false;
+  if (id && linkedMemberIds.has(id)) return true;
+  return isVisibleToTrainer(row, ownerUserId);
+}
+
+/** Medlem synlig i kundelisten: eier/delt roster, eller faktisk innhold hos denne PT-en. */
+function isMemberRowVisibleInTrainerRoster(
+  row: Record<string, unknown>,
+  ownerUserId: string,
+  linkedMemberIds: Set<string>,
+): boolean {
+  const id = String((row as { id?: string }).id ?? "").trim();
+  if (id && linkedMemberIds.has(id)) return true;
+  return isVisibleToTrainer(row, ownerUserId);
 }
 
 function rowBelongsToOwner(row: Record<string, unknown>, ownerUserId: string): boolean {
@@ -326,12 +334,13 @@ Deno.serve(async (req) => {
     }
     const widenedMembers = allMembersRows.filter((row) => {
       const rowEmail = normalizeEmail((row as { email?: string }).email);
-      return Boolean(rowEmail && relatedEmailSet.has(rowEmail) && isVisibleToTrainer(row, ownerUserId));
+      if (!rowEmail || !relatedEmailSet.has(rowEmail)) return false;
+      return isMemberRowVisibleInTrainerRoster(row, ownerUserId, linkedMemberIds);
     });
     members = uniqueById([...(members ?? []), ...widenedMembers]) as Array<Record<string, unknown>>;
     members = harmonizeMemberProfilesByEmail(members);
   }
-  members = (members ?? []).filter((row) => isVisibleToTrainer(row, ownerUserId));
+  members = (members ?? []).filter((row) => isMemberRowVisibleInTrainerRoster(row, ownerUserId, linkedMemberIds));
 
   const visibleMemberIds = (members ?? []).map((row) => String((row as { id?: string }).id ?? "")).filter(Boolean);
   const memberOwnerById = new Map<string, string>();
@@ -340,21 +349,23 @@ Deno.serve(async (req) => {
     const ptOwner = String((row as { owner_user_id?: string }).owner_user_id ?? "").trim();
     if (memberId && ptOwner) memberOwnerById.set(memberId, ptOwner);
   }
-  const memberRowById = new Map<string, Record<string, unknown>>();
-  for (const row of members ?? []) {
-    const id = String((row as { id?: string }).id ?? "").trim();
-    if (id) memberRowById.set(id, row);
-  }
+  // Backfill only NULL owner_user_id — never reassign another PT's programs/logs to member.owner_user_id.
   if (visibleMemberIds.length > 0) {
-    for (const memberId of visibleMemberIds) {
-      const memberRow = memberRowById.get(memberId);
-      if (memberRow && isSharedMember(memberRow)) continue;
-      const ptOwner = memberOwnerById.get(memberId);
-      if (!ptOwner) continue;
-      await adminClient.from("training_programs").update({ owner_user_id: ptOwner }).eq("member_id", memberId).neq("owner_user_id", ptOwner);
-      await adminClient.from("workout_logs").update({ owner_user_id: ptOwner }).eq("member_id", memberId).neq("owner_user_id", ptOwner);
-      await adminClient.from("chat_messages").update({ owner_user_id: ptOwner }).eq("member_id", memberId).neq("owner_user_id", ptOwner);
-    }
+    await adminClient
+      .from("training_programs")
+      .update({ owner_user_id: ownerUserId })
+      .in("member_id", visibleMemberIds)
+      .is("owner_user_id", null);
+    await adminClient
+      .from("workout_logs")
+      .update({ owner_user_id: ownerUserId })
+      .in("member_id", visibleMemberIds)
+      .is("owner_user_id", null);
+    await adminClient
+      .from("chat_messages")
+      .update({ owner_user_id: ownerUserId })
+      .in("member_id", visibleMemberIds)
+      .is("owner_user_id", null);
   }
   const visibleMemberEmails = Array.from(
     new Set(
@@ -416,7 +427,7 @@ Deno.serve(async (req) => {
 
   const { data: messagesByOwner, error: messagesByOwnerError } = await adminClient
     .from("chat_messages")
-    .select("id, member_id, owner_user_id, sender, text, created_at")
+    .select("id, member_id, owner_user_id, sender, text, created_at, read_by_member_at, read_by_trainer_at")
     .eq("owner_user_id", ownerUserId)
     .order("created_at", { ascending: true });
 
@@ -452,7 +463,7 @@ Deno.serve(async (req) => {
   if (visibleMemberIds.length > 0) {
     const { data, error } = await adminClient
       .from("chat_messages")
-      .select("id, member_id, owner_user_id, sender, text, created_at")
+      .select("id, member_id, owner_user_id, sender, text, created_at, read_by_member_at, read_by_trainer_at")
       .in("member_id", visibleMemberIds)
       .order("created_at", { ascending: true });
     messagesByMember = ((data ?? []) as Array<Record<string, unknown>>).filter((row) => rowBelongsToOwner(row, ownerUserId));
@@ -461,7 +472,7 @@ Deno.serve(async (req) => {
 
   const { data: exercises, error: exercisesError } = await adminClient
     .from("exercise_bank")
-    .select("id, name, category, muscle_group, equipment, level, description, image_url")
+    .select("id, name, category, muscle_group, equipment, level, description, image_url, prescription_fields")
     .or("is_active.is.null,is_active.eq.true")
     .order("name", { ascending: true });
 

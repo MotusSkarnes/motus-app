@@ -17,6 +17,7 @@ import { formatDateDdMmYyyy, formatDateTimeDdMmYyyy, normalizeStoredLogDate } fr
 import { dedupePeriodPlansById } from "../app/periodPlanMerge";
 import { programExerciseUsesBankExercise } from "../app/exerciseBankUsage";
 import { normalizeStoredExerciseCategory } from "../app/exerciseCategories";
+import { normalizeExercisePrescriptionFields } from "../app/exercisePrescriptionFields";
 import {
   createMember,
   localAppRepository,
@@ -51,10 +52,12 @@ import { isContaminatedDemoMemberProfile } from "../app/memberLocalCatalog";
 import { mealPlanFromRow } from "../app/mealPlanCloud";
 import { parseMemberMealPlanState, type MemberMealPlanState } from "../app/memberMealPlanState";
 import type { MealPlan } from "../app/mealPlanTypes";
+import { chatMessageFromRow } from "../app/chatReadReceipts";
 import { detectNewMemberFormSubmissions } from "../app/memberFormNotifications";
 import { ensureMemberAuthLink, resolveSessionAuthRole } from "./supabaseAuth";
 import { supabaseClient } from "./supabaseClient";
 import {
+  isPrivatePtRosterCustomerType,
   isSharedMedlemCustomerType,
   MEMBER_ARCHIVED_APP_MESSAGE,
   resolveOwnerUserIdForPersist,
@@ -1699,11 +1702,23 @@ async function persistMember(member: Member, previousPersonalGoals?: string) {
 
   const sessionOwnerId = await getOwnerUserId();
   if (!sessionOwnerId) return;
-  const ownerForUpsert = resolveOwnerUserIdForPersist({
+  let ownerForUpsert = resolveOwnerUserIdForPersist({
     customerType: member.customerType,
     sessionOwnerId,
     existingOwnerId: member.ownerUserId,
   });
+  if (isPrivatePtRosterCustomerType(member.customerType, member.membershipType)) {
+    ownerForUpsert = sessionOwnerId;
+  } else if (ownerForUpsert !== sessionOwnerId) {
+    const { count } = await supabaseClient
+      .from("training_programs")
+      .select("id", { count: "exact", head: true })
+      .eq("member_id", memberForPersist.id.trim())
+      .eq("owner_user_id", sessionOwnerId);
+    if ((count ?? 0) > 0) {
+      ownerForUpsert = sessionOwnerId;
+    }
+  }
 
   const memberUpsertPayload = {
     id: member.id,
@@ -1764,6 +1779,7 @@ async function persistExercise(exercise: Exercise) {
       level: exercise.level,
       description: exercise.description,
       image_url: exercise.imageUrl ?? null,
+      prescription_fields: exercise.prescriptionFields ?? [],
       is_active: true,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
@@ -2009,18 +2025,6 @@ async function deleteMemberFromSupabase(member: { id: string; email?: string }) 
     }
   }
 
-  const { error: messagesError } = await supabaseClient.from("chat_messages").delete().eq("member_id", memberId);
-  if (messagesError) {
-    console.warn("Supabase member message cleanup failed:", messagesError.message);
-  }
-  const { error: logsError } = await supabaseClient.from("workout_logs").delete().eq("member_id", memberId);
-  if (logsError) {
-    console.warn("Supabase member log cleanup failed:", logsError.message);
-  }
-  const { error: programsError } = await supabaseClient.from("training_programs").delete().eq("member_id", memberId);
-  if (programsError) {
-    console.warn("Supabase member program cleanup failed:", programsError.message);
-  }
   const { error: softDeleteError } = await supabaseClient
     .from("members")
     .update({ is_active: false })
@@ -2998,16 +3002,7 @@ function mapHydrateMemberPayload(payload: Record<string, unknown>): HydratedMemb
         avatarUrl: String(member.avatar_url ?? ""),
       } as Member;
     }),
-    messages: messagesRows.map((row) => {
-      const message = row as Record<string, unknown>;
-      return {
-        id: String(message.id ?? ""),
-        memberId: String(message.member_id ?? ""),
-        sender: message.sender === "member" ? "member" : "trainer",
-        text: String(message.text ?? ""),
-        createdAt: mapIsoToCreatedAt(String(message.created_at ?? "")),
-      } as ChatMessage;
-    }),
+    messages: messagesRows.map((row) => chatMessageFromRow(row as Record<string, unknown>)),
     programs: programsRows.map((row) => trainingProgramFromHydrateRow(row as Record<string, unknown>)),
     logs: logsRows.map((row) => {
       const log = row as Record<string, unknown>;
@@ -3030,19 +3025,7 @@ function mapHydrateMemberPayload(payload: Record<string, unknown>): HydratedMemb
     mealPlans,
     mealPlanStates,
     inspirationItems: Array.isArray(payload.inspirationItems) ? payload.inspirationItems : [],
-    exercises: exercisesRows.map((row) => {
-      const exercise = row as Record<string, unknown>;
-      return {
-        id: String(exercise.id ?? ""),
-        name: String(exercise.name ?? ""),
-        category: normalizeStoredExerciseCategory(String(exercise.category ?? "")),
-        group: String(exercise.muscle_group ?? ""),
-        equipment: String(exercise.equipment ?? ""),
-        level: exercise.level === "Litt øvet" || exercise.level === "Øvet" ? exercise.level : "Nybegynner",
-        description: String(exercise.description ?? ""),
-        imageUrl: String(exercise.image_url ?? ""),
-      } as Exercise;
-    }),
+    exercises: exercisesRows.map((row) => mapExerciseBankRow(row as Record<string, unknown>)),
   };
 }
 
@@ -3207,16 +3190,7 @@ export async function fetchHydratedTrainerData(ownerUserId: string): Promise<Hyd
         avatarUrl: String(member.avatar_url ?? ""),
       } as Member;
     }),
-    messages: messagesRows.map((row) => {
-      const message = row as Record<string, unknown>;
-      return {
-        id: String(message.id ?? ""),
-        memberId: String(message.member_id ?? ""),
-        sender: message.sender === "member" ? "member" : "trainer",
-        text: String(message.text ?? ""),
-        createdAt: mapIsoToCreatedAt(String(message.created_at ?? "")),
-      } as ChatMessage;
-    }),
+    messages: messagesRows.map((row) => chatMessageFromRow(row as Record<string, unknown>)),
     programs: programsRows.map((row) => trainingProgramFromHydrateRow(row as Record<string, unknown>)),
     logs: logsRows.map((row) => {
       const log = row as Record<string, unknown>;
@@ -3235,19 +3209,7 @@ export async function fetchHydratedTrainerData(ownerUserId: string): Promise<Hyd
         results: Array.isArray(log.results) ? (log.results as WorkoutExerciseResult[]) : undefined,
       } as WorkoutLog;
     }),
-    exercises: exercisesRows.map((row) => {
-      const exercise = row as Record<string, unknown>;
-      return {
-        id: String(exercise.id ?? ""),
-        name: String(exercise.name ?? ""),
-        category: normalizeStoredExerciseCategory(String(exercise.category ?? "")),
-        group: String(exercise.muscle_group ?? ""),
-        equipment: String(exercise.equipment ?? ""),
-        level: exercise.level === "Litt øvet" || exercise.level === "Øvet" ? exercise.level : "Nybegynner",
-        description: String(exercise.description ?? ""),
-        imageUrl: String(exercise.image_url ?? ""),
-      } as Exercise;
-    }),
+    exercises: exercisesRows.map((row) => mapExerciseBankRow(row as Record<string, unknown>)),
     periodPlansByMemberId,
     debug,
   };
@@ -3330,23 +3292,21 @@ export async function fetchHydratedMemberData(): Promise<HydratedMemberData | nu
 export async function fetchMessagesFromSupabase(): Promise<ChatMessage[] | null> {
   if (!supabaseClient) return null;
 
-  const { data, error } = await supabaseClient
-    .from("chat_messages")
-    .select("id, member_id, sender, text, created_at")
-    .order("created_at", { ascending: true });
+  const selectWithRead =
+    "id, member_id, sender, text, created_at, read_by_member_at, read_by_trainer_at";
+  const selectBase = "id, member_id, sender, text, created_at";
 
-  if (error) {
-    console.warn("Supabase messages fetch failed:", error.message);
+  let result = await supabaseClient.from("chat_messages").select(selectWithRead).order("created_at", { ascending: true });
+  if (result.error?.message?.includes("read_by_")) {
+    result = await supabaseClient.from("chat_messages").select(selectBase).order("created_at", { ascending: true });
+  }
+
+  if (result.error) {
+    console.warn("Supabase messages fetch failed:", result.error.message);
     return null;
   }
 
-  return (data ?? []).map((row) => ({
-    id: String(row.id),
-    memberId: String(row.member_id),
-    sender: row.sender === "member" ? "member" : "trainer",
-    text: String(row.text ?? ""),
-    createdAt: mapIsoToCreatedAt(String(row.created_at ?? "")),
-  }));
+  return (result.data ?? []).map((row) => chatMessageFromRow(row as Record<string, unknown>));
 }
 
 export async function fetchProgramsFromSupabase(): Promise<TrainingProgram[] | null> {
@@ -3769,11 +3729,26 @@ export async function restoreMemberByEmailFromSupabase(
   };
 }
 
+function mapExerciseBankRow(row: Record<string, unknown>): Exercise {
+  const category = normalizeStoredExerciseCategory(String(row.category ?? ""));
+  return {
+    id: String(row.id ?? ""),
+    name: String(row.name ?? ""),
+    category,
+    group: String(row.muscle_group ?? ""),
+    equipment: String(row.equipment ?? ""),
+    level: row.level === "Litt øvet" || row.level === "Øvet" ? row.level : "Nybegynner",
+    description: String(row.description ?? ""),
+    imageUrl: String(row.image_url ?? ""),
+    prescriptionFields: normalizeExercisePrescriptionFields(row.prescription_fields, category),
+  };
+}
+
 export async function fetchExercisesFromSupabase(): Promise<Exercise[] | null> {
   if (!supabaseClient) return null;
   const { data, error } = await supabaseClient
     .from("exercise_bank")
-    .select("id, name, category, muscle_group, equipment, level, description, image_url")
+    .select("id, name, category, muscle_group, equipment, level, description, image_url, prescription_fields")
     .or("is_active.is.null,is_active.eq.true")
     .order("name", { ascending: true });
 
@@ -3782,16 +3757,7 @@ export async function fetchExercisesFromSupabase(): Promise<Exercise[] | null> {
     return null;
   }
 
-  return (data ?? []).map((row) => ({
-    id: String(row.id),
-    name: String(row.name ?? ""),
-    category: normalizeStoredExerciseCategory(String(row.category ?? "")),
-    group: String(row.muscle_group ?? ""),
-    equipment: String(row.equipment ?? ""),
-    level: row.level === "Litt øvet" || row.level === "Øvet" ? row.level : "Nybegynner",
-    description: String(row.description ?? ""),
-    imageUrl: String(row.image_url ?? ""),
-  }));
+  return (data ?? []).map((row) => mapExerciseBankRow(row));
 }
 
 function mapEdgeMemberPayload(value: unknown): Member | null {

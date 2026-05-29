@@ -170,6 +170,7 @@ describe("Trainer flows", () => {
         restoreMemberByEmail={async () => ({ ok: true, message: "ok" })}
         reassignMemberOwner={async () => ({ ok: true, message: "ok" })}
         restoreMissingTestData={async () => ({ ok: true, message: "ok" })}
+        restoreMembersFromRosterBackup={async () => ({ ok: true, message: "ok" })}
         restoreOriginalExerciseBank={async () => ({ ok: true, message: "ok" })}
         saveProgramForMember={() => {}}
         deleteProgramById={() => {}}
@@ -267,6 +268,7 @@ describe("Trainer flows", () => {
         restoreMemberByEmail={async () => ({ ok: true, message: "ok" })}
         reassignMemberOwner={async () => ({ ok: true, message: "ok" })}
         restoreMissingTestData={async () => ({ ok: true, message: "ok" })}
+        restoreMembersFromRosterBackup={async () => ({ ok: true, message: "ok" })}
         restoreOriginalExerciseBank={async () => ({ ok: true, message: "ok" })}
         saveProgramForMember={() => {}}
         deleteProgramById={() => {}}
@@ -349,6 +351,7 @@ describe("Trainer flows", () => {
         restoreMemberByEmail={async () => ({ ok: true, message: "ok" })}
         reassignMemberOwner={async () => ({ ok: true, message: "ok" })}
         restoreMissingTestData={async () => ({ ok: true, message: "ok" })}
+        restoreMembersFromRosterBackup={async () => ({ ok: true, message: "ok" })}
         restoreOriginalExerciseBank={async () => ({ ok: true, message: "ok" })}
         saveProgramForMember={() => {}}
         deleteProgramById={() => {}}
@@ -438,6 +441,7 @@ describe("Trainer flows", () => {
         restoreMemberByEmail={async () => ({ ok: true, message: "ok" })}
         reassignMemberOwner={async () => ({ ok: true, message: "ok" })}
         restoreMissingTestData={async () => ({ ok: true, message: "ok" })}
+        restoreMembersFromRosterBackup={async () => ({ ok: true, message: "ok" })}
         restoreOriginalExerciseBank={async () => ({ ok: true, message: "ok" })}
         saveProgramForMember={() => {}}
         deleteProgramById={() => {}}

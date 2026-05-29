@@ -37,11 +37,13 @@ export function buildTrainerLayoutProps(input: {
   restoreMemberByEmail: TrainerLayoutProps["restoreMemberByEmail"];
   reassignMemberOwner: TrainerLayoutProps["reassignMemberOwner"];
   restoreMissingTestData: TrainerLayoutProps["restoreMissingTestData"];
+  restoreMembersFromRosterBackup: TrainerLayoutProps["restoreMembersFromRosterBackup"];
   restoreOriginalExerciseBank: TrainerLayoutProps["restoreOriginalExerciseBank"];
   saveProgramForMember: TrainerLayoutProps["saveProgramForMember"];
   deleteProgramById: TrainerLayoutProps["deleteProgramById"];
   sendTrainerMessage: TrainerLayoutProps["sendTrainerMessage"];
   toggleChatMessageReaction: TrainerLayoutProps["toggleChatMessageReaction"];
+  markChatConversationRead: TrainerLayoutProps["markChatConversationRead"];
   updateWorkoutLogTrainerComment?: TrainerLayoutProps["updateWorkoutLogTrainerComment"];
   clearLocalChatCache: TrainerLayoutProps["clearLocalChatCache"];
   saveExercise: TrainerLayoutProps["saveExercise"];
@@ -80,6 +82,7 @@ export function buildMemberLayoutProps(input: {
   setCurrentMemberAvatarUrl: (url: string) => void;
   sendMemberMessage: MemberLayoutProps["sendMemberMessage"];
   toggleChatMessageReaction: MemberLayoutProps["toggleChatMessageReaction"];
+  markChatConversationRead: MemberLayoutProps["markChatConversationRead"];
   startWorkoutMode: MemberLayoutProps["startWorkoutMode"];
   startCustomWorkout: MemberLayoutProps["startCustomWorkout"];
   saveProgramForMember: MemberLayoutProps["saveProgramForMember"];

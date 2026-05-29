@@ -150,6 +150,7 @@ describe("Stability regressions", () => {
         restoreMemberByEmail={vi.fn(async () => ({ ok: true, message: "ok" }))}
         reassignMemberOwner={vi.fn(async () => ({ ok: true, message: "ok" }))}
         restoreMissingTestData={vi.fn(async () => ({ ok: true, message: "ok" }))}
+        restoreMembersFromRosterBackup={vi.fn(async () => ({ ok: true, message: "ok" }))}
         restoreOriginalExerciseBank={vi.fn(async () => ({ ok: true, message: "ok" }))}
         saveProgramForMember={saveProgramForMember}
         deleteProgramById={vi.fn()}

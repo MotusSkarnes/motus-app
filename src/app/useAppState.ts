@@ -69,6 +69,12 @@ import {
   reconcileArchiveTombstonesWithRemoteMembers,
   removeArchiveTombstone,
 } from "./memberArchiveTombstone";
+import { applyChatReadReceiptsInState, markChatMessagesReadInCloud } from "./chatReadReceipts";
+import {
+  loadTrainerRosterBackup,
+  saveTrainerRosterBackup,
+  syncMissingRosterMembersToCloud,
+} from "./trainerRosterBackup";
 import { memberMayDeleteProgram, mergeProgramAuthorFields } from "./programAuthor";
 import { mergeProgramImageUrl } from "./programImage";
 import { isSupabaseConfigured, supabaseClient } from "../services/supabaseClient";
@@ -235,6 +241,11 @@ function mergeTrainerMembersWithLocalAndPinned(
   remoteMembers: AppState["members"],
   localMembers: AppState["members"],
   pinnedMembers: Member[],
+  options?: {
+    trainerOwnerUserId?: string;
+    localPrograms?: AppState["programs"];
+    includeRosterBackup?: boolean;
+  },
 ): AppState["members"] {
   let merged = mergeMembersById(remoteMembers, localMembers) ?? remoteMembers;
   merged = mergeMembersById(merged, pinnedMembers) ?? merged;
@@ -243,12 +254,23 @@ function mergeTrainerMembersWithLocalAndPinned(
   const remoteEmails = new Set(
     merged.map((member) => member.email.trim().toLowerCase()).filter((email) => email.includes("@")),
   );
+  const trainerId = String(options?.trainerOwnerUserId ?? "").trim();
+  const programLinkedIds = new Set<string>();
+  if (trainerId && options?.localPrograms?.length) {
+    for (const program of options.localPrograms) {
+      if ((program.ownerUserId ?? "").trim() !== trainerId) continue;
+      const memberId = program.memberId.trim();
+      if (memberId && memberId !== "__template__") programLinkedIds.add(memberId);
+    }
+  }
+  const rosterBackup =
+    trainerId && options?.includeRosterBackup !== false ? loadTrainerRosterBackup(trainerId) : [];
   const keepLocal: Member[] = [];
-  for (const local of [...localMembers, ...pinnedMembers]) {
-    if (local.isActive === false) continue;
+  for (const local of [...localMembers, ...pinnedMembers, ...rosterBackup]) {
+    if (local.isActive === false && !programLinkedIds.has(local.id.trim())) continue;
     const email = local.email.trim().toLowerCase();
     const inRemote = remoteIds.has(local.id.trim()) || (email.includes("@") && remoteEmails.has(email));
-    if (!inRemote) keepLocal.push(local);
+    if (!inRemote || programLinkedIds.has(local.id.trim())) keepLocal.push(local);
   }
   if (keepLocal.length) {
     merged = mergeMembersById(merged, keepLocal) ?? merged;
@@ -620,6 +642,7 @@ const INITIAL_SUPABASE_AUTH_FROM_URL = captureInitialSupabaseAuthUrl();
 
 export function useAppState() {
   const remoteHydrateRef = useRef<(() => Promise<void>) | null>(null);
+  const rosterCloudSyncInFlightRef = useRef(false);
   const pinnedTrainerMembersRef = useRef(new Map<string, { member: Member; expiresAt: number }>());
 
   function pinTrainerMember(member: Member) {
@@ -1131,10 +1154,12 @@ export function useAppState() {
             );
           }
           if (currentUser?.role === "trainer") {
+            const trainerOwnerUserId = String(currentUser.id ?? ownerUserId ?? "").trim();
             mergedMembers = mergeTrainerMembersWithLocalAndPinned(
               mergedMembers,
               prevStripped.members,
               readPinnedTrainerMembers(),
+              { trainerOwnerUserId, localPrograms: prevStripped.programs },
             );
             mergedMembers = preserveTrainerInvitedAtFromLocal(mergedMembers, prev.members);
             mergedMembers = mergedMembers.map((remote) => {
@@ -2156,6 +2181,18 @@ export function useAppState() {
     setAppState((prev) => repository.toggleChatMessageReaction(prev, messageId, emoji, actor));
   }
 
+  function markChatConversationRead(memberId: string, reader: "trainer" | "member") {
+    const trimmedMemberId = memberId.trim();
+    if (!trimmedMemberId) return;
+    void markChatMessagesReadInCloud(trimmedMemberId, reader).then((result) => {
+      if (!result.ok || !result.readAt) return;
+      setAppState((prev) => ({
+        ...prev,
+        messages: applyChatReadReceiptsInState(prev.messages, trimmedMemberId, reader, result.readAt!),
+      }));
+    });
+  }
+
   function saveExercise(input: SaveExerciseInput) {
     setAppState((prev) => repository.saveExercise(prev, input));
   }
@@ -2421,11 +2458,10 @@ export function useAppState() {
       reconcileArchiveTombstonesWithRemoteMembers(remoteMembers);
       setAppState((prev) => ({
         ...prev,
-        members: mergeTrainerMembersWithLocalAndPinned(
-          remoteMembers,
-          prev.members,
-          readPinnedTrainerMembers(),
-        ),
+        members: mergeTrainerMembersWithLocalAndPinned(remoteMembers, prev.members, readPinnedTrainerMembers(), {
+          trainerOwnerUserId: ownerUserId,
+          localPrograms: prev.programs,
+        }),
         ...(remoteMessages
           ? {
               messages: mergeRemoteMessagesWithLocalOptimistic(
@@ -2442,6 +2478,16 @@ export function useAppState() {
           ? { remoteTrainerPeriodPlansByMemberId: hydratedTrainer.periodPlansByMemberId }
           : {}),
       }));
+      if (!rosterCloudSyncInFlightRef.current) {
+        rosterCloudSyncInFlightRef.current = true;
+        void syncMissingRosterMembersToCloud(ownerUserId, remoteMembers, createTrainerMemberViaEdgeFunction)
+          .then((synced) => {
+            if (synced > 0) return refreshTrainerSessionData(ownerUserId);
+          })
+          .finally(() => {
+            rosterCloudSyncInFlightRef.current = false;
+          });
+      }
     }
   }
 
@@ -2577,6 +2623,55 @@ export function useAppState() {
     await remoteHydrateRef.current?.();
   }
 
+  async function restoreMembersFromRosterBackup(): Promise<{ ok: boolean; message: string }> {
+    const trainerId = String(appState.currentUser?.id ?? "").trim();
+    if (!trainerId || appState.currentUser?.role !== "trainer") {
+      return { ok: false, message: "Kun tilgjengelig for innlogget PT." };
+    }
+    const backup = loadTrainerRosterBackup(trainerId);
+    if (!backup.length) {
+      return { ok: false, message: "Fant ingen lokal sikkerhetskopi av kundelisten på denne enheten." };
+    }
+    let added = 0;
+    setAppState((prev) => {
+      const existingIds = new Set(prev.members.map((m) => m.id.trim()));
+      const existingEmails = new Set(
+        prev.members.map((m) => m.email.trim().toLowerCase()).filter((e) => e.includes("@")),
+      );
+      const toAdd = backup.filter((member) => {
+        const id = member.id.trim();
+        const email = member.email.trim().toLowerCase();
+        if (id && existingIds.has(id)) return false;
+        if (email.includes("@") && existingEmails.has(email)) return false;
+        return true;
+      });
+      added = toAdd.length;
+      if (!toAdd.length) return prev;
+      const merged =
+        mergeMembersById(prev.members, toAdd.map((m) => ({ ...m, isActive: m.isActive !== false }))) ?? prev.members;
+      return { ...prev, members: merged };
+    });
+    if (!added) {
+      return { ok: true, message: "Alle kunder fra sikkerhetskopien finnes allerede i listen." };
+    }
+    for (const member of backup) {
+      if ((member.ownerUserId ?? "").trim() === trainerId || member.customerType === "PT-kunde") {
+        pinTrainerMember(member);
+      }
+    }
+    await refreshTrainerSessionData(trainerId);
+    return {
+      ok: true,
+      message: `La til ${added} kunde${added === 1 ? "" : "r"} fra lokal sikkerhetskopi. Sjekk kundelisten og lagre til sky hvis noen mangler der.`,
+    };
+  }
+
+  useEffect(() => {
+    const user = appState.currentUser;
+    if (user?.role !== "trainer" || !user.id?.trim()) return;
+    saveTrainerRosterBackup(user.id, appState.members);
+  }, [appState.currentUser?.id, appState.currentUser?.role, appState.members]);
+
   function applyTrainerProfileSaved(user: AuthUser) {
     const displayName = user.name.trim();
     if (!displayName) return;
@@ -2649,6 +2744,7 @@ export function useAppState() {
     updateProgramMemberLibraryStatus,
     sendTrainerMessage,
     toggleChatMessageReaction,
+    markChatConversationRead,
     saveExercise,
     deleteExercise,
     startWorkoutMode,
@@ -2679,6 +2775,7 @@ export function useAppState() {
     restoreMemberByEmail,
     reassignMemberOwner,
     restoreMissingTestData,
+    restoreMembersFromRosterBackup,
     restoreOriginalExerciseBank,
     remoteTrainerPeriodPlansByMemberId,
     remoteMemberPeriodPlanRows,

@@ -170,6 +170,7 @@ export type SaveExerciseInput = {
   level: Exercise["level"];
   description: string;
   imageUrl?: string;
+  prescriptionFields?: Exercise["prescriptionFields"];
 };
 
 export type UpdateMemberInput = {
@@ -953,6 +954,7 @@ export function saveExerciseInState(state: AppState, input: SaveExerciseInput): 
               level: input.level,
               description: normalizedDescription,
               imageUrl: normalizedImageUrl,
+              prescriptionFields: input.prescriptionFields,
             }
           : exercise
       ),
@@ -968,6 +970,7 @@ export function saveExerciseInState(state: AppState, input: SaveExerciseInput): 
     level: input.level,
     description: normalizedDescription,
     imageUrl: normalizedImageUrl,
+    prescriptionFields: input.prescriptionFields,
   };
   return { ...state, exercises: [nextExercise, ...state.exercises] };
 }

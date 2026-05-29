@@ -11,6 +11,7 @@ import {
   Video,
   type LucideIcon,
 } from "lucide-react";
+import { isChatMessageReadByRecipient } from "../app/chatReadReceipts";
 import type { ChatMessage } from "../app/types";
 import { chatDateKey, formatChatDateLabel, formatChatTime } from "../app/chatFormat";
 import {
@@ -50,6 +51,8 @@ export type MotusChatProps = {
   onBack?: () => void;
   headerExtra?: ReactNode;
   onToggleReaction?: (messageId: string, emoji: ChatReactionEmoji, actor: ChatReactionActor) => void;
+  /** Kalles når chatten vises — markerer motpartens meldinger som lest. */
+  onMarkConversationRead?: () => void;
 };
 
 const DEFAULT_TRAINER_QUICK_REPLIES = [
@@ -258,8 +261,11 @@ function MessageBubble({
           <div className="motus-chat-bubble-meta">
             <span>{formatChatTime(message.createdAt)}</span>
             {isOwn ? (
-              <span className="motus-chat-read-mark" aria-label="Sendt">
-                ✓✓
+              <span
+                className={`motus-chat-read-mark ${isChatMessageReadByRecipient(message) ? "motus-chat-read-mark--read" : ""}`}
+                aria-label={isChatMessageReadByRecipient(message) ? "Lest" : "Sendt"}
+              >
+                {isChatMessageReadByRecipient(message) ? "✓✓" : "✓"}
               </span>
             ) : null}
           </div>
@@ -299,10 +305,13 @@ export function MotusChat({
   onBack,
   headerExtra,
   onToggleReaction,
+  onMarkConversationRead,
 }: MotusChatProps) {
   const internalRef = useRef<HTMLDivElement>(null);
   const scrollRef = messagesContainerRef ?? internalRef;
   const [reactionVersion, setReactionVersion] = useState(0);
+  const markReadRef = useRef(onMarkConversationRead);
+  markReadRef.current = onMarkConversationRead;
   const resolvedQuickActions = quickActions ?? DEFAULT_QUICK_ACTIONS;
   const resolvedQuickReplies = quickReplies ?? (variant === "trainer" ? DEFAULT_TRAINER_QUICK_REPLIES : DEFAULT_MEMBER_QUICK_REPLIES);
 
@@ -311,6 +320,11 @@ export function MotusChat({
     if (!node) return;
     node.scrollTop = node.scrollHeight;
   }, [messages.length, scrollRef, reactionVersion]);
+
+  useEffect(() => {
+    if (locked) return;
+    markReadRef.current?.();
+  }, [locked, messages.length]);
 
   const handleSend = () => {
     if (sendDisabled || isSending || !composeValue.trim()) return;

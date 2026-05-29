@@ -68,11 +68,13 @@ type TrainerLayoutProps = {
   restoreMemberByEmail: ComponentProps<typeof TrainerPortal>["restoreMemberByEmail"];
   reassignMemberOwner: ComponentProps<typeof TrainerPortal>["reassignMemberOwner"];
   restoreMissingTestData: ComponentProps<typeof TrainerPortal>["restoreMissingTestData"];
+  restoreMembersFromRosterBackup: ComponentProps<typeof TrainerPortal>["restoreMembersFromRosterBackup"];
   restoreOriginalExerciseBank: ComponentProps<typeof TrainerPortal>["restoreOriginalExerciseBank"];
   saveProgramForMember: ComponentProps<typeof TrainerPortal>["saveProgramForMember"];
   deleteProgramById: ComponentProps<typeof TrainerPortal>["deleteProgramById"];
   sendTrainerMessage: ComponentProps<typeof TrainerPortal>["sendTrainerMessage"];
   toggleChatMessageReaction: ComponentProps<typeof TrainerPortal>["toggleChatMessageReaction"];
+  markChatConversationRead: ComponentProps<typeof TrainerPortal>["markChatConversationRead"];
   updateWorkoutLogTrainerComment?: ComponentProps<typeof TrainerPortal>["updateWorkoutLogTrainerComment"];
   clearLocalChatCache: ComponentProps<typeof TrainerPortal>["clearLocalChatCache"];
   saveExercise: ComponentProps<typeof TrainerPortal>["saveExercise"];
@@ -151,11 +153,13 @@ export function TrainerLayout({
   restoreMemberByEmail,
   reassignMemberOwner,
   restoreMissingTestData,
+  restoreMembersFromRosterBackup,
   restoreOriginalExerciseBank,
   saveProgramForMember,
   deleteProgramById,
   sendTrainerMessage,
   toggleChatMessageReaction,
+  markChatConversationRead,
   updateWorkoutLogTrainerComment,
   clearLocalChatCache,
   saveExercise,
@@ -256,11 +260,13 @@ export function TrainerLayout({
     restoreMemberByEmail,
     reassignMemberOwner,
     restoreMissingTestData,
+    restoreMembersFromRosterBackup,
     restoreOriginalExerciseBank,
     saveProgramForMember,
     deleteProgramById,
     sendTrainerMessage,
     toggleChatMessageReaction,
+  markChatConversationRead,
     updateWorkoutLogTrainerComment,
     clearLocalChatCache,
     saveExercise,

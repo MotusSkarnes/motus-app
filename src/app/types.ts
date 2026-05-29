@@ -115,6 +115,9 @@ export type Member = {
   coachNotes: string;
 };
 
+/** Variabler PT kan konfigurere per øvelse i øvelsesbanken. */
+export type ExercisePrescriptionFieldKey = "minutes" | "seconds" | "kg" | "reps" | "pause" | "seatSettings";
+
 export type Exercise = {
   id: string;
   name: string;
@@ -125,6 +128,8 @@ export type Exercise = {
   description: string;
   imageUrl?: string;
   favorite?: boolean;
+  /** Hvilke programfelter som vises når øvelsen legges i et program (tom = standard for kategori). */
+  prescriptionFields?: ExercisePrescriptionFieldKey[];
 };
 
 export type ProgramExercise = {
@@ -145,6 +150,8 @@ export type ProgramExercise = {
   incline?: string;
   /** Målpuls som prosent av makspuls (f.eks. 85–90); fritekst. */
   targetHrPercent?: string;
+  /** Maskin: sete/høyde/backrest (fra øvelsesbank «seteinnstillinger»). */
+  seatSetting?: string;
   restSeconds: string;
   notes: string;
   /** Supersett, trisett eller sirkel – delt blockId med andre øvelser i samme blokk. */
@@ -199,6 +206,10 @@ export type ChatMessage = {
   sender: "trainer" | "member";
   text: string;
   createdAt: string;
+  /** Satt når medlem har åpnet chat og sett PT-meldingen. */
+  readByMemberAt?: string;
+  /** Satt når PT har åpnet chat og sett medlemsmeldingen. */
+  readByTrainerAt?: string;
   reactions?: ChatReactionState;
 };
 

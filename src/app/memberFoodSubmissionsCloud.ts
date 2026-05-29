@@ -1,5 +1,9 @@
 import type { FoodSubmissionDraft, MemberFoodSubmission, MemberFoodSubmissionStatus } from "./foodLabelScanTypes";
-import { foodItemFromSubmissionDraft } from "./foodLabelScanTypes";
+import {
+  draftWithProposedFoodId,
+  foodItemFromSubmission,
+  foodItemFromSubmissionDraft,
+} from "./foodLabelScanTypes";
 import type { FoodItem } from "./foodBankTypes";
 import { readSupabaseFunctionInvokeError } from "./supabaseFunctionErrors";
 import { isSupabaseConfigured, supabaseClient } from "../services/supabaseClient";
@@ -31,6 +35,7 @@ export async function submitMemberFoodForApproval(input: {
   if (!isSupabaseConfigured || !supabaseClient) {
     return { ok: false, error: "Sky-tjenesten er ikke tilgjengelig." };
   }
+  const draftItem = draftWithProposedFoodId(input.draftItem);
   const { data, error } = await supabaseClient
     .from("member_food_submissions")
     .insert({
@@ -38,7 +43,7 @@ export async function submitMemberFoodForApproval(input: {
       member_name: input.memberName,
       owner_user_id: input.ownerUserId,
       status: "pending",
-      draft_item: input.draftItem,
+      draft_item: draftItem,
       label_image_url: input.labelImageUrl ?? null,
     })
     .select("*")
@@ -74,28 +79,60 @@ export async function fetchMemberFoodSubmissions(memberId: string): Promise<Memb
 }
 
 function approvedFoodItemFromRow(row: Record<string, unknown>): FoodItem | null {
-  const draft = (row.draft_item ?? row.draftItem) as FoodSubmissionDraft | undefined;
-  const foodId =
-    String(row.approved_food_id ?? "").trim() ||
-    String((draft as { id?: string } | undefined)?.id ?? "").trim();
-  if (!draft?.name?.trim() || !foodId) return null;
-  return foodItemFromSubmissionDraft(draft, foodId, {
-    createdAt: typeof row.reviewed_at === "string" ? row.reviewed_at : undefined,
-    createdBy: String(draft.createdBy ?? "Medlem"),
-  });
+  const submission = parseSubmission(row);
+  if (submission.status !== "approved") return null;
+  return foodItemFromSubmission(submission);
 }
 
-export async function fetchApprovedFoodItemsForMember(memberId: string): Promise<FoodItem[]> {
+/** Medlemmets egne forslag (ventende + godkjente) — kan brukes i logging med en gang. */
+export async function fetchMemberSubmissionFoodItemsForLogging(memberId: string): Promise<FoodItem[]> {
   if (!isSupabaseConfigured || !supabaseClient || !memberId.trim()) return [];
   const { data, error } = await supabaseClient
     .from("member_food_submissions")
-    .select("approved_food_id, draft_item, reviewed_at")
+    .select("*")
     .eq("member_id", memberId)
-    .eq("status", "approved");
+    .in("status", ["pending", "approved"])
+    .order("created_at", { ascending: false });
   if (error || !data) return [];
-  return data
-    .map((row) => approvedFoodItemFromRow(row as Record<string, unknown>))
-    .filter((item): item is FoodItem => item !== null);
+  const items: FoodItem[] = [];
+  const seen = new Set<string>();
+  for (const row of data) {
+    const item = foodItemFromSubmission(parseSubmission(row as Record<string, unknown>));
+    if (!item || seen.has(item.id)) continue;
+    seen.add(item.id);
+    items.push(item);
+  }
+  return items;
+}
+
+export async function fetchApprovedFoodItemsForMember(memberId: string): Promise<FoodItem[]> {
+  return fetchMemberSubmissionFoodItemsForLogging(memberId);
+}
+
+export async function updateFoodSubmissionByTrainer(input: {
+  submissionId: string;
+  ownerUserId: string;
+  draftItem: FoodSubmissionDraft;
+  labelImageUrl?: string;
+}): Promise<{ ok: true; submission: MemberFoodSubmission } | { ok: false; error: string }> {
+  if (!isSupabaseConfigured || !supabaseClient) {
+    return { ok: false, error: "Sky-tjenesten er ikke tilgjengelig." };
+  }
+  const { data, error } = await supabaseClient
+    .from("member_food_submissions")
+    .update({
+      draft_item: input.draftItem,
+      label_image_url: input.labelImageUrl ?? null,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", input.submissionId)
+    .eq("owner_user_id", input.ownerUserId)
+    .eq("status", "pending")
+    .select("*")
+    .maybeSingle();
+  if (error) return { ok: false, error: error.message };
+  if (!data) return { ok: false, error: "Fant ikke forslaget, eller det er allerede behandlet." };
+  return { ok: true, submission: parseSubmission(data as Record<string, unknown>) };
 }
 
 export async function fetchApprovedFoodItemsForTrainer(ownerUserId: string): Promise<FoodItem[]> {

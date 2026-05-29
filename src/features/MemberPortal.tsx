@@ -292,6 +292,7 @@ type MemberPortalProps = {
   exercises: Exercise[];
   sendMemberMessage: (memberId: string, text: string) => void;
   toggleChatMessageReaction: (messageId: string, emoji: ChatReactionEmoji, actor: ChatReactionActor) => void;
+  markChatConversationRead: (memberId: string, reader: "trainer" | "member") => void;
   workoutMode: WorkoutModeState | null;
   startWorkoutMode: (programId: string, options?: StartWorkoutModeOptions) => void;
   startCustomWorkout: (input: StartCustomWorkoutInput, options?: StartWorkoutModeOptions) => void;
@@ -1065,6 +1066,7 @@ export function MemberPortal(props: MemberPortalProps) {
     exercises,
     sendMemberMessage,
     toggleChatMessageReaction,
+    markChatConversationRead,
     workoutMode,
     startWorkoutMode,
     startCustomWorkout,
@@ -7328,6 +7330,11 @@ export function MemberPortal(props: MemberPortalProps) {
               messagesContainerRef={memberMessagesContainerRef}
               quickActions={memberChatQuickActions}
               onToggleReaction={toggleChatMessageReaction}
+              onMarkConversationRead={
+                activeMemberId && !isMemberLimited
+                  ? () => markChatConversationRead(activeMemberId, "member")
+                  : undefined
+              }
             />
           ) : null}
 

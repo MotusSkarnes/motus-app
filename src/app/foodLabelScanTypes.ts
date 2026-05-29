@@ -123,6 +123,37 @@ const EMPTY_NUTRITION: FoodItem["nutritionPer100g"] = {
   sodium: 0,
 };
 
+/** Stabil matvare-id for innsending (bevares ved PT-godkjenning). */
+export function submissionFoodId(submission: Pick<MemberFoodSubmission, "id" | "approvedFoodId" | "draftItem">): string {
+  const draftId = String((submission.draftItem as { id?: string }).id ?? "").trim();
+  if (draftId) return draftId;
+  if (submission.approvedFoodId?.trim()) return submission.approvedFoodId.trim();
+  return `submission-${submission.id}`;
+}
+
+export function foodItemFromSubmission(
+  submission: MemberFoodSubmission,
+): FoodItem | null {
+  if (!submission.draftItem?.name?.trim()) return null;
+  return foodItemFromSubmissionDraft(submission.draftItem, submissionFoodId(submission), {
+    createdAt:
+      submission.status === "approved" && submission.reviewedAt
+        ? submission.reviewedAt
+        : submission.createdAt,
+    createdBy: submission.memberName ?? "Medlem",
+  });
+}
+
+export function draftWithProposedFoodId(draft: FoodSubmissionDraft): FoodSubmissionDraft & { id: string } {
+  const existing = String((draft as { id?: string }).id ?? "").trim();
+  const id =
+    existing ||
+    (typeof crypto !== "undefined" && "randomUUID" in crypto
+      ? `food-${crypto.randomUUID()}`
+      : `food-${Date.now()}`);
+  return { ...draft, id };
+}
+
 /** Godkjent medlemsforslag → matvare i søk/matbank (uten store base64-bilder). */
 export function foodItemFromSubmissionDraft(
   draft: FoodSubmissionDraft,
