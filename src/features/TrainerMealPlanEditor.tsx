@@ -16,12 +16,13 @@ import { Calendar, Copy, HelpCircle, Plus, Save, Search, ShoppingCart, Soup, Spa
 import { MEAL_PLAN_CHANGED_EVENT } from "../app/mealPlanStorage";
 import { createDefaultMealPlan } from "../app/mealPlanDefaults";
 import {
+  countMealPlanFoodItems,
   flushMealPlanCloudSave,
+  loadMealPlanForTrainerEditor,
   mealPlansEqual,
   persistMealPlanBundle,
   persistMealPlanLocalAndScheduleCloud,
   pickPreferredMealPlan,
-  syncMealPlanForMember,
 } from "../app/mealPlanCloud";
 import { useInspirationRecipeItems } from "../app/inspirationRecipeItems";
 import { defaultPortionGramsForFood } from "../app/foodPortionDefaults";
@@ -99,7 +100,10 @@ export function TrainerMealPlanEditor({
   const [plan, setPlan] = useState<MealPlan | null>(null);
   const [activeDayId, setActiveDayId] = useState("");
   const [loading, setLoading] = useState(true);
+  const [planLoadStatus, setPlanLoadStatus] = useState<"loading" | "none" | "ready" | "error">("loading");
+  const [planSource, setPlanSource] = useState<"cloud" | "local" | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [creatingPlan, setCreatingPlan] = useState(false);
   const [saveStatus, setSaveStatus] = useState<string | null>(null);
   const [foodPicker, setFoodPicker] = useState<FoodPickerState>(null);
   const [recipePicker, setRecipePicker] = useState<RecipePickerState>(null);
@@ -175,25 +179,37 @@ export function TrainerMealPlanEditor({
     if (!trimmedMemberId) {
       setPlan(null);
       setLoading(false);
+      setPlanLoadStatus("error");
+      setPlanSource(null);
       setLoadError("Ingen klient valgt.");
       return;
     }
     const generation = ++loadGenerationRef.current;
     setLoading(true);
+    setPlanLoadStatus("loading");
     setLoadError(null);
     try {
-      const result = await syncMealPlanForMember(trimmedMemberId, trainerOwnerUserId ?? "", memberEmail);
+      const result = await loadMealPlanForTrainerEditor(trimmedMemberId, trainerOwnerUserId ?? "", memberEmail);
       if (generation !== loadGenerationRef.current) return;
+      if (result.status === "none") {
+        setPlan(null);
+        setPlanSource(null);
+        setPlanLoadStatus("none");
+        return;
+      }
       const hydratedRaw = applyLoadedPlan(result.plan);
+      setPlanSource(result.status);
+      setPlanLoadStatus("ready");
       if (!mealPlansEqual(hydratedRaw, result.plan)) {
         persistMealPlanLocalAndScheduleCloud(trainerOwnerUserId, hydratedRaw, { notify: false });
       }
     } catch (error) {
       if (generation !== loadGenerationRef.current) return;
       console.warn("TrainerMealPlanEditor reload failed:", error);
-      const fallback = createDefaultMealPlan(trimmedMemberId);
-      applyLoadedPlan(fallback);
-      setLoadError("Kunne ikke hente matplan fra sky. Viser tom ukeplan — lagre for å opprette.");
+      setPlan(null);
+      setPlanSource(null);
+      setPlanLoadStatus("error");
+      setLoadError("Kunne ikke sjekke om klienten har matplan. Prøv igjen, eller opprett en ny plan.");
     } finally {
       if (generation === loadGenerationRef.current) {
         setLoading(false);
@@ -201,11 +217,40 @@ export function TrainerMealPlanEditor({
     }
   }, [memberId, memberEmail, trainerOwnerUserId, applyLoadedPlan]);
 
+  const handleCreateMealPlan = useCallback(async () => {
+    const trimmedMemberId = memberId.trim();
+    if (!trimmedMemberId || creatingPlan) return;
+    setCreatingPlan(true);
+    setLoadError(null);
+    try {
+      const draft = createDefaultMealPlan(trimmedMemberId);
+      const hydrated = applyLoadedPlan(draft);
+      setPlanSource("local");
+      setPlanLoadStatus("ready");
+      const result = await persistMealPlanBundle(trainerOwnerUserId, hydrated);
+      if (result.cloudSynced) {
+        setPlanSource("cloud");
+        setSaveStatus("Matplan opprettet og lagret. Fyll ut uken og lagre ved behov.");
+      } else {
+        setSaveStatus(result.warning ?? "Matplan opprettet lokalt. Lagre på nytt for sky-synk.");
+      }
+    } catch (error) {
+      console.warn("create meal plan failed:", error);
+      setLoadError("Kunne ikke opprette matplan. Prøv igjen.");
+      setPlanLoadStatus("error");
+      setPlan(null);
+    } finally {
+      setCreatingPlan(false);
+    }
+  }, [memberId, trainerOwnerUserId, applyLoadedPlan, creatingPlan]);
+
   useEffect(() => {
     loadGenerationRef.current += 1;
     setPlan(null);
     setActiveDayId("");
     setLoadError(null);
+    setPlanLoadStatus("loading");
+    setPlanSource(null);
     setLoading(true);
   }, [memberId, memberEmail]);
 
@@ -938,17 +983,42 @@ export function TrainerMealPlanEditor({
     setSaveStatus(`Perioden er satt til ${clamped} ${clamped === 1 ? "uke" : "uker"}.`);
   }
 
-  if (loading) {
+  if (loading || planLoadStatus === "loading") {
     return <div className="rounded-xl border bg-slate-50 px-4 py-6 text-sm text-slate-600">Laster matplan …</div>;
   }
 
-  if (!plan) {
+  if (planLoadStatus === "none") {
     return (
-      <div className="space-y-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-6 text-sm text-amber-950">
-        <p>{loadError ?? "Matplanen kunne ikke lastes."}</p>
-        <OutlineButton type="button" className="text-xs" onClick={() => void reload()}>
-          Prøv igjen
-        </OutlineButton>
+      <div className="rounded-2xl border border-slate-200 bg-white px-5 py-8 text-center shadow-sm">
+        <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-teal-50 text-teal-700">
+          <Soup className="h-6 w-6" aria-hidden />
+        </div>
+        <h3 className="mt-4 text-lg font-semibold text-slate-950">Ingen matplan</h3>
+        <p className="mx-auto mt-2 max-w-md text-sm text-slate-600">
+          <span className="font-medium text-slate-800">{memberName}</span> har ikke fått en matplan i appen ennå. Opprett en
+          ukeplan for å legge inn måltider og makromål.
+        </p>
+        <GradientButton type="button" className="mt-5" disabled={creatingPlan} onClick={() => void handleCreateMealPlan()}>
+          <Plus className="h-4 w-4" aria-hidden />
+          {creatingPlan ? "Oppretter …" : "Lag matplan"}
+        </GradientButton>
+      </div>
+    );
+  }
+
+  if (planLoadStatus === "error" || !plan) {
+    return (
+      <div className="space-y-3 rounded-2xl border border-amber-200 bg-amber-50 px-5 py-6 text-sm text-amber-950">
+        <p className="font-medium">{loadError ?? "Matplanen kunne ikke lastes."}</p>
+        <div className="flex flex-wrap gap-2">
+          <OutlineButton type="button" className="text-xs" onClick={() => void reload()}>
+            Prøv igjen
+          </OutlineButton>
+          <GradientButton type="button" className="text-xs" disabled={creatingPlan} onClick={() => void handleCreateMealPlan()}>
+            <Plus className="h-4 w-4" aria-hidden />
+            Lag matplan
+          </GradientButton>
+        </div>
       </div>
     );
   }
@@ -966,8 +1036,18 @@ export function TrainerMealPlanEditor({
         </GradientButton>
       </div>
 
-      {loadError ? (
-        <StatusMessage message={loadError} tone="error" className="!rounded-xl !px-3 !py-2 !text-xs" />
+      {planSource === "cloud" && countMealPlanFoodItems(plan) === 0 ? (
+        <StatusMessage
+          message="Klienten har matplan i systemet, men ingen matvarer er lagt inn ennå."
+          tone="success"
+          className="!rounded-xl !px-3 !py-2 !text-xs"
+        />
+      ) : planSource === "local" ? (
+        <StatusMessage
+          message="Utkast — lagre matplan for å publisere til klienten i appen."
+          tone="error"
+          className="!rounded-xl !px-3 !py-2 !text-xs"
+        />
       ) : null}
 
       {saveStatus ? (
