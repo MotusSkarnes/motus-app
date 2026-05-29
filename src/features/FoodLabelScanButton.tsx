@@ -54,7 +54,6 @@ export function FoodLabelScanButton({
         ref={inputRef}
         type="file"
         accept="image/jpeg,image/png,image/webp"
-        capture="environment"
         className="hidden"
         onChange={(event) => {
           const file = event.currentTarget.files?.[0] ?? null;
@@ -70,6 +69,7 @@ export function FoodLabelScanButton({
         <Camera className="h-4 w-4" aria-hidden />
         {loading ? "Leser etikett…" : label}
       </OutlineButton>
+      {loading ? <p className="text-xs text-slate-600">Vent mens etiketten leses … (ikke lukk appen)</p> : null}
       {errorMessage ? <p className="text-xs text-rose-700">{errorMessage}</p> : null}
     </div>
   );

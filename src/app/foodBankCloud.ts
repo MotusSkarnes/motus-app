@@ -68,6 +68,18 @@ export function foodBankShouldUploadLocal(items: FoodItem[], favoriteIds: string
   );
 }
 
+function foodBankItemsSignature(items: FoodItem[]): string {
+  return items
+    .map((item) => item.id)
+    .sort()
+    .join("\u0001");
+}
+
+function notifyFoodBankChangedIfNeeded(previousItems: FoodItem[], nextItems: FoodItem[]): void {
+  if (foodBankItemsSignature(previousItems) === foodBankItemsSignature(nextItems)) return;
+  notifyFoodBankChanged();
+}
+
 function cacheTrainerFoodBankSnapshot(snapshot: TrainerFoodBankSnapshot): void {
   persistFoodBankItems(snapshot.items);
   persistFavoriteFoodIds(snapshot.favoriteIds);
@@ -211,8 +223,9 @@ export async function pullTrainerFoodBankFromRemote(ownerUserId: string): Promis
   ]);
   if (!snapshot) return null;
   const merged = { ...snapshot, items: mergeFoodItems(snapshot.items, sharedItems) };
+  const previousItems = loadFoodBankItems();
   cacheTrainerFoodBankSnapshot(merged);
-  notifyFoodBankChanged();
+  notifyFoodBankChangedIfNeeded(previousItems, merged.items);
   return merged;
 }
 
@@ -231,14 +244,10 @@ export async function syncTrainerFoodBankFromRemote(
   if (!remote) return { ok: false, source: "none" };
 
   if (remote.items.length > 0) {
-    const previousRaw =
-      typeof window !== "undefined" ? window.localStorage.getItem("motus_food_bank_v1") ?? "" : "";
+    const previousItems = loadFoodBankItems();
     const merged = { ...remote, items: mergeFoodItems(remote.items, sharedItems) };
     cacheTrainerFoodBankSnapshot(merged);
-    if (typeof window !== "undefined") {
-      const nextRaw = window.localStorage.getItem("motus_food_bank_v1") ?? "";
-      if (nextRaw !== previousRaw) notifyFoodBankChanged();
-    }
+    notifyFoodBankChangedIfNeeded(previousItems, merged.items);
     return { ok: true, source: "remote" };
   }
 
@@ -281,22 +290,13 @@ export async function syncMemberFoodBankFromTrainer(
     baseItems,
   );
 
-  const previousRaw =
-    typeof window !== "undefined" ? window.localStorage.getItem(FOOD_BANK_STORAGE_KEY) ?? "" : "";
-
+  notifyFoodBankChangedIfNeeded(baseItems, mergedItems);
   cacheTrainerFoodBankSnapshot({
     items: mergedItems,
     favoriteIds: loadFavoriteFoodIds(),
     recentIds: loadRecentFoodIds(),
     updatedAt: Date.now(),
   });
-
-  if (typeof window !== "undefined") {
-    const nextRaw = window.localStorage.getItem(FOOD_BANK_STORAGE_KEY) ?? "";
-    if (nextRaw !== previousRaw) notifyFoodBankChanged();
-  } else {
-    notifyFoodBankChanged();
-  }
 
   return { ok: true };
 }
@@ -305,14 +305,15 @@ export async function syncMemberFoodBankFromTrainer(
 export function mergeFoodItemsIntoLocalCache(incoming: FoodItem[]): void {
   if (incoming.length === 0) return;
   clearTrainerFoodBankCloudSaveQueue();
-  const merged = mergeFoodItems(incoming, loadFoodBankItems());
+  const previousItems = loadFoodBankItems();
+  const merged = mergeFoodItems(incoming, previousItems);
   cacheTrainerFoodBankSnapshot({
     items: merged,
     favoriteIds: loadFavoriteFoodIds(),
     recentIds: loadRecentFoodIds(),
     updatedAt: Date.now(),
   });
-  notifyFoodBankChanged();
+  notifyFoodBankChangedIfNeeded(previousItems, merged);
 }
 
 export function clearTrainerFoodBankCloudSaveQueue(): void {

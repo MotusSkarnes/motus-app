@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Check, Pencil, X } from "lucide-react";
 import { FOOD_BANK_CATEGORIES, type FoodCategoryId } from "../app/foodBankTypes";
 import {
@@ -156,15 +156,18 @@ export function MemberSubmitFoodPanel({ member }: MemberSubmitFoodPanelProps) {
   const [history, setHistory] = useState<MemberFoodSubmission[]>([]);
 
   const ownerUserId = member.ownerUserId?.trim() ?? "";
+  const panelRef = useRef<HTMLDivElement | null>(null);
 
-  const reloadHistory = useCallback(async () => {
-    const rows = await fetchMemberFoodSubmissions(member.id);
-    setHistory(rows);
-    const hasApproved = rows.some((row) => row.status === "approved");
-    if (hasApproved && ownerUserId) {
-      await syncMemberFoodBankFromTrainer(ownerUserId, member.id);
-    }
-  }, [member.id, ownerUserId]);
+  const reloadHistory = useCallback(
+    async (options?: { syncFoodBank?: boolean }) => {
+      const rows = await fetchMemberFoodSubmissions(member.id);
+      setHistory(rows);
+      if (options?.syncFoodBank && ownerUserId) {
+        await syncMemberFoodBankFromTrainer(ownerUserId, member.id);
+      }
+    },
+    [member.id, ownerUserId],
+  );
 
   useEffect(() => {
     void reloadHistory();
@@ -183,6 +186,9 @@ export function MemberSubmitFoodPanel({ member }: MemberSubmitFoodPanelProps) {
     setCreateOpen(true);
     setEditingId(null);
     setStatus("Sjekk at tallene stemmer før du sender til PT.");
+    requestAnimationFrame(() => {
+      panelRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    });
   };
 
   const handleRescanInForm = (scan: FoodLabelScanResult, imageDataUrl: string) => {
@@ -256,7 +262,8 @@ export function MemberSubmitFoodPanel({ member }: MemberSubmitFoodPanelProps) {
   const formOpen = createOpen || editingId !== null;
 
   return (
-    <Card className="p-4 space-y-3">
+    <div ref={panelRef}>
+      <Card className="p-4 space-y-3">
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div>
           <h3 className="text-sm font-semibold text-slate-900">Foreslå ny matvare</h3>
@@ -347,6 +354,7 @@ export function MemberSubmitFoodPanel({ member }: MemberSubmitFoodPanelProps) {
           ))}
         </ul>
       ) : null}
-    </Card>
+      </Card>
+    </div>
   );
 }

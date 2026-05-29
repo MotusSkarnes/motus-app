@@ -6,6 +6,7 @@ import { buildDefaultFoodBankItems } from "../app/foodBankSeed";
 import { hydrateMealPlanFoodNutrition } from "../app/mealPlanFoodNutrition";
 import { mealPlansEqual, syncMealPlanForMember } from "../app/mealPlanCloud";
 import { useFoodBankItems } from "../app/useFoodBankItems";
+import type { FoodItem } from "../app/foodBankTypes";
 import { MEAL_PLAN_CHANGED_EVENT } from "../app/mealPlanStorage";
 import type { MealPlan } from "../app/mealPlanTypes";
 import { Card } from "../app/ui";
@@ -29,38 +30,50 @@ export function MemberNutritionView({ member, members, onSavePersonalGoals }: Me
   const memberName = member.name;
   const memberEmail = member.email;
   const foodBankItems = useFoodBankItems();
+  const foodItemsRef = useRef<FoodItem[]>(foodBankItems);
+  foodItemsRef.current = foodBankItems;
+
   const foodItemsForMacros = useMemo(
     () => (foodBankItems.length > 0 ? foodBankItems : buildDefaultFoodBankItems()),
     [foodBankItems],
   );
+
   const [plan, setPlan] = useState<MealPlan | null>(null);
   const [loading, setLoading] = useState(true);
   const [cloudSynced, setCloudSynced] = useState(true);
   const reloadInFlightRef = useRef(false);
   const hasLoadedOnceRef = useRef(false);
 
-  const reload = useCallback(async () => {
-    if (!memberId.trim() || reloadInFlightRef.current) return;
-    reloadInFlightRef.current = true;
-    const showLoading = !hasLoadedOnceRef.current;
-    if (showLoading) setLoading(true);
-    try {
-      const result = await syncMealPlanForMember(memberId, "", memberEmail);
-      const hydrated = result.plan
-        ? hydrateMealPlanFoodNutrition(result.plan, foodItemsForMacros)
-        : null;
-      setPlan((prev) => (mealPlansEqual(prev, hydrated) ? prev : hydrated));
-      setCloudSynced(result.cloudSynced);
-      hasLoadedOnceRef.current = true;
-    } finally {
-      reloadInFlightRef.current = false;
-      if (showLoading) setLoading(false);
-    }
-  }, [memberId, memberEmail, foodItemsForMacros]);
+  const reload = useCallback(
+    async (options?: { silent?: boolean }) => {
+      if (!memberId.trim() || reloadInFlightRef.current) return;
+      reloadInFlightRef.current = true;
+      const showLoading = !options?.silent && !hasLoadedOnceRef.current;
+      if (showLoading) setLoading(true);
+      try {
+        const result = await syncMealPlanForMember(memberId, "", memberEmail);
+        const hydrated = result.plan
+          ? hydrateMealPlanFoodNutrition(result.plan, foodItemsRef.current)
+          : null;
+        setPlan((prev) => (mealPlansEqual(prev, hydrated) ? prev : hydrated));
+        setCloudSynced(result.cloudSynced);
+        hasLoadedOnceRef.current = true;
+      } finally {
+        reloadInFlightRef.current = false;
+        if (showLoading) setLoading(false);
+      }
+    },
+    [memberId, memberEmail],
+  );
+
+  const foodBankSyncedForMemberRef = useRef("");
 
   useEffect(() => {
     const ptOwnerUserId = member.ownerUserId?.trim() ?? "";
     if (!ptOwnerUserId) return;
+    const syncKey = `${ptOwnerUserId}:${member.id}`;
+    if (foodBankSyncedForMemberRef.current === syncKey) return;
+    foodBankSyncedForMemberRef.current = syncKey;
     void syncMemberFoodBankFromTrainer(ptOwnerUserId, member.id);
   }, [member.ownerUserId, member.id]);
 
@@ -72,12 +85,21 @@ export function MemberNutritionView({ member, members, onSavePersonalGoals }: Me
   }, [memberId, memberEmail, reload]);
 
   useEffect(() => {
-    const handler = () => void reload();
+    if (!hasLoadedOnceRef.current) return;
+    setPlan((prev) => {
+      if (!prev) return prev;
+      const hydrated = hydrateMealPlanFoodNutrition(prev, foodItemsForMacros);
+      return mealPlansEqual(prev, hydrated) ? prev : hydrated;
+    });
+  }, [foodItemsForMacros]);
+
+  useEffect(() => {
+    const handler = () => void reload({ silent: true });
     window.addEventListener(MEAL_PLAN_CHANGED_EVENT, handler);
     return () => window.removeEventListener(MEAL_PLAN_CHANGED_EVENT, handler);
   }, [reload]);
 
-  const mealPlanPanel = useMemo(() => {
+  const mealPlanContent = useMemo(() => {
     if (loading && !hasLoadedOnceRef.current) {
       return <Card className="p-6 text-center text-sm text-slate-600">Laster din matplan …</Card>;
     }
@@ -90,7 +112,6 @@ export function MemberNutritionView({ member, members, onSavePersonalGoals }: Me
             <p className="mt-2 text-sm text-slate-600">Treneren har ikke lagt ut en matplan til deg ennå.</p>
           </Card>
           <MemberQuickFoodLogPanel memberId={memberId} />
-          <MemberSubmitFoodPanel member={member} />
         </div>
       );
     }
@@ -108,7 +129,6 @@ export function MemberNutritionView({ member, members, onSavePersonalGoals }: Me
           memberName={memberName}
           onOpenAvoidances={() => setNutritionTab("avoidances")}
         />
-        <MemberSubmitFoodPanel member={member} />
       </>
     );
   }, [loading, plan, cloudSynced, memberId, memberName, setNutritionTab]);
@@ -123,7 +143,12 @@ export function MemberNutritionView({ member, members, onSavePersonalGoals }: Me
     <NutritionHub
       tab={nutritionTab}
       onTabChange={setNutritionTab}
-      mealPlan={mealPlanPanel}
+      mealPlan={
+        <>
+          {mealPlanContent}
+          <MemberSubmitFoodPanel member={member} />
+        </>
+      }
       mealPlanTargets={plan?.targets}
       avoidances={
         <MemberFoodAvoidancesPanel
