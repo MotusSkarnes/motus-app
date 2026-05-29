@@ -4819,7 +4819,7 @@ function pickFirstName(value: unknown): string {
             if (!selectedMember) return;
             setCustomerSubTab("overview");
             window.requestAnimationFrame(() => {
-              document.getElementById("motus-pt-customer-card")?.scrollIntoView({ behavior: "smooth", block: "start" });
+              document.getElementById("motus-pt-customer-card")?.scrollIntoView({ behavior: "smooth", block: "nearest" });
             });
           }}
           onNewTask={() => {

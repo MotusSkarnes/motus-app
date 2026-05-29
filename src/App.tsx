@@ -21,7 +21,9 @@ export default function App() {
       ) : !appState.currentUser || isRecoveryMode ? (
         <LoginScreen {...loginScreenProps} />
       ) : (
-        <div className="space-y-3 pb-[calc(5rem+env(safe-area-inset-bottom,0px))] xl:space-y-4 xl:pb-6">
+        <div
+          className={`space-y-3 pb-[calc(5rem+env(safe-area-inset-bottom,0px))] xl:space-y-4 xl:pb-6 ${layoutRole === "trainer" ? "motus-trainer-app" : ""}`}
+        >
           {!isSupabaseConfigured ? (
             <div className="rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900">
               <div className="font-semibold">Supabase er ikke konfigurert.</div>

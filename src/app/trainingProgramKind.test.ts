@@ -143,6 +143,16 @@ describe("trainingProgramKind", () => {
     expect(trainingProgramCategoryLabel(strengthLike, categories, exercises)).toBe("Mobilitet");
   });
 
+  it("classifies løpeprogrammer etter tittel (styrke vs kondisjon)", () => {
+    const runnerStrength = multiStepProgram([programRow("e1", "Goblet squat")]);
+    runnerStrength.title = "SUB60 · Styrke løper";
+    expect(getTrainingProgramSubTab(runnerStrength, categories, exercises)).toBe("strength");
+
+    const easyRun = multiStepProgram([programRow("e45", "Nedjogg", "38")]);
+    easyRun.title = "SUB60 · Rolig løp sone 2";
+    expect(getTrainingProgramSubTab(easyRun, categories, exercises)).toBe("conditioning");
+  });
+
   it("prefers hold seconds over stale exercise bank category", () => {
     const holdRow: TrainingProgram["exercises"][number] = {
       ...programRow("stale-id", "Couch stretch"),

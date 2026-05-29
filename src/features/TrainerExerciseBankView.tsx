@@ -221,7 +221,7 @@ export function TrainerExerciseBankView({
   }, [visibleExercises, favoritesOnly, muscleFilter, sortOrder, favoriteExerciseIds]);
 
   function scrollToForm() {
-    formRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    formRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
   }
 
   function handleNewExercise() {
@@ -362,7 +362,8 @@ export function TrainerExerciseBankView({
 
       <div className="motus-exbank-layout">
         <aside ref={formRef} className="motus-exbank-form-col">
-          <div className="motus-exbank-form-card motus-exbank-form-card--fit">
+          <div className="motus-exbank-form-scroll">
+            <div className="motus-exbank-form-card motus-exbank-form-card--fit">
             <h2 className="motus-exbank-form-heading">{editingExerciseId ? "Rediger øvelse" : "Ny øvelse"}</h2>
 
             <FormSection icon={<Dumbbell className="h-4 w-4" />} title="Øvelse">
@@ -480,17 +481,17 @@ export function TrainerExerciseBankView({
             {exerciseFormStatus ? (
               <div className="motus-exbank-form-status">{exerciseFormStatus}</div>
             ) : null}
-
-            <div className="motus-exbank-form-actions">
-              {editingExerciseId ? (
-                <OutlineButton type="button" onClick={onReset} className="w-full">
-                  Avbryt
-                </OutlineButton>
-              ) : null}
-              <GradientButton type="button" onClick={onSubmit} className="w-full">
-                {editingExerciseId ? "Lagre øvelse" : "Lagre øvelse"}
-              </GradientButton>
             </div>
+          </div>
+          <div className="motus-exbank-form-footer">
+            {editingExerciseId ? (
+              <OutlineButton type="button" onClick={onReset} className="w-full">
+                Avbryt
+              </OutlineButton>
+            ) : null}
+            <GradientButton type="button" onClick={onSubmit} className="w-full">
+              {editingExerciseId ? "Lagre øvelse" : "Lagre øvelse"}
+            </GradientButton>
           </div>
         </aside>
 

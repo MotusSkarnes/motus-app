@@ -125,7 +125,18 @@ export function getTrainingProgramSubTab(
   exerciseBank: Exercise[] = [],
 ): TrainingSubTab {
   const titleKey = program.title?.trim().toLowerCase() ?? "";
-  if (titleKey.endsWith("· mobilitet løper")) return "mobility";
+  if (titleKey.includes("mobilitet løper")) return "mobility";
+  if (titleKey.includes("styrke løper")) return "strength";
+  if (
+    titleKey.includes("rolig løp") ||
+    titleKey.includes("langtur") ||
+    titleKey.includes("intervall") ||
+    titleKey.includes("tempo") ||
+    titleKey.includes("testløp") ||
+    titleKey.includes("målfart")
+  ) {
+    return "conditioning";
+  }
 
   if (program.exercises.length === 0) return "strength";
   if (isConditioningTrainingProgram(program, exerciseCategoryById, exerciseBank)) return "conditioning";

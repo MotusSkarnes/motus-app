@@ -44,9 +44,116 @@ export type InspoThemeConfig = {
   match: (item: InspoHubItem) => boolean;
 };
 
+const TOP_NAV_THEME_IDS = new Set<InspoThemeId>(["running", "strength", "motivation", "nutrition", "recovery"]);
+
 function textIncludesAny(value: string, terms: string[]): boolean {
   const lower = value.toLowerCase();
   return terms.some((term) => lower.includes(term));
+}
+
+function itemSearchText(item: InspoHubItem): string {
+  return `${item.title} ${item.tag} ${item.description} ${item.body ?? ""}`.toLowerCase();
+}
+
+function isRunnerStrengthProgramText(text: string): boolean {
+  return /styrke\s+løper/.test(text) || (text.includes("styrke") && text.includes("løper"));
+}
+
+function isRunnerMobilityProgramText(text: string): boolean {
+  return /mobilitet\s+løper/.test(text) || (text.includes("mobilitet") && text.includes("løper"));
+}
+
+function isRunningProgramItem(item: InspoHubItem): boolean {
+  if (item.category !== "programs") return false;
+  const text = itemSearchText(item);
+  if (isRunnerStrengthProgramText(text) || isRunnerMobilityProgramText(text)) return false;
+
+  if (item.kind === "periodPlan") {
+    return textIncludesAny(text, ["sub60", "sub45", "10 km", "løpeplan", "løp", "løping", "maraton"]);
+  }
+
+  if (textIncludesAny(text, ["rolig løp", "tempo", "intervall", "langtur", "testløp", "målfart", "oppvarming", "nedjogg"])) {
+    return true;
+  }
+
+  if (textIncludesAny(text, ["løp", "løping", "running", "5k", "10k", "maraton"])) {
+    return !textIncludesAny(text, ["styrke løper", "mobilitet løper"]);
+  }
+
+  return false;
+}
+
+function isStrengthProgramItem(item: InspoHubItem): boolean {
+  if (item.category !== "programs") return false;
+  if (item.kind === "periodPlan") return false;
+
+  const text = itemSearchText(item);
+  if (isRunningProgramItem(item) || isRunnerMobilityProgramText(text)) return false;
+
+  if (isRunnerStrengthProgramText(text)) return true;
+
+  if (
+    item.kind === "program" &&
+    textIncludesAny(text, [
+      "styrke",
+      "strength",
+      "fullkropp",
+      "muskel",
+      "kraft",
+      "heving",
+      "squat",
+      "knebøy",
+      "benkpress",
+      "markløft",
+      "hypertrofi",
+      "push",
+      "pull",
+    ])
+  ) {
+    return true;
+  }
+
+  return item.kind === "program";
+}
+
+function isRecoveryProgramItem(item: InspoHubItem): boolean {
+  if (item.category !== "programs") return false;
+  const text = itemSearchText(item);
+  return (
+    isRunnerMobilityProgramText(text) ||
+    textIncludesAny(text, ["restitusjon", "hvile / restitusjon", "aktiv restitusjon", "stretch", "søvn"])
+  );
+}
+
+function isRecoveryArticleItem(item: InspoHubItem): boolean {
+  if (item.category !== "tips" && item.category !== "news" && item.category !== "nutrition") return false;
+  return textIncludesAny(itemSearchText(item), [
+    "restitusjon",
+    "recovery",
+    "søvn",
+    "hvile",
+    "stretch",
+    "mobilitet",
+    "skade",
+    "forbrenning",
+  ]);
+}
+
+/** Eksklusiv plassering i toppmeny-tema — hvert innlegg havner maks ett sted. */
+export function resolvePrimaryTopNavTheme(item: InspoHubItem): InspoThemeId | null {
+  if (item.category === "nutrition") return "nutrition";
+  if (item.category === "tips") return "motivation";
+
+  if (item.category === "programs") {
+    if (isRecoveryProgramItem(item)) return "recovery";
+    if (isRunningProgramItem(item)) return "running";
+    if (isStrengthProgramItem(item)) return "strength";
+    return null;
+  }
+
+  if (isRecoveryArticleItem(item)) return "recovery";
+
+  return null;
 }
 
 export const INSPO_TOP_NAV_THEMES: readonly InspoThemeConfig[] = [
@@ -55,21 +162,9 @@ export const INSPO_TOP_NAV_THEMES: readonly InspoThemeConfig[] = [
     label: "Løping",
     icon: Footprints,
     tone: "mint",
-    description: "Løpeplaner, intervaller og utholdenhet.",
+    description: "Løpeplaner, intervaller og kondisjonsøkter.",
     showInTopNav: true,
-    match: (item) =>
-      item.category === "programs" &&
-      textIncludesAny(`${item.title} ${item.tag} ${item.description}`, [
-        "løp",
-        "løping",
-        "running",
-        "interval",
-        "5k",
-        "10k",
-        "sub45",
-        "sub60",
-        "maraton",
-      ]),
+    match: (item) => resolvePrimaryTopNavTheme(item) === "running",
   },
   {
     id: "strength",
@@ -78,17 +173,7 @@ export const INSPO_TOP_NAV_THEMES: readonly InspoThemeConfig[] = [
     tone: "pink",
     description: "Styrkeøkter, programmer og progresjon.",
     showInTopNav: true,
-    match: (item) =>
-      item.category === "programs" &&
-      textIncludesAny(`${item.title} ${item.tag} ${item.description}`, [
-        "styrke",
-        "strength",
-        "muskel",
-        "kraft",
-        "heving",
-        "squat",
-        "knebøy",
-      ]),
+    match: (item) => resolvePrimaryTopNavTheme(item) === "strength",
   },
   {
     id: "motivation",
@@ -97,7 +182,7 @@ export const INSPO_TOP_NAV_THEMES: readonly InspoThemeConfig[] = [
     tone: "purple",
     description: "Råd, vaner og mental styrke.",
     showInTopNav: true,
-    match: (item) => item.category === "tips",
+    match: (item) => resolvePrimaryTopNavTheme(item) === "motivation",
   },
   {
     id: "nutrition",
@@ -106,27 +191,16 @@ export const INSPO_TOP_NAV_THEMES: readonly InspoThemeConfig[] = [
     tone: "mintSoft",
     description: "Kunnskapsartikler om kosthold — ikke oppskrifter.",
     showInTopNav: true,
-    match: (item) => item.category === "nutrition",
+    match: (item) => resolvePrimaryTopNavTheme(item) === "nutrition",
   },
   {
     id: "recovery",
     label: "Restitusjon",
     icon: Moon,
     tone: "orange",
-    description: "Søvn, restitusjon og skadeforebygging.",
+    description: "Søvn, restitusjon, mobilitet og skadeforebygging.",
     showInTopNav: true,
-    match: (item) =>
-      item.category === "tips" ||
-      item.category === "news" ||
-      textIncludesAny(`${item.title} ${item.tag} ${item.description} ${item.body ?? ""}`, [
-        "restitusjon",
-        "recovery",
-        "søvn",
-        "hvile",
-        "stretch",
-        "mobilitet",
-        "skade",
-      ]),
+    match: (item) => resolvePrimaryTopNavTheme(item) === "recovery",
   },
 ];
 
@@ -174,6 +248,16 @@ export function filterItemsForInspoTheme(items: InspoHubItem[], themeId: InspoTh
   if (!theme) return items;
   const hubItems = items.filter((item) => item.category !== "appGuide" && item.category !== "recipes");
   if (themeId === "all") return hubItems;
+  if (TOP_NAV_THEME_IDS.has(themeId)) {
+    if (themeId === "recovery") {
+      return hubItems.filter(
+        (item) =>
+          resolvePrimaryTopNavTheme(item) === "recovery" ||
+          (item.category === "nutrition" && isRecoveryArticleItem(item)),
+      );
+    }
+    return hubItems.filter((item) => resolvePrimaryTopNavTheme(item) === themeId);
+  }
   return hubItems.filter(theme.match);
 }
 

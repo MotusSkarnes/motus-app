@@ -2164,19 +2164,21 @@ export function InspirationHub({
   }
 
   const programsCount = (itemsByCategory.programs ?? []).length;
-  const showExploreOverview = inspoSubView === "overview" && !activeThemeId;
+  const showExploreLanding = inspoSubView === "overview" && !activeThemeId;
+  const showExploreTopicNav = inspoSubView === "overview";
+  const showExploreThemePage = inspoSubView === "overview" && Boolean(activeThemeId);
   const featuredExcludeIds = featuredItem ? new Set([featuredItem.id]) : undefined;
 
   return (
     <div className="motus-inspo-page min-w-0 max-w-full space-y-4 overflow-x-hidden">
-      {showExploreOverview ? (
+      {showExploreLanding ? (
         <header className="motus-inspo-page-head">
           <h1 className="motus-inspo-page-title">Utforsk</h1>
           <p className="motus-inspo-page-subtitle">Inspirasjon, kunnskap og treningsglede – alt på ett sted.</p>
         </header>
       ) : null}
 
-      {showExploreOverview ? (
+      {showExploreLanding ? (
         <section className="motus-inspo-hero">
           <div className="motus-inspo-hero-media">
             <img
@@ -2307,11 +2309,11 @@ export function InspirationHub({
         </button>
       </div>
 
-      {showExploreOverview ? (
+      {showExploreTopicNav ? (
         <InspirationExploreTopNav activeThemeId={activeThemeId} onSelectTheme={openExploreTheme} />
       ) : null}
 
-      {showExploreOverview && featuredItem ? (
+      {showExploreLanding && featuredItem ? (
         <section className="motus-inspo-featured-section">
           <button
             type="button"
@@ -2400,7 +2402,7 @@ export function InspirationHub({
       ) : null}
 
       <div className="space-y-4">
-        {activeThemeId && inspoSubView === "overview" ? (
+        {showExploreThemePage && activeThemeId ? (
           <InspirationExploreThemePage
             themeId={activeThemeId}
             items={hubExploreItems}
@@ -2410,7 +2412,7 @@ export function InspirationHub({
               renderInspirationCard(item as InspirationItem, index, total, bentoSize)
             }
           />
-        ) : inspoSubView === "overview" ? (
+        ) : showExploreLanding ? (
           <InspirationExploreBentoOverview
             items={hubExploreItems}
             excludeIds={featuredExcludeIds}

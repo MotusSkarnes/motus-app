@@ -4791,9 +4791,9 @@ button.motus-progress-status-banner {
 
 .motus-pt-dash-list {
   position: sticky;
-  top: 1rem;
+  top: var(--motus-pt-sticky-top, 1rem);
   display: flex;
-  max-height: calc(100dvh - 10rem);
+  max-height: calc(100dvh - var(--motus-pt-sticky-top, 1rem) - var(--motus-pt-sticky-max-height-offset, 2.5rem));
   flex-direction: column;
   padding: 1rem;
 }
@@ -5486,6 +5486,29 @@ button.motus-progress-status-banner {
 .motus-trainer-main {
   min-width: 0;
   width: 100%;
+}
+
+/* PT — unngå at innhold scroller under Motus-topplinjen */
+.motus-trainer-app {
+  --motus-pt-sticky-top: 0.75rem;
+  --motus-pt-scroll-margin-top: 7.5rem;
+  --motus-pt-sticky-max-height-offset: 2rem;
+}
+
+@media (min-width: 768px) {
+  .motus-trainer-app {
+    --motus-pt-scroll-margin-top: 8.75rem;
+    --motus-pt-sticky-top: 1rem;
+    --motus-pt-sticky-max-height-offset: 2.5rem;
+  }
+}
+
+html:has(.motus-trainer-app) {
+  scroll-padding-top: var(--motus-pt-scroll-margin-top);
+}
+
+.motus-trainer-app #motus-pt-customer-card {
+  scroll-margin-top: var(--motus-pt-scroll-margin-top);
 }
 
 .motus-pt-home {
@@ -7208,18 +7231,33 @@ button.motus-progress-status-banner {
 }
 
 .motus-exbank-form-col {
-  position: sticky;
-  top: 1rem;
-  max-height: calc(100vh - 2rem);
-  overflow-y: auto;
-}
-
-.motus-exbank-form-card {
+  display: flex;
+  flex-direction: column;
+  align-self: start;
+  min-height: 0;
+  overflow: hidden;
   border-radius: 1.5rem;
   border: 1px solid rgba(15, 23, 42, 0.08);
   background: #fff;
-  padding: 1.25rem;
   box-shadow: 0 4px 24px rgba(15, 23, 42, 0.06);
+  scroll-margin-top: var(--motus-pt-scroll-margin-top, 7.5rem);
+}
+
+.motus-exbank-form-scroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+.motus-exbank-form-card {
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  padding: 1.25rem 1.25rem 0.75rem;
+  box-shadow: none;
 }
 
 .motus-exbank-form-heading {
@@ -7370,10 +7408,14 @@ button.motus-progress-status-banner {
   color: #047857;
 }
 
-.motus-exbank-form-actions {
+.motus-exbank-form-footer {
+  flex: 0 0 auto;
   display: grid;
   gap: 0.5rem;
-  margin-top: 1rem;
+  padding: 0.75rem 1.25rem 1rem;
+  border-top: 1px solid rgba(15, 23, 42, 0.08);
+  background: #fff;
+  z-index: 2;
 }
 
 .motus-exbank-search-wrap {
@@ -7696,12 +7738,12 @@ button.motus-progress-status-banner {
     display: flex;
     flex-direction: column;
     gap: 0.65rem;
-    height: calc(100dvh - 9.5rem);
-    max-height: calc(100dvh - 9.5rem);
+    max-height: calc(100dvh - var(--motus-pt-scroll-margin-top, 8.75rem) - 0.5rem);
     overflow: hidden;
   }
 
   .motus-exbank-header {
+    flex: 0 0 auto;
     flex-wrap: nowrap;
     align-items: center;
     gap: 0.75rem;
@@ -7749,34 +7791,71 @@ button.motus-progress-status-banner {
   }
 
   .motus-exbank-layout {
-    flex: 1;
+    flex: 1 1 auto;
     min-height: 0;
     grid-template-columns: minmax(340px, 0.44fr) minmax(0, 0.56fr);
+    grid-template-rows: minmax(0, 1fr);
     gap: 0.85rem;
     align-items: stretch;
   }
 
   .motus-exbank-form-col {
-    position: static;
+    position: sticky;
+    top: var(--motus-pt-sticky-top, 1rem);
+    align-self: stretch;
+    height: auto;
     max-height: none;
-    overflow: visible;
     min-height: 0;
+    overflow: hidden;
+  }
+
+  .motus-exbank-library-col {
+    min-height: 0;
+    overflow-y: auto;
   }
 
   .motus-exbank-form-card--fit {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-    column-gap: 0.85rem;
-    row-gap: 0.55rem;
-    height: 100%;
-    max-height: 100%;
-    padding: 0.85rem 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.55rem;
+    height: auto;
+    max-height: none;
+    padding: 0.85rem 1rem 0.35rem;
     overflow: visible;
   }
 
+  .motus-exbank-form-card--fit .motus-exbank-form-section {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    column-gap: 0.85rem;
+    align-content: start;
+  }
+
+  .motus-exbank-form-card--fit .motus-exbank-form-section-head {
+    grid-column: 1 / -1;
+  }
+
+  .motus-exbank-form-card--fit .motus-exbank-form-section-body {
+    grid-column: 1 / -1;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    column-gap: 0.85rem;
+    row-gap: 0.5rem;
+  }
+
+  .motus-exbank-form-card--fit .motus-exbank-form-section-body > * {
+    grid-column: 1 / -1;
+  }
+
+  .motus-exbank-form-card--fit .motus-exbank-field-grid {
+    grid-column: 1 / -1;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 0.5rem;
+  }
+
   .motus-exbank-form-heading,
-  .motus-exbank-form-status,
-  .motus-exbank-form-actions {
+  .motus-exbank-form-status {
     grid-column: 1 / -1;
   }
 
@@ -7843,16 +7922,14 @@ button.motus-progress-status-banner {
     min-height: 3.25rem !important;
   }
 
-  .motus-exbank-form-actions {
+  .motus-exbank-form-footer {
+    padding: 0.65rem 1rem 0.85rem;
     gap: 0.45rem;
-    padding-top: 0.15rem;
   }
 
   .motus-exbank-library-col {
-    min-height: 0;
-    max-height: 100%;
-    overflow-y: auto;
-    padding-right: 0.15rem;
+    max-height: none;
+    padding-right: 0;
   }
 }
 
@@ -7869,7 +7946,14 @@ button.motus-progress-status-banner {
 
   .motus-exbank-form-col {
     position: static;
+    height: auto;
     max-height: none;
+    overflow: visible;
+  }
+
+  .motus-exbank-form-scroll {
+    flex: none;
+    overflow: visible;
   }
 
   .motus-exbank-stats {
@@ -7972,9 +8056,10 @@ button.motus-progress-status-banner {
 
 .motus-prog-builder-left {
   position: sticky;
-  top: 1rem;
-  max-height: calc(100vh - 2rem);
+  top: var(--motus-pt-sticky-top, 1rem);
+  max-height: calc(100dvh - var(--motus-pt-sticky-top, 1rem) - var(--motus-pt-sticky-max-height-offset, 2rem));
   overflow-y: auto;
+  scroll-margin-top: var(--motus-pt-scroll-margin-top, 7.5rem);
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
