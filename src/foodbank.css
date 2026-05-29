@@ -3230,6 +3230,107 @@
   gap: 0.35rem;
 }
 
+.motus-log-meal-macros {
+  padding: 0.9rem 1rem;
+  border-radius: 1rem;
+  border: 1px solid #99f6e4;
+  background: linear-gradient(135deg, #f0fdfa 0%, #ffffff 55%, #ecfeff 100%);
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+}
+
+.motus-log-meal-macros__title {
+  margin: 0 0 0.65rem;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  color: #0f766e;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.motus-log-meal-macros__body {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+}
+
+.motus-log-meal-macros__kcal {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-shrink: 0;
+  min-width: 6.5rem;
+}
+
+.motus-log-meal-macros__kcal-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: 9999px;
+  background: #ccfbf1;
+  color: #0d9488;
+}
+
+.motus-log-meal-macros__kcal-text {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.1;
+}
+
+.motus-log-meal-macros__kcal-value {
+  font-size: 1.375rem;
+  font-weight: 800;
+  color: #0f172a;
+  letter-spacing: -0.02em;
+}
+
+.motus-log-meal-macros__kcal-unit {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  color: #64748b;
+}
+
+.motus-log-meal-macros__grid {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.35rem;
+}
+
+.motus-log-meal-macros__stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.15rem;
+  padding: 0.45rem 0.25rem;
+  border-radius: 0.65rem;
+  background: rgba(255, 255, 255, 0.85);
+  border: 1px solid rgba(15, 23, 42, 0.06);
+}
+
+.motus-log-meal-macros__stat-icon {
+  width: 0.875rem;
+  height: 0.875rem;
+  color: #64748b;
+}
+
+.motus-log-meal-macros__stat-label {
+  font-size: 0.625rem;
+  font-weight: 600;
+  color: #64748b;
+}
+
+.motus-log-meal-macros__stat-value {
+  font-size: 0.8125rem;
+  font-weight: 700;
+  color: #0f172a;
+}
+
 .motus-log-meal-panel {
   display: flex;
   flex-direction: column;

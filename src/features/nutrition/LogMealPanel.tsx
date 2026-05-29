@@ -11,6 +11,8 @@ import { loadMemberMealPlanState } from "../../app/memberMealPlanState";
 import { persistMemberMealPlanStateLocalAndScheduleCloud, syncMemberMealPlanState } from "../../app/memberMealPlanStateCloud";
 import { MEAL_PLAN_STATE_CHANGED_EVENT } from "../../app/memberMealPlanState";
 import { GradientButton, OutlineButton } from "../../app/ui";
+import { sumQuickFoodLogMacros } from "../../app/quickFoodLogMacros";
+import { DailyLoggedMacrosSummary } from "./DailyLoggedMacrosSummary";
 import { FoodLogFormFields, type FoodLogDraft } from "./FoodLogFormFields";
 import "../../foodbank.css";
 
@@ -58,6 +60,8 @@ export function LogMealPanel({ memberId, onRefreshFoodBank }: LogMealPanelProps)
     window.addEventListener(MEAL_PLAN_STATE_CHANGED_EVENT, handler);
     return () => window.removeEventListener(MEAL_PLAN_STATE_CHANGED_EVENT, handler);
   }, [memberId]);
+
+  const macrosToday = useMemo(() => sumQuickFoodLogMacros(logsToday), [logsToday]);
 
   const logsBySlot = useMemo(() => {
     const grouped = new Map<string, MemberQuickFoodLogEntry[]>();
@@ -132,6 +136,8 @@ export function LogMealPanel({ memberId, onRefreshFoodBank }: LogMealPanelProps)
 
   return (
     <div className="motus-log-meal-panel">
+      {hasLogs ? <DailyLoggedMacrosSummary macros={macrosToday} /> : null}
+
       {hasLogs && !open ? (
         <div className="motus-log-meal-panel__summary">
           <div className="motus-log-meal-panel__summary-head">

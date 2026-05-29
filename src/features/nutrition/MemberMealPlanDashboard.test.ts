@@ -1,9 +1,6 @@
 import { describe, expect, it } from "vitest";
-import {
-  extractRecipeMethodSteps,
-  formatMealEntryAmount,
-  sumQuickFoodLogMacros,
-} from "./MemberMealPlanDashboard";
+import { sumQuickFoodLogMacros } from "../../app/quickFoodLogMacros";
+import { extractRecipeMethodSteps, formatMealEntryAmount } from "./MemberMealPlanDashboard";
 
 describe("MemberMealPlanDashboard helpers", () => {
   it("formats recipe amount as portions", () => {

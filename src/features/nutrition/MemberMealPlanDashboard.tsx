@@ -20,6 +20,7 @@ import { formatMacro } from "../../app/foodBankTypes";
 import type { FoodItem } from "../../app/foodBankTypes";
 import { countMealPlanFoodItems } from "../../app/mealPlanCloud";
 import { memberMealSlotLabel } from "../../app/memberMealSlots";
+import { sumQuickFoodLogMacros } from "../../app/quickFoodLogMacros";
 import {
   computeMealMacros,
   sumLoggedMacrosFromFoodItems,
@@ -114,22 +115,6 @@ function mealDisplayTitle(meal: MealPlanMeal): string {
 
 function mealMacroLine(macros: MacroTotals): string {
   return `${formatMacro(macros.kcal, 0)} kcal · ${formatMacro(macros.protein, 0)}g protein`;
-}
-
-export function sumQuickFoodLogMacros(logs: MemberQuickFoodLogEntry[] | undefined): MacroTotals {
-  if (!logs?.length) return { kcal: 0, protein: 0, carbs: 0, fat: 0 };
-  return logs.reduce(
-    (acc, entry) => {
-      const scale = entry.grams > 0 ? entry.grams / 100 : 0;
-      return {
-        kcal: acc.kcal + entry.nutritionPer100g.kcal * scale,
-        protein: acc.protein + entry.nutritionPer100g.protein * scale,
-        carbs: acc.carbs + entry.nutritionPer100g.carbs * scale,
-        fat: acc.fat + entry.nutritionPer100g.fat * scale,
-      };
-    },
-    { kcal: 0, protein: 0, carbs: 0, fat: 0 },
-  );
 }
 
 function normalizeRecipeLookupKey(value: string): string {
