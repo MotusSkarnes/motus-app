@@ -1,5 +1,10 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { daysSinceLastCompletedWorkout, memberPriorityScore, memberPriorityTone } from "./memberActivity";
+import {
+  daysSinceLastCompletedWorkout,
+  memberPriorityScore,
+  memberPriorityTone,
+  trainerMemberListStatus,
+} from "./memberActivity";
 import type { Member, WorkoutLog } from "./types";
 
 const member: Member = {
@@ -33,8 +38,17 @@ describe("memberPriorityTone", () => {
     expect(memberPriorityScore("red")).toBe(3);
   });
 
-  it("returns green when no completed logs", () => {
-    expect(memberPriorityTone(member, [member], [])).toBe("green");
+  it("returns unknown when no completed logs", () => {
+    expect(memberPriorityTone(member, [member], [])).toBe("unknown");
+  });
+});
+
+describe("trainerMemberListStatus", () => {
+  it("does not label members without workouts as active", () => {
+    const status = trainerMemberListStatus(member, [member], []);
+    expect(status.statusLabel).not.toBe("Aktiv");
+    expect(status.statusTone).toBe("neutral");
+    expect(status.statusLabel).toBe("Ingen økt");
   });
 });
 

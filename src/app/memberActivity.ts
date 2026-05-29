@@ -111,12 +111,12 @@ export function formatTrainerMemberActivitySubtitle(member: Member, allMembers: 
   return "Ingen registrerte økter";
 }
 
-export type MemberPriorityTone = "red" | "orange" | "green";
+export type MemberPriorityTone = "red" | "orange" | "green" | "unknown";
 
-/** Rød ≥10 dager inaktiv, oransje ≥5, ellers grønn. */
+/** Rød ≥10 dager siden siste fullførte økt, oransje ≥5, grønn <5, unknown uten data. */
 export function memberPriorityTone(member: Member, allMembers: Member[], workoutLogs: WorkoutLog[]): MemberPriorityTone {
   const inactiveDays = trainerInactiveDaysForFollowUp(member, allMembers, workoutLogs);
-  if (inactiveDays === null) return "green";
+  if (inactiveDays === null) return "unknown";
   if (inactiveDays >= 10) return "red";
   if (inactiveDays >= 5) return "orange";
   return "green";
@@ -125,5 +125,76 @@ export function memberPriorityTone(member: Member, allMembers: Member[], workout
 export function memberPriorityScore(tone: MemberPriorityTone): number {
   if (tone === "red") return 3;
   if (tone === "orange") return 2;
-  return 1;
+  if (tone === "green") return 1;
+  return 0;
+}
+
+/** Sann hvis kunden har minst én fullført økt innen `withinDays` kalenderdager. */
+export function memberTrainedWithinDays(
+  member: Member,
+  allMembers: Member[],
+  workoutLogs: WorkoutLog[],
+  withinDays = 4,
+): boolean {
+  const daysSinceWorkout = daysSinceLastCompletedWorkout(member, allMembers, workoutLogs);
+  return daysSinceWorkout !== null && daysSinceWorkout <= withinDays;
+}
+
+export type TrainerMemberListStatusTone = "critical" | "warning" | "active" | "neutral";
+
+export type TrainerMemberListStatus = {
+  priorityTone: MemberPriorityTone;
+  statusTone: TrainerMemberListStatusTone;
+  statusLabel: string;
+  activityLabel: string;
+  /** Forklaring ved hover — ikke sanntid pålogget. */
+  statusHint: string;
+};
+
+const TRAINER_ACTIVITY_STATUS_HINT =
+  "Basert på siste fullførte treningsøkt i Motus — ikke om kunden er pålogget akkurat nå.";
+
+/** Etiketter og fargeprikk for PT-kundeliste. */
+export function trainerMemberListStatus(
+  member: Member,
+  allMembers: Member[],
+  workoutLogs: WorkoutLog[],
+): TrainerMemberListStatus {
+  const priorityTone = memberPriorityTone(member, allMembers, workoutLogs);
+  const daysSinceWorkout = daysSinceLastCompletedWorkout(member, allMembers, workoutLogs);
+
+  const statusTone: TrainerMemberListStatusTone =
+    priorityTone === "red"
+      ? "critical"
+      : priorityTone === "orange"
+        ? "warning"
+        : memberTrainedWithinDays(member, allMembers, workoutLogs, 3)
+          ? "active"
+          : "neutral";
+
+  const activityLabel =
+    daysSinceWorkout === null
+      ? "ingen fullført økt"
+      : daysSinceWorkout === 0
+        ? "i dag"
+        : `${daysSinceWorkout} d siden`;
+
+  const statusLabel =
+    statusTone === "critical"
+      ? "Trenger oppfølging"
+      : statusTone === "warning"
+        ? "Følg opp"
+        : statusTone === "active"
+          ? "Trent nylig"
+          : daysSinceWorkout === null
+            ? "Ingen økt"
+            : `${daysSinceWorkout} d siden økt`;
+
+  return {
+    priorityTone,
+    statusTone,
+    statusLabel,
+    activityLabel,
+    statusHint: TRAINER_ACTIVITY_STATUS_HINT,
+  };
 }

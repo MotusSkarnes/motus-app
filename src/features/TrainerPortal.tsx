@@ -160,6 +160,8 @@ import {
   formatTrainerMemberActivitySubtitle,
   memberPriorityScore,
   memberPriorityTone,
+  memberTrainedWithinDays,
+  trainerMemberListStatus,
   programBelongsToMember,
   programsAttributedToMember,
   trainerActivitySortKey,
@@ -4321,7 +4323,8 @@ function pickFirstName(value: unknown): string {
 
     function getPriority(member: Member): { tone: MemberPriorityTone; score: number; label: string } {
       const tone = memberPriorityTone(member, members, logs);
-      const label = tone === "red" ? "Rød" : tone === "orange" ? "Oransje" : "Grønn";
+      const label =
+        tone === "red" ? "Rød" : tone === "orange" ? "Oransje" : tone === "green" ? "Grønn" : "Ukjent";
       return { tone, score: memberPriorityScore(tone), label };
     }
 
@@ -4342,7 +4345,9 @@ function pickFirstName(value: unknown): string {
 
   const homePriorityMembers = useMemo((): TrainerPriorityMemberModel[] => {
     const urgent = membersWithPriority.filter((item) => item.priority.tone !== "green").slice(0, 5);
-    const stable = membersWithPriority.filter((item) => item.priority.tone === "green").slice(0, 3);
+    const stable = membersWithPriority
+      .filter((item) => memberTrainedWithinDays(item.member, members, logs, 4))
+      .slice(0, 3);
     return [...urgent, ...stable].map(({ member, priority }) => ({
       memberId: member.id,
       memberName: member.name,
@@ -4386,7 +4391,7 @@ function pickFirstName(value: unknown): string {
     }).length;
     return {
       all: visibleMembers.length,
-      active: active.filter((m) => memberPriorityTone(m, members, logs) === "green").length,
+      active: active.filter((m) => memberTrainedWithinDays(m, members, logs, 4)).length,
       risk,
       inactive,
     };
@@ -4400,7 +4405,7 @@ function pickFirstName(value: unknown): string {
     let base: Member[];
     if (ptListFilterTab === "all") base = activeSorted;
     else if (ptListFilterTab === "active") {
-      base = activeSorted.filter((m) => memberPriorityTone(m, members, logs) === "green");
+      base = activeSorted.filter((m) => memberTrainedWithinDays(m, members, logs, 4));
     } else {
       base = activeSorted.filter((m) => {
         const tone = memberPriorityTone(m, members, logs);
@@ -4416,18 +4421,15 @@ function pickFirstName(value: unknown): string {
 
   const ptListMembers = useMemo((): TrainerPtListMember[] => {
     return ptFilteredMembers.map((member) => {
-      const tone = memberPriorityTone(member, members, logs);
-      const daysSinceWorkout = daysSinceLastCompletedWorkout(member, members, logs);
-      const statusTone: TrainerPtListMember["statusTone"] =
-        tone === "red" ? "critical" : tone === "orange" ? "warning" : daysSinceWorkout !== null && daysSinceWorkout <= 3 ? "active" : "neutral";
+      const status = trainerMemberListStatus(member, members, logs);
       return {
         member,
         avatarUrl: resolveMemberAvatarUrl(member) || null,
         customerTypeLabel: getMemberCustomerTypeDisplay(member).label,
-        activityLabel:
-          daysSinceWorkout === null ? "ingen økt" : daysSinceWorkout === 0 ? "i dag" : `${daysSinceWorkout} d siden`,
-        statusLabel: statusTone === "critical" ? "Risiko" : statusTone === "warning" ? "Følg opp" : "Aktiv",
-        statusTone,
+        activityLabel: status.activityLabel,
+        statusLabel: status.statusLabel,
+        statusTone: status.statusTone,
+        statusHint: status.statusHint,
         selected: member.id === selectedMemberId,
       };
     });
@@ -4784,19 +4786,28 @@ function pickFirstName(value: unknown): string {
           customerTypeLabel={selectedMember ? getMemberCustomerTypeDisplay(selectedMember).label : undefined}
           customerStatusLabel={
             selectedFollowUpTone === "critical"
-              ? "Risiko"
+              ? "Trenger oppfølging"
               : selectedFollowUpTone === "watch"
                 ? "Følg opp"
-                : selectedMember
-                  ? "Aktiv"
-                  : undefined
+                : selectedFollowUpTone === "good"
+                  ? "Trent nylig"
+                  : selectedMember
+                    ? "Ingen økt ennå"
+                    : undefined
           }
           customerStatusTone={
             selectedFollowUpTone === "critical"
               ? "critical"
               : selectedFollowUpTone === "watch"
                 ? "warning"
-                : "active"
+                : selectedFollowUpTone === "good"
+                  ? "active"
+                  : "neutral"
+          }
+          customerStatusHint={
+            selectedMember
+              ? "Basert på siste fullførte treningsøkt — ikke sanntid pålogget."
+              : undefined
           }
           customerAvatarUrl={selectedMember ? resolveMemberAvatarUrl(selectedMember) : null}
           onMessage={() => {

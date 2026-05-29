@@ -60,7 +60,10 @@ export function countInspirationPostsThisMonth(inspirationCount: number): number
 export function computeAverageClientProgressPct(members: Member[], allMembers: Member[], logs: WorkoutLog[]): number {
   const active = members.filter((member) => member.isActive !== false);
   if (!active.length) return 0;
-  const green = active.filter((member) => memberPriorityTone(member, allMembers, logs) === "green").length;
+  const green = active.filter((member) => {
+    const days = trainerInactiveDaysForFollowUp(member, allMembers, logs);
+    return days !== null && days < 5;
+  }).length;
   return Math.round((green / active.length) * 100);
 }
 

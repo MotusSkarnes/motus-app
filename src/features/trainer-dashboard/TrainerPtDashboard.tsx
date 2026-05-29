@@ -28,6 +28,7 @@ export type TrainerPtListMember = {
   activityLabel: string;
   statusLabel: string;
   statusTone: "active" | "warning" | "critical" | "neutral";
+  statusHint?: string;
   selected: boolean;
 };
 
@@ -51,7 +52,8 @@ export type TrainerPtDashboardProps = {
   customerAge?: string | null;
   customerTypeLabel?: string;
   customerStatusLabel?: string;
-  customerStatusTone?: "active" | "warning" | "critical";
+  customerStatusTone?: "active" | "warning" | "critical" | "neutral";
+  customerStatusHint?: string;
   customerAvatarUrl?: string | null;
   onMessage?: () => void;
   onOpenCustomerCard?: () => void;
@@ -71,10 +73,16 @@ export type TrainerPtDashboardProps = {
   aggregateOverview?: ReactNode;
 };
 
-function StatusDot({ tone }: { tone: TrainerPtListMember["statusTone"] }) {
+function StatusDot({ tone, title }: { tone: TrainerPtListMember["statusTone"]; title?: string }) {
   const color =
     tone === "critical" ? "#FF5C7C" : tone === "warning" ? "#FFB84D" : tone === "active" ? "#30E3BE" : "#94A3B8";
-  return <span className="motus-pt-dash-status-dot" style={{ backgroundColor: color, boxShadow: `0 0 8px ${color}55` }} />;
+  return (
+    <span
+      className="motus-pt-dash-status-dot"
+      style={{ backgroundColor: color, boxShadow: `0 0 8px ${color}55` }}
+      title={title}
+    />
+  );
 }
 
 function PriorityBadge({ priority }: { priority: CustomerFollowUpItem["priority"] }) {
@@ -116,7 +124,7 @@ function MiniRing({ pct, label }: { pct: number; label: string }) {
 
 const LIST_TABS: Array<{ id: TrainerListFilterTab; label: string }> = [
   { id: "all", label: "Alle" },
-  { id: "active", label: "Aktive" },
+  { id: "active", label: "Trent nylig" },
   { id: "risk", label: "Risiko" },
   { id: "inactive", label: "Inaktive" },
 ];
@@ -142,6 +150,7 @@ export function TrainerPtDashboard({
   customerTypeLabel,
   customerStatusLabel,
   customerStatusTone = "active",
+  customerStatusHint,
   customerAvatarUrl,
   onMessage,
   onOpenCustomerCard,
@@ -227,11 +236,13 @@ export function TrainerPtDashboard({
               <div className="min-w-0 flex-1 text-left">
                 <div className="flex items-center gap-2">
                   <span className="truncate text-sm font-semibold text-slate-900">{row.member.name}</span>
-                  <StatusDot tone={row.statusTone} />
+                  <StatusDot tone={row.statusTone} title={row.statusHint} />
                 </div>
                 <div className="mt-0.5 truncate text-xs text-slate-500">{row.customerTypeLabel}</div>
                 <div className="mt-1 flex flex-wrap items-center gap-2 text-[11px]">
-                  <span className="motus-pt-dash-status-pill">{row.statusLabel}</span>
+                  <span className="motus-pt-dash-status-pill" title={row.statusHint}>
+                    {row.statusLabel}
+                  </span>
                   <span className="text-slate-400">Sist økt: {row.activityLabel}</span>
                 </div>
               </div>
@@ -279,16 +290,11 @@ export function TrainerPtDashboard({
                         <span className="motus-pt-dash-badge motus-pt-dash-badge--pink">{customerTypeLabel}</span>
                       ) : null}
                       {customerStatusLabel ? (
-                        <span className="motus-pt-dash-badge motus-pt-dash-badge--mint">
-                          <StatusDot
-                            tone={
-                              customerStatusTone === "critical"
-                                ? "critical"
-                                : customerStatusTone === "warning"
-                                  ? "warning"
-                                  : "active"
-                            }
-                          />
+                        <span
+                          className="motus-pt-dash-badge motus-pt-dash-badge--mint"
+                          title={customerStatusHint}
+                        >
+                          <StatusDot tone={customerStatusTone} title={customerStatusHint} />
                           {customerStatusLabel}
                         </span>
                       ) : null}

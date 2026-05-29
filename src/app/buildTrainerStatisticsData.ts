@@ -294,7 +294,7 @@ export function buildTrainerStatisticsData(input: {
     .map((member) => {
       const tone = memberPriorityTone(member, input.allMembers, input.logs);
       const inactiveDays = trainerInactiveDaysForFollowUp(member, input.allMembers, input.logs);
-      if (tone === "green" || inactiveDays === null || inactiveDays < 5) return null;
+      if (tone === "green" || tone === "unknown" || inactiveDays === null || inactiveDays < 5) return null;
       return {
         memberId: member.id,
         name: member.name,
