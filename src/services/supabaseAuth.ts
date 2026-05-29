@@ -601,18 +601,23 @@ function isTrainerEmail(email: string): boolean {
 }
 
 export type MemberAuthLinkResult = {
-  invitedAt?: string;
-  invitedRowsStamped?: number;
+  firstLoginAt?: string;
+  firstLoginRowsStamped?: number;
 };
 
 function parseLinkMemberAuthResponse(data: unknown): MemberAuthLinkResult {
   if (!data || typeof data !== "object") return {};
   const record = data as Record<string, unknown>;
-  const invitedAt = typeof record.invitedAt === "string" ? record.invitedAt.trim() : "";
-  const stamped = Number(record.invitedRowsStamped);
+  const firstLoginAt =
+    typeof record.firstLoginAt === "string"
+      ? record.firstLoginAt.trim()
+      : typeof record.invitedAt === "string"
+        ? record.invitedAt.trim()
+        : "";
+  const stamped = Number(record.firstLoginRowsStamped ?? record.invitedRowsStamped);
   return {
-    ...(invitedAt ? { invitedAt } : {}),
-    ...(Number.isFinite(stamped) && stamped > 0 ? { invitedRowsStamped: stamped } : {}),
+    ...(firstLoginAt ? { firstLoginAt } : {}),
+    ...(Number.isFinite(stamped) && stamped > 0 ? { firstLoginRowsStamped: stamped } : {}),
   };
 }
 

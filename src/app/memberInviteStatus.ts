@@ -8,6 +8,7 @@ export function memberIdentityKey(member: Member): string {
 }
 
 function memberRowShowsAppActivation(member: Member): boolean {
+  if (memberHasFirstLoginStamp(member)) return true;
   if (member.id.trim().startsWith("auth-")) return true;
   const onboarding = getOnboardingFromPersonalGoals(member.personalGoals);
   if (onboarding?.completedAt?.trim() && !onboarding.skipped) return true;
@@ -20,6 +21,10 @@ export function memberHasInviteStamp(member: Member): boolean {
   return Boolean(member.invitedAt?.trim());
 }
 
+export function memberHasFirstLoginStamp(member: Member): boolean {
+  return Boolean(member.firstLoginAt?.trim());
+}
+
 export function memberEffectivelyInvited(
   member: Member,
   allMembers: Member[],
@@ -29,6 +34,7 @@ export function memberEffectivelyInvited(
 
   const related = allMembers.length ? findMembersByEmail(member, allMembers) : [member];
   if (related.some(memberHasInviteStamp)) return true;
+  if (related.some(memberHasFirstLoginStamp)) return true;
   if (related.some(memberRowShowsAppActivation)) return true;
 
   const relatedIds = new Set(related.map((row) => row.id));
@@ -66,23 +72,32 @@ export function rosterMembersMissingInvite(
   return missing;
 }
 
-/** Oppdater lokal state når invited_at er stemplet ved første innlogging (alle rader med samme e-post). */
-export function applyInviteStampToMembersByEmail(
+/** Oppdater lokal state når first_login_at er stemplet ved første innlogging (alle rader med samme e-post). */
+export function applyFirstLoginStampToMembersByEmail(
   state: AppState,
   email: string,
-  invitedAtIso: string,
+  firstLoginAtIso: string,
 ): AppState {
   const emailKey = email.trim().toLowerCase();
-  const stamp = invitedAtIso.trim();
+  const stamp = firstLoginAtIso.trim();
   if (!emailKey || !emailKey.includes("@") || !stamp) return state;
   return {
     ...state,
     members: state.members.map((member) => {
       if (member.email.trim().toLowerCase() !== emailKey) return member;
-      if (member.invitedAt?.trim()) return member;
-      return { ...member, invitedAt: stamp };
+      if (member.firstLoginAt?.trim()) return member;
+      return { ...member, firstLoginAt: stamp };
     }),
   };
+}
+
+/** @deprecated Bruk applyFirstLoginStampToMembersByEmail — beholdt for eldre kall. */
+export function applyInviteStampToMembersByEmail(
+  state: AppState,
+  email: string,
+  invitedAtIso: string,
+): AppState {
+  return applyFirstLoginStampToMembersByEmail(state, email, invitedAtIso);
 }
 
 export function memberIdsMissingInviteStamp(members: Member[], email: string): string[] {

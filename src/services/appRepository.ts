@@ -1,7 +1,7 @@
 import { filterProgramExercisesAfterBankDelete } from "../app/exerciseBankUsage";
 import { isHoldBasedExerciseCategory } from "../app/exerciseCategories";
 import { prescriptionFieldsForExerciseSave } from "../app/exercisePrescriptionFields";
-import { applyInviteStampToMembersByEmail } from "../app/memberInviteStatus";
+import { applyFirstLoginStampToMembersByEmail } from "../app/memberInviteStatus";
 import {
   buildTrainingProgramDisplayKey,
   expandProgramExercisesToWorkoutResults,
@@ -205,6 +205,7 @@ export interface AppRepository {
   deleteMember(state: AppState, memberId: string): AppState;
   markMemberInvited(state: AppState, memberId: string, invitedAtIso?: string): AppState;
   markMembersInvitedByEmail(state: AppState, email: string, invitedAtIso?: string): AppState;
+  markMembersFirstLoginByEmail(state: AppState, email: string, firstLoginAtIso?: string): AppState;
   saveProgram(state: AppState, input: SaveProgramInput): AppState;
   deleteProgram(state: AppState, programId: string, context?: DeleteProgramContext): AppState;
   updateProgramMemberLibraryStatus(state: AppState, programId: string, status: MemberProgramLibraryStatus | undefined): AppState;
@@ -240,6 +241,7 @@ export function createMember(state: AppState, input: CreateMemberInput): Member 
     email: input.email.trim().toLowerCase(),
     isActive: true,
     invitedAt: "",
+    firstLoginAt: "",
     phone: input.phone?.trim() || "900 00 000",
     birthDate: "",
     level: "Nybegynner",
@@ -298,7 +300,25 @@ export function markMembersInvitedByEmailInState(
   email: string,
   invitedAtIso?: string,
 ): AppState {
-  return applyInviteStampToMembersByEmail(state, email, invitedAtIso ?? new Date().toISOString());
+  const emailKey = email.trim().toLowerCase();
+  const stamp = (invitedAtIso ?? new Date().toISOString()).trim();
+  if (!emailKey.includes("@") || !stamp) return state;
+  return {
+    ...state,
+    members: state.members.map((member) => {
+      if (member.email.trim().toLowerCase() !== emailKey) return member;
+      if (member.invitedAt?.trim()) return member;
+      return { ...member, invitedAt: stamp };
+    }),
+  };
+}
+
+export function markMembersFirstLoginByEmailInState(
+  state: AppState,
+  email: string,
+  firstLoginAtIso?: string,
+): AppState {
+  return applyFirstLoginStampToMembersByEmail(state, email, firstLoginAtIso ?? new Date().toISOString());
 }
 
 export function deleteMemberInState(state: AppState, memberId: string): AppState {
@@ -1044,6 +1064,7 @@ export const localAppRepository: AppRepository = {
   deleteMember: deleteMemberInState,
   markMemberInvited: markMemberInvitedInState,
   markMembersInvitedByEmail: markMembersInvitedByEmailInState,
+  markMembersFirstLoginByEmail: markMembersFirstLoginByEmailInState,
   saveProgram: saveProgramInState,
   deleteProgram: deleteProgramInState,
   updateProgramMemberLibraryStatus: updateProgramMemberLibraryStatusInState,

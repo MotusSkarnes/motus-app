@@ -477,32 +477,32 @@ Deno.serve(async (req) => {
     }
   }
 
-  let invitedRowsStamped = 0;
-  let invitedAt: string | null = null;
+  let firstLoginRowsStamped = 0;
+  let firstLoginAt: string | null = null;
   if (targetUsers.length > 0 && candidates.length > 0) {
-    const invitedAtIso = new Date().toISOString();
+    const firstLoginAtIso = new Date().toISOString();
     const idsToStamp = Array.from(new Set(candidates.map((candidate) => candidate.id).filter(Boolean)));
-    const { data: inviteRows, error: inviteLookupError } = await adminClient
+    const { data: loginRows, error: loginLookupError } = await adminClient
       .from("members")
-      .select("id, invited_at")
+      .select("id, first_login_at")
       .in("id", idsToStamp);
-    if (inviteLookupError) {
-      console.warn("link-member-auth: invited_at lookup failed:", inviteLookupError.message);
+    if (loginLookupError) {
+      console.warn("link-member-auth: first_login_at lookup failed:", loginLookupError.message);
     } else {
-      const needsStamp = (inviteRows ?? [])
-        .filter((row) => !String((row as { invited_at?: string | null }).invited_at ?? "").trim())
+      const needsStamp = (loginRows ?? [])
+        .filter((row) => !String((row as { first_login_at?: string | null }).first_login_at ?? "").trim())
         .map((row) => String((row as { id?: string }).id ?? "").trim())
         .filter(Boolean);
       if (needsStamp.length > 0) {
-        const { error: inviteStampError } = await adminClient
+        const { error: loginStampError } = await adminClient
           .from("members")
-          .update({ invited_at: invitedAtIso })
+          .update({ first_login_at: firstLoginAtIso })
           .in("id", needsStamp);
-        if (inviteStampError) {
-          console.warn("link-member-auth: invited_at stamp failed:", inviteStampError.message);
+        if (loginStampError) {
+          console.warn("link-member-auth: first_login_at stamp failed:", loginStampError.message);
         } else {
-          invitedRowsStamped = needsStamp.length;
-          invitedAt = invitedAtIso;
+          firstLoginRowsStamped = needsStamp.length;
+          firstLoginAt = firstLoginAtIso;
         }
       }
     }
@@ -511,8 +511,8 @@ Deno.serve(async (req) => {
   return jsonResponse(200, {
     message: "Auth member link synced",
     updated,
-    invitedRowsStamped,
-    invitedAt,
+    firstLoginRowsStamped,
+    firstLoginAt,
     canonicalMemberId: memberId,
     migratedPrograms,
     migratedLogs,

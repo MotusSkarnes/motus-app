@@ -25,7 +25,7 @@ import {
 } from "../app/memberOnboarding";
 import { normalizePeriodSchedulePlan, readPeriodPlansByMemberId, writePeriodPlansByMemberId } from "../app/periodPlanMerge";
 import type { AppState, Member, MemberTab, PeriodSchedulePlan } from "../app/types";
-import { applyInviteStampToMembersByEmail } from "../app/memberInviteStatus";
+import { applyFirstLoginStampToMembersByEmail } from "../app/memberInviteStatus";
 import { ensureMemberAuthLink } from "../services/supabaseAuth";
 import { Card } from "../app/ui";
 import type { MemberAlert } from "../app/useNotifications";
@@ -345,9 +345,9 @@ export function MemberLayout({
 
     if (loginEmail && canonicalId && !canonicalId.startsWith("auth-")) {
       const linkResult = await ensureMemberAuthLink(loginEmail, canonicalId);
-      if (linkResult.invitedAt || linkResult.invitedRowsStamped) {
+      if (linkResult.firstLoginAt || linkResult.firstLoginRowsStamped) {
         patchState((prev) =>
-          applyInviteStampToMembersByEmail(prev, loginEmail, linkResult.invitedAt ?? new Date().toISOString()),
+          applyFirstLoginStampToMembersByEmail(prev, loginEmail, linkResult.firstLoginAt ?? new Date().toISOString()),
         );
       }
     }

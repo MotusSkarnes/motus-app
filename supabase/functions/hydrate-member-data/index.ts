@@ -158,7 +158,7 @@ Deno.serve(async (req) => {
   const hasEmailRoster = emailRosterEarly.length > 0;
 
   const membersSelectBase =
-    "id, owner_user_id, name, email, is_active, invited_at, phone, birth_date, weight, height, level, membership_type, customer_type, nutrition_access, days_since_activity, goal, focus, personal_goals, injuries, coach_notes";
+    "id, owner_user_id, name, email, is_active, invited_at, first_login_at, phone, birth_date, weight, height, level, membership_type, customer_type, nutrition_access, days_since_activity, goal, focus, personal_goals, injuries, coach_notes";
   const membersSelectWithAvatar = `${membersSelectBase}, avatar_url, created_at`;
   const membersSelectWithoutAvatar = `${membersSelectBase}, created_at`;
   const membersSelectWithoutNutrition = membersSelectWithAvatar.replace(", nutrition_access", "");

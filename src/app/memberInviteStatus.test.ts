@@ -1,8 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { mergeOnboardingIntoPersonalGoals, createEmptyOnboardingDraft } from "./memberOnboarding";
 import {
-  applyInviteStampToMembersByEmail,
+  applyFirstLoginStampToMembersByEmail,
   memberEffectivelyInvited,
+  memberHasFirstLoginStamp,
   rosterMembersMissingInvite,
 } from "./memberInviteStatus";
 import type { AppState } from "./types";
@@ -26,6 +27,7 @@ function baseMember(overrides: Partial<Member> = {}): Member {
     coachNotes: "",
     avatarUrl: "",
     invitedAt: "",
+    firstLoginAt: "",
     isActive: true,
     ...overrides,
   };
@@ -37,7 +39,13 @@ describe("memberInviteStatus", () => {
     expect(memberEffectivelyInvited(member, [member])).toBe(true);
   });
 
-  it("treats logged-in auth row as invited even without invited_at", () => {
+  it("treats first_login_at as activated", () => {
+    const member = baseMember({ firstLoginAt: "2026-05-02T08:00:00.000Z" });
+    expect(memberHasFirstLoginStamp(member)).toBe(true);
+    expect(memberEffectivelyInvited(member, [member])).toBe(true);
+  });
+
+  it("treats logged-in auth row as invited even without stamps", () => {
     const dbRow = baseMember({ id: "m-kari", invitedAt: "" });
     const authRow = baseMember({ id: "auth-abc", invitedAt: "" });
     expect(memberEffectivelyInvited(dbRow, [dbRow, authRow])).toBe(true);
@@ -72,20 +80,20 @@ describe("memberInviteStatus", () => {
     ).toBe(true);
   });
 
-  it("applyInviteStampToMembersByEmail stamps all duplicate rows for email", () => {
+  it("applyFirstLoginStampToMembersByEmail stamps all duplicate rows for email", () => {
     const stamp = "2026-05-20T10:00:00.000Z";
     const state: AppState = {
       members: [
-        baseMember({ id: "m-1", invitedAt: "" }),
-        baseMember({ id: "auth-1", invitedAt: "" }),
+        baseMember({ id: "m-1", firstLoginAt: "" }),
+        baseMember({ id: "auth-1", firstLoginAt: "" }),
       ],
     } as AppState;
-    const next = applyInviteStampToMembersByEmail(state, "kari@test.no", stamp);
-    expect(next.members.every((member) => member.invitedAt === stamp)).toBe(true);
+    const next = applyFirstLoginStampToMembersByEmail(state, "kari@test.no", stamp);
+    expect(next.members.every((member) => member.firstLoginAt === stamp)).toBe(true);
   });
 
   it("still flags customers with no invite stamp and no app activity", () => {
-    const member = baseMember({ invitedAt: "" });
+    const member = baseMember({ invitedAt: "", firstLoginAt: "" });
     expect(memberEffectivelyInvited(member, [member])).toBe(false);
     expect(rosterMembersMissingInvite([member], [member])).toHaveLength(1);
   });

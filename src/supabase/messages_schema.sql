@@ -9,6 +9,7 @@ create table if not exists public.members (
   email text not null,
   is_active boolean not null default true,
   invited_at timestamptz,
+  first_login_at timestamptz,
   phone text not null default '',
   birth_date text not null default '',
   weight text not null default '',
@@ -27,6 +28,7 @@ create table if not exists public.members (
 
 alter table public.members add column if not exists is_active boolean not null default true;
 alter table public.members add column if not exists invited_at timestamptz;
+alter table public.members add column if not exists first_login_at timestamptz;
 
 alter table public.members enable row level security;
 

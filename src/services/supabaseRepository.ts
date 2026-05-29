@@ -93,10 +93,10 @@ function mapCustomerType(value: unknown): Member["customerType"] {
 }
 
 const MEMBERS_SELECT_BASE =
-  "id, owner_user_id, name, email, is_active, invited_at, phone, birth_date, weight, height, level, membership_type, customer_type, nutrition_access, days_since_activity, goal, focus, personal_goals, injuries, coach_notes";
+  "id, owner_user_id, name, email, is_active, invited_at, first_login_at, phone, birth_date, weight, height, level, membership_type, customer_type, nutrition_access, days_since_activity, goal, focus, personal_goals, injuries, coach_notes";
 const MEMBERS_SELECT_WITH_AVATAR = `${MEMBERS_SELECT_BASE}, avatar_url`;
 const MEMBERS_SELECT_WITHOUT_NUTRITION =
-  "id, owner_user_id, name, email, is_active, invited_at, phone, birth_date, weight, height, level, membership_type, customer_type, days_since_activity, goal, focus, personal_goals, injuries, coach_notes";
+  "id, owner_user_id, name, email, is_active, invited_at, first_login_at, phone, birth_date, weight, height, level, membership_type, customer_type, days_since_activity, goal, focus, personal_goals, injuries, coach_notes";
 const MEMBERS_SELECT_WITH_AVATAR_WITHOUT_NUTRITION = `${MEMBERS_SELECT_WITHOUT_NUTRITION}, avatar_url`;
 
 function isMissingDbColumnError(message: string, column: string): boolean {
@@ -117,6 +117,7 @@ function mapMemberRowFromSupabase(row: Record<string, unknown>): Member {
     email: String(row.email ?? ""),
     isActive: row.is_active !== false,
     invitedAt: String(row.invited_at ?? ""),
+    firstLoginAt: String(row.first_login_at ?? ""),
     phone: String(row.phone ?? ""),
     birthDate: String(row.birth_date ?? ""),
     weight: String(row.weight ?? ""),
@@ -1727,6 +1728,7 @@ async function persistMember(member: Member, previousPersonalGoals?: string) {
     email: normalizedEmail,
     is_active: member.isActive !== false,
     invited_at: member.invitedAt || null,
+    first_login_at: member.firstLoginAt || null,
     phone: member.phone,
     birth_date: member.birthDate,
     weight: member.weight,
@@ -1754,6 +1756,11 @@ async function persistMember(member: Member, previousPersonalGoals?: string) {
     ({ error } = await supabaseClient
       .from("members")
       .upsert(stripNutritionAccessField(memberUpsertPayload), { onConflict: "id" }));
+  }
+  if (error && isMissingDbColumnError(error.message, "first_login_at")) {
+    const withoutFirstLogin = { ...memberUpsertPayload };
+    delete (withoutFirstLogin as { first_login_at?: string | null }).first_login_at;
+    ({ error } = await supabaseClient.from("members").upsert(withoutFirstLogin, { onConflict: "id" }));
   }
 
   if (error) {
@@ -2987,6 +2994,7 @@ function mapHydrateMemberPayload(payload: Record<string, unknown>): HydratedMemb
         email: String(member.email ?? ""),
         isActive: member.is_active !== false,
         invitedAt: String(member.invited_at ?? ""),
+        firstLoginAt: String(member.first_login_at ?? ""),
         phone: String(member.phone ?? ""),
         birthDate: String(member.birth_date ?? ""),
         weight: String(member.weight ?? ""),
@@ -3175,6 +3183,7 @@ export async function fetchHydratedTrainerData(ownerUserId: string): Promise<Hyd
         email: String(member.email ?? ""),
         isActive: member.is_active !== false,
         invitedAt: String(member.invited_at ?? ""),
+        firstLoginAt: String(member.first_login_at ?? ""),
         phone: String(member.phone ?? ""),
         birthDate: String(member.birth_date ?? ""),
         weight: String(member.weight ?? ""),
@@ -3384,6 +3393,10 @@ export async function fetchMembersFromSupabase(): Promise<Member[] | null> {
   }
   if (result.error && isMissingDbColumnError(result.error.message, "nutrition_access")) {
     selectFields = selectFields.includes("avatar_url") ? MEMBERS_SELECT_WITH_AVATAR_WITHOUT_NUTRITION : MEMBERS_SELECT_WITHOUT_NUTRITION;
+    result = await runQuery(selectFields, orderByCreatedAt);
+  }
+  if (result.error && isMissingDbColumnError(result.error.message, "first_login_at")) {
+    selectFields = selectFields.replace(", first_login_at", "");
     result = await runQuery(selectFields, orderByCreatedAt);
   }
   if (result.error && isMissingDbColumnError(result.error.message, "avatar_url")) {
@@ -3783,6 +3796,7 @@ function mapEdgeMemberPayload(value: unknown): Member | null {
     email,
     isActive: (row.isActive ?? row.is_active) !== false,
     invitedAt: String(row.invitedAt ?? row.invited_at ?? ""),
+    firstLoginAt: String(row.firstLoginAt ?? row.first_login_at ?? ""),
     phone: String(row.phone ?? ""),
     birthDate: String(row.birthDate ?? row.birth_date ?? ""),
     weight: String(row.weight ?? ""),
@@ -4107,6 +4121,21 @@ export const supabaseAppRepository: AppRepository = {
       const before = beforeById.get(member.id);
       if (before?.invitedAt?.trim()) return;
       if (!member.invitedAt?.trim()) return;
+      void persistMember(member);
+    });
+    return nextState;
+  },
+  markMembersFirstLoginByEmail(state: AppState, email: string, firstLoginAtIso?: string): AppState {
+    const emailKey = email.trim().toLowerCase();
+    const stamp = (firstLoginAtIso ?? new Date().toISOString()).trim();
+    const beforeById = new Map(state.members.map((member) => [member.id, member]));
+    const nextState = localAppRepository.markMembersFirstLoginByEmail(state, email, stamp);
+    if (!emailKey.includes("@")) return nextState;
+    nextState.members.forEach((member) => {
+      if (member.email.trim().toLowerCase() !== emailKey) return;
+      const before = beforeById.get(member.id);
+      if (before?.firstLoginAt?.trim()) return;
+      if (!member.firstLoginAt?.trim()) return;
       void persistMember(member);
     });
     return nextState;

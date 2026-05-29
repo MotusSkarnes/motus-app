@@ -182,6 +182,9 @@ function mergeTwoMemberSnapshots(primary: Member, secondary: Member): Member {
   const pInv = primary.invitedAt?.trim();
   const sInv = secondary.invitedAt?.trim();
   merged.invitedAt = sInv || pInv || "";
+  const pLogin = primary.firstLoginAt?.trim();
+  const sLogin = secondary.firstLoginAt?.trim();
+  merged.firstLoginAt = sLogin || pLogin || "";
   merged.personalGoals =
     mergePersonalGoalsFromCandidates([primary.personalGoals, secondary.personalGoals, merged.personalGoals]) ||
     merged.personalGoals;
@@ -286,10 +289,16 @@ function preserveTrainerInvitedAtFromLocal(
     const prevRow = prevMembers.find((member) => member.id === remote.id);
     const prevInv = prevRow?.invitedAt?.trim();
     const remoteInv = remote.invitedAt?.trim();
+    const prevLogin = prevRow?.firstLoginAt?.trim();
+    const remoteLogin = remote.firstLoginAt?.trim();
+    let next = remote;
     if (prevInv && !remoteInv) {
-      return { ...remote, invitedAt: prevInv };
+      next = { ...next, invitedAt: prevInv };
     }
-    return remote;
+    if (prevLogin && !remoteLogin) {
+      next = { ...next, firstLoginAt: prevLogin };
+    }
+    return next;
   });
 }
 
@@ -750,6 +759,7 @@ export function useAppState() {
       email: normalizedEmail || "",
       isActive: true,
       invitedAt: "",
+      firstLoginAt: "",
       phone: "",
       birthDate: "",
       weight: "",
@@ -1028,7 +1038,7 @@ export function useAppState() {
           if (email.includes("@") && memberId) {
             window.sessionStorage.setItem(retryKey, "1");
             const linkResult = await ensureMemberAuthLink(email, memberId);
-            applyMemberInviteStampFromAuthLink(email, linkResult);
+            applyMemberFirstLoginStampFromAuthLink(email, linkResult);
             await supabaseClient.auth.refreshSession();
             const retryPrograms = await fetchProgramsFromSupabase();
             const retryLogs = await fetchLogsFromSupabase();
@@ -1688,7 +1698,7 @@ export function useAppState() {
             toLinkableMemberId(resolvedMemberViewId) ??
             toLinkableMemberId(resolvedSelectedMemberId);
           const linkResult = await ensureMemberAuthLink(supabaseUser.email, candidateMemberId);
-          applyMemberInviteStampFromAuthLink(supabaseUser.email, linkResult);
+          applyMemberFirstLoginStampFromAuthLink(supabaseUser.email, linkResult);
           const refreshedUser = await refreshSupabaseSessionUser();
           if (refreshedUser) {
             setAppState((prev) => ({
@@ -1858,7 +1868,7 @@ export function useAppState() {
         toLinkableMemberId(resolvedMemberViewId) ??
         toLinkableMemberId(resolvedSelectedMemberId);
       const linkResult = await ensureMemberAuthLink(user.email, candidateMemberId);
-      applyMemberInviteStampFromAuthLink(user.email, linkResult);
+      applyMemberFirstLoginStampFromAuthLink(user.email, linkResult);
       const refreshedUser = await refreshSupabaseSessionUser();
       if (refreshedUser) {
         user.memberId = refreshedUser.memberId;
@@ -2099,10 +2109,10 @@ export function useAppState() {
     setAppState((prev) => repository.markMemberInvited(prev, memberId, invitedAtIso));
   }
 
-  function applyMemberInviteStampFromAuthLink(email: string, linkResult: MemberAuthLinkResult) {
-    if (!linkResult.invitedAt && !linkResult.invitedRowsStamped) return;
-    const invitedAtIso = linkResult.invitedAt ?? new Date().toISOString();
-    setAppState((prev) => repository.markMembersInvitedByEmail(prev, email, invitedAtIso));
+  function applyMemberFirstLoginStampFromAuthLink(email: string, linkResult: MemberAuthLinkResult) {
+    if (!linkResult.firstLoginAt && !linkResult.firstLoginRowsStamped) return;
+    const firstLoginAtIso = linkResult.firstLoginAt ?? new Date().toISOString();
+    setAppState((prev) => repository.markMembersFirstLoginByEmail(prev, email, firstLoginAtIso));
   }
 
   async function linkActiveMemberSession(user: {
@@ -2114,7 +2124,7 @@ export function useAppState() {
     if (user.role !== "member" || !isSupabaseConfigured) return;
     const candidateMemberId = toLinkableMemberId(user.memberId) ?? undefined;
     const linkResult = await ensureMemberAuthLink(user.email, candidateMemberId);
-    applyMemberInviteStampFromAuthLink(user.email, linkResult);
+    applyMemberFirstLoginStampFromAuthLink(user.email, linkResult);
   }
 
   function saveProgramForMember(input: SaveProgramInput) {

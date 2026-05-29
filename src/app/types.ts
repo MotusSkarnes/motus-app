@@ -98,6 +98,8 @@ export type Member = {
   avatarUrl?: string;
   isActive: boolean;
   invitedAt: string;
+  /** Første gang medlem logget inn i appen (link-member-auth). */
+  firstLoginAt: string;
   phone: string;
   birthDate: string;
   weight: string;
