@@ -6,25 +6,32 @@ import {
   getInspoThemeById,
   INSPO_TOP_NAV_THEMES,
   type BentoTile,
+  type BentoTileSize,
   type InspoHubItem,
   type InspoThemeId,
 } from "../../app/inspirationExploreThemes";
 import { OutlineButton } from "../../app/ui";
 
+const THEME_PAGE_SIZE_PATTERN: readonly BentoTileSize[] = ["hero", "compact", "medium", "tall", "compact", "wide"];
+
+function themePageSizeForIndex(index: number, item: InspoHubItem): BentoTileSize {
+  if (item.category === "news") return index === 0 ? "wide" : "compact";
+  if (item.kind === "program" || item.kind === "periodPlan") return index === 0 ? "hero" : "medium";
+  return THEME_PAGE_SIZE_PATTERN[index % THEME_PAGE_SIZE_PATTERN.length] ?? "compact";
+}
+
 type InspirationExploreThemePageProps = {
   themeId: InspoThemeId;
   items: InspoHubItem[];
   onBack: () => void;
-  onOpenItem: (item: InspoHubItem) => void;
-  renderNewsCard: (item: InspoHubItem, index: number, total: number) => ReactNode;
-  renderMediaCard: (item: InspoHubItem, index: number, total: number, className?: string) => ReactNode;
+  renderNewsCard: (item: InspoHubItem, index: number, total: number, variant?: "lead" | "side") => ReactNode;
+  renderMediaCard: (item: InspoHubItem, index: number, total: number, bentoSize?: BentoTileSize) => ReactNode;
 };
 
 export function InspirationExploreThemePage({
   themeId,
   items,
   onBack,
-  onOpenItem,
   renderNewsCard,
   renderMediaCard,
 }: InspirationExploreThemePageProps) {
@@ -57,18 +64,21 @@ export function InspirationExploreThemePage({
         </p>
       ) : (
         <div className="motus-inspo-theme-grid">
-          {filtered.map((item, index) => (
-            <div
-              key={item.id}
-              className={`motus-inspo-theme-grid-item ${
-                item.category === "news" ? "motus-inspo-theme-grid-item--news" : ""
-              }`}
-            >
-              {item.category === "news"
-                ? renderNewsCard(item, index, filtered.length)
-                : renderMediaCard(item, index, filtered.length, "w-full max-w-none h-auto min-h-[18rem]")}
-            </div>
-          ))}
+          {filtered.map((item, index) => {
+            const size = themePageSizeForIndex(index, item);
+            return (
+              <div
+                key={item.id}
+                className={`motus-inspo-theme-grid-item motus-inspo-theme-grid-item--${size} ${
+                  item.category === "news" ? "motus-inspo-theme-grid-item--news" : ""
+                }`}
+              >
+                {item.category === "news"
+                  ? renderNewsCard(item, index, filtered.length, index === 0 ? "lead" : "side")
+                  : renderMediaCard(item, index, filtered.length, size)}
+              </div>
+            );
+          })}
         </div>
       )}
     </div>
@@ -78,22 +88,23 @@ export function InspirationExploreThemePage({
 type InspirationExploreBentoOverviewProps = {
   items: InspoHubItem[];
   excludeIds?: Set<string>;
-  onOpenItem: (item: InspoHubItem) => void;
-  renderNewsCard: (item: InspoHubItem, index: number, total: number) => ReactNode;
-  renderMediaCard: (item: InspoHubItem, index: number, total: number, className?: string) => ReactNode;
+  renderNewsCard: (item: InspoHubItem, index: number, total: number, variant?: "lead" | "side") => ReactNode;
+  renderMediaCard: (item: InspoHubItem, index: number, total: number, bentoSize?: BentoTileSize) => ReactNode;
   onOpenTheme: (themeId: InspoThemeId) => void;
 };
 
 export function InspirationExploreBentoOverview({
   items,
   excludeIds,
-  onOpenItem,
   renderNewsCard,
   renderMediaCard,
   onOpenTheme,
 }: InspirationExploreBentoOverviewProps) {
   const newsItems = items.filter((item) => item.category === "news" && !excludeIds?.has(item.id));
   const bentoTiles = buildExploreBentoTiles(items, excludeIds);
+  const inspireTiles = bentoTiles.filter((tile) => tile.size === "tall" || tile.size === "wide").slice(0, 2);
+  const inspireIds = new Set(inspireTiles.map((tile) => tile.item.id));
+  const gridTiles = bentoTiles.filter((tile) => !inspireIds.has(tile.item.id));
 
   return (
     <div className="motus-inspo-bento-overview space-y-8">
@@ -108,8 +119,11 @@ export function InspirationExploreBentoOverview({
           </div>
           <div className="motus-inspo-news-showcase">
             {newsItems.slice(0, 3).map((item, index) => (
-              <div key={item.id} className={index === 0 ? "motus-inspo-news-showcase-lead" : ""}>
-                {renderNewsCard(item, index, Math.min(newsItems.length, 3))}
+              <div
+                key={item.id}
+                className={`motus-inspo-news-showcase-item ${index === 0 ? "is-lead" : "is-side"}`}
+              >
+                {renderNewsCard(item, index, Math.min(newsItems.length, 3), index === 0 ? "lead" : "side")}
               </div>
             ))}
           </div>
@@ -130,21 +144,26 @@ export function InspirationExploreBentoOverview({
             <Flame className="motus-inspo-quote-flame" aria-hidden />
           </article>
           <div className="motus-inspo-inspire-stack">
-            {bentoTiles
-              .filter((tile) => tile.size === "tall" || tile.size === "medium")
-              .slice(0, 2)
-              .map((tile, index) => (
-                <div key={tile.item.id} className="motus-inspo-inspire-stack-card">
+            {inspireTiles.length > 0 ? (
+              inspireTiles.map((tile, index) => (
+                <div key={tile.item.id} className={`motus-inspo-inspire-stack-card is-${tile.size}`}>
                   {tile.item.category === "news"
-                    ? renderNewsCard(tile.item, index, 2)
-                    : renderMediaCard(tile.item, index, 2, "w-full max-w-none h-[17.5rem]")}
+                    ? renderNewsCard(tile.item, index, inspireTiles.length, index === 0 ? "lead" : "side")
+                    : renderMediaCard(tile.item, index, inspireTiles.length, tile.size)}
                 </div>
-              ))}
+              ))
+            ) : (
+              gridTiles.slice(0, 2).map((tile, index) => (
+                <div key={tile.item.id} className={`motus-inspo-inspire-stack-card is-${tile.size}`}>
+                  {renderMediaCard(tile.item, index, 2, index === 0 ? "tall" : "compact")}
+                </div>
+              ))
+            )}
           </div>
         </div>
       </section>
 
-      {bentoTiles.length > 0 ? (
+      {gridTiles.length > 0 ? (
         <section className="motus-inspo-section">
           <div className="motus-inspo-section-head">
             <h2 className="motus-inspo-section-title">Utforsk mer</h2>
@@ -154,14 +173,14 @@ export function InspirationExploreBentoOverview({
             </button>
           </div>
           <div className="motus-inspo-bento-grid">
-            {bentoTiles.map((tile, index) => (
+            {gridTiles.map((tile, index) => (
               <BentoTileCell
                 key={tile.item.id}
                 tile={tile}
                 index={index}
                 renderNewsCard={renderNewsCard}
                 renderMediaCard={renderMediaCard}
-                total={bentoTiles.length}
+                total={gridTiles.length}
               />
             ))}
           </div>
@@ -194,26 +213,16 @@ function BentoTileCell({
   tile: BentoTile;
   index: number;
   total: number;
-  renderNewsCard: (item: InspoHubItem, index: number, total: number) => ReactNode;
-  renderMediaCard: (item: InspoHubItem, index: number, total: number, className?: string) => ReactNode;
+  renderNewsCard: (item: InspoHubItem, index: number, total: number, variant?: "lead" | "side") => ReactNode;
+  renderMediaCard: (item: InspoHubItem, index: number, total: number, bentoSize?: BentoTileSize) => ReactNode;
 }) {
   const sizeClass = `motus-inspo-bento-item--${tile.size}`;
-  const heightClass =
-    tile.size === "hero"
-      ? "h-[22rem] sm:h-[24rem]"
-      : tile.size === "wide"
-        ? "h-[14rem] sm:h-[16rem]"
-        : tile.size === "tall"
-          ? "h-[20rem]"
-          : tile.size === "medium"
-            ? "h-[18rem]"
-            : "h-[16rem]";
 
   return (
     <div className={`motus-inspo-bento-item ${sizeClass}`}>
       {tile.item.category === "news"
-        ? renderNewsCard(tile.item, index, total)
-        : renderMediaCard(tile.item, index, total, `w-full max-w-none ${heightClass}`)}
+        ? renderNewsCard(tile.item, index, total, tile.size === "wide" ? "lead" : "side")
+        : renderMediaCard(tile.item, index, total, tile.size)}
     </div>
   );
 }
@@ -226,10 +235,7 @@ export function InspirationExploreTopNav({
   onSelectTheme: (themeId: InspoThemeId) => void;
 }) {
   return (
-    <section className="motus-inspo-quick-section">
-      <div className="motus-inspo-quick-head">
-        <h2 className="motus-inspo-quick-title">Hva vil du utforske?</h2>
-      </div>
+    <section className="motus-inspo-quick-section motus-inspo-quick-section--row">
       <div className="motus-inspo-quick-grid motus-inspo-quick-grid--topics">
         {INSPO_TOP_NAV_THEMES.map((theme) => {
           const Icon = theme.icon;
@@ -244,7 +250,7 @@ export function InspirationExploreTopNav({
               }`}
             >
               <span className="motus-inspo-quick-pill-icon" aria-hidden>
-                <Icon className="h-5 w-5" strokeWidth={2} />
+                <Icon className="h-4 w-4" strokeWidth={2} />
               </span>
               <span className="motus-inspo-quick-pill-label">{theme.label}</span>
             </button>
@@ -258,7 +264,7 @@ export function InspirationExploreTopNav({
           }`}
         >
           <span className="motus-inspo-quick-pill-icon" aria-hidden>
-            <ArrowRight className="h-5 w-5" strokeWidth={2} />
+            <ArrowRight className="h-4 w-4" strokeWidth={2} />
           </span>
           <span className="motus-inspo-quick-pill-label">Se alle</span>
         </button>

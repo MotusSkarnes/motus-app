@@ -29,7 +29,7 @@ import {
   Trash2,
   Users,
 } from "lucide-react";
-import type { InspoThemeId } from "../app/inspirationExploreThemes";
+import type { BentoTileSize, InspoThemeId } from "../app/inspirationExploreThemes";
 import {
   InspirationExploreBentoOverview,
   InspirationExploreThemePage,
@@ -1236,13 +1236,13 @@ export function InspirationHub({
     node.scrollBy({ left: direction === "left" ? -amount : amount, behavior: "smooth" });
   }
 
-  function renderNewsCard(item: InspirationItem, index: number, total: number) {
+  function renderNewsCard(item: InspirationItem, index: number, total: number, variant: "lead" | "side" = "side") {
     const tone = pickNewsTone(index);
     const ToneIcon = tone.icon;
     return (
       <article
         key={item.id}
-        className={`motus-inspo-news-card ${tone.dark ? "motus-inspo-news-card--dark" : ""}`}
+        className={`motus-inspo-news-card motus-inspo-news-card--${variant} ${tone.dark ? "motus-inspo-news-card--dark" : ""}`}
         style={{ background: tone.bg, borderColor: tone.ring }}
       >
         {canManage ? (
@@ -1308,19 +1308,113 @@ export function InspirationHub({
     );
   }
 
-  function renderInspirationCard(item: InspirationItem, index: number, total: number, layoutClassName?: string) {
+  function renderBentoManageActions(item: InspirationItem, index: number, total: number) {
+    if (!canManage) return null;
+    return (
+      <div className="motus-inspo-bento-manage">
+        <button
+          type="button"
+          onClick={() => void moveItemWithinCategory(item.id, "up")}
+          className="motus-inspo-card-edit-btn"
+          aria-label={`Flytt ${item.title} opp`}
+          title="Flytt opp"
+          disabled={index === 0}
+        >
+          <ArrowUp className="h-3.5 w-3.5" />
+        </button>
+        <button
+          type="button"
+          onClick={() => void moveItemWithinCategory(item.id, "down")}
+          className="motus-inspo-card-edit-btn"
+          aria-label={`Flytt ${item.title} ned`}
+          title="Flytt ned"
+          disabled={index >= total - 1}
+        >
+          <ArrowDown className="h-3.5 w-3.5" />
+        </button>
+        <button
+          type="button"
+          onClick={() => beginEdit(item)}
+          className="motus-inspo-card-edit-btn"
+          aria-label={`Rediger ${item.title}`}
+          title="Rediger"
+        >
+          <Pencil className="h-3.5 w-3.5" />
+        </button>
+        <button
+          type="button"
+          onClick={() => confirmDeleteItem(item.id)}
+          className="motus-inspo-card-edit-btn motus-inspo-card-edit-btn--danger"
+          aria-label={`Slett ${item.title}`}
+          title="Slett"
+        >
+          <Trash2 className="h-3.5 w-3.5" />
+        </button>
+      </div>
+    );
+  }
+
+  function renderBentoInspirationCard(item: InspirationItem, index: number, total: number, bentoSize: BentoTileSize) {
     const meta = CATEGORY_META[item.category];
     const Icon = meta.icon;
     const kindLabel = item.kind === "periodPlan" ? "Ukesplan" : item.kind === "program" ? "Program" : meta.label;
     const badgeText = (item.tag.trim() || kindLabel).toUpperCase();
     const badgeTone = badgeToneForCategory(item.category);
-    const isFluidLayout = Boolean(layoutClassName);
+    const showDescription = bentoSize === "hero" || bentoSize === "wide" || bentoSize === "tall";
+
     return (
       <article
         key={item.id}
-        className={`relative flex flex-col overflow-hidden rounded-xl border bg-white ${
-          isFluidLayout ? "w-full max-w-none shrink" : `shrink-0 snap-start ${INSPO_FEED_CARD_WIDTH_CLASS} ${INSPO_FEED_CARD_HEIGHT_CLASS}`
-        } ${layoutClassName ?? ""}`}
+        className={`motus-inspo-bento-card motus-inspo-bento-card--${bentoSize}`}
+        style={{ borderColor: "rgba(15,23,42,0.08)" }}
+      >
+        {renderBentoManageActions(item, index, total)}
+        <button type="button" onClick={() => openInspirationItem(item)} className="motus-inspo-bento-hit">
+          <div className={`motus-inspo-bento-media ${item.imageUrl ? "has-image" : "is-placeholder"}`}>
+            {item.imageUrl ? (
+              <img
+                src={item.imageUrl}
+                alt=""
+                className="motus-inspo-bento-image"
+                loading="lazy"
+                decoding="async"
+                style={{ objectPosition: imageObjectPositionFromSrc(item.imageUrl) }}
+              />
+            ) : (
+              <div className="motus-inspo-bento-placeholder" aria-hidden>
+                <Icon className="h-8 w-8" />
+              </div>
+            )}
+            <div className="motus-inspo-bento-scrim" aria-hidden />
+            <span className={`motus-inspo-overlay-badge motus-inspo-overlay-badge--${badgeTone}`}>{badgeText}</span>
+            <div className="motus-inspo-bento-copy">
+              <h3 className="motus-inspo-bento-title">{item.title}</h3>
+              {showDescription && item.description ? (
+                <p className="motus-inspo-bento-desc">{item.description}</p>
+              ) : null}
+              <span className="motus-inspo-bento-link">
+                Les mer
+                <ArrowRight className="h-3.5 w-3.5" aria-hidden />
+              </span>
+            </div>
+          </div>
+        </button>
+      </article>
+    );
+  }
+
+  function renderInspirationCard(item: InspirationItem, index: number, total: number, bentoSize?: BentoTileSize) {
+    if (bentoSize) return renderBentoInspirationCard(item, index, total, bentoSize);
+
+    const meta = CATEGORY_META[item.category];
+    const Icon = meta.icon;
+    const kindLabel = item.kind === "periodPlan" ? "Ukesplan" : item.kind === "program" ? "Program" : meta.label;
+    const badgeText = (item.tag.trim() || kindLabel).toUpperCase();
+    const badgeTone = badgeToneForCategory(item.category);
+    return (
+      <article
+        key={item.id}
+        className={`relative flex shrink-0 snap-start flex-col overflow-hidden rounded-xl border bg-white ${INSPO_FEED_CARD_WIDTH_CLASS} ${INSPO_FEED_CARD_HEIGHT_CLASS}`}
         style={{ borderColor: "rgba(15,23,42,0.08)" }}
       >
         {canManage ? (
@@ -2311,20 +2405,18 @@ export function InspirationHub({
             themeId={activeThemeId}
             items={hubExploreItems}
             onBack={closeExploreTheme}
-            onOpenItem={(item) => openInspirationItem(item as InspirationItem)}
             renderNewsCard={renderNewsCard}
-            renderMediaCard={(item, index, total, className) =>
-              renderInspirationCard(item as InspirationItem, index, total, className)
+            renderMediaCard={(item, index, total, bentoSize) =>
+              renderInspirationCard(item as InspirationItem, index, total, bentoSize)
             }
           />
         ) : inspoSubView === "overview" ? (
           <InspirationExploreBentoOverview
             items={hubExploreItems}
             excludeIds={featuredExcludeIds}
-            onOpenItem={(item) => openInspirationItem(item as InspirationItem)}
             renderNewsCard={renderNewsCard}
-            renderMediaCard={(item, index, total, className) =>
-              renderInspirationCard(item as InspirationItem, index, total, className)
+            renderMediaCard={(item, index, total, bentoSize) =>
+              renderInspirationCard(item as InspirationItem, index, total, bentoSize)
             }
             onOpenTheme={openExploreTheme}
           />

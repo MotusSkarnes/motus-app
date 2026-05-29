@@ -204,12 +204,16 @@ export function buildExploreBentoTiles(items: InspoHubItem[], excludeIds: Set<st
   take((item) => item.category === "nutrition", "medium", 1);
   take((item) => item.category === "tips", "tall", 1);
 
+  const fillerSizes: BentoTileSize[] = ["compact", "medium", "tall", "compact", "medium", "compact"];
+  let fillerIndex = 0;
   for (const item of pool) {
     if (used.has(item.id)) continue;
-    const size: BentoTileSize =
-      item.category === "programs" ? "medium" : item.category === "news" ? "compact" : "compact";
+    let size: BentoTileSize = fillerSizes[fillerIndex % fillerSizes.length] ?? "compact";
+    if (item.category === "programs" && item.kind !== "article") size = fillerIndex % 2 === 0 ? "medium" : "compact";
+    if (item.category === "news") size = fillerIndex % 3 === 0 ? "wide" : "compact";
     tiles.push({ item, size });
     used.add(item.id);
+    fillerIndex += 1;
     if (tiles.length >= 12) break;
   }
 
