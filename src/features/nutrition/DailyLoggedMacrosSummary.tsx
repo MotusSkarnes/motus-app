@@ -1,30 +1,46 @@
-import { Droplets, Dumbbell, Flame, Wheat } from "lucide-react";
+import { Droplets, Dumbbell, Wheat } from "lucide-react";
 import { formatMacro } from "../../app/foodBankTypes";
 import type { MacroTotals } from "../../app/mealPlanMacros";
+import type { MealPlanTargets } from "../../app/mealPlanTypes";
+import { MacroProgressRing } from "./MacroProgressRing";
+
+export const DEFAULT_DAILY_KCAL_TARGET = 1900;
 
 type DailyLoggedMacrosSummaryProps = {
   macros: MacroTotals;
+  targets?: MealPlanTargets | null;
   title?: string;
 };
 
-export function DailyLoggedMacrosSummary({ macros, title = "I dag totalt" }: DailyLoggedMacrosSummaryProps) {
+export function DailyLoggedMacrosSummary({
+  macros,
+  targets,
+  title = "I dag totalt",
+}: DailyLoggedMacrosSummaryProps) {
   const kcal = Math.round(macros.kcal);
   const protein = Math.round(macros.protein);
   const carbs = Math.round(macros.carbs);
   const fat = Math.round(macros.fat);
+  const targetKcal = targets?.kcal && targets.kcal > 0 ? targets.kcal : DEFAULT_DAILY_KCAL_TARGET;
+  const kcalRemaining = Math.max(0, Math.round(targetKcal - kcal));
+  const kcalOver = Math.max(0, Math.round(kcal - targetKcal));
+  const kcalSublabel =
+    kcalOver > 0 ? `${formatMacro(kcalOver, 0)} over mål` : kcalRemaining > 0 ? `${formatMacro(kcalRemaining, 0)} igjen` : "Mål nådd";
 
   return (
     <section className="motus-log-meal-macros" aria-label={title}>
       <h3 className="motus-log-meal-macros__title">{title}</h3>
       <div className="motus-log-meal-macros__body">
-        <div className="motus-log-meal-macros__kcal" aria-label={`${kcal} kalorier`}>
-          <span className="motus-log-meal-macros__kcal-icon" aria-hidden>
-            <Flame className="h-5 w-5" />
-          </span>
-          <div className="motus-log-meal-macros__kcal-text">
-            <span className="motus-log-meal-macros__kcal-value">{formatMacro(kcal, 0)}</span>
-            <span className="motus-log-meal-macros__kcal-unit">kcal</span>
-          </div>
+        <div className="motus-log-meal-macros__ring" aria-label={`${kcal} av ${targetKcal} kalorier, ${kcalSublabel}`}>
+          <MacroProgressRing
+            label="Kalorier"
+            current={kcal}
+            target={targetKcal}
+            unit="kcal"
+            size="lg"
+            hideLabel
+            sublabel={kcalSublabel}
+          />
         </div>
         <ul className="motus-log-meal-macros__grid">
           <li className="motus-log-meal-macros__stat">

@@ -10,7 +10,8 @@ import {
 import { loadMemberMealPlanState } from "../../app/memberMealPlanState";
 import { persistMemberMealPlanStateLocalAndScheduleCloud, syncMemberMealPlanState } from "../../app/memberMealPlanStateCloud";
 import { MEAL_PLAN_STATE_CHANGED_EVENT } from "../../app/memberMealPlanState";
-import { GradientButton, OutlineButton } from "../../app/ui";
+import type { MealPlanTargets } from "../../app/mealPlanTypes";
+import { GradientButton } from "../../app/ui";
 import { sumQuickFoodLogMacros } from "../../app/quickFoodLogMacros";
 import { DailyLoggedMacrosSummary } from "./DailyLoggedMacrosSummary";
 import { FoodLogFormFields, type FoodLogDraft } from "./FoodLogFormFields";
@@ -18,6 +19,7 @@ import "../../foodbank.css";
 
 type LogMealPanelProps = {
   memberId: string;
+  mealPlanTargets?: MealPlanTargets | null;
   onRefreshFoodBank?: () => void;
 };
 
@@ -30,7 +32,7 @@ function entryMacros(entry: MemberQuickFoodLogEntry): string {
   return `${formatMacro(entry.nutritionPer100g.kcal * scale, 0)} kcal · P ${formatMacro(entry.nutritionPer100g.protein * scale, 1)} g`;
 }
 
-export function LogMealPanel({ memberId, onRefreshFoodBank }: LogMealPanelProps) {
+export function LogMealPanel({ memberId, mealPlanTargets, onRefreshFoodBank }: LogMealPanelProps) {
   const [open, setOpen] = useState(false);
   const [mealSlotId, setMealSlotId] = useState(MEMBER_MEAL_SLOTS[0]!.id);
   const [status, setStatus] = useState<string | null>(null);
@@ -126,7 +128,7 @@ export function LogMealPanel({ memberId, onRefreshFoodBank }: LogMealPanelProps)
           Du har ingen matplan fra treneren ennå. Start med å logge et måltid — velg frokost, lunsj, middag og mer, og søk
           opp matvarer fra matbanken.
         </p>
-        <GradientButton type="button" className="motus-log-meal-hero__cta" onClick={() => setOpen(true)}>
+        <GradientButton type="button" className="motus-log-meal-cta" onClick={() => setOpen(true)}>
           <Plus className="h-4 w-4" aria-hidden />
           Logg et måltid
         </GradientButton>
@@ -136,16 +138,16 @@ export function LogMealPanel({ memberId, onRefreshFoodBank }: LogMealPanelProps)
 
   return (
     <div className="motus-log-meal-panel">
-      {hasLogs ? <DailyLoggedMacrosSummary macros={macrosToday} /> : null}
+      {hasLogs ? <DailyLoggedMacrosSummary macros={macrosToday} targets={mealPlanTargets} /> : null}
 
       {hasLogs && !open ? (
         <div className="motus-log-meal-panel__summary">
           <div className="motus-log-meal-panel__summary-head">
             <h2 className="motus-log-meal-panel__title">Logget i dag</h2>
-            <OutlineButton type="button" className="text-xs" onClick={() => setOpen(true)}>
+            <GradientButton type="button" className="motus-log-meal-cta motus-log-meal-cta--compact" onClick={() => setOpen(true)}>
               <Plus className="h-4 w-4" aria-hidden />
               Logg et måltid
-            </OutlineButton>
+            </GradientButton>
           </div>
           <div className="motus-log-meal-panel__groups">
             {MEMBER_MEAL_SLOTS.map((slot) => {

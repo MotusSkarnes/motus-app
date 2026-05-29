@@ -119,7 +119,11 @@ export function MemberNutritionView({ member, members, onSavePersonalGoals }: Me
               Kunne ikke hente matplan fra sky ennå. Sjekk nett og oppdater siden, eller be PT trykke «Lagre» på matplanen din.
             </Card>
           ) : null}
-          <LogMealPanel memberId={memberId} onRefreshFoodBank={refreshMemberFoodBank} />
+          <LogMealPanel
+            memberId={memberId}
+            mealPlanTargets={plan?.targets}
+            onRefreshFoodBank={refreshMemberFoodBank}
+          />
         </div>
       );
     }
