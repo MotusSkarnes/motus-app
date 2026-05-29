@@ -1,5 +1,6 @@
 import type { FoodItem } from "./foodBankTypes";
 import { formatMacro } from "./foodBankTypes";
+import { defaultPortionGramsForFood } from "./foodPortionDefaults";
 import {
   computeMacrosForGrams,
   computeMealMacros,
@@ -156,7 +157,7 @@ export function suggestFoodsForMacros(
   const scored: FoodSuggestion[] = [];
 
   for (const food of foods) {
-    const grams = food.portionGrams > 0 ? food.portionGrams : 100;
+    const grams = defaultPortionGramsForFood(food);
     const macros = computeMacrosForGrams(food.nutritionPer100g, grams);
     if (macros.kcal <= 0) continue;
 

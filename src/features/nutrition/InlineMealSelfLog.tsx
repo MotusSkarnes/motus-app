@@ -1,6 +1,7 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Plus } from "lucide-react";
 import { formatMacro, type FoodItem } from "../../app/foodBankTypes";
+import { defaultPortionGramsForFood } from "../../app/foodPortionDefaults";
 import type { MemberQuickFoodLogEntry } from "../../app/memberMealPlanState";
 import { useFoodBankItems } from "../../app/useFoodBankItems";
 import { OutlineButton, TextInput } from "../../app/ui";
@@ -47,6 +48,11 @@ export function InlineMealSelfLog({ mealId, onAdd, compact = false, autoOpen = f
     [foodItems, selectedFoodId],
   );
 
+  useEffect(() => {
+    if (!selectedFood) return;
+    setGramsInput(String(defaultPortionGramsForFood(selectedFood)));
+  }, [selectedFood]);
+
   const handleAdd = useCallback(() => {
     if (!selectedFood) {
       setError("Velg en matvare.");
@@ -61,7 +67,7 @@ export function InlineMealSelfLog({ mealId, onAdd, compact = false, autoOpen = f
     setError(null);
     setSearch("");
     setSelectedFoodId("");
-    setGramsInput("100");
+    setGramsInput(String(defaultPortionGramsForFood(selectedFood)));
     setOpen(autoOpen);
   }, [gramsInput, mealId, onAdd, selectedFood, autoOpen]);
 
@@ -94,11 +100,11 @@ export function InlineMealSelfLog({ mealId, onAdd, compact = false, autoOpen = f
           className="motus-matplan-self-log__select"
         >
           <option value="">Velg matvare</option>
-          {filteredFoods.map((item) => (
-            <option key={item.id} value={item.id}>
-              {item.name}
-            </option>
-          ))}
+              {filteredFoods.map((item) => (
+                <option key={item.id} value={item.id}>
+                  {item.name} ({defaultPortionGramsForFood(item)} g)
+                </option>
+              ))}
         </select>
         <TextInput
           value={gramsInput}

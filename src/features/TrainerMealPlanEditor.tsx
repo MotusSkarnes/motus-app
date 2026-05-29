@@ -23,7 +23,7 @@ import {
   syncMealPlanForMember,
 } from "../app/mealPlanCloud";
 import { useInspirationRecipeItems } from "../app/inspirationRecipeItems";
-import { consumeMealPlanPendingFood } from "../app/mealPlanPendingFood";
+import { defaultPortionGramsForFood } from "../app/foodPortionDefaults";
 import { hydrateMealPlanFoodNutrition } from "../app/mealPlanFoodNutrition";
 import { computeEntryMacros, computeMealMacros, formatMacroTotals } from "../app/mealPlanMacros";
 import {
@@ -127,7 +127,7 @@ export function TrainerMealPlanEditor({
       const grams =
         Number.isFinite(pending.grams) && pending.grams > 0
           ? Math.round(pending.grams)
-          : pending.food.portionGrams || 100;
+          : defaultPortionGramsForFood(pending.food);
       const entry: MealPlanFoodEntry = {
         id: uid("meal-food"),
         foodId: pending.food.id,
@@ -701,14 +701,14 @@ export function TrainerMealPlanEditor({
 
   function selectFoodForPicker(food: FoodItem) {
     setPickerSelectedFood(food);
-    setFoodGrams(String(food.portionGrams || 100));
+    setFoodGrams(String(defaultPortionGramsForFood(food)));
   }
 
   function addFoodToMeal(food?: FoodItem) {
     const chosen = food ?? pickerSelectedFood;
     if (!plan || !foodPicker || !chosen) return;
     const grams = Number(foodGrams.replace(",", "."));
-    const safeGrams = Number.isFinite(grams) && grams > 0 ? Math.round(grams) : chosen.portionGrams || 100;
+    const safeGrams = Number.isFinite(grams) && grams > 0 ? Math.round(grams) : defaultPortionGramsForFood(chosen);
     const entry: MealPlanFoodEntry = {
       id: uid("meal-food"),
       foodId: chosen.id,
@@ -1410,13 +1410,13 @@ export function TrainerMealPlanEditor({
                       {preset} g
                     </button>
                   ))}
-                  {pickerSelectedFood?.portionGrams ? (
+                  {pickerSelectedFood ? (
                     <button
                       type="button"
                       className="rounded-lg border border-teal-200 bg-teal-50 px-2 py-1 text-[11px] font-medium text-teal-800"
-                      onClick={() => setFoodGrams(String(pickerSelectedFood.portionGrams))}
+                      onClick={() => setFoodGrams(String(defaultPortionGramsForFood(pickerSelectedFood)))}
                     >
-                      Porsjon ({pickerSelectedFood.portionGrams} g)
+                      Porsjon ({defaultPortionGramsForFood(pickerSelectedFood)} g)
                     </button>
                   ) : null}
                 </div>
@@ -1448,7 +1448,7 @@ export function TrainerMealPlanEditor({
                       <span className="font-medium text-slate-800">{food.name}</span>
                       <span className="text-xs text-slate-500">
                         {food.portionLabel}
-                        {food.portionGrams ? ` · ${food.portionGrams} g` : ""}
+                        {food.portionGrams ? ` · ${defaultPortionGramsForFood(food)} g` : ""}
                       </span>
                     </button>
                   ))

@@ -15,6 +15,7 @@ import {
   X,
 } from "lucide-react";
 import { filterFoodBankItems, sortFoodBankItems } from "../app/foodBankFilter";
+import { defaultPortionGramsForFood } from "../app/foodPortionDefaults";
 import {
   persistTrainerFoodBankBundle,
   scheduleTrainerFoodBankCloudSave,
@@ -408,7 +409,7 @@ export function TrainerFoodBankView({
       window.setTimeout(() => setMealPlanNotice(null), 4500);
       return;
     }
-    const grams = item.portionGrams || 100;
+    const grams = defaultPortionGramsForFood(item);
     if (nutritionMembers.length === 1) {
       queueFoodForMember(nutritionMembers[0], item, grams);
       return;
@@ -785,7 +786,7 @@ export function TrainerFoodBankView({
                       queueFoodForMember(
                         member,
                         mealPlanPickFood,
-                        Number.isFinite(grams) && grams > 0 ? grams : mealPlanPickFood.portionGrams || 100,
+                        Number.isFinite(grams) && grams > 0 ? grams : defaultPortionGramsForFood(mealPlanPickFood),
                       );
                       setMealPlanPickFood(null);
                     }}

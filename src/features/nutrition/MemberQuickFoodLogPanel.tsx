@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Sparkles, Trash2 } from "lucide-react";
+import { defaultPortionGramsForFood } from "../../app/foodPortionDefaults";
 import { formatMacro, type FoodItem } from "../../app/foodBankTypes";
 import { toIsoDateKey, type MemberQuickFoodLogEntry } from "../../app/memberMealPlanState";
 import { loadMemberMealPlanState } from "../../app/memberMealPlanState";
@@ -51,6 +52,11 @@ export function MemberQuickFoodLogPanel({ memberId, readOnly = false }: MemberQu
     () => foodItems.find((item) => item.id === selectedFoodId) ?? null,
     [foodItems, selectedFoodId],
   );
+
+  useEffect(() => {
+    if (!selectedFood) return;
+    setGramsInput(String(defaultPortionGramsForFood(selectedFood)));
+  }, [selectedFood]);
 
   const persist = useCallback(
     (nextLogs: MemberQuickFoodLogEntry[]) => {
@@ -144,7 +150,7 @@ export function MemberQuickFoodLogPanel({ memberId, readOnly = false }: MemberQu
               <option value="">Velg matvare</option>
               {filteredFoods.map((item) => (
                 <option key={item.id} value={item.id}>
-                  {item.name}
+                  {item.name} ({defaultPortionGramsForFood(item)} g)
                 </option>
               ))}
             </select>
