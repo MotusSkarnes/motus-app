@@ -1,4 +1,6 @@
 import type { FoodSubmissionDraft, MemberFoodSubmission, MemberFoodSubmissionStatus } from "./foodLabelScanTypes";
+import { foodItemFromSubmissionDraft } from "./foodLabelScanTypes";
+import type { FoodItem } from "./foodBankTypes";
 import { readSupabaseFunctionInvokeError } from "./supabaseFunctionErrors";
 import { isSupabaseConfigured, supabaseClient } from "../services/supabaseClient";
 
@@ -71,6 +73,44 @@ export async function fetchMemberFoodSubmissions(memberId: string): Promise<Memb
   return data.map((row) => parseSubmission(row as Record<string, unknown>));
 }
 
+function approvedFoodItemFromRow(row: Record<string, unknown>): FoodItem | null {
+  const draft = (row.draft_item ?? row.draftItem) as FoodSubmissionDraft | undefined;
+  const foodId =
+    String(row.approved_food_id ?? "").trim() ||
+    String((draft as { id?: string } | undefined)?.id ?? "").trim();
+  if (!draft?.name?.trim() || !foodId) return null;
+  return foodItemFromSubmissionDraft(draft, foodId, {
+    createdAt: typeof row.reviewed_at === "string" ? row.reviewed_at : undefined,
+    createdBy: String(draft.createdBy ?? "Medlem"),
+  });
+}
+
+export async function fetchApprovedFoodItemsForMember(memberId: string): Promise<FoodItem[]> {
+  if (!isSupabaseConfigured || !supabaseClient || !memberId.trim()) return [];
+  const { data, error } = await supabaseClient
+    .from("member_food_submissions")
+    .select("approved_food_id, draft_item, reviewed_at")
+    .eq("member_id", memberId)
+    .eq("status", "approved");
+  if (error || !data) return [];
+  return data
+    .map((row) => approvedFoodItemFromRow(row as Record<string, unknown>))
+    .filter((item): item is FoodItem => item !== null);
+}
+
+export async function fetchApprovedFoodItemsForTrainer(ownerUserId: string): Promise<FoodItem[]> {
+  if (!isSupabaseConfigured || !supabaseClient || !ownerUserId.trim()) return [];
+  const { data, error } = await supabaseClient
+    .from("member_food_submissions")
+    .select("approved_food_id, draft_item, reviewed_at")
+    .eq("owner_user_id", ownerUserId)
+    .eq("status", "approved");
+  if (error || !data) return [];
+  return data
+    .map((row) => approvedFoodItemFromRow(row as Record<string, unknown>))
+    .filter((item): item is FoodItem => item !== null);
+}
+
 export async function updateMemberFoodSubmission(input: {
   submissionId: string;
   memberId: string;
@@ -102,7 +142,7 @@ export async function reviewFoodSubmission(input: {
   action: "approve" | "reject";
   reviewNote?: string;
   draftItem?: FoodSubmissionDraft & { id?: string; createdAt?: string; createdBy?: string };
-}): Promise<{ ok: true; foodId?: string } | { ok: false; error: string }> {
+}): Promise<{ ok: true; foodId?: string; item?: FoodItem } | { ok: false; error: string }> {
   if (!isSupabaseConfigured || !supabaseClient) {
     return { ok: false, error: "Sky-tjenesten er ikke tilgjengelig." };
   }
@@ -115,7 +155,14 @@ export async function reviewFoodSubmission(input: {
     body: input,
   });
   if (error) return { ok: false, error: await readSupabaseFunctionInvokeError(error, data) };
-  const payload = data as { ok?: boolean; error?: string; foodId?: string };
+  const payload = data as { ok?: boolean; error?: string; foodId?: string; item?: unknown };
   if (!payload?.ok) return { ok: false, error: String(payload?.error ?? "Kunne ikke behandle forslaget.") };
-  return { ok: true, foodId: payload.foodId };
+  const item = payload.item && typeof payload.item === "object"
+    ? foodItemFromSubmissionDraft(
+        payload.item as FoodSubmissionDraft,
+        String(payload.foodId ?? (payload.item as { id?: string }).id ?? ""),
+        { createdBy: String((payload.item as { createdBy?: string }).createdBy ?? "") },
+      )
+    : undefined;
+  return { ok: true, foodId: payload.foodId, item };
 }

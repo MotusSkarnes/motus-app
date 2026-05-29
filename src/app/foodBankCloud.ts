@@ -11,6 +11,7 @@ import {
   persistRecentFoodIds,
 } from "./foodBankStorage";
 import { applyKnownPortionDefaults } from "./foodPortionDefaults";
+import { fetchApprovedFoodItemsForMember, fetchApprovedFoodItemsForTrainer } from "./memberFoodSubmissionsCloud";
 import { normalizeMicronutrients } from "./foodBankMicronutrients";
 import type { FoodItem } from "./foodBankTypes";
 import { isSupabaseConfigured, supabaseClient } from "../services/supabaseClient";
@@ -260,18 +261,25 @@ export async function syncTrainerFoodBankFromRemote(
   return { ok: uploaded, source: uploaded ? "local" : "none" };
 }
 
-/** Medlem: hent PT sin matvarebank + felles varer inn i lokal søkeliste. */
-export async function syncMemberFoodBankFromTrainer(ownerUserId: string): Promise<{ ok: boolean }> {
+/** Medlem: hent PT sin matvarebank + felles varer + egne godkjente forslag. */
+export async function syncMemberFoodBankFromTrainer(
+  ownerUserId: string,
+  memberId?: string,
+): Promise<{ ok: boolean }> {
   if (!isSupabaseConfigured || !ownerUserId.trim()) return { ok: false };
 
-  const [sharedItems, remote] = await Promise.all([
+  const [sharedItems, remote, approvedItems] = await Promise.all([
     fetchSharedFoodItemsFromSupabase(),
     fetchTrainerFoodBankFromSupabase(ownerUserId),
+    memberId?.trim() ? fetchApprovedFoodItemsForMember(memberId) : Promise.resolve([]),
   ]);
 
   const baseItems = loadFoodBankItems();
   const ptItems = remote?.items ?? [];
-  const mergedItems = mergeFoodItems(mergeFoodItems(ptItems, sharedItems), baseItems);
+  const mergedItems = mergeFoodItems(
+    mergeFoodItems(mergeFoodItems(approvedItems, ptItems), sharedItems),
+    baseItems,
+  );
 
   const previousRaw =
     typeof window !== "undefined" ? window.localStorage.getItem(FOOD_BANK_STORAGE_KEY) ?? "" : "";
@@ -291,6 +299,39 @@ export async function syncMemberFoodBankFromTrainer(ownerUserId: string): Promis
   }
 
   return { ok: true };
+}
+
+/** Slå sammen nye varer inn i lokal matbank og varsle UI (uten å overskrive med gammel sky-kø). */
+export function mergeFoodItemsIntoLocalCache(incoming: FoodItem[]): void {
+  if (incoming.length === 0) return;
+  clearTrainerFoodBankCloudSaveQueue();
+  const merged = mergeFoodItems(incoming, loadFoodBankItems());
+  cacheTrainerFoodBankSnapshot({
+    items: merged,
+    favoriteIds: loadFavoriteFoodIds(),
+    recentIds: loadRecentFoodIds(),
+    updatedAt: Date.now(),
+  });
+  notifyFoodBankChanged();
+}
+
+export function clearTrainerFoodBankCloudSaveQueue(): void {
+  if (cloudSaveTimer) {
+    clearTimeout(cloudSaveTimer);
+    cloudSaveTimer = null;
+  }
+  pendingCloudSave = null;
+}
+
+/** Etter PT godkjenner: hent fra sky + godkjente forslag, oppdater lokal liste. */
+export async function refreshTrainerFoodBankAfterApproval(ownerUserId: string): Promise<void> {
+  if (!ownerUserId.trim() || !isSupabaseConfigured) return;
+  clearTrainerFoodBankCloudSaveQueue();
+  const approvedFromSubmissions = await fetchApprovedFoodItemsForTrainer(ownerUserId);
+  await pullTrainerFoodBankFromRemote(ownerUserId);
+  if (approvedFromSubmissions.length > 0) {
+    mergeFoodItemsIntoLocalCache(approvedFromSubmissions);
+  }
 }
 
 let cloudSaveTimer: ReturnType<typeof setTimeout> | null = null;

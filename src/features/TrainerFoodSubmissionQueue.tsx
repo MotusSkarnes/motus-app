@@ -6,6 +6,7 @@ import {
   fetchPendingFoodSubmissionsForTrainer,
   reviewFoodSubmission,
 } from "../app/memberFoodSubmissionsCloud";
+import { mergeFoodItemsIntoLocalCache, refreshTrainerFoodBankAfterApproval } from "../app/foodBankCloud";
 import { Card, GradientButton, OutlineButton } from "../app/ui";
 
 type TrainerFoodSubmissionQueueProps = {
@@ -52,6 +53,10 @@ export function TrainerFoodSubmissionQueue({
       if (!result.ok) {
         setStatus(result.error);
         return;
+      }
+      if (action === "approve") {
+        if (result.item) mergeFoodItemsIntoLocalCache([result.item]);
+        await refreshTrainerFoodBankAfterApproval(ownerUserId);
       }
       setStatus(action === "approve" ? `${row.draftItem.name} er lagt i matbanken.` : "Forslag avslått.");
       onChanged?.();

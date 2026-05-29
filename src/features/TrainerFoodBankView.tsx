@@ -20,6 +20,7 @@ import {
   persistTrainerFoodBankBundle,
   scheduleTrainerFoodBankCloudSave,
   syncTrainerFoodBankFromRemote,
+  refreshTrainerFoodBankAfterApproval,
 } from "../app/foodBankCloud";
 import {
   FOOD_BANK_CHANGED_EVENT,
@@ -355,7 +356,7 @@ export function TrainerFoodBankView({
 
   const reloadFoodBankFromCloud = useCallback(async () => {
     if (!trainerOwnerUserId?.trim()) return;
-    await syncTrainerFoodBankFromRemote(trainerOwnerUserId);
+    await refreshTrainerFoodBankAfterApproval(trainerOwnerUserId);
     reload();
   }, [trainerOwnerUserId, reload]);
 

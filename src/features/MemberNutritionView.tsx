@@ -61,7 +61,7 @@ export function MemberNutritionView({ member, members, onSavePersonalGoals }: Me
   useEffect(() => {
     const ptOwnerUserId = member.ownerUserId?.trim() ?? "";
     if (!ptOwnerUserId) return;
-    void syncMemberFoodBankFromTrainer(ptOwnerUserId);
+    void syncMemberFoodBankFromTrainer(ptOwnerUserId, member.id);
   }, [member.ownerUserId, member.id]);
 
   useEffect(() => {

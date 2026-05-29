@@ -162,7 +162,7 @@ export function MemberSubmitFoodPanel({ member }: MemberSubmitFoodPanelProps) {
     setHistory(rows);
     const hasApproved = rows.some((row) => row.status === "approved");
     if (hasApproved && ownerUserId) {
-      await syncMemberFoodBankFromTrainer(ownerUserId);
+      await syncMemberFoodBankFromTrainer(ownerUserId, member.id);
     }
   }, [member.id, ownerUserId]);
 

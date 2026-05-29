@@ -1065,7 +1065,7 @@ export function useAppState() {
           hydratedMember.members[0];
         const ptOwnerUserId = memberRow?.ownerUserId?.trim() ?? "";
         if (ptOwnerUserId) {
-          void syncMemberFoodBankFromTrainer(ptOwnerUserId);
+          void syncMemberFoodBankFromTrainer(ptOwnerUserId, memberRow?.id);
         }
       }
       if (hydratedMember) {

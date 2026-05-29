@@ -111,3 +111,42 @@ export function foodSubmissionDraftFromScan(
     },
   };
 }
+
+const EMPTY_NUTRITION: FoodItem["nutritionPer100g"] = {
+  kcal: 0,
+  protein: 0,
+  carbs: 0,
+  fat: 0,
+  fiber: 0,
+  sugar: 0,
+  saturatedFat: 0,
+  sodium: 0,
+};
+
+/** Godkjent medlemsforslag → matvare i søk/matbank (uten store base64-bilder). */
+export function foodItemFromSubmissionDraft(
+  draft: FoodSubmissionDraft,
+  foodId: string,
+  options?: { createdAt?: string; createdBy?: string },
+): FoodItem {
+  const nutrition = draft.nutritionPer100g ?? EMPTY_NUTRITION;
+  const imageUrl = draft.imageUrl?.trim();
+  const safeImageUrl =
+    imageUrl && !imageUrl.startsWith("data:") && imageUrl.length < 2000 ? imageUrl : undefined;
+  return {
+    id: foodId,
+    name: draft.name.trim(),
+    portionLabel: String(draft.portionLabel ?? "100 g").trim() || "100 g",
+    portionGrams: Number(draft.portionGrams) > 0 ? Math.round(Number(draft.portionGrams)) : 100,
+    category: normalizeFoodCategory(draft.category),
+    origin: String(draft.origin ?? "Medlem").trim() || "Medlem",
+    source: "egen",
+    createdBy: String(options?.createdBy ?? "Medlem").trim() || "Medlem",
+    createdAt: options?.createdAt ?? new Date().toISOString(),
+    imageUrl: safeImageUrl,
+    imageEmoji: draft.imageEmoji ?? "🏷️",
+    isCustom: true,
+    isEdited: false,
+    nutritionPer100g: { ...nutrition },
+  };
+}

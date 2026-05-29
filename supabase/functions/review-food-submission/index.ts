@@ -30,9 +30,36 @@ function jsonResponse(status: number, body: Record<string, unknown>) {
   });
 }
 
+function bankSafeImageUrl(url: unknown): string | undefined {
+  const trimmed = String(url ?? "").trim();
+  if (!trimmed || trimmed.startsWith("data:") || trimmed.length > 2000) return undefined;
+  return trimmed;
+}
+
+function normalizeNutritionForBank(value: unknown): Record<string, unknown> {
+  if (!value || typeof value !== "object") {
+    return { kcal: 0, protein: 0, carbs: 0, fat: 0, fiber: 0, sugar: 0, saturatedFat: 0, sodium: 0 };
+  }
+  const row = value as Record<string, unknown>;
+  const num = (key: string) => {
+    const parsed = Number(row[key]);
+    return Number.isFinite(parsed) ? parsed : 0;
+  };
+  return {
+    kcal: num("kcal"),
+    protein: num("protein"),
+    carbs: num("carbs"),
+    fat: num("fat"),
+    fiber: num("fiber"),
+    sugar: num("sugar"),
+    saturatedFat: num("saturatedFat"),
+    sodium: num("sodium"),
+  };
+}
+
 function parseFoodItems(value: unknown): FoodItemRow[] {
   if (!Array.isArray(value)) return [];
-  return value.filter((row) => row && typeof row === "object") as FoodItemRow[];
+  return value.filter((row) => row && typeof row === "object" && String((row as FoodItemRow).name ?? "").trim()) as FoodItemRow[];
 }
 
 Deno.serve(async (req) => {
@@ -110,7 +137,6 @@ Deno.serve(async (req) => {
 
   const foodId = String(draft.id ?? "").trim() || `food-${crypto.randomUUID()}`;
   const approvedItem: FoodItemRow = {
-    ...draft,
     id: foodId,
     name: draft.name.trim(),
     portionLabel: String(draft.portionLabel ?? "100 g").trim() || "100 g",
@@ -122,7 +148,9 @@ Deno.serve(async (req) => {
     isCustom: true,
     isEdited: false,
     createdAt: draft.createdAt || now,
-    nutritionPer100g: draft.nutritionPer100g ?? {},
+    imageUrl: bankSafeImageUrl(draft.imageUrl),
+    imageEmoji: typeof draft.imageEmoji === "string" ? draft.imageEmoji : "🏷️",
+    nutritionPer100g: normalizeNutritionForBank(draft.nutritionPer100g),
   };
 
   const { data: bankRow, error: bankFetchError } = await admin
