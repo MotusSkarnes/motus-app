@@ -7326,12 +7326,6 @@ button.motus-progress-status-banner {
   font-size: 10px;
 }
 
-.motus-exbank-card-vars {
-  margin-top: 0.5rem;
-  padding-top: 0.5rem;
-  border-top: 1px solid rgba(15, 23, 42, 0.06);
-}
-
 .motus-exbank-upload-zone {
   display: block;
   cursor: pointer;
