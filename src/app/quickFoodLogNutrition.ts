@@ -63,6 +63,43 @@ export function sumQuickFoodLogNutrition(logs: MemberQuickFoodLogEntry[] | undef
   }, { ...EMPTY_FOOD_LOG_NUTRITION, micronutrients: { ...EMPTY_MICRONUTRIENTS } });
 }
 
+export function addFoodLogNutritionTotals(a: FoodLogNutritionTotals, b: FoodLogNutritionTotals): FoodLogNutritionTotals {
+  const micronutrients = { ...a.micronutrients };
+  for (const field of FOOD_MICRONUTRIENT_FIELDS) {
+    micronutrients[field.key] += b.micronutrients[field.key] ?? 0;
+  }
+  return {
+    kcal: a.kcal + b.kcal,
+    protein: a.protein + b.protein,
+    carbs: a.carbs + b.carbs,
+    fat: a.fat + b.fat,
+    fiber: a.fiber + b.fiber,
+    sugar: a.sugar + b.sugar,
+    saturatedFat: a.saturatedFat + b.saturatedFat,
+    sodium: a.sodium + b.sodium,
+    micronutrients,
+  };
+}
+
+export function divideFoodLogNutritionTotals(totals: FoodLogNutritionTotals, divisor: number): FoodLogNutritionTotals {
+  const safe = divisor > 0 ? divisor : 1;
+  const micronutrients = { ...EMPTY_MICRONUTRIENTS };
+  for (const field of FOOD_MICRONUTRIENT_FIELDS) {
+    micronutrients[field.key] = (totals.micronutrients[field.key] ?? 0) / safe;
+  }
+  return {
+    kcal: totals.kcal / safe,
+    protein: totals.protein / safe,
+    carbs: totals.carbs / safe,
+    fat: totals.fat / safe,
+    fiber: totals.fiber / safe,
+    sugar: totals.sugar / safe,
+    saturatedFat: totals.saturatedFat / safe,
+    sodium: totals.sodium / safe,
+    micronutrients,
+  };
+}
+
 export function micronutrientRowsFromLogTotals(totals: FoodLogNutritionTotals): MicronutrientDailyRow[] {
   return FOOD_MICRONUTRIENT_FIELDS.map((field) => {
     const value = totals.micronutrients[field.key] ?? 0;
