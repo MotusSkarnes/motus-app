@@ -1,3 +1,4 @@
+import { enrichFoodItem } from "./foodBankMicronutrientEnrichment";
 import { applyKnownPortionDefaults } from "./foodPortionDefaults";
 import { normalizeMicronutrients } from "./foodBankMicronutrients";
 import { buildDefaultFoodBankItems } from "./foodBankSeed";
@@ -11,10 +12,12 @@ function normalizeFoodNutrition(nutrition: FoodNutrition): FoodNutrition {
 }
 
 function normalizeFoodItem(item: FoodItem): FoodItem {
-  return applyKnownPortionDefaults({
-    ...item,
-    nutritionPer100g: normalizeFoodNutrition(item.nutritionPer100g),
-  });
+  return enrichFoodItem(
+    applyKnownPortionDefaults({
+      ...item,
+      nutritionPer100g: normalizeFoodNutrition(item.nutritionPer100g),
+    }),
+  );
 }
 
 export const FOOD_BANK_STORAGE_KEY = "motus_food_bank_v1";

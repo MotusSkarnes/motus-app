@@ -11,6 +11,7 @@ import {
 } from "./foodBankStorage";
 import { applyKnownPortionDefaults } from "./foodPortionDefaults";
 import { fetchApprovedFoodItemsForMember, fetchApprovedFoodItemsForTrainer } from "./memberFoodSubmissionsCloud";
+import { enrichFoodItem } from "./foodBankMicronutrientEnrichment";
 import { normalizeMicronutrients } from "./foodBankMicronutrients";
 import type { FoodItem } from "./foodBankTypes";
 import { isSupabaseConfigured, supabaseClient } from "../services/supabaseClient";
@@ -50,13 +51,15 @@ function isFoodItem(value: unknown): value is FoodItem {
 export function parseFoodItems(value: unknown): FoodItem[] {
   if (!Array.isArray(value)) return [];
   return value.filter(isFoodItem).map((item) =>
-    applyKnownPortionDefaults({
-      ...item,
-      nutritionPer100g: {
-        ...item.nutritionPer100g,
-        micronutrients: normalizeMicronutrients(item.nutritionPer100g.micronutrients),
-      },
-    }),
+    enrichFoodItem(
+      applyKnownPortionDefaults({
+        ...item,
+        nutritionPer100g: {
+          ...item.nutritionPer100g,
+          micronutrients: normalizeMicronutrients(item.nutritionPer100g.micronutrients),
+        },
+      }),
+    ),
   );
 }
 

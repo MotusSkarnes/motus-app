@@ -1,4 +1,5 @@
 import { uid } from "./storage";
+import { enrichFoodNutrition } from "./foodBankMicronutrientEnrichment";
 import { applyKnownPortionDefaults } from "./foodPortionDefaults";
 import type { FoodCategoryId, FoodItem } from "./foodBankTypes";
 
@@ -127,16 +128,19 @@ export function buildDefaultFoodBankItems(createdBy = "Motus PT"): FoodItem[] {
       createdAt: baseDate,
       imageEmoji: row.emoji,
       isCustom: false,
-      nutritionPer100g: {
-        kcal: row.kcal,
-        protein: row.protein,
-        carbs: row.carbs,
-        fat: row.fat,
-        fiber: row.fiber ?? 0,
-        sugar: row.sugar ?? 0,
-        saturatedFat: row.saturatedFat ?? 0,
-        sodium: row.sodium ?? 0,
-      },
+      nutritionPer100g: enrichFoodNutrition(
+        {
+          kcal: row.kcal,
+          protein: row.protein,
+          carbs: row.carbs,
+          fat: row.fat,
+          fiber: row.fiber ?? 0,
+          sugar: row.sugar ?? 0,
+          saturatedFat: row.saturatedFat ?? 0,
+          sodium: row.sodium ?? 0,
+        },
+        row.name,
+      ),
     }),
   );
 }
