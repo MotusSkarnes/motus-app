@@ -184,14 +184,63 @@ export type BentoTile = {
   size: BentoTileSize;
 };
 
-export function buildExploreBentoTiles(items: InspoHubItem[], excludeIds: Set<string> = new Set()): BentoTile[] {
-  const pool = items.filter((item) => !excludeIds.has(item.id) && item.category !== "appGuide" && item.category !== "recipes");
+export type ExploreOverviewLayout = {
+  newsItems: InspoHubItem[];
+  inspireTiles: BentoTile[];
+  gridTiles: BentoTile[];
+};
+
+const OVERVIEW_NEWS_MAX = 3;
+const OVERVIEW_GRID_MAX = 8;
+
+/** Fordeler innhold på oversikten uten at samme innlegg vises flere steder. */
+export function buildExploreOverviewLayout(
+  items: InspoHubItem[],
+  excludeIds: ReadonlySet<string> = new Set(),
+): ExploreOverviewLayout {
+  const shown = new Set(excludeIds);
+  const hubItems = items.filter(
+    (item) => !shown.has(item.id) && item.category !== "appGuide" && item.category !== "recipes",
+  );
+
+  const newsItems = hubItems.filter((item) => item.category === "news").slice(0, OVERVIEW_NEWS_MAX);
+  for (const item of newsItems) shown.add(item.id);
+
+  const remaining = hubItems.filter((item) => !shown.has(item.id));
+  const inspireTiles: BentoTile[] = [];
+
+  const programPick = remaining.find((item) => item.category === "programs" && item.kind !== "article");
+  if (programPick) {
+    inspireTiles.push({ item: programPick, size: "tall" });
+    shown.add(programPick.id);
+  }
+
+  const articlePick = remaining.find((item) => !shown.has(item.id) && item.category !== "news");
+  if (articlePick) {
+    const size: BentoTileSize =
+      articlePick.category === "tips"
+        ? "medium"
+        : articlePick.category === "nutrition"
+          ? "compact"
+          : "medium";
+    inspireTiles.push({ item: articlePick, size });
+    shown.add(articlePick.id);
+  }
+
+  const gridPool = remaining.filter((item) => !shown.has(item.id));
+  const gridTiles = buildBentoTilesFromPool(gridPool, OVERVIEW_GRID_MAX);
+
+  return { newsItems, inspireTiles, gridTiles };
+}
+
+function buildBentoTilesFromPool(pool: InspoHubItem[], maxTiles: number): BentoTile[] {
   const tiles: BentoTile[] = [];
   const used = new Set<string>();
 
   const take = (predicate: (item: InspoHubItem) => boolean, size: BentoTileSize, limit = 1) => {
     for (const item of pool) {
       if (used.has(item.id)) continue;
+      if (item.category === "news") continue;
       if (!predicate(item)) continue;
       tiles.push({ item, size });
       used.add(item.id);
@@ -199,23 +248,31 @@ export function buildExploreBentoTiles(items: InspoHubItem[], excludeIds: Set<st
     }
   };
 
-  take((item) => item.category === "news", "wide", 1);
   take((item) => item.category === "programs" && item.kind !== "article", "hero", 1);
   take((item) => item.category === "nutrition", "medium", 1);
   take((item) => item.category === "tips", "tall", 1);
 
-  const fillerSizes: BentoTileSize[] = ["compact", "medium", "tall", "compact", "medium", "compact"];
+  const fillerSizes: BentoTileSize[] = ["compact", "medium", "compact", "medium", "compact"];
   let fillerIndex = 0;
   for (const item of pool) {
-    if (used.has(item.id)) continue;
+    if (used.has(item.id) || item.category === "news") continue;
     let size: BentoTileSize = fillerSizes[fillerIndex % fillerSizes.length] ?? "compact";
-    if (item.category === "programs" && item.kind !== "article") size = fillerIndex % 2 === 0 ? "medium" : "compact";
-    if (item.category === "news") size = fillerIndex % 3 === 0 ? "wide" : "compact";
+    if (item.category === "programs" && item.kind !== "article") {
+      size = fillerIndex % 2 === 0 ? "medium" : "compact";
+    }
     tiles.push({ item, size });
     used.add(item.id);
     fillerIndex += 1;
-    if (tiles.length >= 12) break;
+    if (tiles.length >= maxTiles) break;
   }
 
   return tiles;
+}
+
+/** @deprecated Bruk buildExploreOverviewLayout på oversikten. */
+export function buildExploreBentoTiles(items: InspoHubItem[], excludeIds: Set<string> = new Set()): BentoTile[] {
+  const pool = items.filter(
+    (item) => !excludeIds.has(item.id) && item.category !== "appGuide" && item.category !== "recipes",
+  );
+  return buildBentoTilesFromPool(pool, 12);
 }

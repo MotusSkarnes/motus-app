@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { ArrowLeft, ArrowRight, Flame, LayoutGrid, Quote } from "lucide-react";
 import {
-  buildExploreBentoTiles,
+  buildExploreOverviewLayout,
   filterItemsForInspoTheme,
   getInspoThemeById,
   INSPO_TOP_NAV_THEMES,
@@ -100,14 +100,10 @@ export function InspirationExploreBentoOverview({
   renderMediaCard,
   onOpenTheme,
 }: InspirationExploreBentoOverviewProps) {
-  const newsItems = items.filter((item) => item.category === "news" && !excludeIds?.has(item.id));
-  const bentoTiles = buildExploreBentoTiles(items, excludeIds);
-  const inspireTiles = bentoTiles.filter((tile) => tile.size === "tall" || tile.size === "wide").slice(0, 2);
-  const inspireIds = new Set(inspireTiles.map((tile) => tile.item.id));
-  const gridTiles = bentoTiles.filter((tile) => !inspireIds.has(tile.item.id));
+  const { newsItems, inspireTiles, gridTiles } = buildExploreOverviewLayout(items, excludeIds ?? new Set());
 
   return (
-    <div className="motus-inspo-bento-overview space-y-8">
+    <div className="motus-inspo-bento-overview space-y-6">
       {newsItems.length > 0 ? (
         <section className="motus-inspo-section">
           <div className="motus-inspo-section-head">
@@ -130,43 +126,35 @@ export function InspirationExploreBentoOverview({
         </section>
       ) : null}
 
-      <section className="motus-inspo-section">
-        <div className="motus-inspo-section-head">
-          <h2 className="motus-inspo-section-title">Inspirasjon</h2>
-        </div>
-        <div className="motus-inspo-inspire-split">
-          <article className="motus-inspo-quote motus-inspo-quote--bento">
-            <Quote className="motus-inspo-quote-mark" aria-hidden />
-            <div className="motus-inspo-quote-body">
-              <div className="motus-inspo-quote-title">Du er sterkere enn du tror.</div>
-              <div className="motus-inspo-quote-sub">Fortsett å bygge de gode vanene.</div>
-            </div>
-            <Flame className="motus-inspo-quote-flame" aria-hidden />
-          </article>
-          <div className="motus-inspo-inspire-stack">
-            {inspireTiles.length > 0 ? (
-              inspireTiles.map((tile, index) => (
-                <div key={tile.item.id} className={`motus-inspo-inspire-stack-card is-${tile.size}`}>
-                  {tile.item.category === "news"
-                    ? renderNewsCard(tile.item, index, inspireTiles.length, index === 0 ? "lead" : "side")
-                    : renderMediaCard(tile.item, index, inspireTiles.length, tile.size)}
-                </div>
-              ))
-            ) : (
-              gridTiles.slice(0, 2).map((tile, index) => (
-                <div key={tile.item.id} className={`motus-inspo-inspire-stack-card is-${tile.size}`}>
-                  {renderMediaCard(tile.item, index, 2, index === 0 ? "tall" : "compact")}
-                </div>
-              ))
-            )}
+      {inspireTiles.length > 0 ? (
+        <section className="motus-inspo-section">
+          <div className="motus-inspo-section-head">
+            <h2 className="motus-inspo-section-title">Inspirasjon</h2>
           </div>
-        </div>
-      </section>
+          <div className="motus-inspo-inspire-split">
+            <article className="motus-inspo-quote motus-inspo-quote--bento">
+              <Quote className="motus-inspo-quote-mark" aria-hidden />
+              <div className="motus-inspo-quote-body">
+                <div className="motus-inspo-quote-title">Du er sterkere enn du tror.</div>
+                <div className="motus-inspo-quote-sub">Fortsett å bygge de gode vanene.</div>
+              </div>
+              <Flame className="motus-inspo-quote-flame" aria-hidden />
+            </article>
+            <div className="motus-inspo-inspire-stack">
+              {inspireTiles.map((tile, index) => (
+                <div key={tile.item.id} className={`motus-inspo-inspire-stack-card is-${tile.size}`}>
+                  {renderMediaCard(tile.item, index, inspireTiles.length, tile.size)}
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+      ) : null}
 
       {gridTiles.length > 0 ? (
         <section className="motus-inspo-section">
           <div className="motus-inspo-section-head">
-            <h2 className="motus-inspo-section-title">Utforsk mer</h2>
+            <h2 className="motus-inspo-section-title">Mer å utforske</h2>
             <button type="button" onClick={() => onOpenTheme("all")} className="motus-inspo-section-link">
               Se alt
               <ArrowRight className="h-3.5 w-3.5" aria-hidden />
@@ -178,7 +166,6 @@ export function InspirationExploreBentoOverview({
                 key={tile.item.id}
                 tile={tile}
                 index={index}
-                renderNewsCard={renderNewsCard}
                 renderMediaCard={renderMediaCard}
                 total={gridTiles.length}
               />
@@ -207,22 +194,18 @@ function BentoTileCell({
   tile,
   index,
   total,
-  renderNewsCard,
   renderMediaCard,
 }: {
   tile: BentoTile;
   index: number;
   total: number;
-  renderNewsCard: (item: InspoHubItem, index: number, total: number, variant?: "lead" | "side") => ReactNode;
   renderMediaCard: (item: InspoHubItem, index: number, total: number, bentoSize?: BentoTileSize) => ReactNode;
 }) {
   const sizeClass = `motus-inspo-bento-item--${tile.size}`;
 
   return (
     <div className={`motus-inspo-bento-item ${sizeClass}`}>
-      {tile.item.category === "news"
-        ? renderNewsCard(tile.item, index, total, tile.size === "wide" ? "lead" : "side")
-        : renderMediaCard(tile.item, index, total, tile.size)}
+      {renderMediaCard(tile.item, index, total, tile.size)}
     </div>
   );
 }
