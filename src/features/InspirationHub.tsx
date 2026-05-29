@@ -1,21 +1,19 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import {
+  Apple,
   ArrowDown,
   ArrowLeft,
   ArrowRight,
   ArrowUp,
   Bold,
-  Brain,
   CalendarHeart,
   ClipboardList,
   Dumbbell,
   Flame,
-  Footprints,
   Heading2,
   Heading3,
   ImagePlus,
   Italic,
-  LayoutGrid,
   Lightbulb,
   Link2,
   List,
@@ -31,6 +29,12 @@ import {
   Trash2,
   Users,
 } from "lucide-react";
+import type { InspoThemeId } from "../app/inspirationExploreThemes";
+import {
+  InspirationExploreBentoOverview,
+  InspirationExploreThemePage,
+  InspirationExploreTopNav,
+} from "./inspiration/InspirationExploreViews";
 import { MOTUS } from "../app/data";
 import {
   filterRecipesFromInspirationHub,
@@ -74,7 +78,7 @@ import { ExerciseBankListCard } from "./ExerciseBankListCard";
 import type { Exercise, Member, PeriodSchedulePlan, ProgramExercise, WeekdayPlanKey, WeeklyDayPlan, WeeklySchedulePlan } from "../app/types";
 import type { SaveProgramInput } from "../services/appRepository";
 
-type InspirationCategory = "recipes" | "programs" | "tips" | "news" | "appGuide";
+type InspirationCategory = "recipes" | "programs" | "tips" | "news" | "appGuide" | "nutrition";
 type InspoSubView = "overview" | "appGuide";
 type InspirationKind = "article" | "program" | "periodPlan";
 type InspirationBodyStyle = "normal" | "bold" | "italic";
@@ -122,6 +126,7 @@ function badgeToneForCategory(category: InspirationCategory): InspoBadgeTone {
   switch (category) {
     case "tips":
     case "news":
+    case "nutrition":
       return "pink";
     case "recipes":
     case "programs":
@@ -137,67 +142,10 @@ const CATEGORY_META: Record<InspirationCategory, { label: string; plural: string
   tips: { label: "Tips", plural: "Råd og tips", icon: Lightbulb },
   news: { label: "Info", plural: "Info fra senteret", icon: Newspaper },
   appGuide: { label: "App-guide", plural: "App-guide", icon: Smartphone },
+  nutrition: { label: "Kosthold", plural: "Kosthold", icon: Apple },
 };
 
 const APP_GUIDE_TAG = "app-guide";
-
-type QuickCategory = {
-  id: string;
-  label: string;
-  icon: typeof ClipboardList;
-  scrollToCategory: InspirationCategory;
-  match: (item: InspirationItem) => boolean;
-  tone: "mint" | "pink" | "mintSoft" | "pinkSoft";
-};
-
-function textIncludesAny(value: string, terms: string[]): boolean {
-  const lower = value.toLowerCase();
-  return terms.some((term) => lower.includes(term));
-}
-
-const QUICK_CATEGORIES: readonly QuickCategory[] = [
-  {
-    id: "running",
-    label: "Løping",
-    icon: Footprints,
-    scrollToCategory: "programs",
-    tone: "mint",
-    match: (item) =>
-      textIncludesAny(`${item.title} ${item.tag} ${item.description}`, [
-        "løp",
-        "løping",
-        "running",
-        "interval",
-        "5k",
-        "10k",
-        "sub45",
-        "sub60",
-      ]),
-  },
-  {
-    id: "strength",
-    label: "Styrke",
-    icon: Dumbbell,
-    scrollToCategory: "programs",
-    tone: "pink",
-    match: (item) =>
-      textIncludesAny(`${item.title} ${item.tag} ${item.description}`, [
-        "styrke",
-        "strength",
-        "muskel",
-        "strong",
-        "kraft",
-      ]),
-  },
-  {
-    id: "motivation",
-    label: "Motivasjon",
-    icon: Brain,
-    scrollToCategory: "tips",
-    tone: "pinkSoft",
-    match: (item) => item.category === "tips",
-  },
-];
 
 const NEWS_TONES: Array<{
   key: string;
@@ -653,6 +601,17 @@ const DEFAULT_ITEMS: InspirationItem[] = [
     createdAt: "2026-05-16",
   },
   {
+    id: "default-nutrition-1",
+    category: "nutrition",
+    kind: "article",
+    title: "Protein etter trening",
+    description: "Hvorfor og hvor mye du bør spise for restitusjon.",
+    body: "Etter styrkeøkt hjelper protein kroppen å reparere muskelfibre. Som tommelfingerregel: 20–40 g protein innen noen timer etter økta, avhengig av kroppsvekt og mål.\n\n**Enkelt i praksis**\n- Yogurt, cottage cheese eller et eggemåltid hjemme.\n- En shake kan være praktisk når du har dårlig tid.\n\nDette er generell kunnskap — spør treneren din hvis du vil ha anbefalinger tilpasset deg. Oppskrifter finner du under **Mat / Ernæring**.",
+    tag: "Kosthold",
+    author: "Motus",
+    createdAt: "2026-05-01",
+  },
+  {
     id: "default-news-1",
     category: "news",
     kind: "article",
@@ -790,6 +749,7 @@ export function InspirationHub({
 }: InspirationHubProps) {
   const [items, setItems] = useState<InspirationItem[]>(() => loadInspirationItems());
   const [inspoSubView, setInspoSubView] = useState<InspoSubView>("overview");
+  const [activeThemeId, setActiveThemeId] = useState<InspoThemeId | null>(null);
   const [expandedItemId, setExpandedItemId] = useState<string | null>(null);
   const [actionStatus, setActionStatus] = useState<string | null>(null);
   const [title, setTitle] = useState("");
@@ -825,6 +785,7 @@ export function InspirationHub({
     recipes: null,
     tips: null,
     appGuide: null,
+    nutrition: null,
   });
   const usesExerciseBank = exerciseBank.length > 0;
   const exercisesById = useMemo(() => new Map(exerciseBank.map((exercise) => [exercise.id, exercise])), [exerciseBank]);
@@ -932,7 +893,7 @@ export function InspirationHub({
   const featuredArticlePool = useMemo(() => {
     return items.filter((item) => {
       if (item.kind !== "article") return false;
-      if (item.category === "appGuide") return false;
+      if (item.category === "appGuide" || item.category === "recipes") return false;
       return Boolean(item.title.trim());
     });
   }, [items]);
@@ -1192,6 +1153,11 @@ export function InspirationHub({
 
   const sortedItems = useMemo(() => [...items].sort((a, b) => b.createdAt.localeCompare(a.createdAt)), [items]);
 
+  const hubExploreItems = useMemo(
+    () => sortedItems.filter((item) => item.category !== "recipes" && item.category !== "appGuide"),
+    [sortedItems],
+  );
+
   const itemsByCategory = useMemo(() => {
     const grouped: Record<InspirationCategory, InspirationItem[]> = {
       news: [],
@@ -1199,6 +1165,7 @@ export function InspirationHub({
       recipes: [],
       tips: [],
       appGuide: [],
+      nutrition: [],
     };
     for (const item of sortedItems) {
       const normalized = normalizeInspirationItem(item);
@@ -1250,19 +1217,23 @@ export function InspirationHub({
     setExpandedItemId(item.id);
   }
 
+  function openExploreTheme(themeId: InspoThemeId) {
+    setActiveThemeId(themeId);
+    setExpandedItemId(null);
+    if (typeof window !== "undefined") {
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+  }
+
+  function closeExploreTheme() {
+    setActiveThemeId(null);
+  }
+
   function scrollSectionCarousel(category: InspirationCategory, direction: "left" | "right") {
     const node = carouselRefs.current[category];
     if (!node) return;
     const amount = Math.max(300, Math.round(node.clientWidth * 0.82));
     node.scrollBy({ left: direction === "left" ? -amount : amount, behavior: "smooth" });
-  }
-
-  function scrollToCategorySection(category: InspirationCategory) {
-    const node = carouselRefs.current[category];
-    if (!node) return;
-    const sectionEl = node.closest("section");
-    const target = sectionEl ?? node;
-    target.scrollIntoView({ behavior: "smooth", block: "start" });
   }
 
   function renderNewsCard(item: InspirationItem, index: number, total: number) {
@@ -1337,16 +1308,19 @@ export function InspirationHub({
     );
   }
 
-  function renderInspirationCard(item: InspirationItem, index: number, total: number) {
+  function renderInspirationCard(item: InspirationItem, index: number, total: number, layoutClassName?: string) {
     const meta = CATEGORY_META[item.category];
     const Icon = meta.icon;
     const kindLabel = item.kind === "periodPlan" ? "Ukesplan" : item.kind === "program" ? "Program" : meta.label;
     const badgeText = (item.tag.trim() || kindLabel).toUpperCase();
     const badgeTone = badgeToneForCategory(item.category);
+    const isFluidLayout = Boolean(layoutClassName);
     return (
       <article
         key={item.id}
-        className={`relative flex shrink-0 snap-start flex-col overflow-hidden rounded-xl border bg-white ${INSPO_FEED_CARD_WIDTH_CLASS} ${INSPO_FEED_CARD_HEIGHT_CLASS}`}
+        className={`relative flex flex-col overflow-hidden rounded-xl border bg-white ${
+          isFluidLayout ? "w-full max-w-none shrink" : `shrink-0 snap-start ${INSPO_FEED_CARD_WIDTH_CLASS} ${INSPO_FEED_CARD_HEIGHT_CLASS}`
+        } ${layoutClassName ?? ""}`}
         style={{ borderColor: "rgba(15,23,42,0.08)" }}
       >
         {canManage ? (
@@ -2096,11 +2070,19 @@ export function InspirationHub({
   }
 
   const programsCount = (itemsByCategory.programs ?? []).length;
-  const showHero = inspoSubView === "overview";
+  const showExploreOverview = inspoSubView === "overview" && !activeThemeId;
+  const featuredExcludeIds = featuredItem ? new Set([featuredItem.id]) : undefined;
 
   return (
     <div className="motus-inspo-page min-w-0 max-w-full space-y-4 overflow-x-hidden">
-      {showHero ? (
+      {showExploreOverview ? (
+        <header className="motus-inspo-page-head">
+          <h1 className="motus-inspo-page-title">Utforsk</h1>
+          <p className="motus-inspo-page-subtitle">Finn programmer, tips og kunnskap som passer deg.</p>
+        </header>
+      ) : null}
+
+      {showExploreOverview ? (
         <section className="motus-inspo-hero">
           <div className="motus-inspo-hero-media">
             <img
@@ -2129,10 +2111,7 @@ export function InspirationHub({
             <button
               type="button"
               className="motus-inspo-hero-cta motus-pressable"
-              onClick={() => {
-                const first = INSPIRATION_OVERVIEW_SECTIONS.find((section) => itemsByCategory[section.category].length > 0);
-                if (first) scrollToCategorySection(first.category);
-              }}
+              onClick={() => openExploreTheme("all")}
             >
               {heroCtaText}
               <ArrowRight className="h-4 w-4" aria-hidden />
@@ -2202,7 +2181,10 @@ export function InspirationHub({
           type="button"
           role="tab"
           aria-selected={inspoSubView === "overview"}
-          onClick={() => setInspoSubView("overview")}
+          onClick={() => {
+            setInspoSubView("overview");
+            setActiveThemeId(null);
+          }}
           className={`flex-1 rounded-lg px-3 py-2 text-sm font-semibold transition ${
             inspoSubView === "overview" ? "bg-white text-slate-900 shadow-sm" : "text-slate-600 hover:text-slate-900"
           }`}
@@ -2213,7 +2195,10 @@ export function InspirationHub({
           type="button"
           role="tab"
           aria-selected={inspoSubView === "appGuide"}
-          onClick={() => setInspoSubView("appGuide")}
+          onClick={() => {
+            setInspoSubView("appGuide");
+            setActiveThemeId(null);
+          }}
           className={`flex flex-1 items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-sm font-semibold transition ${
             inspoSubView === "appGuide" ? "bg-white text-slate-900 shadow-sm" : "text-slate-600 hover:text-slate-900"
           }`}
@@ -2228,46 +2213,11 @@ export function InspirationHub({
         </button>
       </div>
 
-      {showHero ? (
-        <section className="motus-inspo-quick-section">
-          <div className="motus-inspo-quick-head">
-            <h2 className="motus-inspo-quick-title">Hva vil du utforske?</h2>
-          </div>
-          <div className="motus-inspo-quick-grid">
-            {QUICK_CATEGORIES.map((cat) => {
-              const Icon = cat.icon;
-              return (
-                <button
-                  key={cat.id}
-                  type="button"
-                  onClick={() => scrollToCategorySection(cat.scrollToCategory)}
-                  className={`motus-inspo-quick-pill motus-inspo-quick-pill--${cat.tone} motus-pressable`}
-                >
-                  <span className="motus-inspo-quick-pill-icon" aria-hidden>
-                    <Icon className="h-5 w-5" strokeWidth={2} />
-                  </span>
-                  <span className="motus-inspo-quick-pill-label">{cat.label}</span>
-                </button>
-              );
-            })}
-            <button
-              type="button"
-              onClick={() => {
-                const first = INSPIRATION_OVERVIEW_SECTIONS.find((section) => itemsByCategory[section.category].length > 0);
-                if (first) scrollToCategorySection(first.category);
-              }}
-              className="motus-inspo-quick-pill motus-inspo-quick-pill--all motus-pressable"
-            >
-              <span className="motus-inspo-quick-pill-icon" aria-hidden>
-                <LayoutGrid className="h-5 w-5" strokeWidth={2} />
-              </span>
-              <span className="motus-inspo-quick-pill-label">Se alle</span>
-            </button>
-          </div>
-        </section>
+      {showExploreOverview ? (
+        <InspirationExploreTopNav activeThemeId={activeThemeId} onSelectTheme={openExploreTheme} />
       ) : null}
 
-      {showHero && featuredItem && inspoSubView !== "appGuide" ? (
+      {showExploreOverview && featuredItem ? (
         <section className="motus-inspo-featured-section">
           <button
             type="button"
@@ -2356,67 +2306,80 @@ export function InspirationHub({
       ) : null}
 
       <div className="space-y-4">
-        {inspoSubView === "appGuide" && appGuideCount === 0 ? (
-          <p className="rounded-xl border border-slate-200 bg-white px-4 py-6 text-center text-sm text-slate-600">
-            Ingen app-guider her ennå.
-          </p>
-        ) : null}
-        {activeFeedSections.map(({ category, title }) => {
-          // "Dagens utvalgte" får ligge på sin faste plass i feeden i tillegg til banneret
-          // øverst — slik at den ikke "forsvinner" fra sin opprinnelige kategori-seksjon.
-          const sectionItems = itemsByCategory[category];
-          if (!sectionItems.length) return null;
-          const isNewsLayout = category === "news";
-          return (
-            <section
-              key={category}
-              className={`motus-inspo-section ${isNewsLayout ? "motus-inspo-section--news" : ""}`}
-            >
-              <div className="motus-inspo-section-head">
-                <h2 className="motus-inspo-section-title">{title}</h2>
-                <button
-                  type="button"
-                  onClick={() => scrollSectionCarousel(category, "right")}
-                  className="motus-inspo-section-link"
-                  aria-label={`Bla videre i ${title}`}
+        {activeThemeId && inspoSubView === "overview" ? (
+          <InspirationExploreThemePage
+            themeId={activeThemeId}
+            items={hubExploreItems}
+            onBack={closeExploreTheme}
+            onOpenItem={(item) => openInspirationItem(item as InspirationItem)}
+            renderNewsCard={renderNewsCard}
+            renderMediaCard={(item, index, total, className) =>
+              renderInspirationCard(item as InspirationItem, index, total, className)
+            }
+          />
+        ) : inspoSubView === "overview" ? (
+          <InspirationExploreBentoOverview
+            items={hubExploreItems}
+            excludeIds={featuredExcludeIds}
+            onOpenItem={(item) => openInspirationItem(item as InspirationItem)}
+            renderNewsCard={renderNewsCard}
+            renderMediaCard={(item, index, total, className) =>
+              renderInspirationCard(item as InspirationItem, index, total, className)
+            }
+            onOpenTheme={openExploreTheme}
+          />
+        ) : (
+          <>
+            {appGuideCount === 0 ? (
+              <p className="rounded-xl border border-slate-200 bg-white px-4 py-6 text-center text-sm text-slate-600">
+                Ingen app-guider her ennå.
+              </p>
+            ) : null}
+            {activeFeedSections.map(({ category, title }) => {
+              const sectionItems = itemsByCategory[category];
+              if (!sectionItems.length) return null;
+              const isNewsLayout = category === "news";
+              return (
+                <section
+                  key={category}
+                  className={`motus-inspo-section ${isNewsLayout ? "motus-inspo-section--news" : ""}`}
                 >
-                  Se alle
-                  <ArrowRight className="h-3.5 w-3.5" aria-hidden />
-                </button>
-              </div>
-              {isNewsLayout ? (
-                <div
-                  ref={(node) => {
-                    carouselRefs.current[category] = node;
-                  }}
-                  className="motus-inspo-news-grid"
-                >
-                  {sectionItems.map((item, index) => renderNewsCard(item, index, sectionItems.length))}
-                </div>
-              ) : (
-                <div
-                  ref={(node) => {
-                    carouselRefs.current[category] = node;
-                  }}
-                  className="motus-inspo-section-scroll scrollbar-none"
-                >
-                  {sectionItems.map((item, index) => renderInspirationCard(item, index, sectionItems.length))}
-                </div>
-              )}
-            </section>
-          );
-        })}
-
-        {showHero ? (
-          <section className="motus-inspo-quote">
-            <Quote className="motus-inspo-quote-mark" aria-hidden />
-            <div className="motus-inspo-quote-body">
-              <div className="motus-inspo-quote-title">Du er sterkere enn du tror.</div>
-              <div className="motus-inspo-quote-sub">Fortsett å bygge de gode vanene.</div>
-            </div>
-            <Flame className="motus-inspo-quote-flame" aria-hidden />
-          </section>
-        ) : null}
+                  <div className="motus-inspo-section-head">
+                    <h2 className="motus-inspo-section-title">{title}</h2>
+                    <button
+                      type="button"
+                      onClick={() => scrollSectionCarousel(category, "right")}
+                      className="motus-inspo-section-link"
+                      aria-label={`Bla videre i ${title}`}
+                    >
+                      Se alle
+                      <ArrowRight className="h-3.5 w-3.5" aria-hidden />
+                    </button>
+                  </div>
+                  {isNewsLayout ? (
+                    <div
+                      ref={(node) => {
+                        carouselRefs.current[category] = node;
+                      }}
+                      className="motus-inspo-news-grid"
+                    >
+                      {sectionItems.map((item, index) => renderNewsCard(item, index, sectionItems.length))}
+                    </div>
+                  ) : (
+                    <div
+                      ref={(node) => {
+                        carouselRefs.current[category] = node;
+                      }}
+                      className="motus-inspo-section-scroll scrollbar-none"
+                    >
+                      {sectionItems.map((item, index) => renderInspirationCard(item, index, sectionItems.length))}
+                    </div>
+                  )}
+                </section>
+              );
+            })}
+          </>
+        )}
       </div>
 
 
@@ -2470,6 +2433,7 @@ export function InspirationHub({
               options={[
                 { value: "programs", label: "Trening / program / ukesplan" },
                 { value: "tips", label: "Råd og tips" },
+                { value: "nutrition", label: "Kosthold / ernæringsinfo" },
                 { value: "appGuide", label: "App-guide" },
                 { value: "news", label: "Info fra senteret" },
               ]}

@@ -15,6 +15,7 @@ function inspirationAlertTypeLabel(item: InspirationNotificationItem): string {
   if (item.kind === "periodPlan") return "Ny periodeplan";
   if (item.category === "news") return "Ny info fra senteret";
   if (item.category === "recipes") return "Ny oppskrift";
+  if (item.category === "nutrition") return "Nytt om kosthold";
   if (item.category === "tips") return "Nytt råd";
   if (item.category === "appGuide") return "Ny app-guide";
   if (item.category === "programs") return "Nytt program";

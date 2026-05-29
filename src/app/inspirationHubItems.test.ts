@@ -11,6 +11,7 @@ describe("inspirationHubItems", () => {
     expect(isInspirationRecipeItem({ category: "recipes" })).toBe(true);
     expect(isInspirationRecipeItem({ category: "oppskrift" })).toBe(true);
     expect(isInspirationRecipeItem({ category: "tips" })).toBe(false);
+    expect(isInspirationRecipeItem({ category: "nutrition" })).toBe(false);
   });
 
   it("filters recipes from hub display list", () => {
