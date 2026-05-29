@@ -1,7 +1,6 @@
 import { compressImageDataUrl, dataUrlToBlob } from "./imageCompress";
 import {
   FOOD_BANK_CHANGED_EVENT,
-  FOOD_BANK_STORAGE_KEY,
   loadFavoriteFoodIds,
   loadFoodBankItems,
   loadRecentFoodIds,
