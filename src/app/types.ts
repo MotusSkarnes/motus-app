@@ -1,4 +1,5 @@
 import type { ChatReactionState } from "./chatReactions";
+import type { MemberGender } from "./memberGender";
 
 export type Role = "trainer" | "member";
 export type Level = "Nybegynner" | "Litt øvet" | "Øvet";
@@ -102,6 +103,8 @@ export type Member = {
   firstLoginAt: string;
   phone: string;
   birthDate: string;
+  /** PT-definert — brukes til personlige næringsreferanser (female | male). */
+  gender: MemberGender;
   weight: string;
   height: string;
   level: Level;

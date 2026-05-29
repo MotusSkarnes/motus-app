@@ -16,6 +16,8 @@ import "../../foodbank.css";
 type MemberFoodLogTrainerViewProps = {
   memberId: string;
   memberName: string;
+  memberBirthDate?: string;
+  memberGender?: string;
   mealPlanTargets?: MealPlanTargets | null;
   onRefreshFoodBank?: () => void;
 };
@@ -55,6 +57,8 @@ function entryMacroLine(entry: MemberQuickFoodLogEntry): string {
 export function MemberFoodLogTrainerView({
   memberId,
   memberName,
+  memberBirthDate = "",
+  memberGender = "",
   mealPlanTargets,
   onRefreshFoodBank,
 }: MemberFoodLogTrainerViewProps) {
@@ -234,6 +238,8 @@ export function MemberFoodLogTrainerView({
         open={reportOpen}
         onClose={() => setReportOpen(false)}
         memberName={displayName}
+        memberBirthDate={memberBirthDate}
+        memberGender={memberGender}
         selectedDateKey={selectedDateKey}
         quickFoodLogs={state.quickFoodLogs}
         mealPlanTargets={mealPlanTargets}

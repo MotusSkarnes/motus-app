@@ -22,6 +22,7 @@ import {
 import { memberHasNutritionAccess } from "../app/memberNutritionAccess";
 import { MEMBER_GOAL_OPTIONS } from "../app/memberGoals";
 import { getStatusClearDelayMs, useAutoClearStatus } from "../app/statusAutoClear";
+import { memberGenderLabel, normalizeMemberGender, type MemberGender } from "../app/memberGender";
 import { isLikelyValidBirthDate, isValidEmail, normalizeBirthDate, normalizePhone } from "../app/validators";
 import { buildDeleteExerciseFromBankDialogCopy, findProgramsUsingBankExercise } from "../app/exerciseBankUsage";
 import { buildTrainerStatisticsData, type StatsPeriodPreset } from "../app/buildTrainerStatisticsData";
@@ -875,6 +876,7 @@ function pickFirstName(value: unknown): string {
   const [memberEditName, setMemberEditName] = useState("");
   const [memberEditPhone, setMemberEditPhone] = useState("");
   const [memberEditBirthDate, setMemberEditBirthDate] = useState("");
+  const [memberEditGender, setMemberEditGender] = useState<MemberGender>("");
   const [memberEditGoal, setMemberEditGoal] = useState("");
   const [memberEditInjuries, setMemberEditInjuries] = useState("");
   const [memberEditIsPtCustomer, setMemberEditIsPtCustomer] = useState(false);
@@ -1029,6 +1031,7 @@ function pickFirstName(value: unknown): string {
     };
     const phones = prioritized.map((member) => member.phone);
     const birthDates = prioritized.map((member) => member.birthDate);
+    const genders = prioritized.map((member) => member.gender);
     const goals = prioritized.map((member) => member.goal);
     const injuries = prioritized.map((member) => member.injuries);
     const focuses = prioritized.map((member) => member.focus);
@@ -1041,6 +1044,7 @@ function pickFirstName(value: unknown): string {
       name: pickBestMemberDisplayName(base, candidates, personalGoals) || base.name,
       phone: pickPreferredNonEmpty(phones) || base.phone,
       birthDate: pickPreferredNonEmpty(birthDates) || base.birthDate,
+      gender: normalizeMemberGender(pickPreferredNonEmpty(genders) || base.gender),
       goal: pickPreferredNonEmpty(goals) || base.goal,
       focus: pickPreferredNonEmpty(focuses) || base.focus,
       injuries: pickPreferredNonEmpty(injuries) || base.injuries,
@@ -1097,6 +1101,7 @@ function pickFirstName(value: unknown): string {
       if (!base) continue;
       const phones = group.map((member) => member.phone);
       const birthDates = group.map((member) => member.birthDate);
+      const genders = group.map((member) => member.gender);
       const goals = group.map((member) => member.goal);
       const injuries = group.map((member) => member.injuries);
       const personalGoalsList = group.map((member) => member.personalGoals);
@@ -1125,6 +1130,7 @@ function pickFirstName(value: unknown): string {
         name: pickBestMemberDisplayName(base, group, personalGoals) || base.name,
         phone: pickLatestNonEmpty(phones) || base.phone,
         birthDate: pickLatestNonEmpty(birthDates) || base.birthDate,
+        gender: normalizeMemberGender(pickLatestNonEmpty(genders) || base.gender),
         goal: pickLatestNonEmpty(goals) || base.goal,
         injuries: pickLatestNonEmpty(injuries) || base.injuries,
         personalGoals,
@@ -1414,6 +1420,7 @@ function pickFirstName(value: unknown): string {
       email: selectedMemberProfile.email.trim().toLowerCase(),
       phone: normalizePhone(selectedMemberProfile.phone),
       birthDate: selectedMemberProfile.birthDate.trim() ? normalizeBirthDate(selectedMemberProfile.birthDate) : "",
+      gender: normalizeMemberGender(selectedMemberProfile.gender),
       goal: selectedMemberProfile.goal,
       injuries: selectedMemberProfile.injuries,
       isPtCustomer: selectedMemberProfile.customerType === "PT-kunde",
@@ -1427,6 +1434,7 @@ function pickFirstName(value: unknown): string {
       email: memberEditEmail.trim().toLowerCase(),
       phone: normalizePhone(memberEditPhone),
       birthDate: memberEditBirthDate.trim() ? normalizeBirthDate(memberEditBirthDate) : "",
+      gender: normalizeMemberGender(memberEditGender),
       goal: memberEditGoal,
       injuries: memberEditInjuries,
       isPtCustomer: memberEditIsPtCustomer,
@@ -1438,6 +1446,7 @@ function pickFirstName(value: unknown): string {
       memberEditEmail,
       memberEditPhone,
       memberEditBirthDate,
+      memberEditGender,
       memberEditGoal,
       memberEditInjuries,
       memberEditIsPtCustomer,
@@ -2042,6 +2051,7 @@ function pickFirstName(value: unknown): string {
       setMemberEditEmail("");
       setMemberEditPhone("");
       setMemberEditBirthDate("");
+      setMemberEditGender("");
       setMemberEditGoal("");
       setMemberEditInjuries("");
       setMemberEditIsPtCustomer(false);
@@ -2054,6 +2064,7 @@ function pickFirstName(value: unknown): string {
     setMemberEditEmail(member.email);
     setMemberEditPhone(member.phone);
     setMemberEditBirthDate(member.birthDate);
+    setMemberEditGender(normalizeMemberGender(member.gender));
     setMemberEditGoal(member.goal);
     setMemberEditInjuries(member.injuries);
     setMemberEditIsPtCustomer(member.customerType === "PT-kunde");
@@ -3124,6 +3135,7 @@ function pickFirstName(value: unknown): string {
           email: nextEmail,
           phone: normalizePhone(memberEditPhone),
           birthDate: normalizedBirthDate,
+          gender: normalizeMemberGender(memberEditGender),
           goal: memberEditGoal,
           injuries: memberEditInjuries,
           membershipType: nextMembershipType,
@@ -3155,6 +3167,7 @@ function pickFirstName(value: unknown): string {
             name: nextName,
             phone: normalizePhone(memberEditPhone),
             birthDate: normalizedBirthDate,
+            gender: normalizeMemberGender(memberEditGender),
             goal: memberEditGoal,
             injuries: memberEditInjuries,
             membershipType: nextMembershipType,
@@ -3174,6 +3187,7 @@ function pickFirstName(value: unknown): string {
           email: nextEmail,
           phone: normalizePhone(memberEditPhone),
           birth_date: normalizedBirthDate,
+          gender: normalizeMemberGender(memberEditGender),
           goal: memberEditGoal,
           injuries: memberEditInjuries,
           membership_type: nextMembershipType,
@@ -5377,6 +5391,18 @@ function pickFirstName(value: unknown): string {
                           <span>Fødselsdato</span>
                           <TextInput value={memberEditBirthDate} onChange={(event) => setMemberEditBirthDate(event.target.value)} placeholder="dd.mm.yyyy" />
                         </label>
+                        <label className="space-y-1 text-xs font-medium text-slate-700">
+                          <span>Kjønn</span>
+                          <SelectBox
+                            value={memberEditGender}
+                            onChange={(value) => setMemberEditGender(normalizeMemberGender(value))}
+                            options={[
+                              { value: "", label: "Ikke valgt" },
+                              { value: "female", label: "Kvinne" },
+                              { value: "male", label: "Mann" },
+                            ]}
+                          />
+                        </label>
                       </div>
                       <label className="space-y-1 text-xs font-medium text-slate-700">
                         <span>Mål</span>
@@ -5518,6 +5544,12 @@ function pickFirstName(value: unknown): string {
                         <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm">
                           <div className="text-[11px] text-slate-500">Fødselsdato</div>
                           <div className="font-medium text-slate-900">{selectedMemberProfile?.birthDate || selectedMember.birthDate || "Ikke satt"}</div>
+                        </div>
+                        <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm">
+                          <div className="text-[11px] text-slate-500">Kjønn</div>
+                          <div className="font-medium text-slate-900">
+                            {memberGenderLabel(normalizeMemberGender(selectedMemberProfile?.gender ?? selectedMember.gender))}
+                          </div>
                         </div>
                         <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm">
                           <div className="text-[11px] text-slate-500">Mål</div>
@@ -6657,6 +6689,8 @@ function pickFirstName(value: unknown): string {
                     <MemberFoodLogTrainerView
                       memberId={selectedMember.id}
                       memberName={selectedMemberProfile?.name ?? selectedMember.name}
+                      memberBirthDate={selectedMemberProfile?.birthDate ?? selectedMember.birthDate}
+                      memberGender={selectedMemberProfile?.gender ?? selectedMember.gender}
                     />
                   </div>
                 ) : null}

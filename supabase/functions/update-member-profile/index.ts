@@ -16,6 +16,7 @@ type UpdatePayload = {
     name?: string;
     phone?: string;
     birthDate?: string;
+    gender?: string;
     goal?: string;
     focus?: string;
     injuries?: string;
@@ -45,6 +46,13 @@ function normalizeEmail(value: unknown): string {
 
 function normalizeString(value: unknown): string {
   return String(value ?? "").trim();
+}
+
+function normalizeGender(value: unknown): string {
+  const raw = normalizeString(value).toLowerCase();
+  if (raw === "female" || raw === "kvinne" || raw === "f") return "female";
+  if (raw === "male" || raw === "mann" || raw === "m") return "male";
+  return "";
 }
 
 function isValidCalendarDate(day: number, month: number, year: number): boolean {
@@ -220,6 +228,7 @@ Deno.serve(async (req) => {
   if (changes.name !== undefined) updateFields.name = normalizeString(changes.name);
   if (changes.phone !== undefined) updateFields.phone = normalizeString(changes.phone);
   if (normalizedBirthDate !== undefined) updateFields.birth_date = normalizedBirthDate;
+  if (changes.gender !== undefined) updateFields.gender = normalizeGender(changes.gender);
   if (changes.goal !== undefined) updateFields.goal = normalizeString(changes.goal);
   if (changes.focus !== undefined) updateFields.focus = normalizeString(changes.focus);
   if (changes.injuries !== undefined) updateFields.injuries = normalizeString(changes.injuries);

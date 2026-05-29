@@ -19,6 +19,11 @@ import {
   type MacroDisplayRow,
 } from "../../app/nutritionReportDisplay";
 import {
+  nutritionReferenceFootnote,
+  nutritionReferenceWarningMessage,
+  resolveNutritionReferenceContext,
+} from "../../app/personalizedNutritionReferences";
+import {
   micronutrientRowsFromLogTotals,
   type MicronutrientDailyRow,
 } from "../../app/quickFoodLogNutrition";
@@ -33,6 +38,8 @@ type MemberFoodLogNutritionReportModalProps = {
   open: boolean;
   onClose: () => void;
   memberName: string;
+  memberBirthDate?: string;
+  memberGender?: string;
   selectedDateKey: string;
   quickFoodLogs: Record<string, MemberQuickFoodLogEntry[] | undefined>;
   mealPlanTargets?: MealPlanTargets | null;
@@ -110,6 +117,8 @@ export function MemberFoodLogNutritionReportModal({
   open,
   onClose,
   memberName,
+  memberBirthDate = "",
+  memberGender = "",
   selectedDateKey,
   quickFoodLogs,
   mealPlanTargets,
@@ -152,8 +161,24 @@ export function MemberFoodLogNutritionReportModal({
     return aggregateMode === "average" ? report.dailyAverage : report.periodSum;
   }, [aggregateMode, report]);
 
-  const macroRows = useMemo(() => buildMacroDisplayRows(displayTotals, mealPlanTargets), [displayTotals, mealPlanTargets]);
-  const microRows = useMemo(() => micronutrientRowsFromLogTotals(displayTotals), [displayTotals]);
+  const referenceContext = useMemo(
+    () => resolveNutritionReferenceContext(memberBirthDate, memberGender),
+    [memberBirthDate, memberGender],
+  );
+  const referenceWarning = useMemo(
+    () => nutritionReferenceWarningMessage(referenceContext.missingFields),
+    [referenceContext.missingFields],
+  );
+  const referenceFootnote = useMemo(() => nutritionReferenceFootnote(referenceContext), [referenceContext]);
+
+  const macroRows = useMemo(
+    () => buildMacroDisplayRows(displayTotals, mealPlanTargets, referenceContext),
+    [displayTotals, mealPlanTargets, referenceContext],
+  );
+  const microRows = useMemo(
+    () => micronutrientRowsFromLogTotals(displayTotals, referenceContext),
+    [displayTotals, referenceContext],
+  );
 
   const periodSummary =
     report.daysWithLogs === 0
@@ -171,6 +196,7 @@ export function MemberFoodLogNutritionReportModal({
       totals: displayTotals,
       mealPlanTargets,
       microRows,
+      referenceContext,
       dailyKcal:
         report.daysWithLogs > 1
           ? report.dailyTotals.map(({ dateKey, totals: dayTotals }) => ({
@@ -184,7 +210,7 @@ export function MemberFoodLogNutritionReportModal({
       return;
     }
     setPrintError(null);
-  }, [displayName, displayTotals, mealPlanTargets, microRows, periodSummary, report]);
+  }, [displayName, displayTotals, mealPlanTargets, microRows, periodSummary, referenceContext, report]);
 
   if (!open) return null;
 
@@ -298,18 +324,22 @@ export function MemberFoodLogNutritionReportModal({
             <section aria-label="Makronæringsstoffer">
               <MacroReportTable rows={macroRows} />
               <p className="motus-nutrition-report-modal__footnote">
-                Referanser: daglige mål fra matplan der satt, ellers {DEFAULT_DAILY_KCAL_TARGET} kcal og Helsedirektoratet for fiber,
-                mettet fett og natrium.
+                Kalorier og makro: daglige mål fra matplan der satt, ellers {DEFAULT_DAILY_KCAL_TARGET} kcal. Fiber, mettet fett
+                og natrium: {referenceFootnote}
               </p>
             </section>
           ) : (
             <section aria-label="Mikronæringsstoffer">
               <MicroReportTable rows={microRows} />
-              <p className="motus-nutrition-report-modal__footnote">
-                Mikroreferanser er generelle daglige voksenverdier (vitaminer og mineraler).
-              </p>
+              <p className="motus-nutrition-report-modal__footnote">{referenceFootnote}</p>
             </section>
           )}
+
+          {referenceWarning ? (
+            <p className="motus-nutrition-report-modal__profile-warning" role="status">
+              {referenceWarning}
+            </p>
+          ) : null}
 
           {report.daysWithLogs > 1 && tab === "macro" ? (
             <details className="motus-nutrition-report-modal__daily-breakdown motus-nutrition-report-no-print">

@@ -22,6 +22,7 @@ create table if not exists public.members (
   first_login_at timestamptz,
   phone text not null default '',
   birth_date text not null default '',
+  gender text not null default '',
   weight text not null default '',
   height text not null default '',
   level text not null default 'Nybegynner',

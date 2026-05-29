@@ -185,6 +185,7 @@ export type UpdateMemberInput = {
       | "email"
       | "phone"
       | "birthDate"
+      | "gender"
       | "goal"
       | "focus"
       | "level"
@@ -244,6 +245,7 @@ export function createMember(state: AppState, input: CreateMemberInput): Member 
     firstLoginAt: "",
     phone: input.phone?.trim() || "900 00 000",
     birthDate: "",
+    gender: "",
     level: "Nybegynner",
     membershipType: input.membershipType ?? "Standard",
     customerType: input.customerType ?? "Oppfølging",
@@ -1037,6 +1039,7 @@ export function updateMemberInState(state: AppState, input: UpdateMemberInput): 
             email: normalizedEmail ?? member.email,
             phone: input.changes.phone !== undefined ? input.changes.phone.trim() : member.phone,
             birthDate: input.changes.birthDate !== undefined ? input.changes.birthDate.trim() : member.birthDate,
+            gender: input.changes.gender !== undefined ? input.changes.gender : member.gender,
             goal: input.changes.goal !== undefined ? input.changes.goal.trim() : member.goal,
             level: input.changes.level !== undefined ? input.changes.level : member.level,
             focus: input.changes.focus !== undefined ? input.changes.focus.trim() : member.focus,

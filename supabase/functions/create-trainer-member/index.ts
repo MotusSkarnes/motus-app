@@ -160,6 +160,7 @@ Deno.serve(async (req) => {
         first_login_at: null,
         phone,
         birth_date: "",
+        gender: "",
         weight: "",
         height: "",
         level: "Nybegynner",
@@ -176,7 +177,7 @@ Deno.serve(async (req) => {
       { onConflict: "id" },
     )
     .select(
-      "id, owner_user_id, name, email, is_active, invited_at, first_login_at, phone, birth_date, weight, height, level, membership_type, customer_type, days_since_activity, goal, focus, personal_goals, injuries, coach_notes",
+      "id, owner_user_id, name, email, is_active, invited_at, first_login_at, phone, birth_date, gender, weight, height, level, membership_type, customer_type, days_since_activity, goal, focus, personal_goals, injuries, coach_notes",
     )
     .single();
 
@@ -196,6 +197,7 @@ Deno.serve(async (req) => {
       firstLoginAt: String(inserted.first_login_at ?? ""),
       phone: String(inserted.phone ?? ""),
       birthDate: String(inserted.birth_date ?? ""),
+      gender: String(inserted.gender ?? ""),
       weight: String(inserted.weight ?? ""),
       height: String(inserted.height ?? ""),
       level: inserted.level === "Litt øvet" || inserted.level === "Øvet" ? inserted.level : "Nybegynner",

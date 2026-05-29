@@ -4010,6 +4010,17 @@
   line-height: 1.4;
 }
 
+.motus-nutrition-report-modal__profile-warning {
+  margin: 1rem 0 0;
+  padding: 0.65rem 0.75rem;
+  border-radius: 0.75rem;
+  border: 1px solid #fcd34d;
+  background: #fffbeb;
+  color: #92400e;
+  font-size: 0.75rem;
+  line-height: 1.45;
+}
+
 .motus-nutrition-report-modal__footer {
   display: flex;
   flex-wrap: wrap;

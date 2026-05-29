@@ -14,6 +14,7 @@ import type {
   WorkoutLog,
 } from "../app/types";
 import { formatDateDdMmYyyy, formatDateTimeDdMmYyyy, normalizeStoredLogDate } from "../app/dateFormat";
+import { normalizeMemberGender } from "../app/memberGender";
 import { dedupePeriodPlansById } from "../app/periodPlanMerge";
 import { programExerciseUsesBankExercise } from "../app/exerciseBankUsage";
 import { normalizeStoredExerciseCategory } from "../app/exerciseCategories";
@@ -93,7 +94,7 @@ function mapCustomerType(value: unknown): Member["customerType"] {
 }
 
 const MEMBERS_SELECT_BASE =
-  "id, owner_user_id, name, email, is_active, invited_at, first_login_at, phone, birth_date, weight, height, level, membership_type, customer_type, nutrition_access, days_since_activity, goal, focus, personal_goals, injuries, coach_notes";
+  "id, owner_user_id, name, email, is_active, invited_at, first_login_at, phone, birth_date, gender, weight, height, level, membership_type, customer_type, nutrition_access, days_since_activity, goal, focus, personal_goals, injuries, coach_notes";
 const MEMBERS_SELECT_WITH_AVATAR = `${MEMBERS_SELECT_BASE}, avatar_url`;
 const MEMBERS_SELECT_WITHOUT_NUTRITION =
   "id, owner_user_id, name, email, is_active, invited_at, first_login_at, phone, birth_date, weight, height, level, membership_type, customer_type, days_since_activity, goal, focus, personal_goals, injuries, coach_notes";
@@ -120,6 +121,7 @@ function mapMemberRowFromSupabase(row: Record<string, unknown>): Member {
     firstLoginAt: String(row.first_login_at ?? ""),
     phone: String(row.phone ?? ""),
     birthDate: String(row.birth_date ?? ""),
+    gender: normalizeMemberGender(row.gender),
     weight: String(row.weight ?? ""),
     height: String(row.height ?? ""),
     level: row.level === "Litt øvet" || row.level === "Øvet" ? row.level : "Nybegynner",
@@ -1645,6 +1647,7 @@ async function persistMember(member: Member, previousPersonalGoals?: string) {
         name: memberForPersist.name,
         phone: memberForPersist.phone,
         birth_date: memberForPersist.birthDate,
+        gender: memberForPersist.gender,
         goal: memberForPersist.goal,
         focus: memberForPersist.focus,
         injuries: memberForPersist.injuries,
@@ -1731,6 +1734,7 @@ async function persistMember(member: Member, previousPersonalGoals?: string) {
     first_login_at: member.firstLoginAt || null,
     phone: member.phone,
     birth_date: member.birthDate,
+    gender: member.gender,
     weight: member.weight,
     height: member.height,
     level: member.level,
@@ -2997,6 +3001,7 @@ function mapHydrateMemberPayload(payload: Record<string, unknown>): HydratedMemb
         firstLoginAt: String(member.first_login_at ?? ""),
         phone: String(member.phone ?? ""),
         birthDate: String(member.birth_date ?? ""),
+        gender: normalizeMemberGender(member.gender),
         weight: String(member.weight ?? ""),
         height: String(member.height ?? ""),
         level: member.level === "Litt øvet" || member.level === "Øvet" ? member.level : "Nybegynner",
@@ -3186,6 +3191,7 @@ export async function fetchHydratedTrainerData(ownerUserId: string): Promise<Hyd
         firstLoginAt: String(member.first_login_at ?? ""),
         phone: String(member.phone ?? ""),
         birthDate: String(member.birth_date ?? ""),
+        gender: normalizeMemberGender(member.gender),
         weight: String(member.weight ?? ""),
         height: String(member.height ?? ""),
         level: member.level === "Litt øvet" || member.level === "Øvet" ? member.level : "Nybegynner",
@@ -3397,6 +3403,10 @@ export async function fetchMembersFromSupabase(): Promise<Member[] | null> {
   }
   if (result.error && isMissingDbColumnError(result.error.message, "first_login_at")) {
     selectFields = selectFields.replace(", first_login_at", "");
+    result = await runQuery(selectFields, orderByCreatedAt);
+  }
+  if (result.error && isMissingDbColumnError(result.error.message, "gender")) {
+    selectFields = selectFields.replace(", gender", "");
     result = await runQuery(selectFields, orderByCreatedAt);
   }
   if (result.error && isMissingDbColumnError(result.error.message, "avatar_url")) {
@@ -3799,6 +3809,7 @@ function mapEdgeMemberPayload(value: unknown): Member | null {
     firstLoginAt: String(row.firstLoginAt ?? row.first_login_at ?? ""),
     phone: String(row.phone ?? ""),
     birthDate: String(row.birthDate ?? row.birth_date ?? ""),
+    gender: normalizeMemberGender(row.gender),
     weight: String(row.weight ?? ""),
     height: String(row.height ?? ""),
     level: row.level === "Litt øvet" || row.level === "Øvet" ? row.level : "Nybegynner",

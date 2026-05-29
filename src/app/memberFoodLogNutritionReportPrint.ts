@@ -6,6 +6,8 @@ import {
   type MacroDisplayRow,
 } from "./nutritionReportDisplay";
 import type { MealPlanTargets } from "./mealPlanTypes";
+import type { NutritionReferenceContext } from "./personalizedNutritionReferences";
+import { nutritionReferenceFootnote, nutritionReferenceWarningMessage } from "./personalizedNutritionReferences";
 import type { MicronutrientDailyRow } from "./quickFoodLogNutrition";
 import type { FoodLogNutritionTotals } from "./quickFoodLogNutrition";
 
@@ -16,6 +18,7 @@ export type NutritionReportPrintPayload = {
   totals: FoodLogNutritionTotals;
   mealPlanTargets?: MealPlanTargets | null;
   microRows: MicronutrientDailyRow[];
+  referenceContext?: NutritionReferenceContext;
   dailyKcal?: Array<{ dateLabel: string; kcal: number }>;
 };
 
@@ -81,8 +84,14 @@ function dailyKcalHtml(daily: NutritionReportPrintPayload["dailyKcal"]): string 
 }
 
 export function buildNutritionReportPrintHtml(payload: NutritionReportPrintPayload): string {
-  const macroRows = buildMacroDisplayRows(payload.totals, payload.mealPlanTargets);
+  const macroRows = buildMacroDisplayRows(payload.totals, payload.mealPlanTargets, payload.referenceContext);
   const generated = payload.generatedAt ?? new Date().toLocaleString("nb-NO");
+  const referenceNote = payload.referenceContext
+    ? nutritionReferenceFootnote(payload.referenceContext)
+    : "Referanser er generelle daglige voksenverdier.";
+  const profileWarning = payload.referenceContext
+    ? nutritionReferenceWarningMessage(payload.referenceContext.missingFields)
+    : null;
 
   return `<!DOCTYPE html>
 <html lang="nb">
@@ -122,6 +131,15 @@ export function buildNutritionReportPrintHtml(payload: NutritionReportPrintPaylo
     .report-table--compact td { padding: 6px 10px; }
     .muted { color: #64748b; font-size: 12px; }
     .footnote { margin-top: 20px; font-size: 11px; color: #94a3b8; }
+    .warning {
+      margin-top: 16px;
+      padding: 10px 12px;
+      border-radius: 8px;
+      background: #fffbeb;
+      border: 1px solid #fcd34d;
+      color: #92400e;
+      font-size: 12px;
+    }
     @media print {
       body { padding: 12px; }
       h2 { page-break-after: avoid; }
@@ -138,12 +156,14 @@ export function buildNutritionReportPrintHtml(payload: NutritionReportPrintPaylo
   ${macroTableHtml(macroRows)}
 
   <h2>Mikronæringsstoffer</h2>
-  <p class="muted">Vs. generelle daglige referanser (Helsedirektoratet).</p>
+  <p class="muted">${escapeHtml(referenceNote)}</p>
   ${microTableHtml(payload.microRows)}
 
   ${dailyKcalHtml(payload.dailyKcal)}
 
-  <p class="footnote">Motus · Mikroreferanser er voksenverdier. Manglende data i matvarer telles som 0.</p>
+  ${profileWarning ? `<p class="warning">${escapeHtml(profileWarning)}</p>` : ""}
+
+  <p class="footnote">Motus · Manglende data i matvarer telles som 0.</p>
 </body>
 </html>`;
 }

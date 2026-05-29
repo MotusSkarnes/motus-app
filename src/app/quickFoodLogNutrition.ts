@@ -7,6 +7,7 @@ import {
 import type { MemberQuickFoodLogEntry } from "./memberMealPlanState";
 import { computeMacrosForGrams, EMPTY_MACRO_TOTALS, type MacroTotals } from "./mealPlanMacros";
 import { HEALTH_DIRECTORATE_MICRONUTRIENT_DAILY } from "./healthDirectorateNutritionReferences";
+import type { NutritionReferenceContext } from "./personalizedNutritionReferences";
 
 export type FoodLogNutritionTotals = MacroTotals & {
   fiber: number;
@@ -100,10 +101,14 @@ export function divideFoodLogNutritionTotals(totals: FoodLogNutritionTotals, div
   };
 }
 
-export function micronutrientRowsFromLogTotals(totals: FoodLogNutritionTotals): MicronutrientDailyRow[] {
+export function micronutrientRowsFromLogTotals(
+  totals: FoodLogNutritionTotals,
+  referenceContext?: Pick<NutritionReferenceContext, "micronutrientDaily">,
+): MicronutrientDailyRow[] {
+  const dailyTargets = referenceContext?.micronutrientDaily ?? HEALTH_DIRECTORATE_MICRONUTRIENT_DAILY;
   return FOOD_MICRONUTRIENT_FIELDS.map((field) => {
     const value = totals.micronutrients[field.key] ?? 0;
-    const target = HEALTH_DIRECTORATE_MICRONUTRIENT_DAILY[field.key];
+    const target = dailyTargets[field.key];
     const coveragePct = target > 0 ? (value / target) * 100 : 0;
     return {
       key: field.key,

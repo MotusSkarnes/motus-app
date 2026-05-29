@@ -1,4 +1,5 @@
 import type { ChatMessage, Member, TrainingProgram, WorkoutLog } from "../../app/types";
+import { parseMemberAgeYears } from "../../app/memberAge";
 import { parseLogDateMs } from "../../app/workoutLogDate";
 
 export type CustomerMetrics = {
@@ -156,10 +157,6 @@ export function buildCustomerFollowUpItems(input: {
 }
 
 export function memberAgeLabel(birthDate: string | undefined): string | null {
-  const raw = (birthDate ?? "").trim();
-  if (!raw) return null;
-  const ms = Date.parse(raw.includes(".") ? raw.split(".").reverse().join("-") : raw);
-  if (!Number.isFinite(ms)) return null;
-  const age = Math.floor((Date.now() - ms) / (365.25 * 24 * 60 * 60 * 1000));
-  return age > 0 && age < 120 ? `${age} år` : null;
+  const age = parseMemberAgeYears(birthDate ?? "");
+  return age !== null && age > 0 ? `${age} år` : null;
 }
