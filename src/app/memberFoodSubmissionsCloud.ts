@@ -71,6 +71,32 @@ export async function fetchMemberFoodSubmissions(memberId: string): Promise<Memb
   return data.map((row) => parseSubmission(row as Record<string, unknown>));
 }
 
+export async function updateMemberFoodSubmission(input: {
+  submissionId: string;
+  memberId: string;
+  draftItem: FoodSubmissionDraft;
+  labelImageUrl?: string;
+}): Promise<{ ok: true; submission: MemberFoodSubmission } | { ok: false; error: string }> {
+  if (!isSupabaseConfigured || !supabaseClient) {
+    return { ok: false, error: "Sky-tjenesten er ikke tilgjengelig." };
+  }
+  const { data, error } = await supabaseClient
+    .from("member_food_submissions")
+    .update({
+      draft_item: input.draftItem,
+      label_image_url: input.labelImageUrl ?? null,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", input.submissionId)
+    .eq("member_id", input.memberId)
+    .eq("status", "pending")
+    .select("*")
+    .maybeSingle();
+  if (error) return { ok: false, error: error.message };
+  if (!data) return { ok: false, error: "Fant ikke forslaget, eller det er allerede behandlet." };
+  return { ok: true, submission: parseSubmission(data as Record<string, unknown>) };
+}
+
 export async function reviewFoodSubmission(input: {
   submissionId: string;
   action: "approve" | "reject";
