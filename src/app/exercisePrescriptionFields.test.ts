@@ -40,4 +40,25 @@ describe("exercisePrescriptionFields", () => {
   it("normalizes unknown keys", () => {
     expect(normalizeExercisePrescriptionFields(["reps", "bogus", "kg"], "Styrke")).toEqual(["reps", "kg"]);
   });
+
+  it("keeps per-exercise fields independent", () => {
+    const a: Exercise = {
+      id: "a",
+      name: "A",
+      category: "Styrke",
+      group: "Bein",
+      equipment: "",
+      level: "Nybegynner",
+      description: "",
+      prescriptionFields: ["reps", "kg"],
+    };
+    const b: Exercise = {
+      ...a,
+      id: "b",
+      name: "B",
+      prescriptionFields: ["reps", "kg", "seatSettings"],
+    };
+    expect(resolveExercisePrescriptionFields(a)).toEqual(["reps", "kg"]);
+    expect(resolveExercisePrescriptionFields(b)).toEqual(["reps", "kg", "seatSettings"]);
+  });
 });

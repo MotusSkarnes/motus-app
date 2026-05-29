@@ -54,6 +54,7 @@ import {
 import {
   buildProgramExerciseFromBank,
   defaultPrescriptionFieldsForCategory,
+  prescriptionFieldsForExerciseSave,
   resolveExercisePrescriptionFields,
 } from "../app/exercisePrescriptionFields";
 import { ProgramExercisePrescriptionFields } from "./ProgramExercisePrescriptionFields";
@@ -3874,6 +3875,26 @@ function pickFirstName(value: unknown): string {
     setExerciseFormStatus(null);
   }
 
+  function updateExercisePrescriptionFields(exerciseId: string, fields: ExercisePrescriptionFieldKey[]) {
+    const exercise = exercises.find((entry) => entry.id === exerciseId);
+    if (!exercise) return;
+    const savedFields = prescriptionFieldsForExerciseSave(fields, exercise.category);
+    saveExercise({
+      id: exercise.id,
+      name: exercise.name,
+      category: exercise.category,
+      group: exercise.group,
+      equipment: exercise.equipment,
+      level: exercise.level,
+      description: exercise.description,
+      imageUrl: exercise.imageUrl?.trim() ?? "",
+      prescriptionFields: savedFields,
+    });
+    if (editingExerciseId === exerciseId) {
+      setExerciseFormPrescriptionFields(savedFields);
+    }
+  }
+
   function submitExerciseForm() {
     const name = exerciseFormName.trim();
     const group = joinMultiValues(splitMultiValue(exerciseFormGroup));
@@ -3893,7 +3914,7 @@ function pickFirstName(value: unknown): string {
       level: exerciseFormLevel,
       description,
       imageUrl: exerciseFormImageUrl.trim(),
-      prescriptionFields: exerciseFormPrescriptionFields,
+      prescriptionFields: prescriptionFieldsForExerciseSave(exerciseFormPrescriptionFields, exerciseFormCategory),
     });
 
     setExerciseFormStatus(editingExerciseId ? "Øvelsen ble oppdatert." : "Ny øvelse ble lagt til i banken.");
@@ -6805,6 +6826,7 @@ function pickFirstName(value: unknown): string {
           onDuplicate={duplicateExercise}
           onDelete={handleDeleteExercise}
           onToggleFavorite={toggleFavoriteExercise}
+          onUpdateExercisePrescriptionFields={updateExercisePrescriptionFields}
           getExercisePreviewSrc={getExercisePreviewSrc}
           getExerciseSketchDataUri={getExerciseSketchDataUri}
           exercisePopularityScores={exercisePopularityScores}

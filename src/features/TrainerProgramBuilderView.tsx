@@ -42,9 +42,11 @@ import { ExerciseBankBadges } from "./ExerciseBankListCard";
 import { ProgramCoverImageField } from "./ProgramCoverImageField";
 import { ProgramExerciseBlockActions } from "./ProgramExerciseBlockActions";
 import { TrainingProgramPreviewModal } from "./TrainingProgramPreviewModal";
+import { resolveExercisePrescriptionFields } from "../app/exercisePrescriptionFields";
 import { EmptyState, GradientButton, OutlineButton, PillButton, SelectBox, TextInput } from "../app/ui";
 import { useToast } from "../app/toast";
 import type { Exercise, ProgramExercise, TrainingProgram } from "../app/types";
+import { ProgramExercisePrescriptionFields } from "./ProgramExercisePrescriptionFields";
 
 type MuscleFilter = "all" | "bein" | "overkropp" | "kjerne";
 
@@ -372,12 +374,9 @@ export function TrainerProgramBuilderView({
               const linkedExercise = exercisesById.get(item.exerciseId);
               const isExpanded = expandedDraftId === item.id;
               const isCardio = isCardioProgramRow(item, linkedExercise, programsSubTab);
-              const isStretch = programDraftUsesHoldFields(linkedExercise?.category, programsSubTab);
-              const isStrength = !isCardio && !isStretch;
               const isTreadmill = (linkedExercise?.equipment ?? "").trim().toLowerCase().includes("tredem");
+              const prescriptionFields = resolveExercisePrescriptionFields(linkedExercise);
               const prescription = draftExercisePrescriptionLabel(item, index, programExercisesDraft, linkedExercise, programsSubTab);
-              const repsUnit = item.repsUnit === "minutes" ? "minutes" : "reps";
-              const weightUnit = item.weightUnit === "seconds" ? "seconds" : "kg";
 
               return (
                 <div
@@ -452,99 +451,27 @@ export function TrainerProgramBuilderView({
                   {isExpanded ? (
                     <div className="motus-prog-builder-row-edit">
                       <ProgramExerciseBlockActions exercises={programExercisesDraft} index={index} onChange={onProgramExercisesDraftChange} />
-                      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-                        <label className="motus-exbank-field">
-                          <span className="motus-exbank-field-label">{isCardio ? cardioSetLabel() : "Sett"}</span>
-                          <TextInput value={item.sets} onChange={(e) => onUpdateDraftExercise(item.id, "sets", e.target.value)} placeholder={isCardio ? cardioSetPlaceholder() : "Sett"} />
-                        </label>
-                        {isCardio ? (
-                          <>
-                            <label className="motus-exbank-field">
-                              <span className="motus-exbank-field-label">Tid (min)</span>
-                              <TextInput value={item.durationMinutes ?? ""} onChange={(e) => onUpdateDraftExercise(item.id, "durationMinutes", e.target.value)} placeholder="Min" />
-                            </label>
-                            <label className="motus-exbank-field">
-                              <span className="motus-exbank-field-label">Tid (sek)</span>
-                              <TextInput value={item.holdSeconds ?? ""} onChange={(e) => onUpdateDraftExercise(item.id, "holdSeconds", e.target.value)} placeholder="Sek" />
-                            </label>
-                          </>
-                        ) : isStretch ? (
-                          <label className="motus-exbank-field">
-                            <span className="motus-exbank-field-label">Hold (sek)</span>
-                            <TextInput value={item.holdSeconds ?? ""} onChange={(e) => onUpdateDraftExercise(item.id, "holdSeconds", e.target.value)} placeholder="Sek" />
-                          </label>
-                        ) : isStrength ? (
-                          <>
-                            <label className="motus-exbank-field">
-                              <span className="motus-exbank-field-label">Reps/minutter</span>
-                              <div className="grid grid-cols-2 gap-2">
-                                <SelectBox
-                                  value={repsUnit}
-                                  onChange={(value) => onUpdateDraftExercise(item.id, "repsUnit", value)}
-                                  options={[
-                                    { value: "reps", label: "Reps" },
-                                    { value: "minutes", label: "Minutter" },
-                                  ]}
-                                />
-                                <TextInput
-                                  value={item.reps}
-                                  onChange={(e) => onUpdateDraftExercise(item.id, "reps", e.target.value)}
-                                  placeholder={repsUnit === "minutes" ? "Min" : "Reps"}
-                                />
+                      <ProgramExercisePrescriptionFields
+                        fields={prescriptionFields}
+                        item={item}
+                        onUpdate={(field, value) => onUpdateDraftExercise(item.id, field, value)}
+                        setsLabel={isCardio ? cardioSetLabel() : "Sett"}
+                        setsPlaceholder={isCardio ? cardioSetPlaceholder() : "Sett"}
+                        trailing={
+                          isCardio && isTreadmill ? (
+                            <>
+                              <div className="space-y-1">
+                                <div className="text-[11px] font-medium text-slate-500">Fart (km/t)</div>
+                                <TextInput value={item.speed ?? ""} onChange={(e) => onUpdateDraftExercise(item.id, "speed", e.target.value)} />
                               </div>
-                            </label>
-                            <label className="motus-exbank-field">
-                              <span className="motus-exbank-field-label">Belastning</span>
-                              <div className="grid grid-cols-2 gap-2">
-                                <SelectBox
-                                  value={weightUnit}
-                                  onChange={(value) => onUpdateDraftExercise(item.id, "weightUnit", value)}
-                                  options={[
-                                    { value: "kg", label: "Kg" },
-                                    { value: "seconds", label: "Sekunder" },
-                                  ]}
-                                />
-                                <TextInput
-                                  value={item.weight}
-                                  onChange={(e) => onUpdateDraftExercise(item.id, "weight", e.target.value)}
-                                  placeholder={weightUnit === "seconds" ? "Sek" : "Kg"}
-                                />
+                              <div className="space-y-1">
+                                <div className="text-[11px] font-medium text-slate-500">Stigning (%)</div>
+                                <TextInput value={item.incline ?? ""} onChange={(e) => onUpdateDraftExercise(item.id, "incline", e.target.value)} />
                               </div>
-                            </label>
-                          </>
-                        ) : (
-                          <>
-                            <label className="motus-exbank-field">
-                              <span className="motus-exbank-field-label">Reps</span>
-                              <TextInput value={item.reps} onChange={(e) => onUpdateDraftExercise(item.id, "reps", e.target.value)} placeholder="Reps" />
-                            </label>
-                            <label className="motus-exbank-field">
-                              <span className="motus-exbank-field-label">Kg</span>
-                              <TextInput value={item.weight} onChange={(e) => onUpdateDraftExercise(item.id, "weight", e.target.value)} placeholder="Kg" />
-                            </label>
-                          </>
-                        )}
-                        {isCardio && isTreadmill ? (
-                          <>
-                            <label className="motus-exbank-field">
-                              <span className="motus-exbank-field-label">Fart (km/t)</span>
-                              <TextInput value={item.speed ?? ""} onChange={(e) => onUpdateDraftExercise(item.id, "speed", e.target.value)} />
-                            </label>
-                            <label className="motus-exbank-field">
-                              <span className="motus-exbank-field-label">Stigning (%)</span>
-                              <TextInput value={item.incline ?? ""} onChange={(e) => onUpdateDraftExercise(item.id, "incline", e.target.value)} />
-                            </label>
-                          </>
-                        ) : null}
-                        <label className="motus-exbank-field">
-                          <span className="motus-exbank-field-label">Hvile (sek)</span>
-                          <TextInput value={item.restSeconds} onChange={(e) => onUpdateDraftExercise(item.id, "restSeconds", e.target.value)} />
-                        </label>
-                        <label className="motus-exbank-field sm:col-span-2">
-                          <span className="motus-exbank-field-label">Notat</span>
-                          <TextInput value={item.notes} onChange={(e) => onUpdateDraftExercise(item.id, "notes", e.target.value)} />
-                        </label>
-                      </div>
+                            </>
+                          ) : null
+                        }
+                      />
                     </div>
                   ) : null}
                 </div>

@@ -17,7 +17,7 @@ import { formatDateDdMmYyyy, formatDateTimeDdMmYyyy, normalizeStoredLogDate } fr
 import { dedupePeriodPlansById } from "../app/periodPlanMerge";
 import { programExerciseUsesBankExercise } from "../app/exerciseBankUsage";
 import { normalizeStoredExerciseCategory } from "../app/exerciseCategories";
-import { normalizeExercisePrescriptionFields } from "../app/exercisePrescriptionFields";
+import { parsePrescriptionFieldsFromDb, prescriptionFieldsForExerciseSave } from "../app/exercisePrescriptionFields";
 import {
   createMember,
   localAppRepository,
@@ -1779,7 +1779,7 @@ async function persistExercise(exercise: Exercise) {
       level: exercise.level,
       description: exercise.description,
       image_url: exercise.imageUrl ?? null,
-      prescription_fields: exercise.prescriptionFields ?? [],
+      prescription_fields: prescriptionFieldsForExerciseSave(exercise.prescriptionFields, exercise.category),
       is_active: true,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
@@ -3740,7 +3740,8 @@ function mapExerciseBankRow(row: Record<string, unknown>): Exercise {
     level: row.level === "Litt øvet" || row.level === "Øvet" ? row.level : "Nybegynner",
     description: String(row.description ?? ""),
     imageUrl: String(row.image_url ?? ""),
-    prescriptionFields: normalizeExercisePrescriptionFields(row.prescription_fields, category),
+    prescriptionFields:
+      parsePrescriptionFieldsFromDb(row.prescription_fields) ?? prescriptionFieldsForExerciseSave(undefined, category),
   };
 }
 

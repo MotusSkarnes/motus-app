@@ -23,19 +23,36 @@ export const EXERCISE_PRESCRIPTION_FIELD_OPTIONS: ExercisePrescriptionFieldDef[]
 
 const FIELD_KEYS = new Set(EXERCISE_PRESCRIPTION_FIELD_OPTIONS.map((option) => option.key));
 
+function parsePrescriptionFieldKeys(value: unknown): ExercisePrescriptionFieldKey[] {
+  if (!Array.isArray(value)) return [];
+  return value
+    .map((entry) => String(entry ?? "").trim())
+    .filter((entry): entry is ExercisePrescriptionFieldKey => FIELD_KEYS.has(entry as ExercisePrescriptionFieldKey));
+}
+
+/** Leser lagrede felt fra DB (undefined = ikke satt ennå). */
+export function parsePrescriptionFieldsFromDb(value: unknown): ExercisePrescriptionFieldKey[] | undefined {
+  if (value == null) return undefined;
+  const unique = Array.from(new Set(parsePrescriptionFieldKeys(value)));
+  return unique.length ? unique : undefined;
+}
+
 export function normalizeExercisePrescriptionFields(
   value: unknown,
   fallbackCategory?: Exercise["category"],
 ): ExercisePrescriptionFieldKey[] {
-  if (!Array.isArray(value)) {
-    return defaultPrescriptionFieldsForCategory(fallbackCategory ?? "Styrke");
-  }
-  const normalized = value
-    .map((entry) => String(entry ?? "").trim())
-    .filter((entry): entry is ExercisePrescriptionFieldKey => FIELD_KEYS.has(entry as ExercisePrescriptionFieldKey));
-  const unique = Array.from(new Set(normalized));
-  if (unique.length) return unique;
+  const parsed = parsePrescriptionFieldKeys(value);
+  if (parsed.length) return parsed;
   return defaultPrescriptionFieldsForCategory(fallbackCategory ?? "Styrke");
+}
+
+/** Felt som skal lagres på øvelsen (alltid eksplisitt liste per øvelse). */
+export function prescriptionFieldsForExerciseSave(
+  fields: ExercisePrescriptionFieldKey[] | undefined,
+  category: Exercise["category"],
+): ExercisePrescriptionFieldKey[] {
+  const normalized = fields?.length ? normalizeExercisePrescriptionFields(fields, category) : defaultPrescriptionFieldsForCategory(category);
+  return normalized.length ? normalized : defaultPrescriptionFieldsForCategory(category);
 }
 
 export function defaultPrescriptionFieldsForCategory(category: Exercise["category"]): ExercisePrescriptionFieldKey[] {
@@ -46,7 +63,7 @@ export function defaultPrescriptionFieldsForCategory(category: Exercise["categor
 
 export function resolveExercisePrescriptionFields(exercise?: Pick<Exercise, "category" | "prescriptionFields">): ExercisePrescriptionFieldKey[] {
   if (exercise?.prescriptionFields?.length) {
-    return normalizeExercisePrescriptionFields(exercise.prescriptionFields, exercise.category);
+    return [...exercise.prescriptionFields];
   }
   return defaultPrescriptionFieldsForCategory(exercise?.category ?? "Styrke");
 }

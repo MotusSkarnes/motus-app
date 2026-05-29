@@ -1,5 +1,6 @@
 import { filterProgramExercisesAfterBankDelete } from "../app/exerciseBankUsage";
 import { isHoldBasedExerciseCategory } from "../app/exerciseCategories";
+import { prescriptionFieldsForExerciseSave } from "../app/exercisePrescriptionFields";
 import { applyInviteStampToMembersByEmail } from "../app/memberInviteStatus";
 import {
   buildTrainingProgramDisplayKey,
@@ -940,6 +941,8 @@ export function saveExerciseInState(state: AppState, input: SaveExerciseInput): 
   const normalizedImageUrl = input.imageUrl?.trim() || "";
   if (!normalizedName || !normalizedGroup) return state;
 
+  const savedPrescriptionFields = prescriptionFieldsForExerciseSave(input.prescriptionFields, input.category);
+
   if (input.id) {
     return {
       ...state,
@@ -954,7 +957,7 @@ export function saveExerciseInState(state: AppState, input: SaveExerciseInput): 
               level: input.level,
               description: normalizedDescription,
               imageUrl: normalizedImageUrl,
-              prescriptionFields: input.prescriptionFields,
+              prescriptionFields: savedPrescriptionFields,
             }
           : exercise
       ),
@@ -970,7 +973,7 @@ export function saveExerciseInState(state: AppState, input: SaveExerciseInput): 
     level: input.level,
     description: normalizedDescription,
     imageUrl: normalizedImageUrl,
-    prescriptionFields: input.prescriptionFields,
+    prescriptionFields: savedPrescriptionFields,
   };
   return { ...state, exercises: [nextExercise, ...state.exercises] };
 }

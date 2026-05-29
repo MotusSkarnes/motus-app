@@ -24,7 +24,7 @@ import {
 } from "../app/exerciseCategories";
 import { isPopularExercise, isRecommendedExercise } from "../app/exerciseBankStats";
 import { splitMuscleGroupLabel } from "./muscleSplitStats";
-import { defaultPrescriptionFieldsForCategory } from "../app/exercisePrescriptionFields";
+import { defaultPrescriptionFieldsForCategory, resolveExercisePrescriptionFields } from "../app/exercisePrescriptionFields";
 import { ExerciseBankBadges } from "./ExerciseBankListCard";
 import { ExercisePrescriptionFieldsEditor } from "./ExercisePrescriptionFieldsEditor";
 import { EmptyState, GradientButton, OutlineButton, SelectBox, TextArea, TextInput } from "../app/ui";
@@ -137,6 +137,7 @@ export type TrainerExerciseBankViewProps = {
   onDuplicate: (exercise: Exercise) => void;
   onDelete: (exercise: Exercise) => void;
   onToggleFavorite: (exerciseId: string) => void;
+  onUpdateExercisePrescriptionFields: (exerciseId: string, fields: ExercisePrescriptionFieldKey[]) => void;
   getExercisePreviewSrc: (exercise: Exercise) => string;
   getExerciseSketchDataUri: (exercise: Exercise) => string;
   exercisePopularityScores: Map<string, number>;
@@ -178,6 +179,7 @@ export function TrainerExerciseBankView({
   onDuplicate,
   onDelete,
   onToggleFavorite,
+  onUpdateExercisePrescriptionFields,
   getExercisePreviewSrc,
   getExerciseSketchDataUri,
   exercisePopularityScores,
@@ -630,6 +632,14 @@ export function TrainerExerciseBankView({
                         {exercise.equipment ? (
                           <span className="motus-exbank-tag motus-exbank-tag--equipment">{splitMultiValue(exercise.equipment)[0]}</span>
                         ) : null}
+                      </div>
+                      <div className="motus-exbank-card-vars">
+                        <ExercisePrescriptionFieldsEditor
+                          compact
+                          showHint={false}
+                          value={resolveExercisePrescriptionFields(exercise)}
+                          onChange={(fields) => onUpdateExercisePrescriptionFields(exercise.id, fields)}
+                        />
                       </div>
                       <div className="motus-exbank-card-actions">
                         <button type="button" className="motus-exbank-card-action" onClick={() => handleStartEdit(exercise)} aria-label="Rediger">
