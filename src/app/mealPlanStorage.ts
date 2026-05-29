@@ -30,7 +30,11 @@ function readPlans(): Record<string, MealPlan> {
 
 function writePlans(plans: Record<string, MealPlan>): void {
   if (typeof window === "undefined") return;
-  window.localStorage.setItem(MEAL_PLANS_STORAGE_KEY, JSON.stringify(plans));
+  try {
+    window.localStorage.setItem(MEAL_PLANS_STORAGE_KEY, JSON.stringify(plans));
+  } catch (error) {
+    console.warn("meal plan localStorage write failed:", error);
+  }
 }
 
 function readHistory(): Record<string, MealPlanHistoryEntry[]> {
@@ -47,7 +51,11 @@ function readHistory(): Record<string, MealPlanHistoryEntry[]> {
 
 function writeHistory(history: Record<string, MealPlanHistoryEntry[]>): void {
   if (typeof window === "undefined") return;
-  window.localStorage.setItem(MEAL_PLAN_HISTORY_STORAGE_KEY, JSON.stringify(history));
+  try {
+    window.localStorage.setItem(MEAL_PLAN_HISTORY_STORAGE_KEY, JSON.stringify(history));
+  } catch (error) {
+    console.warn("meal plan history localStorage write failed:", error);
+  }
 }
 
 export function readMealPlanHistoryForMember(memberId: string): MealPlanHistoryEntry[] {

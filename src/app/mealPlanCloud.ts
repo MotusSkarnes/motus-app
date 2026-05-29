@@ -403,36 +403,41 @@ export type TrainerMealPlanLoadResult =
 /** PT-redigering: ikke opprett tom standardplan automatisk — vis «Lag matplan» når status er none. */
 export async function loadMealPlanForTrainerEditor(
   memberId: string,
-  ownerUserId: string,
+  _ownerUserId: string,
   memberEmail?: string,
 ): Promise<TrainerMealPlanLoadResult> {
-  const lookupIds = await resolveMealPlanLookupIds(memberId, memberEmail, {
-    forTrainerView: Boolean(ownerUserId.trim()),
-  });
-  const trimmedMemberId = memberId.trim() || lookupIds[0] || "";
-  if (!trimmedMemberId) return { status: "none" };
+  try {
+    const lookupIds = await resolveMealPlanLookupIds(memberId, memberEmail, {
+      forTrainerView: true,
+    });
+    const trimmedMemberId = memberId.trim() || lookupIds[0] || "";
+    if (!trimmedMemberId) return { status: "none" };
 
-  const { plan: remote, hadFetchErrors } = await fetchMealPlanFromSupabase(lookupIds);
-  if (remote) {
-    const normalized = { ...remote, memberId: trimmedMemberId };
-    if (!mealPlansEqual(loadMealPlanForMember(trimmedMemberId), normalized)) {
-      persistMealPlan(normalized, { notify: false });
+    const { plan: remote, hadFetchErrors } = await fetchMealPlanFromSupabase(lookupIds);
+    if (remote?.days?.length) {
+      const normalized = { ...remote, memberId: trimmedMemberId };
+      if (!mealPlansEqual(loadMealPlanForMember(trimmedMemberId), normalized)) {
+        persistMealPlan(normalized, { notify: false });
+      }
+      return { status: "cloud", plan: normalized };
     }
-    return { status: "cloud", plan: normalized };
-  }
 
-  const local = loadBestLocalMealPlan(lookupIds);
-  if (local && (countMealPlanFoodItems(local) > 0 || local.notes.trim())) {
-    const normalized = { ...local, memberId: trimmedMemberId };
-    persistMealPlan(normalized, { notify: false });
-    return { status: "local", plan: normalized };
-  }
+    const local = loadBestLocalMealPlan(lookupIds);
+    if (local?.days?.length && (countMealPlanFoodItems(local) > 0 || local.notes.trim())) {
+      const normalized = { ...local, memberId: trimmedMemberId };
+      persistMealPlan(normalized, { notify: false });
+      return { status: "local", plan: normalized };
+    }
 
-  if (hadFetchErrors) {
+    if (hadFetchErrors) {
+      return { status: "uncertain" };
+    }
+
+    return { status: "none" };
+  } catch (error) {
+    console.warn("loadMealPlanForTrainerEditor failed:", error);
     return { status: "uncertain" };
   }
-
-  return { status: "none" };
 }
 
 /** Brukes etter hydrate-member-data — lagrer plan lokalt for medlem (alle koblede id-er). */

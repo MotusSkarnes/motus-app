@@ -204,19 +204,34 @@ export function TrainerMealPlanEditor({
         setLoadError(null);
         return;
       }
-      const hydratedRaw = applyLoadedPlan(result.plan);
-      setPlanSource(result.status);
-      setPlanLoadStatus("ready");
-      if (!mealPlansEqual(hydratedRaw, result.plan)) {
-        persistMealPlanLocalAndScheduleCloud(trainerOwnerUserId, hydratedRaw, { notify: false });
+      const loadedPlan = result.plan;
+      if (!loadedPlan?.days?.length) {
+        setPlan(null);
+        setPlanSource(null);
+        setPlanLoadStatus("none");
+        return;
+      }
+      try {
+        const hydratedRaw = applyLoadedPlan(loadedPlan);
+        setPlanSource(result.status);
+        setPlanLoadStatus("ready");
+        if (!mealPlansEqual(hydratedRaw, loadedPlan)) {
+          persistMealPlanLocalAndScheduleCloud(trainerOwnerUserId, hydratedRaw, { notify: false });
+        }
+      } catch (applyError) {
+        console.warn("TrainerMealPlanEditor apply plan failed:", applyError);
+        setPlan(null);
+        setPlanSource(null);
+        setPlanLoadStatus("uncertain");
+        setLoadError(null);
       }
     } catch (error) {
       if (generation !== loadGenerationRef.current) return;
       console.warn("TrainerMealPlanEditor reload failed:", error);
       setPlan(null);
       setPlanSource(null);
-      setPlanLoadStatus("error");
-      setLoadError("Noe gikk galt i appen ved lasting av matplan. Prøv igjen.");
+      setPlanLoadStatus("uncertain");
+      setLoadError(null);
     } finally {
       if (generation === loadGenerationRef.current) {
         setLoading(false);
@@ -1013,45 +1028,36 @@ export function TrainerMealPlanEditor({
     );
   }
 
-  if (planLoadStatus === "uncertain") {
+  if (planLoadStatus === "uncertain" || (!plan && planLoadStatus !== "none")) {
     return (
       <div className="rounded-2xl border border-sky-200 bg-sky-50 px-5 py-6 text-sm text-sky-950">
         <h3 className="text-base font-semibold text-sky-950">Matplanen vises ikke akkurat nå</h3>
         <p className="mt-2 max-w-lg text-sky-900/90">
-          Vi klarte ikke å hente matplan fra databasen (nettverk eller midlertidig feil). Det kan finnes en plan for{" "}
-          <span className="font-medium">{memberName}</span> som ikke vises her — prøv gjerne igjen før du oppretter noe nytt.
+          Vi klarte ikke å hente matplan for <span className="font-medium">{memberName}</span> fra databasen. Det kan
+          finnes en plan som ikke vises her — prøv igjen først.
         </p>
         <p className="mt-2 text-xs text-sky-800/80">
-          Tips: Sjekk at du har valgt riktig klient, særlig ved duplikat e-post eller flere medlemsrader.
+          Tips: Sjekk at du har valgt riktig klient (duplikat e-post kan gi feil medlems-id).
         </p>
-        <div className="mt-4 flex flex-wrap gap-2">
+        <div className="mt-4 flex flex-wrap justify-center gap-2 sm:justify-start">
           <GradientButton type="button" className="text-xs" onClick={() => void reload()}>
             Prøv igjen
           </GradientButton>
-        </div>
-        <details className="mt-4 text-left">
-          <summary className="cursor-pointer text-xs font-medium text-sky-900 underline-offset-2 hover:underline">
-            Er du sikker på at klienten ikke har matplan?
-          </summary>
-          <p className="mt-2 text-xs text-sky-800/90">
-            Da kan du opprette en ny tom ukeplan. Dette overskriver ikke en eksisterende plan i sky med mindre du lagrer
-            over den.
-          </p>
           <OutlineButton
             type="button"
-            className="mt-3 text-xs"
+            className="text-xs"
             disabled={creatingPlan}
             onClick={() => void handleCreateMealPlan()}
           >
             <Plus className="h-4 w-4" aria-hidden />
-            {creatingPlan ? "Oppretter …" : "Lag ny matplan"}
+            {creatingPlan ? "Oppretter …" : "Lag matplan"}
           </OutlineButton>
-        </details>
+        </div>
       </div>
     );
   }
 
-  if (planLoadStatus === "error" || !plan) {
+  if (planLoadStatus === "error") {
     return (
       <div className="space-y-3 rounded-2xl border border-amber-200 bg-amber-50 px-5 py-6 text-sm text-amber-950">
         <p className="font-medium">{loadError ?? "Matplanen kunne ikke lastes."}</p>
@@ -1059,8 +1065,18 @@ export function TrainerMealPlanEditor({
           <OutlineButton type="button" className="text-xs" onClick={() => void reload()}>
             Prøv igjen
           </OutlineButton>
+          <GradientButton type="button" className="text-xs" disabled={creatingPlan} onClick={() => void handleCreateMealPlan()}>
+            <Plus className="h-4 w-4" aria-hidden />
+            Lag matplan
+          </GradientButton>
         </div>
       </div>
+    );
+  }
+
+  if (!plan) {
+    return (
+      <div className="rounded-xl border bg-slate-50 px-4 py-6 text-sm text-slate-600">Laster matplan …</div>
     );
   }
 
