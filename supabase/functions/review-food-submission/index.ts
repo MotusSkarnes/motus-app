@@ -41,8 +41,7 @@ Deno.serve(async (req) => {
 
   const supabaseUrl = Deno.env.get("SUPABASE_URL");
   const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || Deno.env.get("SERVICE_ROLE_KEY");
-  const anonKey = Deno.env.get("SUPABASE_ANON_KEY");
-  if (!supabaseUrl || !serviceRoleKey || !anonKey) {
+  if (!supabaseUrl || !serviceRoleKey) {
     return jsonResponse(500, { error: "Missing Supabase environment variables" });
   }
 
@@ -50,10 +49,8 @@ Deno.serve(async (req) => {
   const token = authHeader.replace(/^Bearer\s+/i, "").trim();
   if (!token) return jsonResponse(401, { error: "Missing bearer token" });
 
-  const userClient = createClient(supabaseUrl, anonKey, {
-    global: { headers: { Authorization: `Bearer ${token}` } },
-  });
-  const { data: userData, error: userError } = await userClient.auth.getUser(token);
+  const adminClient = createClient(supabaseUrl, serviceRoleKey);
+  const { data: userData, error: userError } = await adminClient.auth.getUser(token);
   if (userError || !userData.user) return jsonResponse(401, { error: "Invalid session" });
   const trainerId = userData.user.id;
 
@@ -75,7 +72,7 @@ Deno.serve(async (req) => {
     return jsonResponse(400, { error: "submissionId and action (approve|reject) are required" });
   }
 
-  const admin = createClient(supabaseUrl, serviceRoleKey);
+  const admin = adminClient;
   const { data: submission, error: fetchError } = await admin
     .from("member_food_submissions")
     .select("*")

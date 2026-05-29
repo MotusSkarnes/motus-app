@@ -1,4 +1,5 @@
 import type { FoodSubmissionDraft, MemberFoodSubmission, MemberFoodSubmissionStatus } from "./foodLabelScanTypes";
+import { readSupabaseFunctionInvokeError } from "./supabaseFunctionErrors";
 import { isSupabaseConfigured, supabaseClient } from "../services/supabaseClient";
 
 function parseSubmission(row: Record<string, unknown>): MemberFoodSubmission {
@@ -82,7 +83,7 @@ export async function reviewFoodSubmission(input: {
   const { data, error } = await supabaseClient.functions.invoke("review-food-submission", {
     body: input,
   });
-  if (error) return { ok: false, error: error.message };
+  if (error) return { ok: false, error: await readSupabaseFunctionInvokeError(error, data) };
   const payload = data as { ok?: boolean; error?: string; foodId?: string };
   if (!payload?.ok) return { ok: false, error: String(payload?.error ?? "Kunne ikke behandle forslaget.") };
   return { ok: true, foodId: payload.foodId };

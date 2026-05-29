@@ -50,20 +50,20 @@ Deno.serve(async (req) => {
   if (req.method !== "POST") return jsonResponse(405, { error: "Method not allowed" });
 
   const supabaseUrl = Deno.env.get("SUPABASE_URL");
-  const anonKey = Deno.env.get("SUPABASE_ANON_KEY");
+  const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || Deno.env.get("SERVICE_ROLE_KEY");
   const openAiKey = Deno.env.get("OPENAI_API_KEY");
-  if (!supabaseUrl || !anonKey) return jsonResponse(500, { error: "Missing Supabase environment variables" });
+  if (!supabaseUrl || !serviceRoleKey) return jsonResponse(500, { error: "Missing Supabase environment variables" });
   if (!openAiKey) return jsonResponse(503, { error: "OPENAI_API_KEY is not configured on the server" });
 
   const authHeader = req.headers.get("Authorization") || "";
   const token = authHeader.replace(/^Bearer\s+/i, "").trim();
   if (!token) return jsonResponse(401, { error: "Missing bearer token" });
 
-  const userClient = createClient(supabaseUrl, anonKey, {
-    global: { headers: { Authorization: `Bearer ${token}` } },
-  });
-  const { data: userData, error: userError } = await userClient.auth.getUser(token);
-  if (userError || !userData.user) return jsonResponse(401, { error: "Invalid session" });
+  const adminClient = createClient(supabaseUrl, serviceRoleKey);
+  const { data: userData, error: userError } = await adminClient.auth.getUser(token);
+  if (userError || !userData.user) {
+    return jsonResponse(401, { error: "Invalid session", detail: userError?.message ?? "Kunne ikke verifisere innlogging." });
+  }
 
   let body: { imageBase64?: string; mimeType?: string };
   try {
@@ -100,7 +100,14 @@ Deno.serve(async (req) => {
 
   if (!openAiRes.ok) {
     const errText = await openAiRes.text();
-    return jsonResponse(502, { error: "Vision API failed", detail: errText.slice(0, 500) });
+    let detail = errText.slice(0, 500);
+    try {
+      const parsed = JSON.parse(errText) as { error?: { message?: string } };
+      detail = String(parsed?.error?.message ?? detail);
+    } catch {
+      // keep raw text
+    }
+    return jsonResponse(502, { error: "Vision API failed", detail });
   }
 
   const openAiJson = await openAiRes.json();

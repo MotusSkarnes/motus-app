@@ -19,10 +19,12 @@ export function FoodLabelScanButton({
 }: FoodLabelScanButtonProps) {
   const inputRef = useRef<HTMLInputElement | null>(null);
   const [loading, setLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const handleFile = async (file: File | null) => {
     if (!file || loading) return;
     setLoading(true);
+    setErrorMessage(null);
     try {
       const reader = new FileReader();
       const imageDataUrl = await new Promise<string>((resolve, reject) => {
@@ -32,19 +34,22 @@ export function FoodLabelScanButton({
       });
       const result = await scanNutritionLabelFromFile(file);
       if (!result.ok) {
+        setErrorMessage(result.error);
         onError?.(result.error);
         return;
       }
       onScanned(result.scan, imageDataUrl);
     } catch (err) {
-      onError?.(err instanceof Error ? err.message : "Kunne ikke lese etiketten.");
+      const message = err instanceof Error ? err.message : "Kunne ikke lese etiketten.";
+      setErrorMessage(message);
+      onError?.(message);
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <>
+    <div className="space-y-1">
       <input
         ref={inputRef}
         type="file"
@@ -65,6 +70,7 @@ export function FoodLabelScanButton({
         <Camera className="h-4 w-4" aria-hidden />
         {loading ? "Leser etikett…" : label}
       </OutlineButton>
-    </>
+      {errorMessage ? <p className="text-xs text-rose-700">{errorMessage}</p> : null}
+    </div>
   );
 }

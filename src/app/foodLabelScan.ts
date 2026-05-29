@@ -1,5 +1,6 @@
 import { compressImageFile } from "./imageCompress";
 import { parseFoodLabelScanResult, type FoodLabelScanResult } from "./foodLabelScanTypes";
+import { readSupabaseFunctionInvokeError } from "./supabaseFunctionErrors";
 import { isSupabaseConfigured, supabaseClient } from "../services/supabaseClient";
 
 export type ExtractNutritionLabelResult =
@@ -24,7 +25,13 @@ export async function scanNutritionLabelFromFile(file: File): Promise<ExtractNut
     return { ok: false, error: "Sky-tjenesten er ikke tilgjengelig akkurat nå." };
   }
   try {
-    const compressed = await compressImageFile(file, 1280, 0.82);
+    const { data: sessionData, error: sessionError } = await supabaseClient.auth.getSession();
+    if (sessionError || !sessionData.session?.access_token) {
+      return { ok: false, error: "Du må være innlogget for å scanne etikett." };
+    }
+    await supabaseClient.auth.refreshSession();
+
+    const compressed = await compressImageFile(file, 960, 0.75);
     const blob = await fetch(compressed).then((res) => res.blob());
     const base64 = await fileToBase64(new File([blob], file.name, { type: blob.type || file.type || "image/jpeg" }));
     const { data, error } = await supabaseClient.functions.invoke("extract-nutrition-label", {
@@ -34,7 +41,7 @@ export async function scanNutritionLabelFromFile(file: File): Promise<ExtractNut
       },
     });
     if (error) {
-      return { ok: false, error: error.message || "Kunne ikke lese etiketten." };
+      return { ok: false, error: await readSupabaseFunctionInvokeError(error, data) };
     }
     const payload = data as { ok?: boolean; result?: unknown; error?: string };
     if (!payload?.ok) {
