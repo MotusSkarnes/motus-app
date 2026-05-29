@@ -3598,3 +3598,232 @@
 .motus-food-log-form--compact .motus-food-log-form__food-list {
   max-height: 8rem;
 }
+
+/* PT: kundens matlogg */
+.motus-trainer-food-log__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.motus-trainer-food-log__title {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.motus-trainer-food-log__lead {
+  margin: 0.25rem 0 0;
+  font-size: 0.8125rem;
+  color: #64748b;
+}
+
+.motus-trainer-food-log__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.motus-trainer-food-log__date-nav {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.motus-trainer-food-log__date-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 0.5rem;
+  border: 1px solid #e2e8f0;
+  background: #fff;
+  color: #475569;
+  cursor: pointer;
+}
+
+.motus-trainer-food-log__date-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.motus-trainer-food-log__date-picker {
+  flex: 1;
+  min-width: 0;
+}
+
+.motus-trainer-food-log__date-select {
+  width: 100%;
+  border-radius: 0.65rem;
+  border: 1px solid #e2e8f0;
+  background: #fff;
+  padding: 0.45rem 0.65rem;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: #0f172a;
+}
+
+.motus-trainer-food-log__section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.motus-trainer-food-log__section-title {
+  margin: 0;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #334155;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.motus-trainer-food-log__section-head {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.motus-trainer-food-log__section-hint {
+  margin: 0;
+  font-size: 0.6875rem;
+  color: #94a3b8;
+}
+
+.motus-trainer-food-log__macro-bars {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.motus-trainer-food-log__extra-macros {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.35rem;
+}
+
+.motus-trainer-food-log__extra-macros li {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  padding: 0.45rem 0.55rem;
+  border-radius: 0.55rem;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  font-size: 0.6875rem;
+  color: #64748b;
+}
+
+.motus-trainer-food-log__extra-macros strong {
+  font-size: 0.8125rem;
+  color: #0f172a;
+}
+
+.motus-trainer-food-log__meals {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+.motus-trainer-food-log__meal-group {
+  border-radius: 0.75rem;
+  border: 1px solid #e2e8f0;
+  background: #f8fafc;
+  overflow: hidden;
+}
+
+.motus-trainer-food-log__meal-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.5rem 0.65rem;
+  background: #ecfdf5;
+  border-bottom: 1px solid #d1fae5;
+}
+
+.motus-trainer-food-log__meal-title {
+  margin: 0;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  color: #0f766e;
+}
+
+.motus-trainer-food-log__meal-sum {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  color: #475569;
+}
+
+.motus-trainer-food-log__items {
+  margin: 0;
+  padding: 0.35rem 0.5rem;
+  list-style: none;
+}
+
+.motus-trainer-food-log__item {
+  padding: 0.4rem 0.15rem;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.motus-trainer-food-log__item:last-child {
+  border-bottom: none;
+}
+
+.motus-trainer-food-log__item-name {
+  margin: 0;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: #0f172a;
+}
+
+.motus-trainer-food-log__item-meta {
+  margin: 0.1rem 0 0;
+  font-size: 0.6875rem;
+  color: #64748b;
+}
+
+.motus-trainer-food-log__micro-table-wrap {
+  overflow-x: auto;
+  border-radius: 0.65rem;
+  border: 1px solid #e2e8f0;
+}
+
+.motus-trainer-food-log__micro-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.75rem;
+}
+
+.motus-trainer-food-log__micro-table th,
+.motus-trainer-food-log__micro-table td {
+  padding: 0.4rem 0.55rem;
+  text-align: left;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.motus-trainer-food-log__micro-table th {
+  background: #f8fafc;
+  font-weight: 700;
+  color: #475569;
+}
+
+.motus-trainer-food-log__micro-pct {
+  font-weight: 700;
+  color: #64748b;
+}
+
+.motus-trainer-food-log__micro-pct.is-mid {
+  color: #0d9488;
+}
+
+.motus-trainer-food-log__micro-pct.is-high {
+  color: #047857;
+}

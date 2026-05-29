@@ -7,28 +7,7 @@ import { MacroProgressBar } from "./MacroProgressBar";
 import { MacroProgressRing } from "./MacroProgressRing";
 import { formatMicronutrientValue, FOOD_MICRONUTRIENT_FIELDS } from "../../app/foodBankMicronutrients";
 import type { FoodMicronutrientKey } from "../../app/foodBankMicronutrients";
-
-export const MICRONUTRIENT_DAILY_TARGETS: Record<FoodMicronutrientKey, number> = {
-  vitaminA: 700,
-  vitaminD: 10,
-  vitaminE: 8,
-  vitaminC: 75,
-  vitaminB1: 1.1,
-  vitaminB2: 1.3,
-  niacin: 14,
-  vitaminB6: 1.4,
-  folate: 300,
-  vitaminB12: 2,
-  calcium: 800,
-  iron: 9,
-  potassium: 3500,
-  magnesium: 350,
-  phosphorus: 600,
-  zinc: 9,
-  selenium: 50,
-  iodine: 150,
-  copper: 0.9,
-};
+export { MICRONUTRIENT_DAILY_TARGETS } from "../../app/healthDirectorateNutritionReferences";
 
 export type MicronutrientOverviewRow = {
   key: FoodMicronutrientKey;

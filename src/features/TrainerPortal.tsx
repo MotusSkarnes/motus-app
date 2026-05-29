@@ -121,7 +121,7 @@ import { TrainerExerciseBankView } from "./TrainerExerciseBankView";
 import { TrainerPeriodPlanCalendar } from "./TrainerPeriodPlanCalendar";
 import { TrainerMealPlanEditor } from "./TrainerMealPlanEditor";
 import { MemberFoodAvoidancesPanel } from "./nutrition/MemberFoodAvoidancesPanel";
-import { MemberQuickFoodLogPanel } from "./nutrition/MemberQuickFoodLogPanel";
+import { MemberFoodLogTrainerView } from "./nutrition/MemberFoodLogTrainerView";
 import { NutritionHub } from "./nutrition/NutritionHub";
 import { TrainerProgramBuilderView } from "./TrainerProgramBuilderView";
 import { TrainerPtHomeScreen } from "./trainer-home/TrainerPtHomeScreen";
@@ -6654,7 +6654,10 @@ function pickFirstName(value: unknown): string {
                         />
                       }
                     />
-                    <MemberQuickFoodLogPanel memberId={selectedMember.id} readOnly />
+                    <MemberFoodLogTrainerView
+                      memberId={selectedMember.id}
+                      memberName={selectedMemberProfile?.name ?? selectedMember.name}
+                    />
                   </div>
                 ) : null}
 
