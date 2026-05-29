@@ -210,7 +210,8 @@ export async function pullTrainerFoodBankFromRemote(ownerUserId: string): Promis
   if (!snapshot) return null;
   const merged = { ...snapshot, items: mergeFoodItems(snapshot.items, sharedItems) };
   cacheTrainerFoodBankSnapshot(merged);
-  return snapshot;
+  notifyFoodBankChanged();
+  return merged;
 }
 
 /**

@@ -80,6 +80,11 @@ export async function reviewFoodSubmission(input: {
   if (!isSupabaseConfigured || !supabaseClient) {
     return { ok: false, error: "Sky-tjenesten er ikke tilgjengelig." };
   }
+  const { data: sessionData, error: sessionError } = await supabaseClient.auth.getSession();
+  if (sessionError || !sessionData.session?.access_token) {
+    return { ok: false, error: "Du må være innlogget for å godkjenne matvarer." };
+  }
+  await supabaseClient.auth.refreshSession();
   const { data, error } = await supabaseClient.functions.invoke("review-food-submission", {
     body: input,
   });

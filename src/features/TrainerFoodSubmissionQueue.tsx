@@ -6,8 +6,7 @@ import {
   fetchPendingFoodSubmissionsForTrainer,
   reviewFoodSubmission,
 } from "../app/memberFoodSubmissionsCloud";
-import { pullTrainerFoodBankFromRemote } from "../app/foodBankCloud";
-import { Card, GradientButton, OutlineButton, TextInput } from "../app/ui";
+import { Card, GradientButton, OutlineButton } from "../app/ui";
 
 type TrainerFoodSubmissionQueueProps = {
   ownerUserId: string;
@@ -39,27 +38,27 @@ export function TrainerFoodSubmissionQueue({
   const handleReview = async (row: MemberFoodSubmission, action: "approve" | "reject", reviewNote?: string) => {
     setBusyId(row.id);
     setStatus(null);
-    const draftItem: FoodSubmissionDraft & { id?: string; createdAt?: string; createdBy?: string } = {
-      ...row.draftItem,
-      createdBy: trainerName,
-    };
-    const result = await reviewFoodSubmission({
-      submissionId: row.id,
-      action,
-      reviewNote,
-      draftItem: action === "approve" ? draftItem : undefined,
-    });
-    setBusyId(null);
-    if (!result.ok) {
-      setStatus(result.error);
-      return;
+    try {
+      const draftItem: FoodSubmissionDraft & { id?: string; createdAt?: string; createdBy?: string } = {
+        ...row.draftItem,
+        createdBy: trainerName,
+      };
+      const result = await reviewFoodSubmission({
+        submissionId: row.id,
+        action,
+        reviewNote,
+        draftItem: action === "approve" ? draftItem : undefined,
+      });
+      if (!result.ok) {
+        setStatus(result.error);
+        return;
+      }
+      setStatus(action === "approve" ? `${row.draftItem.name} er lagt i matbanken.` : "Forslag avslått.");
+      onChanged?.();
+      await reload();
+    } finally {
+      setBusyId(null);
     }
-    if (action === "approve") {
-      await pullTrainerFoodBankFromRemote(ownerUserId);
-    }
-    setStatus(action === "approve" ? `${row.draftItem.name} er lagt i matbanken.` : "Forslag avslått.");
-    onChanged?.();
-    void reload();
   };
 
   if (loading) return null;
@@ -71,7 +70,11 @@ export function TrainerFoodSubmissionQueue({
         <h2 className="text-sm font-bold text-amber-950">Innkommende matvarer fra medlemmer</h2>
         <p className="text-xs text-amber-900">{rows.length} venter på godkjenning</p>
       </div>
-      {status ? <p className="text-xs text-teal-800">{status}</p> : null}
+      {status ? (
+        <p className={`text-xs ${status.includes("er lagt") || status.includes("avslått") ? "text-teal-800" : "text-rose-700"}`}>
+          {status}
+        </p>
+      ) : null}
       <ul className="space-y-3">
         {rows.map((row) => (
           <li key={row.id} className="rounded-xl border border-amber-200 bg-white p-3 space-y-2">

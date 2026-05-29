@@ -355,13 +355,9 @@ export function TrainerFoodBankView({
 
   const reloadFoodBankFromCloud = useCallback(async () => {
     if (!trainerOwnerUserId?.trim()) return;
-    const remote = await syncTrainerFoodBankFromRemote(trainerOwnerUserId);
-    if (remote?.items) {
-      setItems(remote.items);
-      setFavoriteIds(remote.favoriteIds);
-      setRecentIds(remote.recentIds);
-    }
-  }, [trainerOwnerUserId]);
+    await syncTrainerFoodBankFromRemote(trainerOwnerUserId);
+    reload();
+  }, [trainerOwnerUserId, reload]);
 
   const openCreateForm = () => {
     const next = emptyForm();

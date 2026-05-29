@@ -115,10 +115,14 @@ Deno.serve(async (req) => {
     name: draft.name.trim(),
     portionLabel: String(draft.portionLabel ?? "100 g").trim() || "100 g",
     portionGrams: Number(draft.portionGrams) > 0 ? Math.round(Number(draft.portionGrams)) : 100,
+    category: String(draft.category ?? "proteinkilder"),
+    origin: String(draft.origin ?? "Medlem").trim() || "Medlem",
     source: "egen",
+    createdBy: String(draft.createdBy ?? "Medlem").trim() || "Medlem",
     isCustom: true,
     isEdited: false,
     createdAt: draft.createdAt || now,
+    nutritionPer100g: draft.nutritionPer100g ?? {},
   };
 
   const { data: bankRow, error: bankFetchError } = await admin
