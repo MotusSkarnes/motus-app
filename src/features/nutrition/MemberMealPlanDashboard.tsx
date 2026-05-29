@@ -19,6 +19,7 @@ import { MOTUS } from "../../app/data";
 import { formatMacro } from "../../app/foodBankTypes";
 import type { FoodItem } from "../../app/foodBankTypes";
 import { countMealPlanFoodItems } from "../../app/mealPlanCloud";
+import { memberMealSlotLabel } from "../../app/memberMealSlots";
 import {
   computeMealMacros,
   sumLoggedMacrosFromFoodItems,
@@ -208,8 +209,14 @@ function mealSelfLogs(logs: MemberQuickFoodLogEntry[] | undefined, mealId: strin
   return (logs ?? []).filter((entry) => entry.mealId === mealId);
 }
 
-function orphanSelfLogs(logs: MemberQuickFoodLogEntry[] | undefined): MemberQuickFoodLogEntry[] {
-  return (logs ?? []).filter((entry) => !entry.mealId?.trim());
+function logsOutsidePlanMeals(
+  logs: MemberQuickFoodLogEntry[] | undefined,
+  planMealIds: Set<string>,
+): MemberQuickFoodLogEntry[] {
+  return (logs ?? []).filter((entry) => {
+    const mealId = entry.mealId?.trim() ?? "";
+    return !mealId || !planMealIds.has(mealId);
+  });
 }
 
 function selfLogMacroLine(entry: MemberQuickFoodLogEntry): string {
@@ -650,7 +657,21 @@ export function MemberMealPlanDashboard({ plan, memberId, onOpenAvoidances, onRe
   const displaySkippedFood = isSelectedToday ? skippedFoodToday : skippedFoodSelected;
   const displayQuickLogs = isSelectedToday ? quickLogsToday : quickLogsSelected;
   const displayMacros = isSelectedToday ? displayMacrosToday : displayMacrosProgress;
-  const orphanLogs = useMemo(() => orphanSelfLogs(displayQuickLogs), [displayQuickLogs]);
+  const planMealIds = useMemo(() => new Set(displayMeals.map((meal) => meal.id)), [displayMeals]);
+  const outsidePlanLogs = useMemo(
+    () => logsOutsidePlanMeals(displayQuickLogs, planMealIds),
+    [displayQuickLogs, planMealIds],
+  );
+  const outsidePlanLogsBySlot = useMemo(() => {
+    const grouped = new Map<string, MemberQuickFoodLogEntry[]>();
+    for (const entry of outsidePlanLogs) {
+      const key = entry.mealId?.trim() || "other";
+      const list = grouped.get(key) ?? [];
+      list.push(entry);
+      grouped.set(key, list);
+    }
+    return grouped;
+  }, [outsidePlanLogs]);
 
   const handleShareDay = useCallback(async () => {
     const summary = `${isSelectedToday ? "I dag" : selectedDay?.label ?? "Dagen"}: ${mealsCompletedCount}/${mealsTotalCount || 0} måltider logget · ${formatMacro(displayMacrosToday.kcal, 0)} kcal · ${formatMacro(displayMacrosToday.protein, 0)} g protein`;
@@ -1099,31 +1120,36 @@ export function MemberMealPlanDashboard({ plan, memberId, onOpenAvoidances, onRe
             );
           })}
         </div>
-        {orphanLogs.length > 0 ? (
+        {outsidePlanLogs.length > 0 ? (
           <div className="motus-matplan-orphan-logs">
-            <h3 className="motus-matplan-orphan-logs__title">Annet logget i dag</h3>
-            <ul className="motus-matplan-meal-foods motus-matplan-meal-foods--self">
-              {orphanLogs.map((entry) => (
-                <li key={entry.id} className="motus-matplan-meal-food motus-matplan-meal-food--self">
-                  <div className="motus-matplan-meal-food-main">
-                    <span className="motus-matplan-meal-food-name">{entry.name}</span>
-                    <span className="motus-matplan-meal-food-grams">{formatMacro(entry.grams, 0)} g</span>
-                  </div>
-                  <div className="motus-matplan-meal-food-meta">{selfLogMacroLine(entry)}</div>
-                  <div className="motus-matplan-meal-food-actions">
-                    <button
-                      type="button"
-                      className="motus-matplan-food-remove motus-pressable"
-                      onClick={() => handleRemoveSelfLog(entry.id)}
-                      aria-label={`Fjern ${entry.name}`}
-                    >
-                      <X className="h-3.5 w-3.5" aria-hidden />
-                      Fjern
-                    </button>
-                  </div>
-                </li>
-              ))}
-            </ul>
+            <h3 className="motus-matplan-orphan-logs__title">Logget utenfor matplanen</h3>
+            {[...outsidePlanLogsBySlot.entries()].map(([slotId, entries]) => (
+              <div key={slotId} className="motus-matplan-orphan-logs__group">
+                <h4 className="motus-matplan-orphan-logs__group-title">{memberMealSlotLabel(slotId)}</h4>
+                <ul className="motus-matplan-meal-foods motus-matplan-meal-foods--self">
+                  {entries.map((entry) => (
+                    <li key={entry.id} className="motus-matplan-meal-food motus-matplan-meal-food--self">
+                      <div className="motus-matplan-meal-food-main">
+                        <span className="motus-matplan-meal-food-name">{entry.name}</span>
+                        <span className="motus-matplan-meal-food-grams">{formatMacro(entry.grams, 0)} g</span>
+                      </div>
+                      <div className="motus-matplan-meal-food-meta">{selfLogMacroLine(entry)}</div>
+                      <div className="motus-matplan-meal-food-actions">
+                        <button
+                          type="button"
+                          className="motus-matplan-food-remove motus-pressable"
+                          onClick={() => handleRemoveSelfLog(entry.id)}
+                          aria-label={`Fjern ${entry.name}`}
+                        >
+                          <X className="h-3.5 w-3.5" aria-hidden />
+                          Fjern
+                        </button>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ))}
           </div>
         ) : null}
       </section>

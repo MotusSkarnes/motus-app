@@ -1,0 +1,213 @@
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { Plus, Trash2, UtensilsCrossed } from "lucide-react";
+import { formatMacro } from "../../app/foodBankTypes";
+import { MEMBER_MEAL_SLOTS, memberMealSlotLabel } from "../../app/memberMealSlots";
+import {
+  toIsoDateKey,
+  type MemberMealPlanState,
+  type MemberQuickFoodLogEntry,
+} from "../../app/memberMealPlanState";
+import { loadMemberMealPlanState } from "../../app/memberMealPlanState";
+import { persistMemberMealPlanStateLocalAndScheduleCloud, syncMemberMealPlanState } from "../../app/memberMealPlanStateCloud";
+import { MEAL_PLAN_STATE_CHANGED_EVENT } from "../../app/memberMealPlanState";
+import { GradientButton, OutlineButton } from "../../app/ui";
+import { FoodLogFormFields, type FoodLogDraft } from "./FoodLogFormFields";
+import "../../foodbank.css";
+
+type LogMealPanelProps = {
+  memberId: string;
+  onRefreshFoodBank?: () => void;
+};
+
+function todayKey(): string {
+  return toIsoDateKey(new Date());
+}
+
+function entryMacros(entry: MemberQuickFoodLogEntry): string {
+  const scale = entry.grams > 0 ? entry.grams / 100 : 0;
+  return `${formatMacro(entry.nutritionPer100g.kcal * scale, 0)} kcal · P ${formatMacro(entry.nutritionPer100g.protein * scale, 1)} g`;
+}
+
+export function LogMealPanel({ memberId, onRefreshFoodBank }: LogMealPanelProps) {
+  const [open, setOpen] = useState(false);
+  const [mealSlotId, setMealSlotId] = useState(MEMBER_MEAL_SLOTS[0]!.id);
+  const [status, setStatus] = useState<string | null>(null);
+  const [state, setState] = useState<MemberMealPlanState>(() => loadMemberMealPlanState(memberId));
+
+  const dateKey = todayKey();
+  const logsToday = state.quickFoodLogs[dateKey] ?? [];
+  const hasLogs = logsToday.length > 0;
+
+  useEffect(() => {
+    onRefreshFoodBank?.();
+  }, [onRefreshFoodBank]);
+
+  useEffect(() => {
+    let mounted = true;
+    void (async () => {
+      const synced = await syncMemberMealPlanState(memberId);
+      if (mounted) setState(synced);
+    })();
+    return () => {
+      mounted = false;
+    };
+  }, [memberId]);
+
+  useEffect(() => {
+    const handler = () => setState(loadMemberMealPlanState(memberId));
+    window.addEventListener(MEAL_PLAN_STATE_CHANGED_EVENT, handler);
+    return () => window.removeEventListener(MEAL_PLAN_STATE_CHANGED_EVENT, handler);
+  }, [memberId]);
+
+  const logsBySlot = useMemo(() => {
+    const grouped = new Map<string, MemberQuickFoodLogEntry[]>();
+    for (const slot of MEMBER_MEAL_SLOTS) {
+      grouped.set(slot.id, []);
+    }
+    grouped.set("other", []);
+    for (const entry of logsToday) {
+      const slot = entry.mealId?.trim() && grouped.has(entry.mealId) ? entry.mealId : "other";
+      grouped.get(slot)!.push(entry);
+    }
+    return grouped;
+  }, [logsToday]);
+
+  const persist = useCallback(
+    (nextLogs: MemberQuickFoodLogEntry[]) => {
+      const nextState: MemberMealPlanState = {
+        ...state,
+        quickFoodLogs: { ...state.quickFoodLogs, [dateKey]: nextLogs },
+        updatedAt: new Date().toISOString(),
+      };
+      setState(nextState);
+      persistMemberMealPlanStateLocalAndScheduleCloud(memberId, nextState);
+    },
+    [dateKey, memberId, state],
+  );
+
+  const handleLogFood = useCallback(
+    (draft: FoodLogDraft) => {
+      const entry: MemberQuickFoodLogEntry = {
+        id: `log-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`,
+        name: draft.food.name,
+        grams: draft.grams,
+        source: "food",
+        mealId: mealSlotId,
+        loggedAt: new Date().toISOString(),
+        nutritionPer100g: { ...draft.food.nutritionPer100g },
+      };
+      persist([entry, ...logsToday]);
+      const slotLabel = memberMealSlotLabel(mealSlotId);
+      setStatus(`${draft.food.name} logget til ${slotLabel.toLowerCase()}.`);
+      setOpen(hasLogs);
+    },
+    [hasLogs, logsToday, mealSlotId, persist],
+  );
+
+  const removeLog = useCallback(
+    (entryId: string) => {
+      persist(logsToday.filter((entry) => entry.id !== entryId));
+    },
+    [logsToday, persist],
+  );
+
+  if (!open && !hasLogs) {
+    return (
+      <div className="motus-log-meal-hero">
+        <div className="motus-log-meal-hero__icon" aria-hidden>
+          <UtensilsCrossed className="h-7 w-7" />
+        </div>
+        <h2 className="motus-log-meal-hero__title">Logg det du spiser</h2>
+        <p className="motus-log-meal-hero__lead">
+          Du har ingen matplan fra treneren ennå. Start med å logge et måltid — velg frokost, lunsj, middag og mer, og søk
+          opp matvarer fra matbanken.
+        </p>
+        <GradientButton type="button" className="motus-log-meal-hero__cta" onClick={() => setOpen(true)}>
+          <Plus className="h-4 w-4" aria-hidden />
+          Logg et måltid
+        </GradientButton>
+      </div>
+    );
+  }
+
+  return (
+    <div className="motus-log-meal-panel">
+      {hasLogs && !open ? (
+        <div className="motus-log-meal-panel__summary">
+          <div className="motus-log-meal-panel__summary-head">
+            <h2 className="motus-log-meal-panel__title">Logget i dag</h2>
+            <OutlineButton type="button" className="text-xs" onClick={() => setOpen(true)}>
+              <Plus className="h-4 w-4" aria-hidden />
+              Logg et måltid
+            </OutlineButton>
+          </div>
+          <div className="motus-log-meal-panel__groups">
+            {MEMBER_MEAL_SLOTS.map((slot) => {
+              const entries = logsBySlot.get(slot.id) ?? [];
+              if (!entries.length) return null;
+              return (
+                <div key={slot.id} className="motus-log-meal-panel__group">
+                  <h3 className="motus-log-meal-panel__group-title">{slot.label}</h3>
+                  <ul className="motus-log-meal-panel__list">
+                    {entries.map((entry) => (
+                      <li key={entry.id} className="motus-log-meal-panel__item">
+                        <div className="min-w-0">
+                          <p className="motus-log-meal-panel__item-name">
+                            {entry.name} · {formatMacro(entry.grams, 0)} g
+                          </p>
+                          <p className="motus-log-meal-panel__item-meta">{entryMacros(entry)}</p>
+                        </div>
+                        <button
+                          type="button"
+                          className="motus-log-meal-panel__remove"
+                          onClick={() => removeLog(entry.id)}
+                          aria-label={`Fjern ${entry.name}`}
+                        >
+                          <Trash2 className="h-4 w-4" aria-hidden />
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      ) : null}
+
+      {open || !hasLogs ? (
+        <div className="motus-log-meal-panel__form-wrap">
+          {hasLogs ? (
+            <div className="motus-log-meal-panel__form-head">
+              <h2 className="motus-log-meal-panel__title">Logg et måltid</h2>
+              <button type="button" className="motus-log-meal-panel__close motus-pressable" onClick={() => setOpen(false)}>
+                Lukk
+              </button>
+            </div>
+          ) : null}
+
+          <p className="motus-log-meal-panel__step-label">1. Velg måltid</p>
+          <div className="motus-log-meal-panel__slots" role="tablist" aria-label="Måltidstype">
+            {MEMBER_MEAL_SLOTS.map((slot) => (
+              <button
+                key={slot.id}
+                type="button"
+                role="tab"
+                aria-selected={mealSlotId === slot.id}
+                className={`motus-log-meal-panel__slot ${mealSlotId === slot.id ? "motus-log-meal-panel__slot--active" : ""}`}
+                onClick={() => setMealSlotId(slot.id)}
+              >
+                {slot.label}
+              </button>
+            ))}
+          </div>
+
+          <p className="motus-log-meal-panel__step-label">2. Søk og logg matvarer</p>
+          <FoodLogFormFields onSubmit={handleLogFood} submitLabel="Legg til" />
+        </div>
+      ) : null}
+
+      {status ? <p className="motus-log-meal-panel__status">{status}</p> : null}
+    </div>
+  );
+}

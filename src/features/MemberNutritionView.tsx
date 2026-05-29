@@ -1,10 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { NutritionHubTab } from "./nutrition/NutritionHub";
-import { Apple } from "lucide-react";
 import { scheduleMemberFoodBankSync } from "../app/foodBankCloud";
 import { buildDefaultFoodBankItems } from "../app/foodBankSeed";
 import { hydrateMealPlanFoodNutrition } from "../app/mealPlanFoodNutrition";
-import { mealPlansEqual, syncMealPlanForMember } from "../app/mealPlanCloud";
+import { countMealPlanFoodItems, mealPlansEqual, syncMealPlanForMember } from "../app/mealPlanCloud";
 import { useFoodBankItems } from "../app/useFoodBankItems";
 import type { FoodItem } from "../app/foodBankTypes";
 import { MEAL_PLAN_CHANGED_EVENT } from "../app/mealPlanStorage";
@@ -13,7 +12,7 @@ import { Card } from "../app/ui";
 import { pickCanonicalMemberRowForProfile, resolveMemberPersonalGoals } from "../app/memberOnboarding";
 import type { Member } from "../app/types";
 import { MemberFoodAvoidancesPanel } from "./nutrition/MemberFoodAvoidancesPanel";
-import { MemberQuickFoodLogPanel } from "./nutrition/MemberQuickFoodLogPanel";
+import { LogMealPanel } from "./nutrition/LogMealPanel";
 import { MemberSubmitFoodPanel } from "./MemberSubmitFoodPanel";
 import { MemberMealPlanDashboard } from "./nutrition/MemberMealPlanDashboard";
 import { NutritionHub } from "./nutrition/NutritionHub";
@@ -111,28 +110,28 @@ export function MemberNutritionView({ member, members, onSavePersonalGoals }: Me
     if (loading && !hasLoadedOnceRef.current) {
       return <Card className="p-6 text-center text-sm text-slate-600">Laster din matplan …</Card>;
     }
-    if (!plan) {
+    const planHasAssignedFood = countMealPlanFoodItems(plan) > 0;
+    if (!planHasAssignedFood) {
       return (
         <div className="space-y-3">
-          <Card className="p-6 text-center">
-            <Apple className="mx-auto h-10 w-10 text-teal-500" aria-hidden />
-            <h2 className="mt-3 text-lg font-bold text-slate-900">Matplan</h2>
-            <p className="mt-2 text-sm text-slate-600">Treneren har ikke lagt ut en matplan til deg ennå.</p>
-          </Card>
-          <MemberQuickFoodLogPanel memberId={memberId} onRefreshFoodBank={refreshMemberFoodBank} />
+          {!cloudSynced ? (
+            <Card className="border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+              Kunne ikke hente matplan fra sky ennå. Sjekk nett og oppdater siden, eller be PT trykke «Lagre» på matplanen din.
+            </Card>
+          ) : null}
+          <LogMealPanel memberId={memberId} onRefreshFoodBank={refreshMemberFoodBank} />
         </div>
       );
     }
-    const hasFood = plan.days.some((day) => day.meals.some((meal) => meal.items.length > 0));
     return (
       <>
-        {!cloudSynced && !hasFood ? (
+        {!cloudSynced ? (
           <Card className="mb-3 border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
             Kunne ikke hente matplan fra sky ennå. Sjekk nett og oppdater siden, eller be PT trykke «Lagre» på matplanen din.
           </Card>
         ) : null}
         <MemberMealPlanDashboard
-          plan={plan}
+          plan={plan!}
           memberId={memberId}
           memberName={memberName}
           onOpenAvoidances={() => setNutritionTab("avoidances")}
