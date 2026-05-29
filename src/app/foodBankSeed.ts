@@ -1,4 +1,5 @@
 import { uid } from "./storage";
+import { applyKnownPortionDefaults } from "./foodPortionDefaults";
 import type { FoodCategoryId, FoodItem } from "./foodBankTypes";
 
 type SeedRow = {
@@ -113,27 +114,29 @@ const SEED_ROWS: SeedRow[] = [
 
 export function buildDefaultFoodBankItems(createdBy = "Motus PT"): FoodItem[] {
   const baseDate = "2024-01-12T10:00:00.000Z";
-  return SEED_ROWS.map((row, index) => ({
-    id: uid(`food-seed-${index}`),
-    name: row.name,
-    portionLabel: row.portionLabel ?? "100 g",
-    portionGrams: row.portionGrams ?? 100,
-    category: row.category,
-    origin: row.origin,
-    source: "matvaretabell" as const,
-    createdBy,
-    createdAt: baseDate,
-    imageEmoji: row.emoji,
-    isCustom: false,
-    nutritionPer100g: {
-      kcal: row.kcal,
-      protein: row.protein,
-      carbs: row.carbs,
-      fat: row.fat,
-      fiber: row.fiber ?? 0,
-      sugar: row.sugar ?? 0,
-      saturatedFat: row.saturatedFat ?? 0,
-      sodium: row.sodium ?? 0,
-    },
-  }));
+  return SEED_ROWS.map((row, index) =>
+    applyKnownPortionDefaults({
+      id: uid(`food-seed-${index}`),
+      name: row.name,
+      portionLabel: row.portionLabel ?? "100 g",
+      portionGrams: row.portionGrams ?? 100,
+      category: row.category,
+      origin: row.origin,
+      source: "matvaretabell" as const,
+      createdBy,
+      createdAt: baseDate,
+      imageEmoji: row.emoji,
+      isCustom: false,
+      nutritionPer100g: {
+        kcal: row.kcal,
+        protein: row.protein,
+        carbs: row.carbs,
+        fat: row.fat,
+        fiber: row.fiber ?? 0,
+        sugar: row.sugar ?? 0,
+        saturatedFat: row.saturatedFat ?? 0,
+        sodium: row.sodium ?? 0,
+      },
+    }),
+  );
 }

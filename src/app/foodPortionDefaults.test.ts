@@ -39,4 +39,12 @@ describe("foodPortionDefaults", () => {
       ),
     ).toBe(200);
   });
+
+  it("bruker alias for banan", () => {
+    expect(defaultPortionGramsForFood(food({ name: "Banan" }))).toBe(120);
+  });
+
+  it("bruker alias for skyr", () => {
+    expect(defaultPortionGramsForFood(food({ name: "Skyr" }))).toBe(130);
+  });
 });
