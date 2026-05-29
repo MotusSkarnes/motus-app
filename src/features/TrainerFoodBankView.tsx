@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   BookOpen,
   ChevronLeft,
@@ -163,6 +163,14 @@ function parseNumber(value: string): number {
   return Number.isFinite(parsed) ? parsed : 0;
 }
 
+function snapshotFoodForm(form: FoodFormState): string {
+  return JSON.stringify(form);
+}
+
+function isFoodFormDirty(form: FoodFormState, baseline: string): boolean {
+  return snapshotFoodForm(form) !== baseline;
+}
+
 function formatDateLabel(iso: string): string {
   const date = new Date(iso);
   if (Number.isNaN(date.getTime())) return "–";
@@ -218,6 +226,7 @@ export function TrainerFoodBankView({
   const [filterOpen, setFilterOpen] = useState(false);
   const [formOpen, setFormOpen] = useState(false);
   const [form, setForm] = useState<FoodFormState>(emptyForm);
+  const formBaselineRef = useRef("");
   const [formStatus, setFormStatus] = useState<string | null>(null);
   const [imageUploading, setImageUploading] = useState(false);
   const [sources, setSources] = useState<FoodSource[]>([]);
@@ -315,18 +324,40 @@ export function TrainerFoodBankView({
   };
 
   const openCreateForm = () => {
-    setForm(emptyForm());
+    const next = emptyForm();
+    formBaselineRef.current = snapshotFoodForm(next);
+    setForm(next);
     setFormStatus(null);
     setImageUploading(false);
     setFormOpen(true);
   };
 
   const openEditForm = (item: FoodItem) => {
-    setForm(formFromFood(item));
+    const next = formFromFood(item);
+    formBaselineRef.current = snapshotFoodForm(next);
+    setForm(next);
     setFormStatus(null);
     setImageUploading(false);
     setFormOpen(true);
   };
+
+  const closeFoodForm = useCallback(() => {
+    if (isFoodFormDirty(form, formBaselineRef.current)) {
+      const discard = window.confirm("Du har ulagrede endringer. Vil du lukke uten å lagre?");
+      if (!discard) return;
+    }
+    setFormOpen(false);
+    setFormStatus(null);
+  }, [form]);
+
+  useEffect(() => {
+    if (!formOpen) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") closeFoodForm();
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [closeFoodForm, formOpen]);
 
   const handleFoodImageUpload = async (file: File) => {
     if (!file.type.startsWith("image/")) {
@@ -816,11 +847,11 @@ export function TrainerFoodBankView({
       ) : null}
 
       {formOpen ? (
-        <div className="motus-foodbank-modal-backdrop" role="presentation" onClick={() => setFormOpen(false)}>
-          <div className="motus-foodbank-modal motus-foodbank-modal--wide" role="dialog" aria-labelledby="food-form-title" onClick={(event) => event.stopPropagation()}>
+        <div className="motus-foodbank-modal-backdrop" role="presentation">
+          <div className="motus-foodbank-modal motus-foodbank-modal--wide" role="dialog" aria-labelledby="food-form-title" aria-modal="true">
             <div className="motus-foodbank-modal-head">
               <h2 id="food-form-title">{form.id ? "Rediger matvare" : "Ny matvare"}</h2>
-              <button type="button" className="motus-foodbank-icon-btn" onClick={() => setFormOpen(false)} aria-label="Lukk">
+              <button type="button" className="motus-foodbank-icon-btn" onClick={closeFoodForm} aria-label="Lukk">
                 <X className="h-4 w-4" />
               </button>
             </div>
@@ -915,7 +946,7 @@ export function TrainerFoodBankView({
             </div>
             {formStatus ? <p className="motus-foodbank-form-status">{formStatus}</p> : null}
             <div className="motus-foodbank-modal-actions">
-              <OutlineButton onClick={() => setFormOpen(false)}>Avbryt</OutlineButton>
+              <OutlineButton onClick={closeFoodForm}>Avbryt</OutlineButton>
               <GradientButton onClick={saveForm}>{form.id ? "Lagre endringer" : "Legg til matvare"}</GradientButton>
             </div>
           </div>
