@@ -99,7 +99,6 @@ export function MemberNutritionView({ member, members, onSavePersonalGoals }: Me
           memberName={memberName}
           onOpenAvoidances={() => setNutritionTab("avoidances")}
         />
-        <MemberQuickFoodLogPanel memberId={memberId} />
       </>
     );
   }, [loading, plan, cloudSynced, memberId, memberName, setNutritionTab]);

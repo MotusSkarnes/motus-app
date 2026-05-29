@@ -9,6 +9,8 @@ function makeState(partial?: Partial<MemberMealPlanState>): MemberMealPlanState 
     checkedShopping: [],
     recipePortions: {},
     mealSwaps: {},
+    quickFoodLogs: {},
+    skippedFoodIds: {},
     ...partial,
   };
 }

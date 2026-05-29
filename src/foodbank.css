@@ -3005,3 +3005,141 @@
   opacity: 0.45;
   cursor: not-allowed;
 }
+
+.motus-matplan-meal-detail {
+  margin-top: 0.45rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.motus-matplan-meal-foods--skipped {
+  opacity: 0.75;
+}
+
+.motus-matplan-meal-foods--self {
+  margin-top: 0.15rem;
+}
+
+.motus-matplan-meal-food--skipped {
+  background: rgba(148, 163, 184, 0.08);
+  border-color: rgba(148, 163, 184, 0.2);
+}
+
+.motus-matplan-meal-food--skipped .motus-matplan-meal-food-name {
+  text-decoration: line-through;
+  color: #94a3b8;
+}
+
+.motus-matplan-meal-food--self {
+  flex-wrap: wrap;
+  border-color: rgba(217, 18, 120, 0.2);
+  background: rgba(217, 18, 120, 0.04);
+}
+
+.motus-matplan-meal-food-meta {
+  width: 100%;
+  font-size: 0.625rem;
+  color: #94a3b8;
+  padding-left: 0.1rem;
+}
+
+.motus-matplan-food-skip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+  border-radius: 999px;
+  padding: 0.2rem 0.45rem;
+  font-size: 0.625rem;
+  font-weight: 700;
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  color: #64748b;
+  background: #fff;
+  cursor: pointer;
+}
+
+.motus-matplan-self-log-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  margin-top: 0.45rem;
+  border-radius: 999px;
+  padding: 0.35rem 0.65rem;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  color: #be185d;
+  border: 1px solid rgba(217, 18, 120, 0.35);
+  background: #fff;
+  cursor: pointer;
+}
+
+.motus-matplan-self-log {
+  margin-top: 0.45rem;
+  padding: 0.55rem;
+  border-radius: 0.65rem;
+  border: 1px dashed rgba(217, 18, 120, 0.35);
+  background: rgba(255, 255, 255, 0.85);
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.motus-matplan-self-log__label {
+  margin: 0;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  color: #334155;
+}
+
+.motus-matplan-self-log__row {
+  display: grid;
+  gap: 0.35rem;
+  grid-template-columns: minmax(0, 1fr) 72px auto;
+}
+
+.motus-matplan-self-log__select,
+.motus-matplan-self-log__search,
+.motus-matplan-self-log__grams {
+  width: 100%;
+  border-radius: 0.55rem;
+  border: 1px solid #e2e8f0;
+  background: #fff;
+  padding: 0.45rem 0.55rem;
+  font-size: 0.75rem;
+}
+
+.motus-matplan-self-log__preview,
+.motus-matplan-self-log__error {
+  margin: 0;
+  font-size: 0.625rem;
+}
+
+.motus-matplan-self-log__error {
+  color: #be123c;
+}
+
+.motus-matplan-self-log__cancel {
+  align-self: flex-start;
+  border: none;
+  background: none;
+  padding: 0;
+  font-size: 0.625rem;
+  font-weight: 600;
+  color: #64748b;
+  cursor: pointer;
+}
+
+.motus-matplan-orphan-logs {
+  margin-top: 0.75rem;
+  padding: 0.65rem;
+  border-radius: 0.75rem;
+  border: 1px solid #e2e8f0;
+  background: #f8fafc;
+}
+
+.motus-matplan-orphan-logs__title {
+  margin: 0 0 0.35rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #475569;
+}

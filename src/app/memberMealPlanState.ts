@@ -11,6 +11,8 @@ export type MemberQuickFoodLogEntry = {
   grams: number;
   source: "food" | "recipe" | "ai";
   loggedAt: string;
+  /** Måltidsplass i matplanen (f.eks. frokost) når loggen hører til et bestemt måltid. */
+  mealId?: string;
   nutritionPer100g: {
     kcal: number;
     protein: number;
@@ -35,6 +37,8 @@ export type MemberMealPlanState = {
   mealSwaps: Record<string, MealSwapRef>;
   /** dateKey → frie matlogger uten matplan */
   quickFoodLogs: Record<string, MemberQuickFoodLogEntry[]>;
+  /** dateKey → planlagte matvarer medlem har hoppet over for dagen */
+  skippedFoodIds: Record<string, string[]>;
   updatedAt?: string;
 };
 
@@ -46,6 +50,7 @@ export const EMPTY_MEMBER_MEAL_PLAN_STATE: MemberMealPlanState = {
   recipePortions: {},
   mealSwaps: {},
   quickFoodLogs: {},
+  skippedFoodIds: {},
 };
 
 export const MEAL_PLAN_STATE_CHANGED_EVENT = "motus-meal-plan-state-changed";
@@ -59,6 +64,7 @@ const STATE_KEYS: Array<keyof MemberMealPlanState> = [
   "recipePortions",
   "mealSwaps",
   "quickFoodLogs",
+  "skippedFoodIds",
 ];
 
 function storageKey(memberId: string): string {
@@ -132,6 +138,12 @@ export function parseMemberMealPlanState(value: unknown): MemberMealPlanState {
         : row.quick_food_logs && typeof row.quick_food_logs === "object"
           ? (row.quick_food_logs as Record<string, MemberQuickFoodLogEntry[]>)
           : {},
+    skippedFoodIds:
+      row.skippedFoodIds && typeof row.skippedFoodIds === "object"
+        ? (row.skippedFoodIds as Record<string, string[]>)
+        : row.skipped_food_ids && typeof row.skipped_food_ids === "object"
+          ? (row.skipped_food_ids as Record<string, string[]>)
+          : {},
     updatedAt: typeof row.updatedAt === "string" ? row.updatedAt : typeof row.updated_at === "string" ? row.updated_at : undefined,
   };
 }
@@ -139,7 +151,7 @@ export function parseMemberMealPlanState(value: unknown): MemberMealPlanState {
 function needsStateNormalization(raw: unknown): boolean {
   if (!raw || typeof raw !== "object") return false;
   const row = raw as Record<string, unknown>;
-  if ("logged_meals" in row || "logged_food_ids" in row || "water_liters" in row || "checked_shopping" in row || "recipe_portions" in row || "meal_swaps" in row || "quick_food_logs" in row) {
+  if ("logged_meals" in row || "logged_food_ids" in row || "water_liters" in row || "checked_shopping" in row || "recipe_portions" in row || "meal_swaps" in row || "quick_food_logs" in row || "skipped_food_ids" in row) {
     return true;
   }
   return STATE_KEYS.some((key) => !(key in row));
@@ -271,6 +283,7 @@ export function mergeMemberMealPlanStates(local: MemberMealPlanState, remote: Me
     recipePortions: { ...remote.recipePortions, ...local.recipePortions },
     mealSwaps: { ...remote.mealSwaps, ...local.mealSwaps },
     quickFoodLogs: { ...remote.quickFoodLogs, ...local.quickFoodLogs },
+    skippedFoodIds: { ...remote.skippedFoodIds, ...local.skippedFoodIds },
     updatedAt: new Date(Math.max(localMs, remoteMs, Date.now())).toISOString(),
   };
 }
@@ -305,9 +318,13 @@ export function syncLoggedMealsFromFoodIds(
   dateKey: string,
   meals: MealPlanMeal[],
 ): MemberMealPlanState {
+  const skippedFood = new Set(state.skippedFoodIds[dateKey] ?? []);
   const loggedFood = new Set(state.loggedFoodIds[dateKey] ?? []);
   const completeMealIds = meals
-    .filter((meal) => meal.items.length > 0 && meal.items.every((item) => loggedFood.has(item.id)))
+    .filter((meal) => {
+      const activeItems = meal.items.filter((item) => !skippedFood.has(item.id));
+      return activeItems.length > 0 && activeItems.every((item) => loggedFood.has(item.id));
+    })
     .map((meal) => meal.id);
   return {
     ...state,

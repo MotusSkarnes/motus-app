@@ -1,6 +1,6 @@
 import { persistMemberMealPlanStateLocalAndScheduleCloud } from "./memberMealPlanStateCloud";
 import type { MealPlanMeal } from "./mealPlanTypes";
-import type { MemberMealPlanState } from "./memberMealPlanState";
+import type { MemberMealPlanState, MemberQuickFoodLogEntry } from "./memberMealPlanState";
 import {
   expandLegacyLoggedFoodIds,
   loadMemberMealPlanState,
@@ -54,6 +54,74 @@ function persistFoodLogState(
   return nextState;
 }
 
+export function isFoodSkipped(state: MemberMealPlanState, dateKey: string, foodEntryId: string): boolean {
+  return (state.skippedFoodIds[dateKey] ?? []).includes(foodEntryId);
+}
+
+export function skipFoodItem(
+  memberId: string,
+  state: MemberMealPlanState,
+  dateKey: string,
+  meals: MealPlanMeal[],
+  foodEntryId: string,
+): MemberMealPlanState {
+  const skipped = [...new Set([...(state.skippedFoodIds[dateKey] ?? []), foodEntryId])];
+  const logged = (state.loggedFoodIds[dateKey] ?? []).filter((id) => id !== foodEntryId);
+  const nextState: MemberMealPlanState = {
+    ...state,
+    skippedFoodIds: { ...state.skippedFoodIds, [dateKey]: skipped },
+    loggedFoodIds: { ...state.loggedFoodIds, [dateKey]: logged },
+  };
+  return persistFoodLogState(memberId, nextState, dateKey, meals);
+}
+
+export function unskipFoodItem(
+  memberId: string,
+  state: MemberMealPlanState,
+  dateKey: string,
+  meals: MealPlanMeal[],
+  foodEntryId: string,
+): MemberMealPlanState {
+  const skipped = (state.skippedFoodIds[dateKey] ?? []).filter((id) => id !== foodEntryId);
+  const nextState: MemberMealPlanState = {
+    ...state,
+    skippedFoodIds: { ...state.skippedFoodIds, [dateKey]: skipped },
+  };
+  return persistFoodLogState(memberId, nextState, dateKey, meals);
+}
+
+export function addQuickFoodLog(
+  memberId: string,
+  state: MemberMealPlanState,
+  dateKey: string,
+  entry: MemberQuickFoodLogEntry,
+): MemberMealPlanState {
+  const logs = [entry, ...(state.quickFoodLogs[dateKey] ?? [])];
+  const nextState: MemberMealPlanState = {
+    ...state,
+    quickFoodLogs: { ...state.quickFoodLogs, [dateKey]: logs },
+    updatedAt: new Date().toISOString(),
+  };
+  persistMemberMealPlanStateLocalAndScheduleCloud(memberId, nextState);
+  return nextState;
+}
+
+export function removeQuickFoodLog(
+  memberId: string,
+  state: MemberMealPlanState,
+  dateKey: string,
+  entryId: string,
+): MemberMealPlanState {
+  const logs = (state.quickFoodLogs[dateKey] ?? []).filter((entry) => entry.id !== entryId);
+  const nextState: MemberMealPlanState = {
+    ...state,
+    quickFoodLogs: { ...state.quickFoodLogs, [dateKey]: logs },
+    updatedAt: new Date().toISOString(),
+  };
+  persistMemberMealPlanStateLocalAndScheduleCloud(memberId, nextState);
+  return nextState;
+}
+
 export function toggleFoodLogged(
   memberId: string,
   state: MemberMealPlanState,
@@ -97,7 +165,8 @@ export function toggleMealLogged(
 ): MemberMealPlanState {
   const mealIds = state.loggedMeals[dateKey] ?? [];
   const foodIds = [...(state.loggedFoodIds[dateKey] ?? [])];
-  const mealFoodIds = meal?.items.map((item) => item.id) ?? [];
+  const skipped = new Set(state.skippedFoodIds[dateKey] ?? []);
+  const mealFoodIds = meal?.items.filter((item) => !skipped.has(item.id)).map((item) => item.id) ?? [];
   const isLogged = mealIds.includes(mealId);
 
   let nextFood = foodIds;
