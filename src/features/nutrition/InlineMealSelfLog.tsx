@@ -11,6 +11,7 @@ type InlineMealSelfLogProps = {
   mealId: string;
   onAdd: (entry: SelfLogDraft) => void;
   compact?: boolean;
+  autoOpen?: boolean;
 };
 
 export function createSelfLogEntry(
@@ -27,9 +28,9 @@ export function createSelfLogEntry(
   };
 }
 
-export function InlineMealSelfLog({ mealId, onAdd, compact = false }: InlineMealSelfLogProps) {
+export function InlineMealSelfLog({ mealId, onAdd, compact = false, autoOpen = false }: InlineMealSelfLogProps) {
   const foodItems = useFoodBankItems();
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(autoOpen);
   const [search, setSearch] = useState("");
   const [selectedFoodId, setSelectedFoodId] = useState("");
   const [gramsInput, setGramsInput] = useState("100");
@@ -61,8 +62,8 @@ export function InlineMealSelfLog({ mealId, onAdd, compact = false }: InlineMeal
     setSearch("");
     setSelectedFoodId("");
     setGramsInput("100");
-    setOpen(false);
-  }, [gramsInput, mealId, onAdd, selectedFood]);
+    setOpen(autoOpen);
+  }, [gramsInput, mealId, onAdd, selectedFood, autoOpen]);
 
   if (!open) {
     return (

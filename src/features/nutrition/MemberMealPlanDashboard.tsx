@@ -881,7 +881,7 @@ export function MemberMealPlanDashboard({ plan, memberId, onOpenAvoidances }: Me
             return (
               <article
                 key={meal.id}
-                className={`motus-matplan-meal-card motus-matplan-meal-card--v2 ${logged ? "motus-matplan-meal-card--logged" : ""} ${hasPartialLog ? "motus-matplan-meal-card--partial" : ""}`}
+                className={`motus-matplan-meal-card motus-matplan-meal-card--v2 ${isExpanded ? "motus-matplan-meal-card--expanded" : ""} ${logged ? "motus-matplan-meal-card--logged" : ""} ${hasPartialLog ? "motus-matplan-meal-card--partial" : ""}`}
               >
                 <div className="motus-matplan-meal-card__media">
                   {imageSrc ? (
@@ -922,6 +922,28 @@ export function MemberMealPlanDashboard({ plan, memberId, onOpenAvoidances }: Me
                           >
                             {isExpanded ? "Skjul detaljer" : hasFood ? "Vis matvarer" : "Logg mat"}
                           </button>
+                          <button
+                            type="button"
+                            className="motus-pressable"
+                            onClick={() => {
+                              setExpandedMealId(meal.id);
+                              setMealMenuId(null);
+                            }}
+                          >
+                            Logg noe annet
+                          </button>
+                          {hasRecipe && recipeId && hasPlanFood ? (
+                            <button
+                              type="button"
+                              className="motus-pressable"
+                              onClick={() => {
+                                setActiveRecipeId(recipeId);
+                                setMealMenuId(null);
+                              }}
+                            >
+                              Se oppskrift
+                            </button>
+                          ) : null}
                         </div>
                       ) : null}
                     </div>
@@ -930,7 +952,15 @@ export function MemberMealPlanDashboard({ plan, memberId, onOpenAvoidances }: Me
                   <h3 className="motus-matplan-meal-card__title">{cardTitle}</h3>
                   {hasFood ? (
                     <>
-                      <p className="motus-matplan-meal-card__macros">{mealMacroLine(macros)}</p>
+                      <p className="motus-matplan-meal-card__macros">
+                        {mealMacroLine(macros)}
+                        {hasSelfLogs ? (
+                          <span className="motus-matplan-meal-card__self-badge">
+                            {" "}
+                            · {selfLogs.length} egen
+                          </span>
+                        ) : null}
+                      </p>
                       {hasPlanFood ? (
                         <div className="motus-matplan-meal-card__meta">
                           <span>
@@ -940,34 +970,24 @@ export function MemberMealPlanDashboard({ plan, memberId, onOpenAvoidances }: Me
                           <span>{prepMeta.difficulty}</span>
                         </div>
                       ) : null}
-                      {hasRecipe && recipeId && hasPlanFood ? (
-                        <button
-                          type="button"
-                          className="motus-matplan-food-log motus-pressable mt-2"
-                          onClick={() => setActiveRecipeId(recipeId)}
-                          aria-label={`Se oppskrift for ${cardTitle}`}
-                        >
-                          Se oppskrift
-                        </button>
-                      ) : null}
                     </>
                   ) : (
                     <p className="motus-matplan-meal-card__macros motus-matplan-meal-card__macros--muted">
-                      Logg det du spiste i stedet for planen
+                      Trykk ⋮ for å logge det du spiste
                     </p>
                   )}
-                  {!isExpanded && hasFood ? (
-                    <button
-                      type="button"
-                      className="motus-matplan-self-log-trigger motus-pressable"
-                      onClick={() => setExpandedMealId(meal.id)}
-                    >
-                      <Plus className="h-3.5 w-3.5" aria-hidden />
-                      Logg noe annet
-                    </button>
-                  ) : null}
-                  {isExpanded ? (
-                    <div className="motus-matplan-meal-detail">
+                </div>
+                <button
+                  type="button"
+                  className={`motus-matplan-meal-card__check motus-pressable ${logged ? "motus-matplan-meal-card__check--done" : ""}`}
+                  onClick={() => hasPlanFood && handleToggleMeal(meal)}
+                  disabled={!hasPlanFood}
+                  aria-label={logged ? `Måltid fullført` : hasPlanFood ? `Logg ${meal.name}` : `Logg mat for ${meal.name}`}
+                >
+                  {logged ? <Check className="h-4 w-4" strokeWidth={3} aria-hidden /> : null}
+                </button>
+                {isExpanded ? (
+                  <div className="motus-matplan-meal-detail">
                       {hasPlanFood ? (
                         <ul className="motus-matplan-meal-foods">
                           {activeItems.map((item) => {
@@ -984,21 +1004,6 @@ export function MemberMealPlanDashboard({ plan, memberId, onOpenAvoidances }: Me
                                   </span>
                                 </div>
                                 <div className="motus-matplan-meal-food-actions">
-                                  {(() => {
-                                    const itemRecipeId = resolveRecipeIdFromEntry(item, recipesById, recipeIdByTitleKey);
-                                    const itemHasRecipe = Boolean(itemRecipeId && recipesById.has(itemRecipeId));
-                                    if (!itemHasRecipe || !itemRecipeId) return null;
-                                    return (
-                                      <button
-                                        type="button"
-                                        className="motus-matplan-food-log motus-pressable"
-                                        onClick={() => setActiveRecipeId(itemRecipeId)}
-                                        aria-label={`Se oppskrift for ${item.foodName}`}
-                                      >
-                                        Se oppskrift
-                                      </button>
-                                    );
-                                  })()}
                                   {foodLogged ? (
                                     <button
                                       type="button"
@@ -1006,11 +1011,18 @@ export function MemberMealPlanDashboard({ plan, memberId, onOpenAvoidances }: Me
                                       onClick={() => handleRemoveFood(item.id)}
                                       aria-label={`Fjern ${item.foodName} fra logg`}
                                     >
-                                      <X className="h-3.5 w-3.5" aria-hidden />
                                       Fjern
                                     </button>
                                   ) : (
                                     <>
+                                      <button
+                                        type="button"
+                                        className="motus-matplan-food-log motus-pressable"
+                                        onClick={() => handleToggleFood(item.id)}
+                                        aria-label={`Logg ${item.foodName}`}
+                                      >
+                                        Logg
+                                      </button>
                                       <button
                                         type="button"
                                         className="motus-matplan-food-skip motus-pressable"
@@ -1018,15 +1030,6 @@ export function MemberMealPlanDashboard({ plan, memberId, onOpenAvoidances }: Me
                                         aria-label={`Hopp over ${item.foodName} fra planen`}
                                       >
                                         Hopp over
-                                      </button>
-                                      <button
-                                        type="button"
-                                        className="motus-matplan-food-log motus-pressable"
-                                        onClick={() => handleToggleFood(item.id)}
-                                        aria-label={`Logg ${item.foodName}`}
-                                      >
-                                        <Plus className="h-3.5 w-3.5" aria-hidden />
-                                        Logg
                                       </button>
                                     </>
                                   )}
@@ -1085,23 +1088,11 @@ export function MemberMealPlanDashboard({ plan, memberId, onOpenAvoidances }: Me
                       <InlineMealSelfLog
                         mealId={meal.id}
                         compact
+                        autoOpen
                         onAdd={(draft) => handleAddSelfLog(draft)}
                       />
-                    </div>
-                  ) : null}
-                  {!isExpanded && !hasFood ? (
-                    <InlineMealSelfLog mealId={meal.id} onAdd={(draft) => handleAddSelfLog(draft)} />
-                  ) : null}
-                </div>
-                <button
-                  type="button"
-                  className={`motus-matplan-meal-card__check motus-pressable ${logged ? "motus-matplan-meal-card__check--done" : ""}`}
-                  onClick={() => hasPlanFood && handleToggleMeal(meal)}
-                  disabled={!hasPlanFood}
-                  aria-label={logged ? `Måltid fullført` : hasPlanFood ? `Logg ${meal.name}` : `Logg mat for ${meal.name}`}
-                >
-                  {logged ? <Check className="h-4 w-4" strokeWidth={3} aria-hidden /> : null}
-                </button>
+                  </div>
+                ) : null}
               </article>
             );
           })}
