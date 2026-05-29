@@ -148,11 +148,15 @@ export function mealPlanFromRow(memberId: string, row: Record<string, unknown>):
 
 async function fetchMealPlanRow(memberId: string): Promise<MealPlan | null> {
   if (!supabaseClient || !memberId.trim()) return null;
-  const { data, error } = await supabaseClient
-    .from("member_meal_plans")
-    .select("member_id, title, notes, days, targets, updated_at")
-    .eq("member_id", memberId.trim())
-    .maybeSingle();
+  const { data, error } = await withTimeout(
+    supabaseClient
+      .from("member_meal_plans")
+      .select("member_id, title, notes, days, targets, updated_at")
+      .eq("member_id", memberId.trim())
+      .maybeSingle(),
+    MEAL_PLAN_FETCH_TIMEOUT_MS,
+    "member_meal_plans fetch",
+  );
   if (error) {
     if (!isMealPlanTableMissing(error.message)) {
       console.warn("member_meal_plans fetch failed:", memberId, error.message);
@@ -169,12 +173,8 @@ async function fetchMealPlanRow(memberId: string): Promise<MealPlan | null> {
 export async function fetchMealPlanFromSupabase(memberIds: string | string[]): Promise<MealPlan | null> {
   const ids = [...new Set((Array.isArray(memberIds) ? memberIds : [memberIds]).map((id) => id.trim()).filter(Boolean))];
   if (!ids.length) return null;
-  const plans: MealPlan[] = [];
-  for (const id of ids) {
-    const plan = await fetchMealPlanRow(id);
-    if (plan) plans.push(plan);
-  }
-  return pickPreferredMealPlan(plans);
+  const results = await Promise.all(ids.map((id) => fetchMealPlanRow(id)));
+  return pickPreferredMealPlan(results.filter((plan): plan is MealPlan => Boolean(plan)));
 }
 
 export async function readLinkedMealPlanMemberIds(primaryMemberId: string): Promise<string[]> {
@@ -210,22 +210,66 @@ export async function readLinkedMealPlanMemberIds(primaryMemberId: string): Prom
   return [...ids];
 }
 
+const MEAL_PLAN_FETCH_TIMEOUT_MS = 12_000;
+
+function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error(`${label} timeout`)), ms);
+    promise
+      .then((value) => {
+        clearTimeout(timer);
+        resolve(value);
+      })
+      .catch((error) => {
+        clearTimeout(timer);
+        reject(error);
+      });
+  });
+}
+
+async function memberIdsForEmail(email: string): Promise<string[]> {
+  if (!supabaseClient || !email.includes("@")) return [];
+  try {
+    const { data: rows } = await withTimeout(
+      supabaseClient.from("members").select("id").ilike("email", email),
+      MEAL_PLAN_FETCH_TIMEOUT_MS,
+      "members lookup",
+    );
+    return (rows ?? [])
+      .map((row) => String((row as { id?: string }).id ?? "").trim())
+      .filter(Boolean);
+  } catch (error) {
+    console.warn("meal plan member email lookup failed:", error);
+    return [];
+  }
+}
+
 /** Alle mulige member_id-er for samme person (JWT, e-post, valgt medlem). */
-export async function resolveMealPlanLookupIds(primaryMemberId: string, memberEmail?: string): Promise<string[]> {
+export async function resolveMealPlanLookupIds(
+  primaryMemberId: string,
+  memberEmail?: string,
+  options?: { forTrainerView?: boolean },
+): Promise<string[]> {
   const ids = new Set<string>();
+  const primary = primaryMemberId.trim();
+  if (primary) ids.add(primary);
+
+  const email = memberEmail?.trim().toLowerCase();
+  if (options?.forTrainerView) {
+    if (email?.includes("@")) {
+      for (const id of await memberIdsForEmail(email)) {
+        ids.add(id);
+      }
+    }
+    return [...ids];
+  }
+
   for (const id of await readLinkedMealPlanMemberIds(primaryMemberId)) {
     if (id) ids.add(id);
   }
-  const email = memberEmail?.trim().toLowerCase();
-  if (email?.includes("@") && supabaseClient) {
-    try {
-      const { data: rows } = await supabaseClient.from("members").select("id").ilike("email", email);
-      for (const row of rows ?? []) {
-        const id = String((row as { id?: string }).id ?? "").trim();
-        if (id) ids.add(id);
-      }
-    } catch {
-      /* ignore */
+  if (email?.includes("@")) {
+    for (const id of await memberIdsForEmail(email)) {
+      ids.add(id);
     }
   }
   return [...ids];
@@ -300,7 +344,9 @@ export async function syncMealPlanForMember(
   ownerUserId: string,
   memberEmail?: string,
 ): Promise<{ plan: MealPlan; cloudSynced: boolean }> {
-  const lookupIds = await resolveMealPlanLookupIds(memberId, memberEmail);
+  const lookupIds = await resolveMealPlanLookupIds(memberId, memberEmail, {
+    forTrainerView: Boolean(ownerUserId.trim()),
+  });
   const trimmedMemberId = memberId.trim() || lookupIds[0] || "";
   const remote = await fetchMealPlanFromSupabase(lookupIds);
   const local = loadBestLocalMealPlan(lookupIds);

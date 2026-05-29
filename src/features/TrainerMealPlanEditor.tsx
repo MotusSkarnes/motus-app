@@ -14,6 +14,7 @@ import type { MacroTargetField } from "../app/mealPlanTargetBalance";
 import { MacroSplitPercentControls } from "../components/MacroSplitPercentControls";
 import { Calendar, Copy, HelpCircle, Plus, Save, Search, ShoppingCart, Soup, Sparkles, Trash2, Wand2, X } from "lucide-react";
 import { MEAL_PLAN_CHANGED_EVENT } from "../app/mealPlanStorage";
+import { createDefaultMealPlan } from "../app/mealPlanDefaults";
 import {
   flushMealPlanCloudSave,
   mealPlansEqual,
@@ -64,6 +65,7 @@ import "../foodbank.css";
 
 type TrainerMealPlanEditorProps = {
   memberId: string;
+  memberEmail?: string;
   memberName: string;
   memberGoal?: string;
   memberPersonalGoals?: string;
@@ -82,6 +84,7 @@ const RECIPE_PORTION_GRAMS = 100;
 
 export function TrainerMealPlanEditor({
   memberId,
+  memberEmail = "",
   memberName,
   memberGoal = "",
   memberPersonalGoals = "",
@@ -96,6 +99,7 @@ export function TrainerMealPlanEditor({
   const [plan, setPlan] = useState<MealPlan | null>(null);
   const [activeDayId, setActiveDayId] = useState("");
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [saveStatus, setSaveStatus] = useState<string | null>(null);
   const [foodPicker, setFoodPicker] = useState<FoodPickerState>(null);
   const [recipePicker, setRecipePicker] = useState<RecipePickerState>(null);
@@ -113,8 +117,9 @@ export function TrainerMealPlanEditor({
   const [recipeReadOnlyId, setRecipeReadOnlyId] = useState<string | null>(null);
   const [planWeeks, setPlanWeeks] = useState<number>(1);
   const [visibleWeekIndex, setVisibleWeekIndex] = useState(0);
-  const reloadInFlightRef = useRef(false);
-  const hasLoadedOnceRef = useRef(false);
+  const loadGenerationRef = useRef(0);
+  const foodItemsForMacrosRef = useRef(foodItemsForMacros);
+  foodItemsForMacrosRef.current = foodItemsForMacros;
   const recipesById = useMemo(() => new Map(recipeItems.map((recipe) => [recipe.id, recipe])), [recipeItems]);
 
   const applyPendingFood = useCallback(
@@ -151,44 +156,70 @@ export function TrainerMealPlanEditor({
     [memberId],
   );
 
+  const applyLoadedPlan = useCallback((rawPlan: MealPlan) => {
+    const foodItems = foodItemsForMacrosRef.current;
+    const withPending = applyPendingFood(rawPlan);
+    const hydratedRaw = hydrateMealPlanFoodNutrition(withPending, foodItems);
+    setPlan((prev) => {
+      if (!prev) return hydratedRaw;
+      const picked = pickPreferredMealPlan([prev, hydratedRaw]) ?? hydratedRaw;
+      const next = hydrateMealPlanFoodNutrition(picked, foodItems);
+      return mealPlansEqual(prev, next) ? prev : next;
+    });
+    setActiveDayId((prev) => prev || hydratedRaw.days[0]?.id || "");
+    return hydratedRaw;
+  }, [applyPendingFood]);
+
   const reload = useCallback(async () => {
-    if (!memberId.trim() || reloadInFlightRef.current) return;
-    reloadInFlightRef.current = true;
-    const showLoading = !hasLoadedOnceRef.current;
-    if (showLoading) setLoading(true);
+    const trimmedMemberId = memberId.trim();
+    if (!trimmedMemberId) {
+      setPlan(null);
+      setLoading(false);
+      setLoadError("Ingen klient valgt.");
+      return;
+    }
+    const generation = ++loadGenerationRef.current;
+    setLoading(true);
+    setLoadError(null);
     try {
-      const result = await syncMealPlanForMember(memberId, trainerOwnerUserId ?? "");
-      const withPending = applyPendingFood(result.plan);
-      const hydratedRaw = withPending
-        ? hydrateMealPlanFoodNutrition(withPending, foodItemsForMacros)
-        : withPending;
-      setPlan((prev) => {
-        if (!prev) return hydratedRaw;
-        const picked = pickPreferredMealPlan([prev, hydratedRaw]) ?? hydratedRaw;
-        const next = picked ? hydrateMealPlanFoodNutrition(picked, foodItemsForMacros) : picked;
-        return mealPlansEqual(prev, next) ? prev : next;
-      });
-      if (hydratedRaw && !mealPlansEqual(hydratedRaw, result.plan)) {
+      const result = await syncMealPlanForMember(trimmedMemberId, trainerOwnerUserId ?? "", memberEmail);
+      if (generation !== loadGenerationRef.current) return;
+      const hydratedRaw = applyLoadedPlan(result.plan);
+      if (!mealPlansEqual(hydratedRaw, result.plan)) {
         persistMealPlanLocalAndScheduleCloud(trainerOwnerUserId, hydratedRaw, { notify: false });
       }
-      setActiveDayId((prev) => prev || hydratedRaw?.days[0]?.id || "");
-      hasLoadedOnceRef.current = true;
+    } catch (error) {
+      if (generation !== loadGenerationRef.current) return;
+      console.warn("TrainerMealPlanEditor reload failed:", error);
+      const fallback = createDefaultMealPlan(trimmedMemberId);
+      applyLoadedPlan(fallback);
+      setLoadError("Kunne ikke hente matplan fra sky. Viser tom ukeplan — lagre for å opprette.");
     } finally {
-      reloadInFlightRef.current = false;
-      if (showLoading) setLoading(false);
+      if (generation === loadGenerationRef.current) {
+        setLoading(false);
+      }
     }
-  }, [memberId, trainerOwnerUserId, applyPendingFood, foodItemsForMacros]);
+  }, [memberId, memberEmail, trainerOwnerUserId, applyLoadedPlan]);
 
   useEffect(() => {
-    hasLoadedOnceRef.current = false;
+    loadGenerationRef.current += 1;
     setPlan(null);
     setActiveDayId("");
+    setLoadError(null);
     setLoading(true);
-  }, [memberId]);
+  }, [memberId, memberEmail]);
 
   useEffect(() => {
     void reload();
-  }, [reload]);
+  }, [memberId, memberEmail, trainerOwnerUserId, reload]);
+
+  useEffect(() => {
+    setPlan((prev) => {
+      if (!prev) return prev;
+      const next = hydrateMealPlanFoodNutrition(prev, foodItemsForMacros);
+      return mealPlansEqual(prev, next) ? prev : next;
+    });
+  }, [foodItemsForMacros]);
 
   useEffect(() => {
     const handler = () => void reload();
@@ -907,8 +938,19 @@ export function TrainerMealPlanEditor({
     setSaveStatus(`Perioden er satt til ${clamped} ${clamped === 1 ? "uke" : "uker"}.`);
   }
 
-  if ((loading && !hasLoadedOnceRef.current) || !plan) {
+  if (loading) {
     return <div className="rounded-xl border bg-slate-50 px-4 py-6 text-sm text-slate-600">Laster matplan …</div>;
+  }
+
+  if (!plan) {
+    return (
+      <div className="space-y-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-6 text-sm text-amber-950">
+        <p>{loadError ?? "Matplanen kunne ikke lastes."}</p>
+        <OutlineButton type="button" className="text-xs" onClick={() => void reload()}>
+          Prøv igjen
+        </OutlineButton>
+      </div>
+    );
   }
 
   return (
@@ -923,6 +965,10 @@ export function TrainerMealPlanEditor({
           Lagre matplan
         </GradientButton>
       </div>
+
+      {loadError ? (
+        <StatusMessage message={loadError} tone="error" className="!rounded-xl !px-3 !py-2 !text-xs" />
+      ) : null}
 
       {saveStatus ? (
         <StatusMessage

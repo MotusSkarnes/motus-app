@@ -621,6 +621,7 @@ export function TrainerMealPlanHubView({
               <TrainerMealPlanEditor
                 key={selectedMember.id}
                 memberId={selectedMember.id}
+                memberEmail={selectedMember.email}
                 memberName={selectedMember.name.trim() || selectedMember.email.trim() || "Kunde"}
                 memberGoal={selectedMember.goal}
                 memberPersonalGoals={selectedMember.personalGoals ?? ""}
