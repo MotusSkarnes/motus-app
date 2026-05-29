@@ -204,6 +204,34 @@ function micronutrientsFromConstituents(constituents) {
   return result;
 }
 
+function roundGrams(value) {
+  if (!Number.isFinite(value) || value <= 0) return 0;
+  return Math.round(value * 100) / 100;
+}
+
+function fattyAcidsFromConstituents(constituents) {
+  const totalFat = parseConstituent(constituents, "Fett", "g");
+  const saturatedFat = parseConstituent(constituents, "Mettet", "g");
+  const omega3 = parseConstituent(constituents, "Omega-3", "g");
+  const omega6 = parseConstituent(constituents, "Omega-6", "g");
+  const epa = parseConstituent(constituents, "C20:5n-3Eikosapentaensyre", "g");
+  const dha = parseConstituent(constituents, "C22:6n-3Dokosaheksaensyre", "g");
+  const ala = parseConstituent(constituents, "C18:3n-3AlfaLinolensyre", "g");
+  const c181 = parseConstituent(constituents, "C18:1", "g");
+  const polyunsaturatedFat = omega3 + omega6 > 0 ? omega3 + omega6 : 0;
+  const monounsaturatedFat =
+    c181 > 0 ? c181 : Math.max(0, totalFat - saturatedFat - polyunsaturatedFat);
+  return {
+    monounsaturatedFat: roundGrams(monounsaturatedFat),
+    polyunsaturatedFat: roundGrams(polyunsaturatedFat),
+    omega3: roundGrams(omega3),
+    omega6: roundGrams(omega6),
+    epa: roundGrams(epa),
+    dha: roundGrams(dha),
+    ala: roundGrams(ala),
+  };
+}
+
 function roundMicro(value, unit) {
   if (!Number.isFinite(value) || value <= 0) return 0;
   if (unit === "ug") return Math.round(value * 10) / 10;
@@ -263,6 +291,7 @@ async function main() {
   console.log(`Fetched ${foods.length} foods from Matvaretabellen`);
 
   const lookup = {};
+  const fattyLookup = {};
   const seedMatches = {};
   const unmatched = [];
 
@@ -271,9 +300,16 @@ async function main() {
     if (!name) continue;
     const key = normalizeName(name);
     const micros = micronutrientsFromConstituents(food.constituents);
-    const hasData = Object.values(micros).some((v) => v > 0);
-    if (!hasData) continue;
-    lookup[key] = { name, micros };
+    const fattyAcids = fattyAcidsFromConstituents(food.constituents);
+    const hasMicro = Object.values(micros).some((v) => v > 0);
+    const hasFatty =
+      fattyAcids.omega3 > 0 ||
+      fattyAcids.omega6 > 0 ||
+      fattyAcids.monounsaturatedFat > 0 ||
+      fattyAcids.polyunsaturatedFat > 0;
+    if (!hasMicro && !hasFatty) continue;
+    if (hasMicro) lookup[key] = { name, micros };
+    if (hasFatty) fattyLookup[key] = { name, fattyAcids };
   }
 
   for (const seedName of SEED_NAMES) {
@@ -287,21 +323,34 @@ async function main() {
       continue;
     }
     const micros = micronutrientsFromConstituents(food.constituents);
+    const fattyAcids = fattyAcidsFromConstituents(food.constituents);
     seedMatches[seedName] = {
       matvaretabellenName: food.foodName,
       micros,
+      fattyAcids,
     };
     lookup[normalizeName(seedName)] = { name: seedName, micros };
+    fattyLookup[normalizeName(seedName)] = { name: seedName, fattyAcids };
   }
 
+  const generatedAt = new Date().toISOString();
   const outPath = join(root, "src/app/foodBankMicronutrientsData.json");
   writeFileSync(
     outPath,
-    JSON.stringify({ generatedAt: new Date().toISOString(), lookup, seedMatches }, null, 0),
+    JSON.stringify({ generatedAt, lookup, seedMatches }, null, 0),
+    "utf8",
+  );
+
+  const fattyOutPath = join(root, "src/app/foodBankFattyAcidsData.json");
+  writeFileSync(
+    fattyOutPath,
+    JSON.stringify({ generatedAt, lookup: fattyLookup }, null, 0),
     "utf8",
   );
 
   console.log(`Wrote ${outPath}`);
+  console.log(`Wrote ${fattyOutPath}`);
+  console.log(`Fatty acid lookup entries: ${Object.keys(fattyLookup).length}`);
   console.log(`Lookup entries: ${Object.keys(lookup).length}`);
   console.log(`Seed matched: ${Object.keys(seedMatches).length}/${SEED_NAMES.length}`);
   if (unmatched.length) {

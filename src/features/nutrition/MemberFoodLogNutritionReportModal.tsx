@@ -13,6 +13,14 @@ import {
 } from "../../app/memberFoodLogNutritionReport";
 import type { MemberQuickFoodLogEntry } from "../../app/memberMealPlanState";
 import {
+  buildExtraFatDisplayRows,
+  buildOmegaOverviewRows,
+  EPA_DHA_DAILY_TARGET_G,
+  formatOmegaOverviewValue,
+  OMEGA3_DAILY_TARGET_G,
+  type OmegaOverviewRow,
+} from "../../app/nutritionReportFattyAcids";
+import {
   buildMacroDisplayRows,
   DEFAULT_DAILY_KCAL_TARGET,
   macroCoveragePct,
@@ -24,7 +32,7 @@ import {
   resolveNutritionReferenceContext,
 } from "../../app/personalizedNutritionReferences";
 import {
-  micronutrientRowsFromLogTotals,
+  micronutrientRowsForReport,
   type MicronutrientDailyRow,
 } from "../../app/quickFoodLogNutrition";
 import type { MealPlanTargets } from "../../app/mealPlanTypes";
@@ -80,9 +88,30 @@ function MacroReportTable({ rows }: { rows: MacroDisplayRow[] }) {
   );
 }
 
+function OmegaOverviewTable({ rows }: { rows: OmegaOverviewRow[] }) {
+  const hasData = rows.some((row) => row.value > 0 && !row.label.includes("Forhold"));
+  if (!hasData) {
+    return (
+      <p className="text-sm text-slate-600">
+        Ingen omega-data i perioden. Matvarer med fettsyredata fra Matvaretabellen gir omega-3/6-oversikt.
+      </p>
+    );
+  }
+  return (
+    <div className="motus-nutrition-report__omega-grid">
+      {rows.map((row) => (
+        <div key={row.label} className="motus-nutrition-report__omega-card">
+          <div className="motus-nutrition-report__omega-label">{row.label}</div>
+          <div className="motus-nutrition-report__omega-value">{formatOmegaOverviewValue(row)}</div>
+          {row.hint ? <p className="motus-nutrition-report__omega-hint">{row.hint}</p> : null}
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function MicroReportTable({ rows }: { rows: MicronutrientDailyRow[] }) {
-  const visible = rows.filter((row) => row.value > 0);
-  if (!visible.length) {
+  if (!rows.length) {
     return (
       <p className="text-sm text-slate-600">
         Ingen mikronæringsdata i perioden. Sjekk at matvarene i loggen har vitaminer og mineraler i matbanken.
@@ -91,7 +120,7 @@ function MicroReportTable({ rows }: { rows: MicronutrientDailyRow[] }) {
   }
   return (
     <div className="motus-nutrition-report__micro-list">
-      {visible.map((row) => {
+      {rows.map((row) => {
         const pct = Math.min(100, Math.round(row.coveragePct));
         return (
           <div key={row.key} className="motus-nutrition-report__micro-row">
@@ -172,13 +201,17 @@ export function MemberFoodLogNutritionReportModal({
   const referenceFootnote = useMemo(() => nutritionReferenceFootnote(referenceContext), [referenceContext]);
 
   const macroRows = useMemo(
-    () => buildMacroDisplayRows(displayTotals, mealPlanTargets, referenceContext),
+    () => [
+      ...buildMacroDisplayRows(displayTotals, mealPlanTargets, referenceContext),
+      ...buildExtraFatDisplayRows(displayTotals),
+    ],
     [displayTotals, mealPlanTargets, referenceContext],
   );
   const microRows = useMemo(
-    () => micronutrientRowsFromLogTotals(displayTotals, referenceContext),
+    () => micronutrientRowsForReport(displayTotals, referenceContext),
     [displayTotals, referenceContext],
   );
+  const omegaRows = useMemo(() => buildOmegaOverviewRows(displayTotals.fattyAcids), [displayTotals.fattyAcids]);
 
   const periodSummary =
     report.daysWithLogs === 0
@@ -332,6 +365,13 @@ export function MemberFoodLogNutritionReportModal({
             <section aria-label="Mikronæringsstoffer">
               <MicroReportTable rows={microRows} />
               <p className="motus-nutrition-report-modal__footnote">{referenceFootnote}</p>
+
+              <h3 className="motus-nutrition-report-modal__subheading">Omega-fettsyrer</h3>
+              <OmegaOverviewTable rows={omegaRows} />
+              <p className="motus-nutrition-report-modal__footnote">
+                Veiledende daglige referanser: omega-3 ca. {OMEGA3_DAILY_TARGET_G} g, EPA+DHA ca.{" "}
+                {EPA_DHA_DAILY_TARGET_G} g. Forhold omega-6:omega-3 under 5:1 regnes ofte gunstig.
+              </p>
             </section>
           )}
 

@@ -1,3 +1,4 @@
+import { EMPTY_FATTY_ACIDS, normalizeFattyAcids, type FoodFattyAcids } from "./foodBankFattyAcids";
 import {
   EMPTY_MICRONUTRIENTS,
   FOOD_MICRONUTRIENT_FIELDS,
@@ -14,6 +15,7 @@ export type FoodLogNutritionTotals = MacroTotals & {
   sugar: number;
   saturatedFat: number;
   sodium: number;
+  fattyAcids: FoodFattyAcids;
   micronutrients: FoodMicronutrients;
 };
 
@@ -23,6 +25,7 @@ export const EMPTY_FOOD_LOG_NUTRITION: FoodLogNutritionTotals = {
   sugar: 0,
   saturatedFat: 0,
   sodium: 0,
+  fattyAcids: { ...EMPTY_FATTY_ACIDS },
   micronutrients: { ...EMPTY_MICRONUTRIENTS },
 };
 
@@ -44,11 +47,17 @@ export function sumQuickFoodLogNutrition(logs: MemberQuickFoodLogEntry[] | undef
     const n = entry.nutritionPer100g;
     const macros = computeMacrosForGrams(n, entry.grams);
     const micros = n.micronutrients ?? EMPTY_MICRONUTRIENTS;
+    const fa = normalizeFattyAcids(n.fattyAcids);
 
     const nextMicros = { ...acc.micronutrients };
     for (const field of FOOD_MICRONUTRIENT_FIELDS) {
       nextMicros[field.key] += (micros[field.key] ?? 0) * scale;
     }
+
+    const nextFa = { ...acc.fattyAcids };
+    (Object.keys(nextFa) as Array<keyof FoodFattyAcids>).forEach((key) => {
+      nextFa[key] += fa[key] * scale;
+    });
 
     return {
       kcal: acc.kcal + macros.kcal,
@@ -59,9 +68,14 @@ export function sumQuickFoodLogNutrition(logs: MemberQuickFoodLogEntry[] | undef
       sugar: acc.sugar + n.sugar * scale,
       saturatedFat: acc.saturatedFat + n.saturatedFat * scale,
       sodium: acc.sodium + n.sodium * scale,
+      fattyAcids: nextFa,
       micronutrients: nextMicros,
     };
-  }, { ...EMPTY_FOOD_LOG_NUTRITION, micronutrients: { ...EMPTY_MICRONUTRIENTS } });
+  }, {
+    ...EMPTY_FOOD_LOG_NUTRITION,
+    fattyAcids: { ...EMPTY_FATTY_ACIDS },
+    micronutrients: { ...EMPTY_MICRONUTRIENTS },
+  });
 }
 
 export function addFoodLogNutritionTotals(a: FoodLogNutritionTotals, b: FoodLogNutritionTotals): FoodLogNutritionTotals {
@@ -78,6 +92,13 @@ export function addFoodLogNutritionTotals(a: FoodLogNutritionTotals, b: FoodLogN
     sugar: a.sugar + b.sugar,
     saturatedFat: a.saturatedFat + b.saturatedFat,
     sodium: a.sodium + b.sodium,
+    fattyAcids: (Object.keys(a.fattyAcids) as Array<keyof FoodFattyAcids>).reduce(
+      (acc, key) => {
+        acc[key] = a.fattyAcids[key] + b.fattyAcids[key];
+        return acc;
+      },
+      { ...EMPTY_FATTY_ACIDS },
+    ),
     micronutrients,
   };
 }
@@ -97,9 +118,19 @@ export function divideFoodLogNutritionTotals(totals: FoodLogNutritionTotals, div
     sugar: totals.sugar / safe,
     saturatedFat: totals.saturatedFat / safe,
     sodium: totals.sodium / safe,
+    fattyAcids: (Object.keys(totals.fattyAcids) as Array<keyof FoodFattyAcids>).reduce(
+      (acc, key) => {
+        acc[key] = totals.fattyAcids[key] / safe;
+        return acc;
+      },
+      { ...EMPTY_FATTY_ACIDS },
+    ),
     micronutrients,
   };
 }
+
+/** Vitaminer som alltid vises i rapport (også ved 0 inntak). */
+export const REPORT_ALWAYS_VISIBLE_MICRONUTRIENTS: FoodMicronutrientKey[] = ["vitaminD"];
 
 export function micronutrientRowsFromLogTotals(
   totals: FoodLogNutritionTotals,
@@ -120,4 +151,13 @@ export function micronutrientRowsFromLogTotals(
       coveragePct,
     };
   });
+}
+
+export function micronutrientRowsForReport(
+  totals: FoodLogNutritionTotals,
+  referenceContext?: Pick<NutritionReferenceContext, "micronutrientDaily">,
+): MicronutrientDailyRow[] {
+  const rows = micronutrientRowsFromLogTotals(totals, referenceContext);
+  const always = new Set(REPORT_ALWAYS_VISIBLE_MICRONUTRIENTS);
+  return rows.filter((row) => row.value > 0 || always.has(row.key));
 }

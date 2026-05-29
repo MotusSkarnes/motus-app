@@ -1,5 +1,10 @@
 import { formatMicronutrientValue } from "./foodBankMicronutrients";
 import {
+  buildExtraFatDisplayRows,
+  buildOmegaOverviewRows,
+  formatOmegaOverviewValue,
+} from "./nutritionReportFattyAcids";
+import {
   buildMacroDisplayRows,
   formatMacroDisplayValue,
   macroCoveragePct,
@@ -51,12 +56,32 @@ function macroTableHtml(rows: MacroDisplayRow[]): string {
   </table>`;
 }
 
+function omegaTableHtml(totals: FoodLogNutritionTotals): string {
+  const rows = buildOmegaOverviewRows(totals.fattyAcids);
+  const hasData = rows.some((row) => row.value > 0 && !row.label.includes("Forhold"));
+  if (!hasData) {
+    return "<p class=\"muted\">Ingen omega-data i perioden.</p>";
+  }
+  const body = rows
+    .map(
+      (row) => `<tr>
+        <td>${escapeHtml(row.label)}</td>
+        <td><strong>${escapeHtml(formatOmegaOverviewValue(row))}</strong></td>
+        <td>${escapeHtml(row.hint ?? "")}</td>
+      </tr>`,
+    )
+    .join("");
+  return `<table class="report-table">
+    <thead><tr><th>Omega / fettsyre</th><th>Inntatt</th><th>Merknad</th></tr></thead>
+    <tbody>${body}</tbody>
+  </table>`;
+}
+
 function microTableHtml(rows: MicronutrientDailyRow[]): string {
-  const visible = rows.filter((row) => row.value > 0);
-  if (!visible.length) {
+  if (!rows.length) {
     return "<p class=\"muted\">Ingen mikronæringsdata i perioden.</p>";
   }
-  const body = visible
+  const body = rows
     .map(
       (row) => `<tr>
         <td>${escapeHtml(row.label)}</td>
@@ -84,7 +109,10 @@ function dailyKcalHtml(daily: NutritionReportPrintPayload["dailyKcal"]): string 
 }
 
 export function buildNutritionReportPrintHtml(payload: NutritionReportPrintPayload): string {
-  const macroRows = buildMacroDisplayRows(payload.totals, payload.mealPlanTargets, payload.referenceContext);
+  const macroRows = [
+    ...buildMacroDisplayRows(payload.totals, payload.mealPlanTargets, payload.referenceContext),
+    ...buildExtraFatDisplayRows(payload.totals),
+  ];
   const generated = payload.generatedAt ?? new Date().toLocaleString("nb-NO");
   const referenceNote = payload.referenceContext
     ? nutritionReferenceFootnote(payload.referenceContext)
@@ -158,6 +186,9 @@ export function buildNutritionReportPrintHtml(payload: NutritionReportPrintPaylo
   <h2>Mikronæringsstoffer</h2>
   <p class="muted">${escapeHtml(referenceNote)}</p>
   ${microTableHtml(payload.microRows)}
+
+  <h2>Omega-fettsyrer</h2>
+  ${omegaTableHtml(payload.totals)}
 
   ${dailyKcalHtml(payload.dailyKcal)}
 

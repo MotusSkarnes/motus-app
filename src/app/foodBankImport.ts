@@ -1,3 +1,4 @@
+import { fattyAcidsFromMatvaretabellen } from "./foodBankFattyAcids";
 import {
   micronutrientCsvHeaderColumns,
   micronutrientsFromCsvRow,
@@ -149,17 +150,22 @@ export function mapMatvaretabellenFood(food: MatvaretabellenFood, trainerName: s
     imageEmoji: meta.emoji,
     isCustom: false,
     isEdited: false,
-    nutritionPer100g: {
-      kcal: food.calories?.quantity ?? 0,
-      protein: constituentAmount(food, NUTRIENT_IDS.protein),
-      carbs: constituentAmount(food, NUTRIENT_IDS.carbs),
-      fat: constituentAmount(food, NUTRIENT_IDS.fat),
-      fiber: constituentAmount(food, NUTRIENT_IDS.fiber),
-      sugar: constituentAmount(food, NUTRIENT_IDS.sugar),
-      saturatedFat: constituentAmount(food, NUTRIENT_IDS.saturatedFat),
-      sodium: constituentAmount(food, NUTRIENT_IDS.sodium),
-      micronutrients: micronutrientsFromMatvaretabellen(food.constituents),
-    },
+    nutritionPer100g: (() => {
+      const fat = constituentAmount(food, NUTRIENT_IDS.fat);
+      const saturatedFat = constituentAmount(food, NUTRIENT_IDS.saturatedFat);
+      return {
+        kcal: food.calories?.quantity ?? 0,
+        protein: constituentAmount(food, NUTRIENT_IDS.protein),
+        carbs: constituentAmount(food, NUTRIENT_IDS.carbs),
+        fat,
+        fiber: constituentAmount(food, NUTRIENT_IDS.fiber),
+        sugar: constituentAmount(food, NUTRIENT_IDS.sugar),
+        saturatedFat,
+        sodium: constituentAmount(food, NUTRIENT_IDS.sodium),
+        fattyAcids: fattyAcidsFromMatvaretabellen(food.constituents, fat, saturatedFat),
+        micronutrients: micronutrientsFromMatvaretabellen(food.constituents),
+      };
+    })(),
   };
 }
 

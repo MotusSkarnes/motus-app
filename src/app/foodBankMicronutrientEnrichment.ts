@@ -1,3 +1,4 @@
+import { enrichFoodNutritionFattyAcids } from "./foodBankFattyAcidEnrichment";
 import type { FoodItem, FoodNutrition } from "./foodBankTypes";
 import {
   hasMicronutrientData,
@@ -30,15 +31,18 @@ export function lookupMicronutrientsForFoodName(name: string): FoodMicronutrient
 }
 
 export function enrichFoodNutrition(nutrition: FoodNutrition, foodName: string): FoodNutrition {
-  const normalized = normalizeMicronutrients(nutrition.micronutrients);
+  let next = nutrition;
+  const normalized = normalizeMicronutrients(next.micronutrients);
   if (hasMicronutrientData(normalized)) {
-    return { ...nutrition, micronutrients: normalized };
+    next = { ...next, micronutrients: normalized };
+  } else {
+    const fromLookup = lookupMicronutrientsForFoodName(foodName);
+    next =
+      fromLookup && hasMicronutrientData(fromLookup)
+        ? { ...next, micronutrients: fromLookup }
+        : { ...next, micronutrients: normalized };
   }
-  const fromLookup = lookupMicronutrientsForFoodName(foodName);
-  if (!fromLookup || !hasMicronutrientData(fromLookup)) {
-    return { ...nutrition, micronutrients: normalized };
-  }
-  return { ...nutrition, micronutrients: fromLookup };
+  return enrichFoodNutritionFattyAcids(next, foodName);
 }
 
 export function enrichFoodItem(item: FoodItem): FoodItem {

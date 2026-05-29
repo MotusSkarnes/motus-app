@@ -6,6 +6,7 @@ export type FoodCategoryId =
   | "frukt-baer"
   | "meieriprodukter";
 
+import type { FoodFattyAcids } from "./foodBankFattyAcids";
 import type { FoodMicronutrients } from "./foodBankMicronutrients";
 
 export type FoodSource = "matvaretabell" | "usda" | "egen";
@@ -19,6 +20,8 @@ export type FoodNutrition = {
   sugar: number;
   saturatedFat: number;
   sodium: number;
+  /** Enumettet / flerumettet / omega per 100 g (Matvaretabellen). */
+  fattyAcids?: FoodFattyAcids;
   /** Vitaminer og mineraler per 100 g (fra Matvaretabellen, CSV eller manuell registrering). */
   micronutrients?: FoodMicronutrients;
 };
