@@ -12262,49 +12262,121 @@ button.motus-progress-status-banner {
   color: #64748b;
 }
 
-.motus-inspo-quick-section--row .motus-inspo-quick-head {
-  display: none;
+/* Utforsk tema-rad (mockup: hvite kort, farget sirkel, etikett under) */
+.motus-inspo-topic-nav {
+  min-width: 0;
 }
 
-.motus-inspo-quick-grid--topics {
+.motus-inspo-topic-nav-row {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 8px;
+  align-items: stretch;
+}
+
+.motus-inspo-topic-tile {
   display: flex;
-  flex-wrap: nowrap;
+  flex-direction: column;
   align-items: center;
-  gap: 6px;
-  overflow-x: auto;
-  overflow-y: hidden;
-  -webkit-overflow-scrolling: touch;
-  scrollbar-width: none;
-  padding-bottom: 2px;
+  justify-content: flex-start;
+  gap: 8px;
+  min-width: 0;
+  padding: 10px 4px 8px;
+  border-radius: 16px;
+  background: #ffffff;
+  border: 1px solid rgba(15, 23, 42, 0.07);
+  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.06);
+  cursor: pointer;
+  transition: transform 140ms ease, border-color 140ms ease, box-shadow 140ms ease;
 }
 
-.motus-inspo-quick-grid--topics::-webkit-scrollbar {
-  display: none;
+.motus-inspo-topic-tile:hover {
+  border-color: rgba(48, 227, 190, 0.45);
+  box-shadow: 0 6px 18px rgba(15, 23, 42, 0.08);
 }
 
-.motus-inspo-quick-grid--topics .motus-inspo-quick-pill {
-  flex: 0 0 auto;
-  flex-direction: row;
-  gap: 6px;
-  min-height: 0;
-  padding: 5px 10px 5px 5px;
+.motus-inspo-topic-tile.is-active,
+.motus-inspo-topic-tile:focus-visible {
+  border-color: rgba(48, 227, 190, 0.65);
+  box-shadow: 0 0 0 3px rgba(48, 227, 190, 0.2), 0 6px 18px rgba(15, 23, 42, 0.08);
+}
+
+.motus-inspo-topic-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  flex-shrink: 0;
   border-radius: 999px;
+  color: #ffffff;
 }
 
-.motus-inspo-quick-grid--topics .motus-inspo-quick-pill-icon {
-  width: 26px;
-  height: 26px;
-  border-radius: 8px;
+.motus-inspo-topic-icon-glyph {
+  width: 20px;
+  height: 20px;
 }
 
-.motus-inspo-quick-grid--topics .motus-inspo-quick-pill-label {
-  font-size: 12px;
+.motus-inspo-topic-label {
+  font-size: 11px;
   font-weight: 700;
+  line-height: 1.15;
+  text-align: center;
+  color: #0f172a;
+  letter-spacing: -0.01em;
 }
 
-.motus-inspo-quick-pill--slate .motus-inspo-quick-pill-icon {
-  background: #e2e8f0;
-  color: #334155;
+.motus-inspo-topic-icon--mint {
+  background: linear-gradient(145deg, #30e3be 0%, #1fc9a8 100%);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.35);
+}
+
+.motus-inspo-topic-icon--pink {
+  background: linear-gradient(145deg, #d91278 0%, #ff5fa6 100%);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.35);
+}
+
+.motus-inspo-topic-icon--purple {
+  background: linear-gradient(145deg, #7c3aed 0%, #a855f7 100%);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.35);
+}
+
+.motus-inspo-topic-icon--mintSoft {
+  background: linear-gradient(145deg, #6ff0d4 0%, #30e3be 100%);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.35);
+}
+
+.motus-inspo-topic-icon--orange {
+  background: linear-gradient(145deg, #fb923c 0%, #f97316 100%);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.35);
+}
+
+.motus-inspo-topic-icon--all {
+  background: #f1f5f9;
+  color: #64748b;
+  box-shadow: inset 0 0 0 1px rgba(15, 23, 42, 0.06);
+}
+
+@media (max-width: 520px) {
+  .motus-inspo-topic-nav-row {
+    display: flex;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    overflow-y: hidden;
+    gap: 8px;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    padding-bottom: 2px;
+  }
+
+  .motus-inspo-topic-nav-row::-webkit-scrollbar {
+    display: none;
+  }
+
+  .motus-inspo-topic-tile {
+    flex: 0 0 4.65rem;
+    width: 4.65rem;
+  }
 }
 
 .motus-inspo-news-showcase {

@@ -39,7 +39,7 @@ export type InspoThemeConfig = {
   label: string;
   description: string;
   icon: LucideIcon;
-  tone: "mint" | "pink" | "mintSoft" | "pinkSoft" | "slate" | "all";
+  tone: "mint" | "pink" | "mintSoft" | "purple" | "orange" | "all";
   showInTopNav?: boolean;
   match: (item: InspoHubItem) => boolean;
 };
@@ -94,7 +94,7 @@ export const INSPO_TOP_NAV_THEMES: readonly InspoThemeConfig[] = [
     id: "motivation",
     label: "Motivasjon",
     icon: Brain,
-    tone: "pinkSoft",
+    tone: "purple",
     description: "Råd, vaner og mental styrke.",
     showInTopNav: true,
     match: (item) => item.category === "tips",
@@ -112,7 +112,7 @@ export const INSPO_TOP_NAV_THEMES: readonly InspoThemeConfig[] = [
     id: "recovery",
     label: "Restitusjon",
     icon: Moon,
-    tone: "slate",
+    tone: "orange",
     description: "Søvn, restitusjon og skadeforebygging.",
     showInTopNav: true,
     match: (item) =>

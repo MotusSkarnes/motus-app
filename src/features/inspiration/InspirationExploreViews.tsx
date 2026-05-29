@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { ArrowLeft, ArrowRight, Flame, Quote } from "lucide-react";
+import { ArrowLeft, ArrowRight, Flame, LayoutGrid, Quote } from "lucide-react";
 import {
   buildExploreBentoTiles,
   filterItemsForInspoTheme,
@@ -235,8 +235,8 @@ export function InspirationExploreTopNav({
   onSelectTheme: (themeId: InspoThemeId) => void;
 }) {
   return (
-    <section className="motus-inspo-quick-section motus-inspo-quick-section--row">
-      <div className="motus-inspo-quick-grid motus-inspo-quick-grid--topics">
+    <nav className="motus-inspo-topic-nav" aria-label="Utforsk temaer">
+      <div className="motus-inspo-topic-nav-row">
         {INSPO_TOP_NAV_THEMES.map((theme) => {
           const Icon = theme.icon;
           const isActive = activeThemeId === theme.id;
@@ -245,30 +245,26 @@ export function InspirationExploreTopNav({
               key={theme.id}
               type="button"
               onClick={() => onSelectTheme(theme.id)}
-              className={`motus-inspo-quick-pill motus-inspo-quick-pill--${theme.tone} motus-pressable ${
-                isActive ? "is-active" : ""
-              }`}
+              className={`motus-inspo-topic-tile motus-pressable ${isActive ? "is-active" : ""}`}
             >
-              <span className="motus-inspo-quick-pill-icon" aria-hidden>
-                <Icon className="h-4 w-4" strokeWidth={2} />
+              <span className={`motus-inspo-topic-icon motus-inspo-topic-icon--${theme.tone}`} aria-hidden>
+                <Icon className="motus-inspo-topic-icon-glyph" strokeWidth={2.25} />
               </span>
-              <span className="motus-inspo-quick-pill-label">{theme.label}</span>
+              <span className="motus-inspo-topic-label">{theme.label}</span>
             </button>
           );
         })}
         <button
           type="button"
           onClick={() => onSelectTheme("all")}
-          className={`motus-inspo-quick-pill motus-inspo-quick-pill--all motus-pressable ${
-            activeThemeId === "all" ? "is-active" : ""
-          }`}
+          className={`motus-inspo-topic-tile motus-pressable ${activeThemeId === "all" ? "is-active" : ""}`}
         >
-          <span className="motus-inspo-quick-pill-icon" aria-hidden>
-            <ArrowRight className="h-4 w-4" strokeWidth={2} />
+          <span className="motus-inspo-topic-icon motus-inspo-topic-icon--all" aria-hidden>
+            <LayoutGrid className="motus-inspo-topic-icon-glyph" strokeWidth={2.25} />
           </span>
-          <span className="motus-inspo-quick-pill-label">Se alle</span>
+          <span className="motus-inspo-topic-label">Se alle</span>
         </button>
       </div>
-    </section>
+    </nav>
   );
 }

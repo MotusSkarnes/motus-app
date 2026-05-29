@@ -2172,7 +2172,7 @@ export function InspirationHub({
       {showExploreOverview ? (
         <header className="motus-inspo-page-head">
           <h1 className="motus-inspo-page-title">Utforsk</h1>
-          <p className="motus-inspo-page-subtitle">Finn programmer, tips og kunnskap som passer deg.</p>
+          <p className="motus-inspo-page-subtitle">Inspirasjon, kunnskap og treningsglede – alt på ett sted.</p>
         </header>
       ) : null}
 
