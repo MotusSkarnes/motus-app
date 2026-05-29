@@ -58,10 +58,6 @@ function macroTableHtml(rows: MacroDisplayRow[]): string {
 
 function omegaTableHtml(totals: FoodLogNutritionTotals): string {
   const rows = buildOmegaOverviewRows(totals.fattyAcids);
-  const hasData = rows.some((row) => row.value > 0 && !row.label.includes("Forhold"));
-  if (!hasData) {
-    return "<p class=\"muted\">Ingen omega-data i perioden.</p>";
-  }
   const body = rows
     .map(
       (row) => `<tr>

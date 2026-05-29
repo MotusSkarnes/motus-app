@@ -129,9 +129,6 @@ export function divideFoodLogNutritionTotals(totals: FoodLogNutritionTotals, div
   };
 }
 
-/** Vitaminer som alltid vises i rapport (også ved 0 inntak). */
-export const REPORT_ALWAYS_VISIBLE_MICRONUTRIENTS: FoodMicronutrientKey[] = ["vitaminD"];
-
 export function micronutrientRowsFromLogTotals(
   totals: FoodLogNutritionTotals,
   referenceContext?: Pick<NutritionReferenceContext, "micronutrientDaily">,
@@ -153,11 +150,10 @@ export function micronutrientRowsFromLogTotals(
   });
 }
 
+/** Alle mikronæringsstoffer for rapport — inkl. 0 inntak. */
 export function micronutrientRowsForReport(
   totals: FoodLogNutritionTotals,
   referenceContext?: Pick<NutritionReferenceContext, "micronutrientDaily">,
 ): MicronutrientDailyRow[] {
-  const rows = micronutrientRowsFromLogTotals(totals, referenceContext);
-  const always = new Set(REPORT_ALWAYS_VISIBLE_MICRONUTRIENTS);
-  return rows.filter((row) => row.value > 0 || always.has(row.key));
+  return micronutrientRowsFromLogTotals(totals, referenceContext);
 }

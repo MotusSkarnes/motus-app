@@ -89,14 +89,6 @@ function MacroReportTable({ rows }: { rows: MacroDisplayRow[] }) {
 }
 
 function OmegaOverviewTable({ rows }: { rows: OmegaOverviewRow[] }) {
-  const hasData = rows.some((row) => row.value > 0 && !row.label.includes("Forhold"));
-  if (!hasData) {
-    return (
-      <p className="text-sm text-slate-600">
-        Ingen omega-data i perioden. Matvarer med fettsyredata fra Matvaretabellen gir omega-3/6-oversikt.
-      </p>
-    );
-  }
   return (
     <div className="motus-nutrition-report__omega-grid">
       {rows.map((row) => (
@@ -111,13 +103,6 @@ function OmegaOverviewTable({ rows }: { rows: OmegaOverviewRow[] }) {
 }
 
 function MicroReportTable({ rows }: { rows: MicronutrientDailyRow[] }) {
-  if (!rows.length) {
-    return (
-      <p className="text-sm text-slate-600">
-        Ingen mikronæringsdata i perioden. Sjekk at matvarene i loggen har vitaminer og mineraler i matbanken.
-      </p>
-    );
-  }
   return (
     <div className="motus-nutrition-report__micro-list">
       {rows.map((row) => {
