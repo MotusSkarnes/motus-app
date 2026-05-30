@@ -8,7 +8,7 @@ import {
   type MemberQuickFoodLogEntry,
 } from "../../app/memberMealPlanState";
 import { loadMemberMealPlanState } from "../../app/memberMealPlanState";
-import { persistMemberMealPlanStateLocalAndScheduleCloud, syncMemberMealPlanState } from "../../app/memberMealPlanStateCloud";
+import { syncMemberMealPlanState, updateMemberMealPlanStateLocalAndScheduleCloud } from "../../app/memberMealPlanStateCloud";
 import { MEAL_PLAN_STATE_CHANGED_EVENT } from "../../app/memberMealPlanState";
 import type { MealPlanTargets } from "../../app/mealPlanTypes";
 import { GradientButton } from "../../app/ui";
@@ -39,7 +39,7 @@ export function LogMealPanel({ memberId, mealPlanTargets, onRefreshFoodBank }: L
   const [state, setState] = useState<MemberMealPlanState>(() => loadMemberMealPlanState(memberId));
 
   const dateKey = todayKey();
-  const logsToday = state.quickFoodLogs[dateKey] ?? [];
+  const logsToday = useMemo(() => state.quickFoodLogs[dateKey] ?? [], [dateKey, state.quickFoodLogs]);
   const hasLogs = logsToday.length > 0;
 
   useEffect(() => {
@@ -79,16 +79,15 @@ export function LogMealPanel({ memberId, mealPlanTargets, onRefreshFoodBank }: L
   }, [logsToday]);
 
   const persist = useCallback(
-    (nextLogs: MemberQuickFoodLogEntry[]) => {
-      const nextState: MemberMealPlanState = {
-        ...state,
-        quickFoodLogs: { ...state.quickFoodLogs, [dateKey]: nextLogs },
+    (updateLogs: (currentLogs: MemberQuickFoodLogEntry[]) => MemberQuickFoodLogEntry[]) => {
+      const nextState = updateMemberMealPlanStateLocalAndScheduleCloud(memberId, (current) => ({
+        ...current,
+        quickFoodLogs: { ...current.quickFoodLogs, [dateKey]: updateLogs(current.quickFoodLogs[dateKey] ?? []) },
         updatedAt: new Date().toISOString(),
-      };
+      }));
       setState(nextState);
-      persistMemberMealPlanStateLocalAndScheduleCloud(memberId, nextState);
     },
-    [dateKey, memberId, state],
+    [dateKey, memberId],
   );
 
   const handleLogFood = useCallback(
@@ -102,19 +101,19 @@ export function LogMealPanel({ memberId, mealPlanTargets, onRefreshFoodBank }: L
         loggedAt: new Date().toISOString(),
         nutritionPer100g: { ...draft.food.nutritionPer100g },
       };
-      persist([entry, ...logsToday]);
+      persist((currentLogs) => [entry, ...currentLogs]);
       const slotLabel = memberMealSlotLabel(mealSlotId);
       setStatus(`${draft.food.name} logget til ${slotLabel.toLowerCase()}.`);
       setOpen(hasLogs);
     },
-    [hasLogs, logsToday, mealSlotId, persist],
+    [hasLogs, mealSlotId, persist],
   );
 
   const removeLog = useCallback(
     (entryId: string) => {
-      persist(logsToday.filter((entry) => entry.id !== entryId));
+      persist((currentLogs) => currentLogs.filter((entry) => entry.id !== entryId));
     },
-    [logsToday, persist],
+    [persist],
   );
 
   if (!open && !hasLogs) {

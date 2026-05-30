@@ -99,11 +99,20 @@ export function persistMemberMealPlanStateLocalAndScheduleCloud(memberId: string
   scheduleMemberMealPlanStateCloudSave(memberId, state);
 }
 
+export function updateMemberMealPlanStateLocalAndScheduleCloud(
+  memberId: string,
+  update: (current: MemberMealPlanState) => MemberMealPlanState,
+): MemberMealPlanState {
+  const nextState = update(loadMemberMealPlanState(memberId));
+  persistMemberMealPlanStateLocalAndScheduleCloud(memberId, nextState);
+  return nextState;
+}
+
 export async function syncMemberMealPlanState(memberId: string): Promise<MemberMealPlanState> {
   const lookupIds = await readLinkedMealPlanMemberIds(memberId);
   const primaryId = memberId.trim() || lookupIds[0] || "";
-  const local = loadMemberMealPlanState(primaryId);
   const remote = await fetchMemberMealPlanStateFromSupabase(lookupIds);
+  const local = loadMemberMealPlanState(primaryId);
   if (!remote) return local;
   const merged = mergeMemberMealPlanStates(local, remote);
   saveMemberMealPlanState(primaryId, merged, { notify: false });

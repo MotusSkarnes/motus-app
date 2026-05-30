@@ -4,7 +4,7 @@ import { defaultPortionGramsForFood } from "../../app/foodPortionDefaults";
 import { formatMacro, type FoodItem } from "../../app/foodBankTypes";
 import { toIsoDateKey, type MemberQuickFoodLogEntry } from "../../app/memberMealPlanState";
 import { loadMemberMealPlanState } from "../../app/memberMealPlanState";
-import { persistMemberMealPlanStateLocalAndScheduleCloud, syncMemberMealPlanState } from "../../app/memberMealPlanStateCloud";
+import { syncMemberMealPlanState, updateMemberMealPlanStateLocalAndScheduleCloud } from "../../app/memberMealPlanStateCloud";
 import { useFoodBankItems } from "../../app/useFoodBankItems";
 import { useInspirationRecipeItems } from "../../app/inspirationRecipeItems";
 import { computeRecipeMacros } from "../../app/recipeMacros";
@@ -68,19 +68,18 @@ export function MemberQuickFoodLogPanel({ memberId, readOnly = false, onRefreshF
   }, [selectedFood]);
 
   const persist = useCallback(
-    (nextLogs: MemberQuickFoodLogEntry[]) => {
-      const nextState = {
-        ...state,
+    (updateLogs: (currentLogs: MemberQuickFoodLogEntry[]) => MemberQuickFoodLogEntry[]) => {
+      const nextState = updateMemberMealPlanStateLocalAndScheduleCloud(memberId, (current) => ({
+        ...current,
         quickFoodLogs: {
-          ...state.quickFoodLogs,
-          [key]: nextLogs,
+          ...current.quickFoodLogs,
+          [key]: updateLogs(current.quickFoodLogs[key] ?? []),
         },
         updatedAt: new Date().toISOString(),
-      };
+      }));
       setState(nextState);
-      persistMemberMealPlanStateLocalAndScheduleCloud(memberId, nextState);
     },
-    [key, memberId, state],
+    [key, memberId],
   );
 
   const addFood = useCallback(() => {
@@ -98,9 +97,9 @@ export function MemberQuickFoodLogPanel({ memberId, readOnly = false, onRefreshF
       loggedAt: new Date().toISOString(),
       nutritionPer100g: { ...selectedFood.nutritionPer100g },
     };
-    persist([entry, ...logs]);
+    persist((currentLogs) => [entry, ...currentLogs]);
     setStatus(`${selectedFood.name} logget.`);
-  }, [gramsInput, logs, persist, selectedFood]);
+  }, [gramsInput, persist, selectedFood]);
 
   const addRecipe = useCallback(
     (source: "recipe" | "ai") => {
@@ -130,18 +129,17 @@ export function MemberQuickFoodLogPanel({ memberId, readOnly = false, onRefreshF
           micronutrients: { ...macros.perServingMicronutrients },
         },
       };
-      persist([entry, ...logs]);
+      persist((currentLogs) => [entry, ...currentLogs]);
       setStatus(source === "ai" ? `AI la til ${picked.title}.` : `${picked.title} logget.`);
     },
-    [foodItems, logs, persist, recipes],
+    [foodItems, persist, recipes],
   );
 
   const removeLog = useCallback(
     (entryId: string) => {
-      const next = logs.filter((entry) => entry.id !== entryId);
-      persist(next);
+      persist((currentLogs) => currentLogs.filter((entry) => entry.id !== entryId));
     },
-    [logs, persist],
+    [persist],
   );
 
   return (
