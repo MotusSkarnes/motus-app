@@ -39,7 +39,7 @@ export function LogMealPanel({ memberId, mealPlanTargets, onRefreshFoodBank }: L
   const [state, setState] = useState<MemberMealPlanState>(() => loadMemberMealPlanState(memberId));
 
   const dateKey = todayKey();
-  const logsToday = state.quickFoodLogs[dateKey] ?? [];
+  const logsToday = useMemo(() => state.quickFoodLogs[dateKey] ?? [], [dateKey, state.quickFoodLogs]);
   const hasLogs = logsToday.length > 0;
 
   useEffect(() => {
