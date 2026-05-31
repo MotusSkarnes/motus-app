@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { formatLastSessionSetLabel, pickLastSetFromLastSession } from "./lastSessionSetDisplay";
+import {
+  formatLastSessionSetLabel,
+  formatLatestLastSessionSetLabel,
+  pickLastSetFromLastSession,
+} from "./lastSessionSetDisplay";
 
 const library = [
   {
@@ -33,5 +37,16 @@ describe("formatLastSessionSetLabel", () => {
     expect(formatLastSessionSetLabel("Benkpress", { weight: "80", reps: "6" }, library, 3)).toBe(
       "Sett 3 · 6 reps · 80 kg",
     );
+  });
+});
+
+describe("formatLatestLastSessionSetLabel", () => {
+  it("formats the highest-numbered set from the previous session", () => {
+    const map = new Map([
+      [1, { weight: "60", reps: "10" }],
+      [2, { weight: "75", reps: "8" }],
+    ]);
+
+    expect(formatLatestLastSessionSetLabel("Benkpress", map, library)).toBe("Sett 2 · 8 reps · 75 kg");
   });
 });

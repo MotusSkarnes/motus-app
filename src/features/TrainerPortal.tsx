@@ -6393,20 +6393,22 @@ function pickFirstName(value: unknown): string {
                                         </>
                                       ) : null}
                                       {isCardio ? (
-                                        <CardioIntensitySelect
-                                          className="sm:col-span-2 xl:col-span-3"
-                                          value={inferCardioIntensityFromExercise(item) ?? cardioIntervalIntensity}
-                                          onChange={(level) => applyCardioIntensityLevelToDraft(level, { exerciseId: item.id })}
-                                          hint="Klassifisering — fart, stigning og puls bestemmer du for kunden."
-                                        />
-                                        <div className="space-y-1">
-                                          <div className="text-[11px] font-medium text-slate-500">Puls (% av makspuls)</div>
-                                          <TextInput
-                                            value={item.targetHrPercent ?? ""}
-                                            onChange={(e) => updateDraftExercise(item.id, "targetHrPercent", e.target.value)}
-                                            placeholder="f.eks. 85–90"
+                                        <>
+                                          <CardioIntensitySelect
+                                            className="sm:col-span-2 xl:col-span-3"
+                                            value={inferCardioIntensityFromExercise(item) ?? cardioIntervalIntensity}
+                                            onChange={(level) => applyCardioIntensityLevelToDraft(level, { exerciseId: item.id })}
+                                            hint="Klassifisering — fart, stigning og puls bestemmer du for kunden."
                                           />
-                                        </div>
+                                          <div className="space-y-1">
+                                            <div className="text-[11px] font-medium text-slate-500">Puls (% av makspuls)</div>
+                                            <TextInput
+                                              value={item.targetHrPercent ?? ""}
+                                              onChange={(e) => updateDraftExercise(item.id, "targetHrPercent", e.target.value)}
+                                              placeholder="f.eks. 85–90"
+                                            />
+                                          </div>
+                                        </>
                                       ) : null}
                                     </>
                                   }
