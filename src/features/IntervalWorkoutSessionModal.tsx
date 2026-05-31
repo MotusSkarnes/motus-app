@@ -1,4 +1,4 @@
-import { Check } from "lucide-react";
+import { ArrowLeft, Check } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { MOTUS } from "../app/data";
@@ -59,13 +59,13 @@ function computeIntervalPhaseBadge(tone: IntervalTimerStep["tone"], headlineForB
 function intervalTimerBadgeToneClass(tone: IntervalTimerStep["tone"]): string {
   switch (tone) {
     case "warmup":
-      return "bg-teal-500/35 text-teal-50 ring-1 ring-teal-300/50";
+      return "bg-teal-100 text-teal-800 ring-1 ring-teal-200";
     case "cooldown":
-      return "bg-sky-500/35 text-sky-50 ring-1 ring-sky-300/45";
+      return "bg-sky-100 text-sky-800 ring-1 ring-sky-200";
     case "rest":
-      return "bg-amber-500/40 text-amber-950 ring-1 ring-amber-200/50";
+      return "bg-amber-100 text-amber-900 ring-1 ring-amber-200";
     default:
-      return "bg-white/20 text-white ring-1 ring-white/35";
+      return "bg-slate-100 text-slate-800 ring-1 ring-slate-200";
   }
 }
 
@@ -441,50 +441,127 @@ export function IntervalWorkoutSessionModal({
     (intervalProgramSteps.length > 0 && stepIndex >= intervalProgramSteps.length) ||
     (hasStartedRef.current && !isRunning && intervalProgramSteps.length > 0 && remainingSeconds <= 0 && stepIndex >= intervalProgramSteps.length - 1);
 
+  const progressDegrees = (progressPercent / 100) * 360;
+  const nextStep = intervalProgramSteps[stepIndex + 1] ?? null;
   const intervalFooterBtn =
     "w-full !min-h-8 !h-8 !px-1.5 !py-1 !text-[10px] !font-semibold !leading-tight sm:!min-h-9 sm:!text-[11px]";
 
+  function handleLeave() {
+    resetTimer();
+    onClose();
+  }
+
   const modal = (
-    <div className="motus-workout-focus motus-modal-insets fixed inset-0 z-[10030] overscroll-contain bg-black/90">
-      <div className="motus-workout-focus-panel mx-auto flex h-full w-full max-w-2xl flex-col overflow-hidden bg-slate-950 text-white shadow-2xl sm:rounded-3xl">
-        <div className="border-b border-white/10 px-3 pb-2 pt-[max(0.5rem,env(safe-area-inset-top))] sm:px-5 sm:pb-4 sm:pt-4">
-          <div className="flex items-start justify-between gap-3">
-            <div className="min-w-0">
-              <div className="text-[10px] font-black uppercase tracking-[0.14em] motus-brand-on-dark sm:text-xs">Intervallvindu</div>
-              <div className="truncate text-lg font-bold tracking-tight text-white sm:text-xl">{program.title}</div>
-              <div className="mt-0.5 truncate text-[11px] text-white/65 sm:text-xs">{program.goal || "Nedtelling per intervallsteg"}</div>
-              {isRunning ? (
-                <div className="mt-2 inline-flex items-center gap-1.5 rounded-full border border-teal-400/40 bg-teal-500/15 px-2 py-0.5 text-[10px] font-semibold text-teal-100">
-                  <Check className="h-3 w-3 shrink-0" aria-hidden />
-                  {isPaused ? "Pause" : "Nedtelling pågår"}
-                </div>
-              ) : null}
+    <div className="motus-workout-focus motus-modal-insets fixed inset-0 z-[10030] overscroll-contain bg-black">
+      <div className="motus-workout-focus-panel mx-auto flex h-full w-full max-w-3xl flex-col overflow-hidden bg-slate-950 text-white shadow-2xl sm:rounded-3xl">
+        <div className="relative overflow-hidden border-b border-white/10 bg-slate-900 px-3 pb-2 pt-[max(0.5rem,env(safe-area-inset-top))] sm:px-5 sm:pb-4 sm:pt-5">
+          <div className="flex items-center justify-between gap-2 sm:gap-3">
+            <button
+              type="button"
+              onClick={handleLeave}
+              className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white/10 text-white transition hover:bg-white/15 sm:h-10 sm:w-10"
+              aria-label="Lukk intervalløkt"
+            >
+              <ArrowLeft className="h-4 w-4 sm:h-5 sm:w-5" aria-hidden />
+            </button>
+            <div className="min-w-0 flex-1 text-center">
+              <div className="text-[10px] font-black uppercase tracking-[0.14em] motus-brand-on-dark sm:text-xs sm:tracking-[0.16em]">
+                Intervalløkt
+              </div>
+              <div className="mt-0.5 truncate text-sm font-bold tracking-tight text-white sm:mt-1 sm:text-lg sm:font-black">
+                {program.title}
+              </div>
+              <div className="mt-0.5 truncate text-[10px] text-white/60 sm:text-xs">
+                {program.goal || "Nedtelling per intervallsteg"}
+              </div>
             </div>
             <button
               type="button"
-              onClick={() => {
-                resetTimer();
-                onClose();
-              }}
-              className="shrink-0 rounded-full bg-white/10 px-2.5 py-1.5 text-[11px] font-bold text-white transition hover:bg-white/15 sm:px-3 sm:py-2 sm:text-xs"
+              onClick={handleLeave}
+              className="shrink-0 rounded-full bg-white/10 px-2.5 py-1.5 text-[11px] font-bold text-white shadow-sm transition hover:bg-white/15 sm:px-3 sm:py-2 sm:text-xs"
             >
-              Lukk
+              Avslutt
             </button>
           </div>
+
+          {!timerFinished ? (
+            <>
+              <div className="mt-2 sm:hidden">
+                <div className="flex items-center justify-between gap-2 text-[11px] font-semibold text-white/65">
+                  <span className="tabular-nums">{progressPercent}% fullført</span>
+                  <span className="tabular-nums">
+                    Steg {Math.min(stepIndex + 1, intervalProgramSteps.length || 1)} av {intervalProgramSteps.length || 0}
+                  </span>
+                </div>
+                <div className="motus-progress-track mt-1.5 h-1 rounded-full">
+                  <div
+                    className="motus-progress-fill h-full rounded-full transition-all duration-300"
+                    style={{
+                      width: `${progressPercent}%`,
+                      background: `linear-gradient(90deg, ${MOTUS.turquoise}, ${MOTUS.pink})`,
+                    }}
+                  />
+                </div>
+              </div>
+
+              <div className="mt-5 hidden gap-4 sm:grid sm:grid-cols-[8.5rem_1fr] sm:items-center">
+                <div
+                  className="mx-auto flex h-32 w-32 items-center justify-center rounded-full p-2 shadow-2xl shadow-teal-500/20"
+                  style={{
+                    background: `conic-gradient(${MOTUS.turquoise} 0deg, ${MOTUS.pink} ${progressDegrees}deg, rgba(255,255,255,0.14) ${progressDegrees}deg 360deg)`,
+                  }}
+                >
+                  <div className="flex h-full w-full flex-col items-center justify-center rounded-full bg-slate-950 text-center ring-1 ring-white/10">
+                    <span className="text-3xl font-black tabular-nums text-white">{progressPercent}%</span>
+                    <span className="mt-0.5 text-[10px] font-bold uppercase tracking-wide text-white/50">fullført</span>
+                  </div>
+                </div>
+                <div className="min-w-0 text-center sm:text-left">
+                  <div className="text-xs font-black uppercase tracking-wide motus-brand-on-dark-muted">Nå</div>
+                  <div className="mt-1 truncate text-3xl font-black tracking-tight text-white sm:text-4xl">
+                    {currentStep?.headline ?? "Klar til start"}
+                  </div>
+                  <div className="mt-2 flex flex-wrap justify-center gap-2 text-xs font-semibold text-white/70 sm:justify-start">
+                    <span className="rounded-full bg-white/10 px-3 py-1">
+                      Steg {Math.min(stepIndex + 1, intervalProgramSteps.length || 1)} av {intervalProgramSteps.length || 0}
+                    </span>
+                    {isRunning ? (
+                      <span className="rounded-full bg-white/10 px-3 py-1">
+                        {isPaused ? "Pause" : "Nedtelling pågår"}
+                      </span>
+                    ) : null}
+                    <span className="rounded-full bg-white/10 px-3 py-1 tabular-nums">
+                      {formatSeconds(elapsedSeconds)} / {formatSeconds(totalSeconds)}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="motus-progress-track mt-3 hidden h-1 rounded-full sm:block">
+                <div
+                  className="motus-progress-fill h-full rounded-full transition-all duration-300"
+                  style={{
+                    width: `${progressPercent}%`,
+                    background: `linear-gradient(90deg, ${MOTUS.turquoise}, ${MOTUS.pink})`,
+                  }}
+                />
+              </div>
+            </>
+          ) : null}
         </div>
 
-        <div className="motus-scroll-touch flex-1 space-y-4 overflow-auto p-3 sm:p-5">
+        <div className="motus-scroll-touch flex-1 space-y-2 overflow-auto bg-slate-950 p-2 sm:space-y-3 sm:p-4">
           {timerFinished ? (
             <div
               ref={completeSectionRef}
-              className="rounded-xl border border-white/10 bg-slate-900/80 p-3 space-y-3 sm:p-4 sm:space-y-4"
+              className="w-full rounded-xl border border-white/10 bg-white p-2.5 text-left text-slate-900 shadow-xl shadow-black/20 sm:rounded-2xl sm:p-4"
             >
               <div>
-                <div className="text-sm font-semibold text-white">Økta er fullført</div>
-                <div className="text-xs text-white/65">Svar med emoji og eventuell kommentar, deretter lagre nederst.</div>
+                <div className="text-sm font-semibold text-slate-900">Økta er fullført</div>
+                <div className="mt-0.5 text-xs text-slate-500">Svar med emoji og eventuell kommentar, deretter lagre nederst.</div>
               </div>
               <label className="block space-y-1">
-                <span className="text-xs font-semibold text-white/80">Kommentar til økten (valgfritt)</span>
+                <span className="text-xs font-semibold text-slate-700">Kommentar til økten (valgfritt)</span>
                 <TextArea
                   value={sessionNote}
                   onChange={(event) => setSessionNote(event.target.value)}
@@ -498,7 +575,7 @@ export function IntervalWorkoutSessionModal({
                 { key: "motivation", question: "Hvordan er motivasjonen videre?", value: motivationLevel, setValue: setMotivationLevel },
               ].map((item) => (
                 <div key={item.key} className="space-y-2">
-                  <div className="text-xs font-medium text-white/80">{item.question}</div>
+                  <div className="text-xs font-medium text-slate-700">{item.question}</div>
                   <div className="grid grid-cols-5 gap-2">
                     {[1, 2, 3, 4, 5].map((level) => {
                       const numericLevel = level as 1 | 2 | 3 | 4 | 5;
@@ -521,7 +598,7 @@ export function IntervalWorkoutSessionModal({
                 </div>
               ))}
               <label className="block space-y-1">
-                <span className="text-xs font-semibold text-white/80">Notat til PT (valgfritt)</span>
+                <span className="text-xs font-semibold text-slate-700">Notat til PT (valgfritt)</span>
                 <TextArea
                   value={reflectionNote}
                   onChange={(event) => setReflectionNote(event.target.value)}
@@ -530,124 +607,94 @@ export function IntervalWorkoutSessionModal({
                 />
               </label>
             </div>
-          ) : (
-            <>
-              <div
-                className="overflow-hidden rounded-2xl bg-slate-900 text-white shadow-md ring-1 ring-slate-800"
-              >
-                {currentStep ? (
-                  <>
-                    <div className="flex flex-wrap items-center justify-between gap-2 px-4 pt-4 sm:px-5 sm:pt-5">
-                      <span
-                        className={`inline-flex rounded-full px-3 py-1 text-[11px] font-bold uppercase tracking-wide ${intervalTimerBadgeToneClass(
-                          currentStep.tone,
-                        )}`}
-                      >
-                        {currentStep.phaseBadge}
-                      </span>
-                      <span className="text-[11px] font-semibold text-white/90 tabular-nums">
-                        Steg {Math.min(stepIndex + 1, intervalProgramSteps.length || 1)} av {intervalProgramSteps.length || 0}
-                      </span>
-                    </div>
-                    <div className="px-4 pt-3 sm:px-5">
-                      <h3 className="text-2xl font-bold leading-tight tracking-tight sm:text-3xl">{currentStep.headline}</h3>
-                      {currentStep.tone === "rest" && currentStep.afterExerciseName ? (
-                        <p className="mt-2 text-sm leading-snug text-white/90">Etter {currentStep.afterExerciseName}</p>
-                      ) : null}
-                    </div>
-                    <div className="flex justify-center px-4 py-1 sm:px-5 sm:py-2">
-                      <div className="text-6xl font-black tabular-nums tracking-tight sm:text-8xl">{formatSeconds(remainingSeconds)}</div>
-                    </div>
-                    <div className="mx-4 mb-1 rounded-xl bg-slate-800/90 sm:mx-5">
-                      {canEditSpeedIncline ? (
-                        <div className="grid gap-3 border-b border-white/15 px-3 py-3 sm:grid-cols-2 sm:px-4">
-                          <label className="space-y-1">
-                            <span className="text-xs text-white/75">Fart (km/t)</span>
-                            <TextInput
-                              value={currentOverride.speed}
-                              onChange={(event) =>
-                                setStepOverrides((previous) => ({
-                                  ...previous,
-                                  [stepIndex]: { ...currentOverride, speed: event.target.value },
-                                }))
-                              }
-                              className="h-10 border-white/20 bg-white/95 text-slate-900"
-                              placeholder="0"
-                            />
-                          </label>
-                          <label className="space-y-1">
-                            <span className="text-xs text-white/75">Stigning (%)</span>
-                            <TextInput
-                              value={currentOverride.incline}
-                              onChange={(event) =>
-                                setStepOverrides((previous) => ({
-                                  ...previous,
-                                  [stepIndex]: { ...currentOverride, incline: event.target.value },
-                                }))
-                              }
-                              className="h-10 border-white/20 bg-white/95 text-slate-900"
-                              placeholder="0"
-                            />
-                          </label>
-                        </div>
-                      ) : null}
-                      {currentStep.hrHint ? (
-                        <div className="flex items-start justify-between gap-4 px-3 py-2.5 text-sm sm:px-4">
-                          <span className="shrink-0 text-white/75">Målpuls</span>
-                          <span className="text-right font-semibold">{currentStep.hrHint}</span>
-                        </div>
-                      ) : null}
-                      {!canEditSpeedIncline && !currentStep.hrHint ? (
-                        <div className="px-3 py-3 text-center text-sm text-white/75 sm:px-4">Ingen ekstra instrukser for dette steget.</div>
-                      ) : null}
-                    </div>
-                    {(() => {
-                      const nextSt = intervalProgramSteps[stepIndex + 1];
-                      if (!nextSt) {
-                        return (
-                          <div className="border-t border-white/15 px-4 py-3 text-center text-sm font-medium text-white/85 sm:px-5">
-                            Siste steg i økta
-                          </div>
-                        );
-                      }
-                      return (
-                        <div className="border-t border-white/15 px-4 py-3 sm:px-5">
-                          <div className="text-[10px] font-bold uppercase tracking-wider text-white/70">Neste</div>
-                          <div className="mt-1 flex flex-wrap items-baseline justify-between gap-2">
-                            <div className="text-base font-semibold leading-snug">{nextSt.headline}</div>
-                            <div className="text-sm text-white/90 tabular-nums">
-                              {nextSt.phaseBadge} · {formatSeconds(nextSt.durationSeconds)}
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    })()}
-                  </>
-                ) : (
-                  <div className="p-8 text-center text-sm text-white/90">Ingen steg i programmet.</div>
-                )}
-              </div>
-              <div className="rounded-xl border border-white/10 bg-slate-900/60 p-3">
-                <div className="flex items-center justify-between text-xs font-semibold text-white/70">
-                  <span>
-                    Steg {Math.min(stepIndex + 1, intervalProgramSteps.length || 1)} / {intervalProgramSteps.length || 1}
-                  </span>
-                  <span>{progressPercent}%</span>
-                </div>
-                <div className="motus-progress-track mt-2 h-3 rounded-full">
+          ) : currentStep ? (
+            <div className="w-full rounded-xl border border-white/10 bg-white p-2.5 text-left text-slate-900 shadow-xl shadow-black/20 sm:rounded-2xl sm:p-4">
+              <div className="flex flex-wrap items-start justify-between gap-2">
+                <div className="min-w-0 flex-1">
                   <div
-                    className="motus-progress-fill h-3 rounded-full"
-                    style={{
-                      width: `${progressPercent}%`,
-                      background: `linear-gradient(90deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)`,
-                    }}
-                  />
+                    className={`inline-flex rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wide sm:text-[11px] ${intervalTimerBadgeToneClass(
+                      currentStep.tone,
+                    )}`}
+                  >
+                    {currentStep.phaseBadge}
+                  </div>
+                  <h2 className="mt-1.5 text-xl font-bold leading-tight text-slate-900 sm:text-2xl">{currentStep.headline}</h2>
+                  {currentStep.tone === "rest" && currentStep.afterExerciseName ? (
+                    <p className="mt-0.5 text-xs text-slate-600 sm:text-sm">Etter {currentStep.afterExerciseName}</p>
+                  ) : null}
+                  <p className="mt-1 text-[11px] text-slate-500 sm:text-xs">
+                    Steg {Math.min(stepIndex + 1, intervalProgramSteps.length || 1)} av {intervalProgramSteps.length || 0}
+                  </p>
                 </div>
-                <div className="mt-2 text-xs text-white/55">
-                  Total tid: {formatSeconds(elapsedSeconds)} / {formatSeconds(totalSeconds)}
+                <div className="shrink-0 text-right">
+                  <div className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">Gjenstår</div>
+                  <div className="text-4xl font-black tabular-nums tracking-tight text-slate-900 sm:text-5xl">
+                    {formatSeconds(remainingSeconds)}
+                  </div>
                 </div>
               </div>
-            </>
+
+              {canEditSpeedIncline || currentStep.hrHint ? (
+                <div className="mt-3 rounded-xl border bg-slate-50 p-3" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+                  {canEditSpeedIncline ? (
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      <label className="space-y-1">
+                        <span className="text-xs font-medium text-slate-600">Fart (km/t)</span>
+                        <TextInput
+                          value={currentOverride.speed}
+                          onChange={(event) =>
+                            setStepOverrides((previous) => ({
+                              ...previous,
+                              [stepIndex]: { ...currentOverride, speed: event.target.value },
+                            }))
+                          }
+                          placeholder="0"
+                        />
+                      </label>
+                      <label className="space-y-1">
+                        <span className="text-xs font-medium text-slate-600">Stigning (%)</span>
+                        <TextInput
+                          value={currentOverride.incline}
+                          onChange={(event) =>
+                            setStepOverrides((previous) => ({
+                              ...previous,
+                              [stepIndex]: { ...currentOverride, incline: event.target.value },
+                            }))
+                          }
+                          placeholder="0"
+                        />
+                      </label>
+                    </div>
+                  ) : null}
+                  {currentStep.hrHint ? (
+                    <div
+                      className={`flex items-start justify-between gap-4 text-sm ${canEditSpeedIncline ? "mt-3 border-t border-slate-200 pt-3" : ""}`}
+                    >
+                      <span className="shrink-0 text-slate-600">Målpuls</span>
+                      <span className="text-right font-semibold text-slate-900">{currentStep.hrHint}</span>
+                    </div>
+                  ) : null}
+                </div>
+              ) : null}
+
+              {nextStep ? (
+                <div className="mt-3 border-t border-slate-200 pt-2.5">
+                  <div className="text-[10px] font-bold uppercase tracking-wide text-slate-500">Neste</div>
+                  <div className="mt-1 flex items-baseline justify-between gap-2">
+                    <div className="min-w-0 truncate text-sm font-semibold text-slate-900">{nextStep.headline}</div>
+                    <div className="shrink-0 text-xs tabular-nums text-slate-600">
+                      {nextStep.phaseBadge} · {formatSeconds(nextStep.durationSeconds)}
+                    </div>
+                  </div>
+                </div>
+              ) : !timerFinished && currentStep ? (
+                <div className="mt-3 border-t border-slate-200 pt-2.5 text-center text-xs text-slate-500">Siste steg i økta</div>
+              ) : null}
+            </div>
+          ) : (
+            <div className="rounded-xl border border-white/10 bg-white p-6 text-center text-sm text-slate-600 shadow-xl shadow-black/20">
+              Ingen steg i programmet.
+            </div>
           )}
           {status ? (
             <StatusMessage
@@ -662,18 +709,24 @@ export function IntervalWorkoutSessionModal({
           <div className="grid grid-cols-2 gap-1.5">
             {timerFinished ? (
               <>
-                <GradientButton
-                  type="button"
-                  className={intervalFooterBtn}
-                  onClick={handleSave}
-                  disabled={isSaving}
-                >
+                <GradientButton type="button" className={intervalFooterBtn} onClick={handleSave} disabled={isSaving}>
                   <span className="inline-flex items-center justify-center gap-1">
                     <Check className="h-3.5 w-3.5 shrink-0" strokeWidth={2.5} aria-hidden />
                     {isSaving ? "Lagrer..." : "Lagre økt"}
                   </span>
                 </GradientButton>
-                <OutlineButton type="button" className={intervalFooterBtn} onClick={() => setShowComplete(false)}>
+                <OutlineButton
+                  type="button"
+                  className={intervalFooterBtn}
+                  onClick={() => {
+                    if (intervalProgramSteps.length > 0) {
+                      setShowComplete(false);
+                      setStatus(null);
+                    } else {
+                      handleLeave();
+                    }
+                  }}
+                >
                   Tilbake
                 </OutlineButton>
               </>

@@ -68,17 +68,6 @@ export type CheckInWindow = {
   isOpeningDay: boolean;
 };
 
-function parsePersonalGoalsJson(personalGoals: string | undefined): Record<string, unknown> | null {
-  if (!personalGoals?.startsWith(PROFILE_METRICS_PREFIX)) return null;
-  try {
-    const parsed = JSON.parse(personalGoals.slice(PROFILE_METRICS_PREFIX.length)) as unknown;
-    if (!parsed || typeof parsed !== "object") return null;
-    return parsed as Record<string, unknown>;
-  } catch {
-    return null;
-  }
-}
-
 function startOfDay(date: Date): Date {
   return new Date(date.getFullYear(), date.getMonth(), date.getDate());
 }
