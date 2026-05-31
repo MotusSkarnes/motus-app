@@ -1,5 +1,6 @@
 import { Check } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { MOTUS } from "../app/data";
 import { useDeadlineIntervalTimer } from "../app/useDeadlineIntervalTimer";
 import { useScreenWakeLock } from "../app/useScreenWakeLock";
@@ -312,6 +313,15 @@ export function IntervalWorkoutSessionModal({
   }, [open, program?.id]);
 
   useEffect(() => {
+    if (!open || !program) return;
+    if (intervalProgramSteps.length > 0) return;
+    setIsRunning(false);
+    setIsPaused(false);
+    setShowComplete(true);
+    setStatus("Ingen nedtelling i programmet — du kan logge økten nå.");
+  }, [open, program, intervalProgramSteps.length]);
+
+  useEffect(() => {
     if (!open || !currentStep) return;
     setStepOverrides((previous) => {
       if (previous[stepIndex]) return previous;
@@ -423,8 +433,10 @@ export function IntervalWorkoutSessionModal({
 
   const currentOverride = stepOverrides[stepIndex] ?? { speed: "", incline: "" };
   const canEditSpeedIncline = intervalStepAllowsSpeedInclineEdit(currentStep);
+  const timerFinished =
+    showComplete || (intervalProgramSteps.length > 0 && stepIndex >= intervalProgramSteps.length);
 
-  return (
+  const modal = (
     <div className="motus-workout-focus motus-modal-insets fixed inset-0 z-[10012] overscroll-contain bg-black/90">
       <div className="mx-auto flex h-full w-full max-w-2xl flex-col rounded-2xl bg-white shadow-lg">
         <div className="border-b p-4 sm:p-5" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
@@ -445,7 +457,7 @@ export function IntervalWorkoutSessionModal({
         </div>
 
         <div className="motus-scroll-touch flex-1 space-y-4 overflow-auto p-4 sm:p-6">
-          {showComplete ? (
+          {timerFinished ? (
             <div
               ref={completeSectionRef}
               className="rounded-xl border bg-slate-50 p-4 space-y-4"
@@ -642,7 +654,7 @@ export function IntervalWorkoutSessionModal({
         </div>
 
         <div className="sticky bottom-0 border-t border-white/10 bg-slate-950 p-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] shadow-lg sm:p-4">
-          {showComplete ? (
+          {timerFinished ? (
             <>
               <GradientButton
                 type="button"
@@ -734,4 +746,7 @@ export function IntervalWorkoutSessionModal({
       </div>
     </div>
   );
+
+  if (typeof document === "undefined") return modal;
+  return createPortal(modal, document.body);
 }

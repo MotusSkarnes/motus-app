@@ -1217,6 +1217,7 @@ export function MemberPortal(props: MemberPortalProps) {
   const [periodPlanSwapsByPlan, setPeriodPlanSwapsByPlan] = useState<PeriodPlanSwapsByPlan>({});
   const [periodPlanSwapsOwnerId, setPeriodPlanSwapsOwnerId] = useState<string | null>(null);
   const [selectedIntervalProgramId, setSelectedIntervalProgramId] = useState("");
+  const [intervalWorkoutProgramId, setIntervalWorkoutProgramId] = useState("");
   const [suggestedWeightOverridesByProgramExerciseId, setSuggestedWeightOverridesByProgramExerciseId] = useState<Record<string, string>>({});
   const [showIntervalTimerModal, setShowIntervalTimerModal] = useState(false);
   const [isIntervalTimerRunning, setIsIntervalTimerRunning] = useState(false);
@@ -1810,15 +1811,30 @@ export function MemberPortal(props: MemberPortalProps) {
     [memberProgramsInActiveLibrary, exerciseCategoryById, exercises],
   );
   const intervalProgramIdSet = useMemo(() => new Set(intervalPrograms.map((program) => program.id)), [intervalPrograms]);
-  const activeIntervalProgram = useMemo(() => {
-    if (selectedIntervalProgramId) {
-      const selected =
-        memberProgramsInActiveLibrary.find((program) => program.id === selectedIntervalProgramId) ??
-        memberPrograms.find((program) => program.id === selectedIntervalProgramId);
-      if (selected) return selected;
-    }
-    return intervalPrograms.find((program) => program.id === selectedIntervalProgramId) ?? intervalPrograms[0] ?? null;
-  }, [intervalPrograms, memberPrograms, memberProgramsInActiveLibrary, selectedIntervalProgramId]);
+  const resolveMemberProgramById = useCallback(
+    (programId: string): TrainingProgram | null => {
+      const id = programId.trim();
+      if (!id) return null;
+      return (
+        memberProgramsInActiveLibrary.find((program) => program.id === id) ??
+        memberPrograms.find((program) => program.id === id) ??
+        programs.find((program) => program.id === id) ??
+        null
+      );
+    },
+    [memberProgramsInActiveLibrary, memberPrograms, programs],
+  );
+  const shouldUseIntervalWorkoutModal = useCallback(
+    (program: TrainingProgram) =>
+      getTrainingProgramSubTab(program, exerciseCategoryById, exercises) === "conditioning" ||
+      intervalProgramIdSet.has(program.id),
+    [exerciseCategoryById, exercises, intervalProgramIdSet],
+  );
+  const intervalWorkoutProgram = useMemo(
+    () => resolveMemberProgramById(intervalWorkoutProgramId || selectedIntervalProgramId),
+    [intervalWorkoutProgramId, resolveMemberProgramById, selectedIntervalProgramId],
+  );
+  const activeIntervalProgram = intervalWorkoutProgram;
   const intervalProgramSteps = useMemo(() => {
     if (!activeIntervalProgram) return [] as IntervalTimerStep[];
     const programTitle = activeIntervalProgram.title;
@@ -3712,7 +3728,9 @@ export function MemberPortal(props: MemberPortalProps) {
     setIsIntervalTimerRunning(true);
   }
   function openIntervalTimerModal(programId: string) {
-    setSelectedIntervalProgramId(programId);
+    const id = programId.trim();
+    setIntervalWorkoutProgramId(id);
+    setSelectedIntervalProgramId(id);
     setShowIntervalTimerModal(true);
     setIntervalTimerStatus(null);
     setIsIntervalTimerRunning(false);
@@ -3720,6 +3738,7 @@ export function MemberPortal(props: MemberPortalProps) {
     setIntervalTimerStepIndex(0);
   }
   function closeIntervalTimerModal() {
+    setIntervalWorkoutProgramId("");
     setShowIntervalTimerModal(false);
     setIsIntervalTimerRunning(false);
     setIsIntervalTimerPaused(false);
@@ -5187,7 +5206,7 @@ export function MemberPortal(props: MemberPortalProps) {
 
   function startMemberProgram(program: TrainingProgram, context?: PeriodPlanWorkoutStartContext | null) {
     pendingPeriodPlanWorkoutStartRef.current = context ?? resolvePeriodPlanContextForProgram(program);
-    if (intervalProgramIdSet.has(program.id)) {
+    if (shouldUseIntervalWorkoutModal(program)) {
       openIntervalTimerModal(program.id);
       return;
     }
@@ -7382,16 +7401,18 @@ export function MemberPortal(props: MemberPortalProps) {
     </div>
     <IntervalWorkoutSessionModal
       open={showIntervalTimerModal}
-      program={activeIntervalProgram}
+      program={intervalWorkoutProgram}
       exercises={exercises}
       memberId={activeMemberId}
       memberEmail={editableMember?.email ?? currentUserEmail}
       onClose={() => {
         pendingPeriodPlanWorkoutStartRef.current = null;
+        setIntervalWorkoutProgramId("");
         setShowIntervalTimerModal(false);
       }}
       onSaved={() => {
         setIntervalTimerStatus("Kondisjonsøkten er lagret. PT kan se den i loggen.");
+        setIntervalWorkoutProgramId("");
         setShowIntervalTimerModal(false);
       }}
       logIntervalWorkout={handleLogIntervalWorkout}
