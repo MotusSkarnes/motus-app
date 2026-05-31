@@ -48,8 +48,6 @@ import { useToast } from "../app/toast";
 import type { Exercise, ProgramExercise, TrainingProgram } from "../app/types";
 import {
   applyCardioIntensityToExercise,
-  cardioIntensityPreset,
-  detectCardioIntervalPhase,
   inferCardioIntensityFromExercise,
   type CardioIntensityLevel,
 } from "../app/cardioIntervalIntensity";
@@ -483,8 +481,16 @@ export function TrainerProgramBuilderView({
                                     programExercisesDraft.map((row) => (row.id === item.id ? next : row)),
                                   );
                                 }}
-                                hint={`Puls ca. ${cardioIntensityPreset(inferCardioIntensityFromExercise(item) ?? cardioIntervalIntensity ?? "medium", detectCardioIntervalPhase(item.exerciseName)).targetHrPercent}% av makspuls`}
+                                hint="Klassifisering for deg — fart, stigning og puls fyller du inn under."
                               />
+                              <div className="space-y-1">
+                                <div className="text-[11px] font-medium text-slate-500">Puls (% av makspuls)</div>
+                                <TextInput
+                                  value={item.targetHrPercent ?? ""}
+                                  onChange={(e) => onUpdateDraftExercise(item.id, "targetHrPercent", e.target.value)}
+                                  placeholder="f.eks. 85–90"
+                                />
+                              </div>
                               {isTreadmill ? (
                                 <>
                                   <div className="space-y-1">

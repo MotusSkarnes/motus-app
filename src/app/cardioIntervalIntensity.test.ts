@@ -16,40 +16,35 @@ function row(partial: Partial<ProgramExercise> & Pick<ProgramExercise, "exercise
     weight: "",
     restSeconds: "0",
     notes: "",
+    speed: "11",
+    incline: "2",
+    targetHrPercent: "80–85",
     ...partial,
   };
 }
 
 describe("cardioIntervalIntensity", () => {
-  it("applies presets per phase", () => {
-    const drag = applyCardioIntensityToExercise(row({ exerciseName: "Drag 1" }), "high");
-    expect(drag.targetHrPercent).toBe("88–95");
-    expect(drag.speed).toBe("14");
-
-    const warmup = applyCardioIntensityToExercise(row({ exerciseName: "Oppvarming" }), "low");
-    expect(warmup.targetHrPercent).toBe("60–70");
-    expect(warmup.speed).toBe("6.5");
+  it("tags intensity without changing speed, incline or pulse", () => {
+    const source = row({ exerciseName: "Drag 1" });
+    const tagged = applyCardioIntensityToExercise(source, "high");
+    expect(tagged.cardioIntensity).toBe("high");
+    expect(tagged.speed).toBe("11");
+    expect(tagged.incline).toBe("2");
+    expect(tagged.targetHrPercent).toBe("80–85");
   });
 
-  it("infers intensity from target hr", () => {
-    expect(
-      inferCardioIntensityFromExercise(
-        row({ exerciseName: "Drag 2", targetHrPercent: "88–95", speed: "14" }),
-      ),
-    ).toBe("high");
+  it("reads stored intensity from exercise", () => {
+    expect(inferCardioIntensityFromExercise(row({ exerciseName: "Drag 1", cardioIntensity: "low" }))).toBe("low");
   });
 
-  it("updates all interval rows in draft", () => {
+  it("tags all interval rows in draft", () => {
     const draft = applyCardioIntensityToDraft(
-      [
-        row({ id: "w", exerciseName: "Oppvarming", durationMinutes: "10" }),
-        row({ id: "d", exerciseName: "Drag 1", durationMinutes: "4" }),
-      ],
-      "low",
+      [row({ id: "w", exerciseName: "Oppvarming", durationMinutes: "10" }), row({ id: "d", exerciseName: "Drag 1" })],
+      "medium",
       { conditioningBuilder: true },
     );
-    expect(draft[0].targetHrPercent).toBe("60–70");
-    expect(draft[1].targetHrPercent).toBe("75–82");
+    expect(draft[0].cardioIntensity).toBe("medium");
+    expect(draft[1].cardioIntensity).toBe("medium");
   });
 
   it("labels intensity for display", () => {

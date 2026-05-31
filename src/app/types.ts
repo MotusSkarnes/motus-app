@@ -167,6 +167,8 @@ export type ProgramExercise = {
   incline?: string;
   /** Målpuls som prosent av makspuls (f.eks. 85–90); fritekst. */
   targetHrPercent?: string;
+  /** PT-merket intensitet på kondisjonssteg (fart/stigning/puls fylles inn manuelt). */
+  cardioIntensity?: "low" | "medium" | "high";
   /** Maskin: sete/høyde/backrest (fra øvelsesbank «seteinnstillinger»). */
   seatSetting?: string;
   customField1?: string;

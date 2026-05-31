@@ -55,8 +55,6 @@ import {
 import {
   applyCardioIntensityToDraft,
   applyCardioIntensityToExercise,
-  cardioIntensityPreset,
-  detectCardioIntervalPhase,
   inferCardioIntensityFromDraft,
   inferCardioIntensityFromExercise,
   type CardioIntensityLevel,
@@ -2369,6 +2367,7 @@ function pickFirstName(value: unknown): string {
         incline: "",
         restSeconds: "0",
         notes: "",
+        targetHrPercent: "",
       },
       cardioIntervalIntensity,
     );
@@ -2425,6 +2424,7 @@ function pickFirstName(value: unknown): string {
         incline: "",
         restSeconds: "0",
         notes: "",
+        targetHrPercent: "",
       },
       cardioIntervalIntensity,
     );
@@ -6397,8 +6397,16 @@ function pickFirstName(value: unknown): string {
                                           className="sm:col-span-2 xl:col-span-3"
                                           value={inferCardioIntensityFromExercise(item) ?? cardioIntervalIntensity}
                                           onChange={(level) => applyCardioIntensityLevelToDraft(level, { exerciseId: item.id })}
-                                          hint={`Puls ca. ${cardioIntensityPreset(inferCardioIntensityFromExercise(item) ?? cardioIntervalIntensity, detectCardioIntervalPhase(item.exerciseName)).targetHrPercent}% av makspuls`}
+                                          hint="Klassifisering — fart, stigning og puls bestemmer du for kunden."
                                         />
+                                        <div className="space-y-1">
+                                          <div className="text-[11px] font-medium text-slate-500">Puls (% av makspuls)</div>
+                                          <TextInput
+                                            value={item.targetHrPercent ?? ""}
+                                            onChange={(e) => updateDraftExercise(item.id, "targetHrPercent", e.target.value)}
+                                            placeholder="f.eks. 85–90"
+                                          />
+                                        </div>
                                       ) : null}
                                     </>
                                   }
@@ -6861,7 +6869,7 @@ function pickFirstName(value: unknown): string {
                 <CardioIntensitySelect
                   value={cardioIntervalIntensity}
                   onChange={(level) => applyCardioIntensityLevelToDraft(level)}
-                  hint="Gjelder alle steg i utkastet. Du kan finjustere fart og puls per steg under redigering."
+                  hint="Merker alle steg med valgt intensitet. Fart, stigning og puls fyller du inn per steg — tilpasset kundens form."
                 />
                 <div className="flex flex-wrap gap-2">
                   <OutlineButton type="button" onClick={startNewCardioTemplateDraft}>
