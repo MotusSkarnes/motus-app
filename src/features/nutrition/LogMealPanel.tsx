@@ -1,18 +1,20 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Plus, Trash2, UtensilsCrossed } from "lucide-react";
 import { formatMacro } from "../../app/foodBankTypes";
 import { MEMBER_MEAL_SLOTS, memberMealSlotLabel } from "../../app/memberMealSlots";
 import {
+  mergeMemberMealPlanStates,
   toIsoDateKey,
   type MemberMealPlanState,
   type MemberQuickFoodLogEntry,
 } from "../../app/memberMealPlanState";
 import { loadMemberMealPlanState } from "../../app/memberMealPlanState";
-import { persistMemberMealPlanStateLocalAndScheduleCloud, syncMemberMealPlanState } from "../../app/memberMealPlanStateCloud";
+import { syncMemberMealPlanState } from "../../app/memberMealPlanStateCloud";
 import { MEAL_PLAN_STATE_CHANGED_EVENT } from "../../app/memberMealPlanState";
 import type { MealPlanTargets } from "../../app/mealPlanTypes";
 import { GradientButton } from "../../app/ui";
 import { sumQuickFoodLogMacros } from "../../app/quickFoodLogMacros";
+import { addQuickFoodLog, removeQuickFoodLog } from "../../app/memberMealPlanTracking";
 import { DailyLoggedMacrosSummary } from "./DailyLoggedMacrosSummary";
 import { FoodLogFormFields, type FoodLogDraft } from "./FoodLogFormFields";
 import "../../foodbank.css";
@@ -37,10 +39,16 @@ export function LogMealPanel({ memberId, mealPlanTargets, onRefreshFoodBank }: L
   const [mealSlotId, setMealSlotId] = useState(MEMBER_MEAL_SLOTS[0]!.id);
   const [status, setStatus] = useState<string | null>(null);
   const [state, setState] = useState<MemberMealPlanState>(() => loadMemberMealPlanState(memberId));
+  const stateRef = useRef(state);
 
   const dateKey = todayKey();
   const logsToday = state.quickFoodLogs[dateKey] ?? [];
   const hasLogs = logsToday.length > 0;
+
+  const replaceState = useCallback((nextState: MemberMealPlanState) => {
+    stateRef.current = nextState;
+    setState(nextState);
+  }, []);
 
   useEffect(() => {
     onRefreshFoodBank?.();
@@ -50,18 +58,18 @@ export function LogMealPanel({ memberId, mealPlanTargets, onRefreshFoodBank }: L
     let mounted = true;
     void (async () => {
       const synced = await syncMemberMealPlanState(memberId);
-      if (mounted) setState(synced);
+      if (mounted) replaceState(mergeMemberMealPlanStates(stateRef.current, synced));
     })();
     return () => {
       mounted = false;
     };
-  }, [memberId]);
+  }, [memberId, replaceState]);
 
   useEffect(() => {
-    const handler = () => setState(loadMemberMealPlanState(memberId));
+    const handler = () => replaceState(loadMemberMealPlanState(memberId));
     window.addEventListener(MEAL_PLAN_STATE_CHANGED_EVENT, handler);
     return () => window.removeEventListener(MEAL_PLAN_STATE_CHANGED_EVENT, handler);
-  }, [memberId]);
+  }, [memberId, replaceState]);
 
   const macrosToday = useMemo(() => sumQuickFoodLogMacros(logsToday), [logsToday]);
 
@@ -78,19 +86,6 @@ export function LogMealPanel({ memberId, mealPlanTargets, onRefreshFoodBank }: L
     return grouped;
   }, [logsToday]);
 
-  const persist = useCallback(
-    (nextLogs: MemberQuickFoodLogEntry[]) => {
-      const nextState: MemberMealPlanState = {
-        ...state,
-        quickFoodLogs: { ...state.quickFoodLogs, [dateKey]: nextLogs },
-        updatedAt: new Date().toISOString(),
-      };
-      setState(nextState);
-      persistMemberMealPlanStateLocalAndScheduleCloud(memberId, nextState);
-    },
-    [dateKey, memberId, state],
-  );
-
   const handleLogFood = useCallback(
     (draft: FoodLogDraft) => {
       const entry: MemberQuickFoodLogEntry = {
@@ -102,19 +97,19 @@ export function LogMealPanel({ memberId, mealPlanTargets, onRefreshFoodBank }: L
         loggedAt: new Date().toISOString(),
         nutritionPer100g: { ...draft.food.nutritionPer100g },
       };
-      persist([entry, ...logsToday]);
+      replaceState(addQuickFoodLog(memberId, stateRef.current, dateKey, entry));
       const slotLabel = memberMealSlotLabel(mealSlotId);
       setStatus(`${draft.food.name} logget til ${slotLabel.toLowerCase()}.`);
       setOpen(hasLogs);
     },
-    [hasLogs, logsToday, mealSlotId, persist],
+    [dateKey, hasLogs, mealSlotId, memberId, replaceState],
   );
 
   const removeLog = useCallback(
     (entryId: string) => {
-      persist(logsToday.filter((entry) => entry.id !== entryId));
+      replaceState(removeQuickFoodLog(memberId, stateRef.current, dateKey, entryId));
     },
-    [logsToday, persist],
+    [dateKey, memberId, replaceState],
   );
 
   if (!open && !hasLogs) {

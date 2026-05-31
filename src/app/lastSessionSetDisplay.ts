@@ -54,3 +54,14 @@ export function formatLastSessionSetLabel(
   if (setNumber && setNumber > 0) return `Sett ${setNumber} · ${performed}`;
   return performed;
 }
+
+export function formatLatestLastSessionSetLabel(
+  exerciseName: string,
+  setMap: Map<number, LastSessionSetEntry> | null | undefined,
+  exerciseLibrary: Exercise[],
+): string {
+  if (!setMap) return "";
+  const picked = pickLastSetFromLastSession(setMap);
+  if (!picked) return "";
+  return formatLastSessionSetLabel(exerciseName, picked.entry, exerciseLibrary, picked.setNumber);
+}

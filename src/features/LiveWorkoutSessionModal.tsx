@@ -17,7 +17,7 @@ import {
 import { GradientButton, OutlineButton, TextArea, TextInput } from "../app/ui";
 import type { Exercise, TrainingProgram, WorkoutModeState, WorkoutReflection } from "../app/types";
 import type { ReplaceWorkoutExerciseGroupInput } from "../services/appRepository";
-import { formatLastSessionSetLabel, pickLastSetFromLastSession } from "../app/lastSessionSetDisplay";
+import { formatLatestLastSessionSetLabel } from "../app/lastSessionSetDisplay";
 import { buildTrainingProgramFromWorkoutMode } from "../app/pausedWorkoutSession";
 import { MAX_SETS_PER_EXERCISE_IN_WORKOUT_MODE } from "../services/appRepository";
 
@@ -417,6 +417,11 @@ export function LiveWorkoutSessionModal({
   /** Foretrukket «detalj»-øvelse: et segment i blokk hvis valgt, ellers gjeldende øvelse. */
   const detailExercise = blockDetailExercise ?? currentWorkoutExercise;
   const detailExerciseImageUrl = detailExercise ? resolveExerciseImageSrc(detailExercise) : "";
+  const detailLastSessionLabel = useMemo(() => {
+    if (!detailExercise || !lastSessionByExercise) return "";
+    const setMap = lastSessionByExercise.get(detailExercise.name.trim().toLowerCase());
+    return formatLatestLastSessionSetLabel(detailExercise.name, setMap, exercises);
+  }, [detailExercise, exercises, lastSessionByExercise]);
 
   function closeExerciseDetail() {
     setShowExerciseDetail(false);
