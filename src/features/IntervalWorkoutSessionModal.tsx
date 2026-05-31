@@ -1,5 +1,5 @@
 import { Check } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { MOTUS } from "../app/data";
 import { useDeadlineIntervalTimer } from "../app/useDeadlineIntervalTimer";
 import { useScreenWakeLock } from "../app/useScreenWakeLock";
@@ -259,6 +259,7 @@ export function IntervalWorkoutSessionModal({
   const [motivationLevel, setMotivationLevel] = useState<1 | 2 | 3 | 4 | 5>(3);
   const [reflectionNote, setReflectionNote] = useState("");
   const [isSaving, setIsSaving] = useState(false);
+  const completeSectionRef = useRef<HTMLDivElement>(null);
 
   const intervalTimer = useDeadlineIntervalTimer({
     steps: intervalProgramSteps,
@@ -323,6 +324,21 @@ export function IntervalWorkoutSessionModal({
       };
     });
   }, [open, stepIndex, currentStep]);
+
+  useEffect(() => {
+    if (!open || showComplete || !intervalProgramSteps.length) return;
+    if (stepIndex < intervalProgramSteps.length) return;
+    clearDeadline();
+    setIsRunning(false);
+    setIsPaused(false);
+    setShowComplete(true);
+    setStatus("Intervalløkten er fullført. Logg hvordan det gikk.");
+  }, [open, showComplete, stepIndex, intervalProgramSteps.length, clearDeadline]);
+
+  useEffect(() => {
+    if (!showComplete) return;
+    completeSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  }, [showComplete]);
 
   function openComplete() {
     clearDeadline();
@@ -430,11 +446,26 @@ export function IntervalWorkoutSessionModal({
 
         <div className="motus-scroll-touch flex-1 space-y-4 overflow-auto p-4 sm:p-6">
           {showComplete ? (
-            <div className="rounded-xl border bg-slate-50 p-4 space-y-4" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+            <div
+              ref={completeSectionRef}
+              className="rounded-xl border bg-slate-50 p-4 space-y-4"
+              style={{ borderColor: "rgba(15,23,42,0.08)" }}
+            >
               <div>
-                <div className="text-sm font-semibold text-slate-800">Etter økta</div>
-                <div className="text-xs text-slate-500">Svar med emoji og eventuell kommentar. PT ser dette i øktloggen.</div>
+                <div className="text-sm font-semibold text-slate-800">Økta er fullført</div>
+                <div className="text-xs text-slate-500">Svar med emoji og eventuell kommentar, deretter lagre økten.</div>
               </div>
+              <GradientButton
+                type="button"
+                className="w-full !min-h-11 !py-2.5 !text-sm !font-bold shadow-md sm:!min-h-12 sm:!text-base"
+                onClick={handleSave}
+                disabled={isSaving}
+              >
+                <span className="inline-flex items-center justify-center gap-2">
+                  <Check className="h-5 w-5 shrink-0" strokeWidth={2.5} aria-hidden />
+                  {isSaving ? "Lagrer økt..." : "Lagre økt"}
+                </span>
+              </GradientButton>
               <label className="block space-y-1">
                 <span className="text-xs font-semibold text-slate-700">Kommentar til økten (valgfritt)</span>
                 <TextArea
@@ -612,23 +643,26 @@ export function IntervalWorkoutSessionModal({
 
         <div className="sticky bottom-0 border-t border-white/10 bg-slate-950 p-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] shadow-lg sm:p-4">
           {showComplete ? (
-            <div className="grid grid-cols-2 gap-1.5 sm:gap-3">
+            <>
+              <GradientButton
+                type="button"
+                className="mb-2 w-full !min-h-10 !py-2 !text-sm !font-bold shadow-md sm:mb-3 sm:!min-h-[3.25rem] sm:!py-3.5 sm:!text-base"
+                onClick={handleSave}
+                disabled={isSaving}
+              >
+                <span className="inline-flex items-center justify-center gap-2">
+                  <Check className="h-5 w-5 shrink-0" strokeWidth={2.5} aria-hidden />
+                  {isSaving ? "Lagrer økt..." : "Lagre økt"}
+                </span>
+              </GradientButton>
               <OutlineButton
                 type="button"
                 onClick={() => setShowComplete(false)}
                 className="w-full !min-h-9 !px-2 !py-1.5 !text-[11px] sm:!min-h-10 sm:!text-sm"
               >
-                Tilbake
+                Tilbake til timer
               </OutlineButton>
-              <GradientButton
-                type="button"
-                onClick={handleSave}
-                disabled={isSaving}
-                className="w-full !min-h-9 !px-2 !py-1.5 !text-[11px] sm:!min-h-10 sm:!text-sm"
-              >
-                {isSaving ? "Lagrer..." : "Lagre økt"}
-              </GradientButton>
-            </div>
+            </>
           ) : (
             <>
               <GradientButton
