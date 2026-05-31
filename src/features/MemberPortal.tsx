@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { flushSync } from "react-dom";
 import {
   Archive,
   CalendarRange,
@@ -173,6 +174,7 @@ import {
 } from "../app/memberProgressGamification";
 import { computeMemberProgressScores } from "../app/memberMomentumScores";
 import { getTrainingProgramSubTab, trainingProgramCategoryLabel, isConditioningTrainingProgram } from "../app/trainingProgramKind";
+import { isMemberIntervalWorkoutProgram } from "../app/memberIntervalWorkout";
 import { programsAttributedToMember } from "../app/memberActivity";
 import { BadgeImage } from "./BadgeImage";
 import { MemberBadgesCarousel } from "./MemberBadgesCarousel";
@@ -1218,6 +1220,7 @@ export function MemberPortal(props: MemberPortalProps) {
   const [periodPlanSwapsOwnerId, setPeriodPlanSwapsOwnerId] = useState<string | null>(null);
   const [selectedIntervalProgramId, setSelectedIntervalProgramId] = useState("");
   const [intervalWorkoutProgramId, setIntervalWorkoutProgramId] = useState("");
+  const [intervalWorkoutProgramSnapshot, setIntervalWorkoutProgramSnapshot] = useState<TrainingProgram | null>(null);
   const [suggestedWeightOverridesByProgramExerciseId, setSuggestedWeightOverridesByProgramExerciseId] = useState<Record<string, string>>({});
   const [showIntervalTimerModal, setShowIntervalTimerModal] = useState(false);
   const [isIntervalTimerRunning, setIsIntervalTimerRunning] = useState(false);
@@ -1824,16 +1827,10 @@ export function MemberPortal(props: MemberPortalProps) {
     },
     [memberProgramsInActiveLibrary, memberPrograms, programs],
   );
-  const shouldUseIntervalWorkoutModal = useCallback(
-    (program: TrainingProgram) =>
-      getTrainingProgramSubTab(program, exerciseCategoryById, exercises) === "conditioning" ||
-      intervalProgramIdSet.has(program.id),
-    [exerciseCategoryById, exercises, intervalProgramIdSet],
-  );
-  const intervalWorkoutProgram = useMemo(
-    () => resolveMemberProgramById(intervalWorkoutProgramId || selectedIntervalProgramId),
-    [intervalWorkoutProgramId, resolveMemberProgramById, selectedIntervalProgramId],
-  );
+  const intervalWorkoutProgram = useMemo(() => {
+    if (intervalWorkoutProgramSnapshot) return intervalWorkoutProgramSnapshot;
+    return resolveMemberProgramById(intervalWorkoutProgramId || selectedIntervalProgramId);
+  }, [intervalWorkoutProgramSnapshot, intervalWorkoutProgramId, resolveMemberProgramById, selectedIntervalProgramId]);
   const activeIntervalProgram = intervalWorkoutProgram;
   const intervalProgramSteps = useMemo(() => {
     if (!activeIntervalProgram) return [] as IntervalTimerStep[];
@@ -3727,18 +3724,22 @@ export function MemberPortal(props: MemberPortalProps) {
     setIntervalTimerRemainingSeconds(firstStep?.durationSeconds ?? 0);
     setIsIntervalTimerRunning(true);
   }
-  function openIntervalTimerModal(programId: string) {
-    const id = programId.trim();
-    setIntervalWorkoutProgramId(id);
-    setSelectedIntervalProgramId(id);
-    setShowIntervalTimerModal(true);
-    setIntervalTimerStatus(null);
-    setIsIntervalTimerRunning(false);
-    setIsIntervalTimerPaused(false);
-    setIntervalTimerStepIndex(0);
+  function openIntervalTimerModal(program: TrainingProgram) {
+    const id = program.id.trim();
+    flushSync(() => {
+      setIntervalWorkoutProgramSnapshot(program);
+      setIntervalWorkoutProgramId(id);
+      setSelectedIntervalProgramId(id);
+      setShowIntervalTimerModal(true);
+      setIntervalTimerStatus(null);
+      setIsIntervalTimerRunning(false);
+      setIsIntervalTimerPaused(false);
+      setIntervalTimerStepIndex(0);
+    });
   }
   function closeIntervalTimerModal() {
     setIntervalWorkoutProgramId("");
+    setIntervalWorkoutProgramSnapshot(null);
     setShowIntervalTimerModal(false);
     setIsIntervalTimerRunning(false);
     setIsIntervalTimerPaused(false);
@@ -5206,8 +5207,11 @@ export function MemberPortal(props: MemberPortalProps) {
 
   function startMemberProgram(program: TrainingProgram, context?: PeriodPlanWorkoutStartContext | null) {
     pendingPeriodPlanWorkoutStartRef.current = context ?? resolvePeriodPlanContextForProgram(program);
-    if (shouldUseIntervalWorkoutModal(program)) {
-      openIntervalTimerModal(program.id);
+    if (isMemberIntervalWorkoutProgram(program, exerciseCategoryById, exercises)) {
+      if (workoutMode?.programId === program.id) {
+        handleDismissWorkoutMode();
+      }
+      openIntervalTimerModal(program);
       return;
     }
     startWorkoutMode(program.id, buildStartWorkoutOptions(program));
@@ -7408,11 +7412,13 @@ export function MemberPortal(props: MemberPortalProps) {
       onClose={() => {
         pendingPeriodPlanWorkoutStartRef.current = null;
         setIntervalWorkoutProgramId("");
+        setIntervalWorkoutProgramSnapshot(null);
         setShowIntervalTimerModal(false);
       }}
       onSaved={() => {
         setIntervalTimerStatus("Kondisjonsøkten er lagret. PT kan se den i loggen.");
         setIntervalWorkoutProgramId("");
+        setIntervalWorkoutProgramSnapshot(null);
         setShowIntervalTimerModal(false);
       }}
       logIntervalWorkout={handleLogIntervalWorkout}

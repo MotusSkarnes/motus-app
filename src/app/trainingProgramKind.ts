@@ -73,7 +73,16 @@ export function resolveProgramExerciseCategory(
   exerciseCategoryById: Map<string, Exercise["category"]>,
 ): Exercise["category"] {
   const holdSeconds = String(exercise.holdSeconds ?? "").trim();
-  if (holdSeconds && Number(holdSeconds) > 0) return "Mobilitet";
+  if (holdSeconds && Number(holdSeconds) > 0) {
+    const nameLower = exercise.exerciseName.trim().toLowerCase();
+    if (
+      /\bdrag\b|intervall|oppvarm|nedjogg|nedtrapp|tempo|tabata|mølle|moelle|tredemølle|cooldown/.test(nameLower) ||
+      Number(exercise.durationMinutes) > 0
+    ) {
+      return "Kondisjon";
+    }
+    return "Mobilitet";
+  }
 
   const inferredMobility = inferMobilityCategoryFromProgramExercise(exercise);
   if (inferredMobility) return inferredMobility;
@@ -131,6 +140,7 @@ export function getTrainingProgramSubTab(
     titleKey.includes("rolig løp") ||
     titleKey.includes("langtur") ||
     titleKey.includes("intervall") ||
+    titleKey.includes("4x4") ||
     titleKey.includes("tempo") ||
     titleKey.includes("testløp") ||
     titleKey.includes("målfart")
