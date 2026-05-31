@@ -610,56 +610,91 @@ export function IntervalWorkoutSessionModal({
           ) : null}
         </div>
 
-        <div className="border-t p-4 sm:p-5" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+        <div className="sticky bottom-0 border-t border-white/10 bg-slate-950 p-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] shadow-lg sm:p-4">
           {showComplete ? (
-            <div className="grid gap-2 sm:grid-cols-2">
-              <OutlineButton onClick={() => setShowComplete(false)} className="w-full">
-                Tilbake til timer
+            <div className="grid grid-cols-2 gap-1.5 sm:gap-3">
+              <OutlineButton
+                type="button"
+                onClick={() => setShowComplete(false)}
+                className="w-full !min-h-9 !px-2 !py-1.5 !text-[11px] sm:!min-h-10 sm:!text-sm"
+              >
+                Tilbake
               </OutlineButton>
-              <GradientButton onClick={handleSave} disabled={isSaving} className="w-full">
+              <GradientButton
+                type="button"
+                onClick={handleSave}
+                disabled={isSaving}
+                className="w-full !min-h-9 !px-2 !py-1.5 !text-[11px] sm:!min-h-10 sm:!text-sm"
+              >
                 {isSaving ? "Lagrer..." : "Lagre økt"}
               </GradientButton>
             </div>
           ) : (
-            <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-5">
-              {isRunning ? (
+            <>
+              <GradientButton
+                type="button"
+                className="mb-2 w-full !min-h-10 !py-2 !text-sm !font-bold shadow-md sm:mb-3 sm:!min-h-[3.25rem] sm:!py-3.5 sm:!text-base"
+                onClick={openComplete}
+                disabled={!intervalProgramSteps.length}
+              >
+                <span className="inline-flex items-center justify-center gap-2">
+                  <Check className="h-5 w-5 shrink-0" strokeWidth={2.5} aria-hidden />
+                  Fullfør økt
+                </span>
+              </GradientButton>
+              <div className="grid grid-cols-2 gap-1.5 sm:gap-3">
+                {isRunning ? (
+                  <OutlineButton
+                    type="button"
+                    disabled
+                    aria-pressed="true"
+                    aria-label="Økten er startet"
+                    className="w-full !min-h-9 !cursor-default !px-2 !py-1.5 !text-[11px] !motus-brand-surface !border-[var(--motus-brand-border-strong)] !opacity-100 sm:!min-h-10 sm:!text-sm"
+                  >
+                    <span className="inline-flex items-center justify-center gap-1">
+                      <Check className="h-3.5 w-3.5 shrink-0" strokeWidth={2.5} aria-hidden />
+                      Startet
+                    </span>
+                  </OutlineButton>
+                ) : (
+                  <GradientButton
+                    type="button"
+                    onClick={handleStart}
+                    disabled={!intervalProgramSteps.length}
+                    className="w-full !min-h-9 !px-2 !py-1.5 !text-[11px] sm:!min-h-10 sm:!text-sm"
+                  >
+                    Start økt
+                  </GradientButton>
+                )}
                 <OutlineButton
                   type="button"
-                  disabled
-                  aria-pressed="true"
-                  aria-label="Økten er startet"
-                  className="w-full !cursor-default !motus-brand-surface !border-[var(--motus-brand-border-strong)] !opacity-100"
+                  onClick={() => setIsPaused((previous) => !previous)}
+                  disabled={!isRunning}
+                  className="w-full !min-h-9 !px-2 !py-1.5 !text-[11px] sm:!min-h-10 sm:!text-sm"
                 >
-                  <span className="inline-flex items-center justify-center gap-1.5">
-                    <Check className="h-4 w-4 shrink-0" strokeWidth={2.5} aria-hidden />
-                    <span>Økt startet</span>
-                  </span>
+                  {isPaused ? "Fortsett" : "Pause"}
                 </OutlineButton>
-              ) : (
-                <GradientButton onClick={handleStart} disabled={!intervalProgramSteps.length} className="w-full">
-                  Start økt
-                </GradientButton>
-              )}
-              <OutlineButton onClick={() => setIsPaused((previous) => !previous)} disabled={!isRunning} className="w-full">
-                {isPaused ? "Fortsett" : "Pause"}
-              </OutlineButton>
-              <OutlineButton onClick={handleSkip} disabled={!intervalProgramSteps.length} className="w-full">
-                Hopp over
-              </OutlineButton>
-              <OutlineButton
-                onClick={() => {
-                  resetTimer();
-                  setStatus("Intervalløkten er nullstilt.");
-                }}
-                disabled={!intervalProgramSteps.length}
-                className="w-full"
-              >
-                Nullstill
-              </OutlineButton>
-              <GradientButton onClick={openComplete} disabled={!intervalProgramSteps.length} className="w-full">
-                Fullfør økt
-              </GradientButton>
-            </div>
+                <OutlineButton
+                  type="button"
+                  onClick={handleSkip}
+                  disabled={!intervalProgramSteps.length}
+                  className="w-full !min-h-9 !px-2 !py-1.5 !text-[11px] sm:!min-h-10 sm:!text-sm"
+                >
+                  Hopp over
+                </OutlineButton>
+                <OutlineButton
+                  type="button"
+                  onClick={() => {
+                    resetTimer();
+                    setStatus("Intervalløkten er nullstilt.");
+                  }}
+                  disabled={!intervalProgramSteps.length}
+                  className="w-full !min-h-9 !px-2 !py-1.5 !text-[11px] sm:!min-h-10 sm:!text-sm"
+                >
+                  Nullstill
+                </OutlineButton>
+              </div>
+            </>
           )}
         </div>
       </div>
