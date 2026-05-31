@@ -739,11 +739,11 @@ function pickFirstName(value: unknown): string {
     restoreMembersFromRosterBackup,
     restoreOriginalExerciseBank,
     saveProgramForMember,
-  deleteProgramById,
-  sendTrainerMessage,
+    deleteProgramById,
+    sendTrainerMessage,
   toggleChatMessageReaction,
   markChatConversationRead,
-  updateWorkoutLogTrainerComment,
+    updateWorkoutLogTrainerComment,
     clearLocalChatCache,
     saveExercise,
     deleteExercise,
@@ -2356,17 +2356,17 @@ function pickFirstName(value: unknown): string {
     }
     const warmup = applyCardioIntensityToExercise(
       {
-        id: uid("draft-ex"),
-        exerciseId: base.id,
-        exerciseName: "Oppvarming",
-        sets: "1",
-        reps: "",
-        weight: "",
-        durationMinutes: "10",
+      id: uid("draft-ex"),
+      exerciseId: base.id,
+      exerciseName: "Oppvarming",
+      sets: "1",
+      reps: "",
+      weight: "",
+      durationMinutes: "10",
         speed: "",
         incline: "",
-        restSeconds: "0",
-        notes: "",
+      restSeconds: "0",
+      notes: "",
         targetHrPercent: "",
       },
       cardioIntervalIntensity,
@@ -2386,17 +2386,17 @@ function pickFirstName(value: unknown): string {
     const nextIndex = countCardioDragRows(programExercisesDraft) + 1;
     const drag = applyCardioIntensityToExercise(
       {
-        id: uid("draft-ex"),
-        exerciseId: base.id,
-        exerciseName: `Drag ${nextIndex}`,
-        sets: "4",
-        reps: "",
-        weight: "",
-        durationMinutes: "4",
+      id: uid("draft-ex"),
+      exerciseId: base.id,
+      exerciseName: `Drag ${nextIndex}`,
+      sets: "4",
+      reps: "",
+      weight: "",
+      durationMinutes: "4",
         speed: "",
         incline: "",
-        restSeconds: "180",
-        notes: "",
+      restSeconds: "180",
+      notes: "",
       },
       cardioIntervalIntensity,
     );
@@ -2413,17 +2413,17 @@ function pickFirstName(value: unknown): string {
     }
     const cooldown = applyCardioIntensityToExercise(
       {
-        id: uid("draft-ex"),
-        exerciseId: base.id,
-        exerciseName: "Nedjogg",
-        sets: "1",
-        reps: "",
-        weight: "",
-        durationMinutes: "5",
+      id: uid("draft-ex"),
+      exerciseId: base.id,
+      exerciseName: "Nedjogg",
+      sets: "1",
+      reps: "",
+      weight: "",
+      durationMinutes: "5",
         speed: "",
         incline: "",
-        restSeconds: "0",
-        notes: "",
+      restSeconds: "0",
+      notes: "",
         targetHrPercent: "",
       },
       cardioIntervalIntensity,
@@ -2510,14 +2510,14 @@ function pickFirstName(value: unknown): string {
       next[applyToId] = isNewPlan
         ? [...previous.filter((plan) => plan.id !== periodPlanId), newPeriodPlan]
         : previous.some((plan) => plan.id === periodPlanId)
-          ? previous.map((plan) => (plan.id === periodPlanId ? newPeriodPlan : plan))
-          : [newPeriodPlan];
+            ? previous.map((plan) => (plan.id === periodPlanId ? newPeriodPlan : plan))
+            : [newPeriodPlan];
       for (const memberId of selectedMemberRelatedIds) {
         if (memberId === applyToId) continue;
         const list = next[memberId];
         if (!list?.length) continue;
         next[memberId] = list.filter((plan) => plan.id !== periodPlanId);
-      }
+        }
       return next;
     });
     if (isSupabaseConfigured && !isLocalDemoSession) {
@@ -2873,7 +2873,7 @@ function pickFirstName(value: unknown): string {
 
   const programBelongsToSelectedMember = useCallback(
     (program: TrainingProgram): boolean => {
-      const selected = members.find((member) => member.id === selectedMemberId) ?? null;
+    const selected = members.find((member) => member.id === selectedMemberId) ?? null;
       if (!selected) return false;
       return programBelongsToMember(selected, members, program);
     },
@@ -3102,7 +3102,7 @@ function pickFirstName(value: unknown): string {
     const crossOwner =
       Boolean(selectedOwnerUserId && currentTrainerOwnerUserId && selectedOwnerUserId !== currentTrainerOwnerUserId);
     const nextCustomerType = memberEditIsPremiumCustomer || memberEditIsPtCustomer
-      ? "PT-kunde"
+        ? "PT-kunde"
       : memberEditIsSharedMember
         ? "Medlem"
         : "Oppfølging";
@@ -4815,8 +4815,8 @@ function pickFirstName(value: unknown): string {
     <div className="space-y-4 sm:space-y-6">
       {trainerTab === "dashboard" ? (
         <TrainerPtHomeScreen
-          trainerFirstName={trainerFirstName}
-          todayDateLabel={trainerTodayDateLabel}
+            trainerFirstName={trainerFirstName}
+            todayDateLabel={trainerTodayDateLabel}
           weekLabel={trainerWeekLabel}
           kpis={ptHomeKpis}
           planItems={ptHomePlanItems}
@@ -4833,7 +4833,7 @@ function pickFirstName(value: unknown): string {
           }}
           onOpenInsights={() => openCustomersWithListFilters({ priorityFilter: "red" })}
           onSwitchToMemberView={onSwitchToMemberView}
-          quickActions={{
+            quickActions={{
             onCreateProgram: () => setTrainerTab("programs"),
             onOpenExerciseBank: () => setTrainerTab("exerciseBank"),
             onOpenNutrition: () => setTrainerTab("mealPlan"),
@@ -4893,8 +4893,8 @@ function pickFirstName(value: unknown): string {
           customerStatusHint={
             selectedMember
               ? "Basert på siste fullførte treningsøkt — ikke sanntid pålogget."
-              : undefined
-          }
+                            : undefined
+                      }
           customerAvatarUrl={selectedMember ? resolveMemberAvatarUrl(selectedMember) : null}
           onMessage={() => {
             if (!selectedMember) return;
@@ -4980,7 +4980,7 @@ function pickFirstName(value: unknown): string {
           onPeriodPresetChange={setStatsPeriodPreset}
           onOpenClient={(memberId) => {
             setSelectedMemberId(memberId);
-            setTrainerTab("customers");
+                    setTrainerTab("customers");
           }}
           onOpenCustomers={() => setTrainerTab("customers")}
           onOpenPrograms={() => setTrainerTab("programs")}
@@ -6380,34 +6380,34 @@ function pickFirstName(value: unknown): string {
                                   setsPlaceholder={isCardio ? cardioSetPlaceholder() : "Sett"}
                                   trailing={
                                     <>
-                                      {isCardio && isTreadmill ? (
-                                        <>
-                                          <div className="space-y-1">
-                                            <div className="text-[11px] font-medium text-slate-500">Fart (km/t)</div>
-                                            <TextInput value={item.speed ?? ""} onChange={(e) => updateDraftExercise(item.id, "speed", e.target.value)} placeholder="Fart" />
-                                          </div>
-                                          <div className="space-y-1">
-                                            <div className="text-[11px] font-medium text-slate-500">Incline (%)</div>
-                                            <TextInput value={item.incline ?? ""} onChange={(e) => updateDraftExercise(item.id, "incline", e.target.value)} placeholder="Incline" />
-                                          </div>
-                                        </>
-                                      ) : null}
-                                      {isCardio ? (
+                              {isCardio && isTreadmill ? (
+                                <>
+                                  <div className="space-y-1">
+                                    <div className="text-[11px] font-medium text-slate-500">Fart (km/t)</div>
+                                    <TextInput value={item.speed ?? ""} onChange={(e) => updateDraftExercise(item.id, "speed", e.target.value)} placeholder="Fart" />
+                                  </div>
+                                  <div className="space-y-1">
+                                    <div className="text-[11px] font-medium text-slate-500">Incline (%)</div>
+                                    <TextInput value={item.incline ?? ""} onChange={(e) => updateDraftExercise(item.id, "incline", e.target.value)} placeholder="Incline" />
+                                  </div>
+                                </>
+                              ) : null}
+                              {isCardio ? (
                                         <CardioIntensitySelect
                                           className="sm:col-span-2 xl:col-span-3"
                                           value={inferCardioIntensityFromExercise(item) ?? cardioIntervalIntensity}
                                           onChange={(level) => applyCardioIntensityLevelToDraft(level, { exerciseId: item.id })}
                                           hint="Klassifisering — fart, stigning og puls bestemmer du for kunden."
                                         />
-                                        <div className="space-y-1">
-                                          <div className="text-[11px] font-medium text-slate-500">Puls (% av makspuls)</div>
-                                          <TextInput
-                                            value={item.targetHrPercent ?? ""}
-                                            onChange={(e) => updateDraftExercise(item.id, "targetHrPercent", e.target.value)}
-                                            placeholder="f.eks. 85–90"
-                                          />
-                                        </div>
-                                      ) : null}
+                                <div className="space-y-1">
+                                  <div className="text-[11px] font-medium text-slate-500">Puls (% av makspuls)</div>
+                                  <TextInput
+                                    value={item.targetHrPercent ?? ""}
+                                    onChange={(e) => updateDraftExercise(item.id, "targetHrPercent", e.target.value)}
+                                    placeholder="f.eks. 85–90"
+                                  />
+                                </div>
+                              ) : null}
                                     </>
                                   }
                                 />
@@ -6734,7 +6734,7 @@ function pickFirstName(value: unknown): string {
                       memberBirthDate={selectedMemberProfile?.birthDate ?? selectedMember.birthDate}
                       memberGender={selectedMemberProfile?.gender ?? selectedMember.gender}
                     />
-                  </div>
+                            </div>
                 ) : null}
 
                 {customerSubTab === "messages" ? (
@@ -6749,12 +6749,12 @@ function pickFirstName(value: unknown): string {
                     composeValue={trainerMessage}
                     onComposeChange={(value) => {
                       setTrainerMessage(value);
-                      if (trainerChatSendStatus) setTrainerChatSendStatus(null);
-                    }}
+                          if (trainerChatSendStatus) setTrainerChatSendStatus(null);
+                        }}
                     onSend={() => {
-                      if (!selectedMemberId || selectedMemberId === "__template__" || !trainerMessage.trim()) return;
+                          if (!selectedMemberId || selectedMemberId === "__template__" || !trainerMessage.trim()) return;
                       void dispatchTrainerMessageToSelectedMember(trainerMessage).then((sent) => {
-                        if (sent) setTrainerMessage("");
+                          if (sent) setTrainerMessage("");
                       });
                     }}
                     isSending={isSendingTrainerMessage}
@@ -6787,12 +6787,12 @@ function pickFirstName(value: unknown): string {
                                 ) : null}
                               </button>
                             ))}
-                          </div>
-                        </div>
+                    </div>
+                      </div>
                       ) : null
                     }
                   />
-                ) : null}
+                    ) : null}
                 </TrainerPtDetailPortal>
               </div>
             ) : (
@@ -6861,36 +6861,36 @@ function pickFirstName(value: unknown): string {
           cardioIntervalIntensity={cardioIntervalIntensity}
           programsSubTabConditioningExtras={
             programsSubTab === "conditioning" ? (
-              <div className="rounded-xl border bg-white p-3 space-y-3" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
-                <div className="text-sm font-semibold text-slate-700">Steg for intervalløkt</div>
-                <p className="text-xs text-slate-500 leading-relaxed">
+                <div className="rounded-xl border bg-white p-3 space-y-3" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+                  <div className="text-sm font-semibold text-slate-700">Steg for intervalløkt</div>
+                  <p className="text-xs text-slate-500 leading-relaxed">
                   Start med oppvarming, legg inn drag med arbeidstid/pause, og avslutt med nedjogg.
-                </p>
+                  </p>
                 <CardioIntensitySelect
                   value={cardioIntervalIntensity}
                   onChange={(level) => applyCardioIntensityLevelToDraft(level)}
                   hint="Merker alle steg med valgt intensitet. Fart, stigning og puls fyller du inn per steg — tilpasset kundens form."
                 />
-                <div className="flex flex-wrap gap-2">
-                  <OutlineButton type="button" onClick={startNewCardioTemplateDraft}>
-                    Start med oppvarming
-                  </OutlineButton>
-                  <OutlineButton
-                    type="button"
-                    onClick={appendCardioDragRow}
-                    disabled={programExercisesDraft.length === 0 || hasCardioNedjoggRow(programExercisesDraft)}
-                  >
-                    Legg til drag
-                  </OutlineButton>
-                  <OutlineButton
-                    type="button"
-                    onClick={appendCardioCooldownRow}
-                    disabled={programExercisesDraft.length === 0 || hasCardioNedjoggRow(programExercisesDraft)}
-                  >
-                    Legg til nedjogg
-                  </OutlineButton>
+                  <div className="flex flex-wrap gap-2">
+                    <OutlineButton type="button" onClick={startNewCardioTemplateDraft}>
+                      Start med oppvarming
+                    </OutlineButton>
+                    <OutlineButton
+                      type="button"
+                      onClick={appendCardioDragRow}
+                      disabled={programExercisesDraft.length === 0 || hasCardioNedjoggRow(programExercisesDraft)}
+                    >
+                      Legg til drag
+                    </OutlineButton>
+                    <OutlineButton
+                      type="button"
+                      onClick={appendCardioCooldownRow}
+                      disabled={programExercisesDraft.length === 0 || hasCardioNedjoggRow(programExercisesDraft)}
+                    >
+                      Legg til nedjogg
+                    </OutlineButton>
+                  </div>
                 </div>
-              </div>
             ) : null
           }
           assignTemplateSection={
@@ -6920,7 +6920,7 @@ function pickFirstName(value: unknown): string {
                   {templateAssignStatus}
                 </div>
               ) : null}
-            </Card>
+          </Card>
           }
         />
       ) : null}
@@ -6936,9 +6936,9 @@ function pickFirstName(value: unknown): string {
             setTrainerTab("customers");
             setCustomerSubTab("programs");
             setCustomerProgramBuilderFocus("period");
-          }}
-        />
-      ) : null}
+                    }}
+                  />
+                ) : null}
 
       {trainerTab === "exerciseBank" ? (
         <TrainerExerciseBankView
