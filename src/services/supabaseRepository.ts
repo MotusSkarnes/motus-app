@@ -3825,12 +3825,49 @@ function mapEdgeMemberPayload(value: unknown): Member | null {
   };
 }
 
+function normalizeInvokeJsonPayload(raw: unknown): Record<string, unknown> | null {
+  if (!raw) return null;
+  if (typeof raw === "string") {
+    try {
+      const parsed = JSON.parse(raw) as unknown;
+      return parsed && typeof parsed === "object" ? (parsed as Record<string, unknown>) : null;
+    } catch {
+      return null;
+    }
+  }
+  if (typeof raw === "object") return raw as Record<string, unknown>;
+  return null;
+}
+
 function parseCreateTrainerMemberInvokePayload(raw: unknown): Record<string, unknown> | null {
-  if (!raw || typeof raw !== "object") return null;
-  const record = raw as Record<string, unknown>;
+  const record = normalizeInvokeJsonPayload(raw);
+  if (!record) return null;
   if (record.ok === true && record.member) return record;
   if (record.member && typeof record.member === "object") {
     return { ok: true, member: record.member };
+  }
+  const id = String(record.id ?? "").trim();
+  const email = String(record.email ?? "").trim();
+  const name = String(record.name ?? "").trim();
+  if (id && email && name) {
+    return { ok: true, member: record };
+  }
+  return null;
+}
+
+async function fetchCreatedTrainerMemberWithRetry(memberId: string, email: string): Promise<Member | null> {
+  const normalizedEmail = email.trim().toLowerCase();
+  const delaysMs = [0, 200, 500, 1000];
+  for (const delayMs of delaysMs) {
+    if (delayMs > 0) {
+      await new Promise((resolve) => setTimeout(resolve, delayMs));
+    }
+    const byId = await fetchMemberByIdFromSupabase(memberId);
+    if (byId) return byId;
+    if (normalizedEmail.includes("@")) {
+      const byEmail = await fetchActiveMemberByEmailFromSupabase(normalizedEmail);
+      if (byEmail) return byEmail;
+    }
   }
   return null;
 }
@@ -4001,10 +4038,7 @@ export async function createTrainerMemberViaEdgeFunction(
   const normalizedEmail = input.email.trim().toLowerCase();
   let mapped = invoke.ok && invoke.data ? mapEdgeMemberPayload(invoke.data.member) : null;
   if (!mapped) {
-    mapped = await fetchMemberByIdFromSupabase(member.id);
-  }
-  if (!mapped) {
-    mapped = await fetchActiveMemberByEmailFromSupabase(normalizedEmail);
+    mapped = await fetchCreatedTrainerMemberWithRetry(member.id, normalizedEmail);
   }
 
   if (mapped) {
@@ -4013,7 +4047,7 @@ export async function createTrainerMemberViaEdgeFunction(
 
   const message = invoke.errorMessage ?? "Kunne ikke opprette kunde.";
   if (message.includes("email_exists") || message.includes("E-post finnes")) {
-    const existing = await fetchActiveMemberByEmailFromSupabase(normalizedEmail);
+    const existing = await fetchCreatedTrainerMemberWithRetry(member.id, normalizedEmail);
     if (existing) {
       return { ok: true, member: existing };
     }
