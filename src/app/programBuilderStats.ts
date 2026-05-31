@@ -1,4 +1,8 @@
 import {
+  cardioIntensityDisplayLabel,
+  type CardioIntensityLevel,
+} from "./cardioIntervalIntensity";
+import {
   categoryForSubTab,
   programDraftUsesHoldFields,
   programExerciseHoldSeconds,
@@ -62,13 +66,15 @@ export function computeProgramDraftStats(
   const avgRest =
     draft.reduce((sum, item) => sum + parsePositiveInt(item.restSeconds, 60), 0) / draft.length;
   const intensityLabel =
-    programsSubTab === "mobility" || programsSubTab === "rehab"
-      ? "Lav"
-      : avgRest >= 120
+    programsSubTab === "conditioning" && options?.cardioIntensity
+      ? cardioIntensityDisplayLabel(options.cardioIntensity)
+      : programsSubTab === "mobility" || programsSubTab === "rehab"
         ? "Lav"
-        : avgRest >= 75
-          ? "Middels"
-          : "Høy";
+        : avgRest >= 120
+          ? "Lav"
+          : avgRest >= 75
+            ? "Middels"
+            : "Høy";
   return { exerciseCount: draft.length, totalMinutes, intensityLabel };
 }
 

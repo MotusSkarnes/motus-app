@@ -70,6 +70,34 @@ describe("formatWorkoutGroupPlanLabel", () => {
     );
     expect(label).toBe("3×10 reps · 60 kg · 90s");
   });
+
+  it("uses planned weight from workout rows when it differs from program", () => {
+    const exercise = programExercise({ weight: "60" });
+    const program: TrainingProgram = {
+      id: "p1",
+      memberId: "m1",
+      title: "Test",
+      goal: "",
+      notes: "",
+      createdAt: "",
+      exercises: [exercise],
+    };
+    const label = formatWorkoutGroupPlanLabel(
+      {
+        groupId: exercise.id,
+        exerciseName: exercise.exerciseName,
+        exerciseNames: [exercise.exerciseName],
+        plannedReps: exercise.reps,
+        plannedWeight: "62",
+        rows: [workoutRow({ plannedWeight: "62" })],
+        segments: [],
+        rounds: [],
+      },
+      program,
+      library,
+    );
+    expect(label).toBe("3×10 reps · 62 kg · 90s");
+  });
 });
 
 describe("workout log labels", () => {

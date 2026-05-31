@@ -53,11 +53,21 @@ import {
   type TrainingSubTab,
 } from "../app/exerciseCategories";
 import {
+  applyCardioIntensityToDraft,
+  applyCardioIntensityToExercise,
+  cardioIntensityPreset,
+  detectCardioIntervalPhase,
+  inferCardioIntensityFromDraft,
+  inferCardioIntensityFromExercise,
+  type CardioIntensityLevel,
+} from "../app/cardioIntervalIntensity";
+import {
   buildProgramExerciseFromBank,
   defaultPrescriptionFieldsForCategory,
   prescriptionFieldsForExerciseSave,
   resolveExercisePrescriptionFields,
 } from "../app/exercisePrescriptionFields";
+import { CardioIntensitySelect } from "./CardioIntensitySelect";
 import { ProgramExercisePrescriptionFields } from "./ProgramExercisePrescriptionFields";
 import {
   formatProgramExercisePrescription,
@@ -786,6 +796,7 @@ function pickFirstName(value: unknown): string {
   const [customerProgramBuilderFocus, setCustomerProgramBuilderFocus] = useState<"training" | "period">("training");
   const [selectedWorkoutLogId, setSelectedWorkoutLogId] = useState<string | null>(null);
   const [programExercisesDraft, setProgramExercisesDraft] = useState<ProgramExercise[]>([]);
+  const [cardioIntervalIntensity, setCardioIntervalIntensity] = useState<CardioIntensityLevel>("medium");
   const [templateProgramTitle, setTemplateProgramTitle] = useState("Ny treningsmal");
   const [editingTemplateProgramId, setEditingTemplateProgramId] = useState<string | null>(null);
   const [expandedTemplateProgramId, setExpandedTemplateProgramId] = useState<string | null>(null);
@@ -2306,7 +2317,9 @@ function pickFirstName(value: unknown): string {
     setProgramNotes(program.notes);
     setProgramFormImageUrl(program.imageUrl ?? "");
     setProgramCoverCleared(false);
-    setProgramExercisesDraft(program.exercises.map((exercise) => ({ ...exercise })));
+    const draft = program.exercises.map((exercise) => ({ ...exercise }));
+    setProgramExercisesDraft(draft);
+    setCardioIntervalIntensity(inferCardioIntensityFromDraft(draft));
     setCustomerProgramBuilderFocus("training");
     setCustomerSubTab("programs");
     setTrainerTab("customers");
@@ -2320,6 +2333,17 @@ function pickFirstName(value: unknown): string {
     setProgramFormImageUrl("");
     setProgramCoverCleared(false);
     setProgramExercisesDraft([]);
+    setCardioIntervalIntensity("medium");
+  }
+
+  function applyCardioIntensityLevelToDraft(level: CardioIntensityLevel, options?: { exerciseId?: string }) {
+    setCardioIntervalIntensity(level);
+    setProgramExercisesDraft((prev) =>
+      applyCardioIntensityToDraft(prev, level, {
+        exerciseId: options?.exerciseId,
+        conditioningBuilder: programsSubTab === "conditioning",
+      }),
+    );
   }
 
   function startNewCardioTemplateDraft() {
@@ -2332,20 +2356,22 @@ function pickFirstName(value: unknown): string {
       setTemplateAssignStatus("Fant ingen kondisjonsøvelse i biblioteket. Legg til en mølle- eller kondisjonsøvelse først.");
       return;
     }
-    const warmup: ProgramExercise = {
-      id: uid("draft-ex"),
-      exerciseId: base.id,
-      exerciseName: "Oppvarming",
-      sets: "1",
-      reps: "",
-      weight: "",
-      durationMinutes: "10",
-      speed: "7",
-      incline: "1",
-      restSeconds: "0",
-      notes: "",
-      targetHrPercent: "65–75",
-    };
+    const warmup = applyCardioIntensityToExercise(
+      {
+        id: uid("draft-ex"),
+        exerciseId: base.id,
+        exerciseName: "Oppvarming",
+        sets: "1",
+        reps: "",
+        weight: "",
+        durationMinutes: "10",
+        speed: "",
+        incline: "",
+        restSeconds: "0",
+        notes: "",
+      },
+      cardioIntervalIntensity,
+    );
     setProgramExercisesDraft([warmup]);
     setEditingTemplateProgramId(null);
     setTemplateAssignStatus("Oppvarming er lagt til. Legg til drag, juster verdier og legg til nedjogg til slutt.");
@@ -2359,20 +2385,22 @@ function pickFirstName(value: unknown): string {
       return;
     }
     const nextIndex = countCardioDragRows(programExercisesDraft) + 1;
-    const drag: ProgramExercise = {
-      id: uid("draft-ex"),
-      exerciseId: base.id,
-      exerciseName: `Drag ${nextIndex}`,
-      sets: "4",
-      reps: "",
-      weight: "",
-      durationMinutes: "4",
-      speed: "13",
-      incline: "1.5",
-      restSeconds: "180",
-      notes: "",
-      targetHrPercent: "85–92",
-    };
+    const drag = applyCardioIntensityToExercise(
+      {
+        id: uid("draft-ex"),
+        exerciseId: base.id,
+        exerciseName: `Drag ${nextIndex}`,
+        sets: "4",
+        reps: "",
+        weight: "",
+        durationMinutes: "4",
+        speed: "",
+        incline: "",
+        restSeconds: "180",
+        notes: "",
+      },
+      cardioIntervalIntensity,
+    );
     setProgramExercisesDraft((prev) => [...prev, drag]);
     setTemplateAssignStatus(null);
   }
@@ -2384,20 +2412,22 @@ function pickFirstName(value: unknown): string {
       setTemplateAssignStatus("Fant ingen kondisjonsøvelse i biblioteket.");
       return;
     }
-    const cooldown: ProgramExercise = {
-      id: uid("draft-ex"),
-      exerciseId: base.id,
-      exerciseName: "Nedjogg",
-      sets: "1",
-      reps: "",
-      weight: "",
-      durationMinutes: "5",
-      speed: "5.5",
-      incline: "0",
-      restSeconds: "0",
-      notes: "",
-      targetHrPercent: "55–65",
-    };
+    const cooldown = applyCardioIntensityToExercise(
+      {
+        id: uid("draft-ex"),
+        exerciseId: base.id,
+        exerciseName: "Nedjogg",
+        sets: "1",
+        reps: "",
+        weight: "",
+        durationMinutes: "5",
+        speed: "",
+        incline: "",
+        restSeconds: "0",
+        notes: "",
+      },
+      cardioIntervalIntensity,
+    );
     setProgramExercisesDraft((prev) => [...prev, cooldown]);
     setTemplateAssignStatus("Nedjogg lagt til. Fjern nedjogg-raden om du vil legge til flere drag.");
   }
@@ -2573,12 +2603,17 @@ function pickFirstName(value: unknown): string {
   }
 
   function startEditTemplateProgram(program: TrainingProgram) {
-    setProgramsSubTab(getTrainingProgramSubTab(program, exerciseCategoryById));
+    const subTab = getTrainingProgramSubTab(program, exerciseCategoryById);
+    const draft = program.exercises.map((exercise) => ({ ...exercise }));
+    setProgramsSubTab(subTab);
     setEditingTemplateProgramId(program.id);
     setExpandedTemplateProgramId(program.id);
     setTemplateProgramTitle(program.title);
     setProgramFormImageUrl(program.imageUrl ?? "");
-    setProgramExercisesDraft(program.exercises.map((exercise) => ({ ...exercise })));
+    setProgramExercisesDraft(draft);
+    if (subTab === "conditioning") {
+      setCardioIntervalIntensity(inferCardioIntensityFromDraft(draft));
+    }
     setTemplateAssignStatus(`Redigerer mal: ${program.title}`);
   }
 
@@ -2587,6 +2622,7 @@ function pickFirstName(value: unknown): string {
     setTemplateProgramTitle("Ny treningsmal");
     setProgramFormImageUrl("");
     setProgramExercisesDraft([]);
+    setCardioIntervalIntensity("medium");
     setTemplateAssignStatus(null);
   }
 
@@ -6357,14 +6393,12 @@ function pickFirstName(value: unknown): string {
                                         </>
                                       ) : null}
                                       {isCardio ? (
-                                        <div className="space-y-1">
-                                          <div className="text-[11px] font-medium text-slate-500">Puls (% av makspuls)</div>
-                                          <TextInput
-                                            value={item.targetHrPercent ?? ""}
-                                            onChange={(e) => updateDraftExercise(item.id, "targetHrPercent", e.target.value)}
-                                            placeholder="f.eks. 85–90"
-                                          />
-                                        </div>
+                                        <CardioIntensitySelect
+                                          className="sm:col-span-2 xl:col-span-3"
+                                          value={inferCardioIntensityFromExercise(item) ?? cardioIntervalIntensity}
+                                          onChange={(level) => applyCardioIntensityLevelToDraft(level, { exerciseId: item.id })}
+                                          hint={`Puls ca. ${cardioIntensityPreset(inferCardioIntensityFromExercise(item) ?? cardioIntervalIntensity, detectCardioIntervalPhase(item.exerciseName)).targetHrPercent}% av makspuls`}
+                                        />
                                       ) : null}
                                     </>
                                   }
@@ -6816,6 +6850,7 @@ function pickFirstName(value: unknown): string {
           onExpandedTemplateProgramIdChange={setExpandedTemplateProgramId}
           onStartEditTemplate={startEditTemplateProgram}
           onDeleteTemplate={deleteTemplateProgram}
+          cardioIntervalIntensity={cardioIntervalIntensity}
           programsSubTabConditioningExtras={
             programsSubTab === "conditioning" ? (
               <div className="rounded-xl border bg-white p-3 space-y-3" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
@@ -6823,6 +6858,11 @@ function pickFirstName(value: unknown): string {
                 <p className="text-xs text-slate-500 leading-relaxed">
                   Start med oppvarming, legg inn drag med arbeidstid/pause, og avslutt med nedjogg.
                 </p>
+                <CardioIntensitySelect
+                  value={cardioIntervalIntensity}
+                  onChange={(level) => applyCardioIntensityLevelToDraft(level)}
+                  hint="Gjelder alle steg i utkastet. Du kan finjustere fart og puls per steg under redigering."
+                />
                 <div className="flex flex-wrap gap-2">
                   <OutlineButton type="button" onClick={startNewCardioTemplateDraft}>
                     Start med oppvarming

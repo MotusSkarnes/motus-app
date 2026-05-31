@@ -116,6 +116,49 @@ function workoutRowsToProgramExercise(rows: WorkoutExerciseResult[]): ProgramExe
   };
 }
 
+/** Økt-rader (planlagt vekt/reps) slås sammen med programøvelse for visning — matcher Plan-kolonnen i øktmodus. */
+function mergeProgramExerciseWithWorkoutRows(
+  programExercise: ProgramExercise | undefined,
+  rows: WorkoutExerciseResult[],
+): ProgramExercise | null {
+  const fromRows = workoutRowsToProgramExercise(rows);
+  if (!fromRows) return programExercise ?? null;
+  if (!programExercise) return fromRows;
+  const plannedSets = Number(String(programExercise.sets ?? "").trim()) || 0;
+  const liveSetCount = rows.length;
+  const sets =
+    liveSetCount > plannedSets ? String(liveSetCount) : String(programExercise.sets || fromRows.sets);
+  return {
+    ...programExercise,
+    sets,
+    reps: fromRows.reps || programExercise.reps,
+    repsUnit: fromRows.repsUnit ?? programExercise.repsUnit,
+    weight: fromRows.weight || programExercise.weight,
+    weightUnit: fromRows.weightUnit ?? programExercise.weightUnit,
+    holdSeconds: fromRows.holdSeconds ?? programExercise.holdSeconds,
+    durationMinutes: fromRows.durationMinutes || programExercise.durationMinutes,
+    speed: fromRows.speed || programExercise.speed,
+    incline: fromRows.incline || programExercise.incline,
+  };
+}
+
+function formatPlanFromWorkoutRows(
+  rows: WorkoutExerciseResult[],
+  program: TrainingProgram | null | undefined,
+  programExerciseId: string,
+  exerciseLibrary: Exercise[],
+): string {
+  if (!rows.length) return "";
+  const programExercise = program?.exercises.find((exercise) => exercise.id === programExerciseId);
+  const exerciseIndex = program?.exercises.findIndex((exercise) => exercise.id === programExerciseId) ?? -1;
+  const merged = mergeProgramExerciseWithWorkoutRows(programExercise, rows);
+  if (!merged) return "";
+  if (program && exerciseIndex >= 0) {
+    return formatPrescriptionForProgramExercise(merged, exerciseIndex, program.exercises, exerciseLibrary, rows.length);
+  }
+  return formatProgramExercisePrescription(merged, 0, [merged], exerciseLibrary);
+}
+
 function formatPrescriptionForProgramExercise(
   programExercise: ProgramExercise,
   exerciseIndex: number,
@@ -144,21 +187,7 @@ export function formatWorkoutGroupPlanLabel(
       : `${label} · ${rounds} runde${rounds === 1 ? "" : "r"}`;
   }
 
-  const programExercise = program?.exercises.find((exercise) => exercise.id === group.groupId);
-  const exerciseIndex = program?.exercises.findIndex((exercise) => exercise.id === group.groupId) ?? -1;
-
-  if (programExercise && program && exerciseIndex >= 0) {
-    return formatPrescriptionForProgramExercise(
-      programExercise,
-      exerciseIndex,
-      program.exercises,
-      exerciseLibrary,
-      group.rows.length,
-    );
-  }
-
-  const pseudo = workoutRowsToProgramExercise(group.rows);
-  return pseudo ? formatProgramExercisePrescription(pseudo, 0, [pseudo], exerciseLibrary) : "";
+  return formatPlanFromWorkoutRows(group.rows, program, group.groupId, exerciseLibrary);
 }
 
 /** Plan for ett segment i supersett/trisett/sirkel. */
@@ -168,21 +197,7 @@ export function formatWorkoutSegmentPlanLabel(
   program: TrainingProgram | null | undefined,
   exerciseLibrary: Exercise[],
 ): string {
-  const programExercise = program?.exercises.find((exercise) => exercise.id === programExerciseId);
-  const exerciseIndex = program?.exercises.findIndex((exercise) => exercise.id === programExerciseId) ?? -1;
-
-  if (programExercise && program && exerciseIndex >= 0) {
-    return formatPrescriptionForProgramExercise(
-      programExercise,
-      exerciseIndex,
-      program.exercises,
-      exerciseLibrary,
-      segmentRows.length,
-    );
-  }
-
-  const pseudo = workoutRowsToProgramExercise(segmentRows);
-  return pseudo ? formatProgramExercisePrescription(pseudo, 0, [pseudo], exerciseLibrary) : "";
+  return formatPlanFromWorkoutRows(segmentRows, program, programExerciseId, exerciseLibrary);
 }
 
 export function resolveWorkoutGroupExerciseName(

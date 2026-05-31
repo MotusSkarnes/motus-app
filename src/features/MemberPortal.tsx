@@ -63,6 +63,7 @@ import {
 } from "../app/notificationPreferences";
 import { motusShareStatusMessage, sharePersonalRecordCard } from "../app/motusShareCard";
 import { buildTrainingProgramFromWorkoutMode } from "../app/pausedWorkoutSession";
+import { findMaxPerformedLoadFromLastExerciseSession } from "../app/suggestedWorkoutWeight";
 import {
   formatPausedWorkoutExpiry,
   getPausedWorkoutByProgramId,
@@ -2182,24 +2183,7 @@ export function MemberPortal(props: MemberPortalProps) {
   );
   const latestCompletedLog = recentCompletedLogs[0] ?? null;
   function findSuggestedWeightForExercise(exerciseName: string): string {
-    const normalizedExerciseName = exerciseName.trim().toLowerCase();
-    if (!normalizedExerciseName) return "";
-    const sorted = [...completedLogs].sort((a, b) => {
-      const aDate = parseLogDate(a.date)?.getTime() ?? 0;
-      const bDate = parseLogDate(b.date)?.getTime() ?? 0;
-      return bDate - aDate;
-    });
-    for (const log of sorted) {
-      for (const result of log.results ?? []) {
-        if (!result.completed) continue;
-        const normalizedName = result.exerciseName.trim().toLowerCase();
-        if (normalizedName !== normalizedExerciseName) continue;
-        const parsedWeight = Number(result.performedWeight);
-        if (!Number.isFinite(parsedWeight) || parsedWeight <= 0) continue;
-        return String(parsedWeight);
-      }
-    }
-    return "";
+    return findMaxPerformedLoadFromLastExerciseSession(completedLogs, exerciseName);
   }
   const completedLogDates = useMemo(
     () => completedLogs.map((log) => parseStoredLogDate(log.date)).filter((date): date is Date => Boolean(date)),
@@ -2716,15 +2700,13 @@ export function MemberPortal(props: MemberPortalProps) {
         exercisesInThisLog.add(key);
         const setMap = result.get(key) ?? new Map<number, { weight?: string; reps?: string; durationMinutes?: string; speed?: string; incline?: string }>();
         const setNum = row.setNumber ?? row.blockRound ?? 1;
-        if (!setMap.has(setNum)) {
-          setMap.set(setNum, {
-            weight: row.performedWeight,
-            reps: row.performedReps,
-            durationMinutes: row.performedDurationMinutes,
-            speed: row.performedSpeed,
-            incline: row.performedIncline,
-          });
-        }
+        setMap.set(setNum, {
+          weight: row.performedWeight,
+          reps: row.performedReps,
+          durationMinutes: row.performedDurationMinutes,
+          speed: row.performedSpeed,
+          incline: row.performedIncline,
+        });
         result.set(key, setMap);
       });
       exercisesInThisLog.forEach((key) => capturedFromExercises.add(key));

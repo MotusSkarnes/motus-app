@@ -46,6 +46,14 @@ import { resolveExercisePrescriptionFields } from "../app/exercisePrescriptionFi
 import { EmptyState, GradientButton, OutlineButton, PillButton, SelectBox, TextInput } from "../app/ui";
 import { useToast } from "../app/toast";
 import type { Exercise, ProgramExercise, TrainingProgram } from "../app/types";
+import {
+  applyCardioIntensityToExercise,
+  cardioIntensityPreset,
+  detectCardioIntervalPhase,
+  inferCardioIntensityFromExercise,
+  type CardioIntensityLevel,
+} from "../app/cardioIntervalIntensity";
+import { CardioIntensitySelect } from "./CardioIntensitySelect";
 import { ProgramExercisePrescriptionFields } from "./ProgramExercisePrescriptionFields";
 
 type MuscleFilter = "all" | "bein" | "overkropp" | "kjerne";
@@ -132,6 +140,7 @@ export type TrainerProgramBuilderViewProps = {
   onStartEditTemplate: (program: TrainingProgram) => void;
   onDeleteTemplate: (program: TrainingProgram) => void;
   programsSubTabConditioningExtras?: ReactNode;
+  cardioIntervalIntensity?: CardioIntensityLevel;
   assignTemplateSection: ReactNode;
 };
 
@@ -177,6 +186,7 @@ export function TrainerProgramBuilderView({
   onStartEditTemplate,
   onDeleteTemplate,
   programsSubTabConditioningExtras,
+  cardioIntervalIntensity,
   assignTemplateSection,
 }: TrainerProgramBuilderViewProps) {
   const { pushToast } = useToast();
@@ -191,8 +201,11 @@ export function TrainerProgramBuilderView({
   const [moreMenuOpen, setMoreMenuOpen] = useState(false);
 
   const stats = useMemo(
-    () => computeProgramDraftStats(programExercisesDraft, exercisesById, programsSubTab),
-    [programExercisesDraft, exercisesById, programsSubTab],
+    () =>
+      computeProgramDraftStats(programExercisesDraft, exercisesById, programsSubTab, {
+        cardioIntensity: programsSubTab === "conditioning" ? cardioIntervalIntensity : undefined,
+      }),
+    [programExercisesDraft, exercisesById, programsSubTab, cardioIntervalIntensity],
   );
 
   const coverPreviewSrc = useMemo(() => {
@@ -459,16 +472,31 @@ export function TrainerProgramBuilderView({
                         setsLabel={isCardio ? cardioSetLabel() : "Sett"}
                         setsPlaceholder={isCardio ? cardioSetPlaceholder() : "Sett"}
                         trailing={
-                          isCardio && isTreadmill ? (
+                          isCardio ? (
                             <>
-                              <div className="space-y-1">
-                                <div className="text-[11px] font-medium text-slate-500">Fart (km/t)</div>
-                                <TextInput value={item.speed ?? ""} onChange={(e) => onUpdateDraftExercise(item.id, "speed", e.target.value)} />
-                              </div>
-                              <div className="space-y-1">
-                                <div className="text-[11px] font-medium text-slate-500">Stigning (%)</div>
-                                <TextInput value={item.incline ?? ""} onChange={(e) => onUpdateDraftExercise(item.id, "incline", e.target.value)} />
-                              </div>
+                              <CardioIntensitySelect
+                                className="sm:col-span-2 xl:col-span-3"
+                                value={inferCardioIntensityFromExercise(item) ?? cardioIntervalIntensity ?? "medium"}
+                                onChange={(level) => {
+                                  const next = applyCardioIntensityToExercise(item, level);
+                                  onProgramExercisesDraftChange(
+                                    programExercisesDraft.map((row) => (row.id === item.id ? next : row)),
+                                  );
+                                }}
+                                hint={`Puls ca. ${cardioIntensityPreset(inferCardioIntensityFromExercise(item) ?? cardioIntervalIntensity ?? "medium", detectCardioIntervalPhase(item.exerciseName)).targetHrPercent}% av makspuls`}
+                              />
+                              {isTreadmill ? (
+                                <>
+                                  <div className="space-y-1">
+                                    <div className="text-[11px] font-medium text-slate-500">Fart (km/t)</div>
+                                    <TextInput value={item.speed ?? ""} onChange={(e) => onUpdateDraftExercise(item.id, "speed", e.target.value)} />
+                                  </div>
+                                  <div className="space-y-1">
+                                    <div className="text-[11px] font-medium text-slate-500">Stigning (%)</div>
+                                    <TextInput value={item.incline ?? ""} onChange={(e) => onUpdateDraftExercise(item.id, "incline", e.target.value)} />
+                                  </div>
+                                </>
+                              ) : null}
                             </>
                           ) : null
                         }

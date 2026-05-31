@@ -17,6 +17,7 @@ import {
 import { GradientButton, OutlineButton, TextArea, TextInput } from "../app/ui";
 import type { Exercise, TrainingProgram, WorkoutModeState, WorkoutReflection } from "../app/types";
 import type { ReplaceWorkoutExerciseGroupInput } from "../services/appRepository";
+import { formatLastSessionSetLabel, pickLastSetFromLastSession } from "../app/lastSessionSetDisplay";
 import { buildTrainingProgramFromWorkoutMode } from "../app/pausedWorkoutSession";
 import { MAX_SETS_PER_EXERCISE_IN_WORKOUT_MODE } from "../services/appRepository";
 
@@ -1189,6 +1190,15 @@ export function LiveWorkoutSessionModal({
             </div>
 
             <div className="shrink-0 border-t p-3" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+              {detailLastSessionLabel ? (
+                <div
+                  className="mb-3 rounded-xl border bg-slate-50 px-3 py-3 text-sm text-slate-700"
+                  style={{ borderColor: "rgba(15,23,42,0.08)" }}
+                >
+                  <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Sist sett</div>
+                  <div className="mt-1 font-medium text-slate-900">{detailLastSessionLabel}</div>
+                </div>
+              ) : null}
               <GradientButton type="button" className="w-full" onClick={closeExerciseDetail}>
                 Tilbake til øktmodus
               </GradientButton>
