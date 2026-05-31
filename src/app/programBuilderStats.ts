@@ -54,6 +54,7 @@ export function computeProgramDraftStats(
   draft: ProgramExercise[],
   exercisesById: Map<string, Exercise>,
   programsSubTab: TrainingSubTab,
+  options?: { cardioIntensity?: CardioIntensityLevel },
 ): { exerciseCount: number; totalMinutes: number; intensityLabel: string } {
   if (!draft.length) {
     return { exerciseCount: 0, totalMinutes: 0, intensityLabel: "—" };
