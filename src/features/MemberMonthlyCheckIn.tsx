@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { MOTUS } from "../app/data";
 import {
@@ -81,9 +81,14 @@ export function MemberMonthlyCheckIn({ memberName, window, onComplete, onClose }
   const [draft, setDraft] = useState<Draft>(() => createEmptyCheckInDraft(window.monthKey));
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
 
   const theme = CHECK_IN_PAGE_THEMES[pageIndex];
   const isLastPage = pageIndex === CHECK_IN_PAGE_COUNT - 1;
+
+  useEffect(() => {
+    scrollRef.current?.scrollTo(0, 0);
+  }, [pageIndex]);
 
   const pageValidationMessage = useMemo(() => {
     if (pageIndex === 1 && draft.trainingNeeds.length === 0 && !draft.trainingNeedsNotes.trim()) {
@@ -147,10 +152,13 @@ export function MemberMonthlyCheckIn({ memberName, window, onComplete, onClose }
   }
 
   return (
-    <div className="fixed inset-0 z-[10050] flex flex-col bg-white">
+    <div
+      className="fixed inset-0 z-[10050] flex min-h-0 flex-col bg-white"
+      style={{ paddingTop: "env(safe-area-inset-top)" }}
+    >
       <div className="h-1.5 shrink-0" style={{ background: `linear-gradient(90deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)` }} />
-      <div className="mx-auto flex w-full max-w-lg flex-1 flex-col px-4 py-5 sm:px-6">
-        <div className="mb-4 flex items-center justify-between gap-3 text-xs font-semibold text-slate-500">
+      <div className="mx-auto flex min-h-0 w-full max-w-lg flex-1 flex-col px-4 py-3 sm:px-6 sm:py-5">
+        <div className="mb-2 flex shrink-0 items-center justify-between gap-3 text-xs font-semibold text-slate-500 sm:mb-4">
           <span>
             Side {pageIndex + 1} av {CHECK_IN_PAGE_COUNT} · {window.daysRemaining} dager igjen
           </span>
@@ -158,7 +166,7 @@ export function MemberMonthlyCheckIn({ memberName, window, onComplete, onClose }
             Lukk
           </button>
         </div>
-        <div className="mb-2 h-1.5 overflow-hidden rounded-full bg-slate-100">
+        <div className="mb-2 h-1.5 shrink-0 overflow-hidden rounded-full bg-slate-100">
           <div
             className="h-full rounded-full transition-all duration-300"
             style={{
@@ -168,14 +176,18 @@ export function MemberMonthlyCheckIn({ memberName, window, onComplete, onClose }
           />
         </div>
 
-        <Card className="flex flex-1 flex-col overflow-hidden border-0 shadow-lg ring-1 ring-slate-200/80">
-          <div className="border-b border-slate-100 px-4 py-4 sm:px-5">
+        <Card className="flex min-h-0 flex-1 flex-col overflow-hidden border-0 shadow-lg ring-1 ring-slate-200/80">
+          <div className="shrink-0 border-b border-slate-100 px-4 py-3 sm:px-5 sm:py-4">
             <p className="text-xs font-semibold uppercase tracking-wide text-teal-700">Månedlig sjekk-inn · {window.monthLabel}</p>
-            <h1 className="mt-1 text-xl font-bold text-slate-950 sm:text-2xl">Hei {memberName.split(" ")[0] || "der"}!</h1>
-            <p className="mt-1 text-sm text-slate-600">{theme.subtitle}</p>
+            <h1 className="mt-0.5 text-lg font-bold text-slate-950 sm:mt-1 sm:text-2xl">Hei {memberName.split(" ")[0] || "der"}!</h1>
+            <p className="mt-0.5 text-xs text-slate-600 sm:mt-1 sm:text-sm">{theme.subtitle}</p>
           </div>
 
-          <div className="flex-1 overflow-y-auto px-4 py-4 sm:px-5">
+          <div
+            ref={scrollRef}
+            className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-3 sm:px-5 sm:py-4"
+            style={{ WebkitOverflowScrolling: "touch" }}
+          >
             {pageIndex === 0 ? (
               <div className="space-y-5">
                 <div>
@@ -266,8 +278,8 @@ export function MemberMonthlyCheckIn({ memberName, window, onComplete, onClose }
           </div>
 
           <div
-            className="flex gap-2 border-t border-slate-100 px-4 py-4 sm:px-5"
-            style={{ paddingBottom: "max(1rem, env(safe-area-inset-bottom))" }}
+            className="flex shrink-0 gap-2 border-t border-slate-100 px-4 py-3 sm:px-5 sm:py-4"
+            style={{ paddingBottom: "max(0.75rem, env(safe-area-inset-bottom))" }}
           >
             <OutlineButton
               type="button"
