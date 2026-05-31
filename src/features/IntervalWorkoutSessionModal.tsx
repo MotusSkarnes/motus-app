@@ -441,50 +441,50 @@ export function IntervalWorkoutSessionModal({
     (intervalProgramSteps.length > 0 && stepIndex >= intervalProgramSteps.length) ||
     (hasStartedRef.current && !isRunning && intervalProgramSteps.length > 0 && remainingSeconds <= 0 && stepIndex >= intervalProgramSteps.length - 1);
 
+  const intervalFooterBtn =
+    "w-full !min-h-8 !h-8 !px-1.5 !py-1 !text-[10px] !font-semibold !leading-tight sm:!min-h-9 sm:!text-[11px]";
+
   const modal = (
     <div className="motus-workout-focus motus-modal-insets fixed inset-0 z-[10030] overscroll-contain bg-black/90">
-      <div className="mx-auto flex h-full w-full max-w-2xl flex-col rounded-2xl bg-white shadow-lg">
-        <div className="border-b p-4 sm:p-5" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+      <div className="motus-workout-focus-panel mx-auto flex h-full w-full max-w-2xl flex-col overflow-hidden bg-slate-950 text-white shadow-2xl sm:rounded-3xl">
+        <div className="border-b border-white/10 px-3 pb-2 pt-[max(0.5rem,env(safe-area-inset-top))] sm:px-5 sm:pb-4 sm:pt-4">
           <div className="flex items-start justify-between gap-3">
-            <div>
-              <div className="text-xs uppercase tracking-wide text-slate-400">Intervallvindu</div>
-              <div className="text-xl font-semibold text-slate-900">{program.title}</div>
-              <div className="mt-1 text-xs text-slate-500">{program.goal || "Nedtelling per intervallsteg"}</div>
+            <div className="min-w-0">
+              <div className="text-[10px] font-black uppercase tracking-[0.14em] motus-brand-on-dark sm:text-xs">Intervallvindu</div>
+              <div className="truncate text-lg font-bold tracking-tight text-white sm:text-xl">{program.title}</div>
+              <div className="mt-0.5 truncate text-[11px] text-white/65 sm:text-xs">{program.goal || "Nedtelling per intervallsteg"}</div>
               {isRunning ? (
-                <div className="mt-2 inline-flex items-center gap-1.5 rounded-full border border-teal-300 bg-emerald-50 px-2.5 py-1 text-[11px] font-semibold text-emerald-800">
-                  <Check className="h-3.5 w-3.5 shrink-0" aria-hidden />
-                  {isPaused ? "Økt startet · pause" : "Økt startet · nedtelling pågår"}
+                <div className="mt-2 inline-flex items-center gap-1.5 rounded-full border border-teal-400/40 bg-teal-500/15 px-2 py-0.5 text-[10px] font-semibold text-teal-100">
+                  <Check className="h-3 w-3 shrink-0" aria-hidden />
+                  {isPaused ? "Pause" : "Nedtelling pågår"}
                 </div>
               ) : null}
             </div>
-            <OutlineButton onClick={() => { resetTimer(); onClose(); }}>Lukk</OutlineButton>
+            <button
+              type="button"
+              onClick={() => {
+                resetTimer();
+                onClose();
+              }}
+              className="shrink-0 rounded-full bg-white/10 px-2.5 py-1.5 text-[11px] font-bold text-white transition hover:bg-white/15 sm:px-3 sm:py-2 sm:text-xs"
+            >
+              Lukk
+            </button>
           </div>
         </div>
 
-        <div className="motus-scroll-touch flex-1 space-y-4 overflow-auto p-4 sm:p-6">
+        <div className="motus-scroll-touch flex-1 space-y-4 overflow-auto p-3 sm:p-5">
           {timerFinished ? (
             <div
               ref={completeSectionRef}
-              className="rounded-xl border bg-slate-50 p-4 space-y-4"
-              style={{ borderColor: "rgba(15,23,42,0.08)" }}
+              className="rounded-xl border border-white/10 bg-slate-900/80 p-3 space-y-3 sm:p-4 sm:space-y-4"
             >
               <div>
-                <div className="text-sm font-semibold text-slate-800">Økta er fullført</div>
-                <div className="text-xs text-slate-500">Svar med emoji og eventuell kommentar, deretter lagre økten.</div>
+                <div className="text-sm font-semibold text-white">Økta er fullført</div>
+                <div className="text-xs text-white/65">Svar med emoji og eventuell kommentar, deretter lagre nederst.</div>
               </div>
-              <GradientButton
-                type="button"
-                className="w-full !min-h-11 !py-2.5 !text-sm !font-bold shadow-md sm:!min-h-12 sm:!text-base"
-                onClick={handleSave}
-                disabled={isSaving}
-              >
-                <span className="inline-flex items-center justify-center gap-2">
-                  <Check className="h-5 w-5 shrink-0" strokeWidth={2.5} aria-hidden />
-                  {isSaving ? "Lagrer økt..." : "Lagre økt"}
-                </span>
-              </GradientButton>
               <label className="block space-y-1">
-                <span className="text-xs font-semibold text-slate-700">Kommentar til økten (valgfritt)</span>
+                <span className="text-xs font-semibold text-white/80">Kommentar til økten (valgfritt)</span>
                 <TextArea
                   value={sessionNote}
                   onChange={(event) => setSessionNote(event.target.value)}
@@ -498,7 +498,7 @@ export function IntervalWorkoutSessionModal({
                 { key: "motivation", question: "Hvordan er motivasjonen videre?", value: motivationLevel, setValue: setMotivationLevel },
               ].map((item) => (
                 <div key={item.key} className="space-y-2">
-                  <div className="text-xs font-medium text-slate-700">{item.question}</div>
+                  <div className="text-xs font-medium text-white/80">{item.question}</div>
                   <div className="grid grid-cols-5 gap-2">
                     {[1, 2, 3, 4, 5].map((level) => {
                       const numericLevel = level as 1 | 2 | 3 | 4 | 5;
@@ -521,7 +521,7 @@ export function IntervalWorkoutSessionModal({
                 </div>
               ))}
               <label className="block space-y-1">
-                <span className="text-xs font-semibold text-slate-700">Notat til PT (valgfritt)</span>
+                <span className="text-xs font-semibold text-white/80">Notat til PT (valgfritt)</span>
                 <TextArea
                   value={reflectionNote}
                   onChange={(event) => setReflectionNote(event.target.value)}
@@ -627,8 +627,8 @@ export function IntervalWorkoutSessionModal({
                   <div className="p-8 text-center text-sm text-white/90">Ingen steg i programmet.</div>
                 )}
               </div>
-              <div className="rounded-xl border bg-slate-50 p-3" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
-                <div className="flex items-center justify-between text-xs font-semibold text-slate-600">
+              <div className="rounded-xl border border-white/10 bg-slate-900/60 p-3">
+                <div className="flex items-center justify-between text-xs font-semibold text-white/70">
                   <span>
                     Steg {Math.min(stepIndex + 1, intervalProgramSteps.length || 1)} / {intervalProgramSteps.length || 1}
                   </span>
@@ -643,7 +643,7 @@ export function IntervalWorkoutSessionModal({
                     }}
                   />
                 </div>
-                <div className="mt-2 text-xs text-slate-500">
+                <div className="mt-2 text-xs text-white/55">
                   Total tid: {formatSeconds(elapsedSeconds)} / {formatSeconds(totalSeconds)}
                 </div>
               </div>
@@ -658,52 +658,37 @@ export function IntervalWorkoutSessionModal({
           ) : null}
         </div>
 
-        <div className="sticky bottom-0 border-t border-white/10 bg-slate-950 p-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] shadow-lg sm:p-4">
-          {timerFinished ? (
-            <>
-              <GradientButton
-                type="button"
-                className="mb-2 w-full !min-h-10 !py-2 !text-sm !font-bold shadow-md sm:mb-3 sm:!min-h-[3.25rem] sm:!py-3.5 sm:!text-base"
-                onClick={handleSave}
-                disabled={isSaving}
-              >
-                <span className="inline-flex items-center justify-center gap-2">
-                  <Check className="h-5 w-5 shrink-0" strokeWidth={2.5} aria-hidden />
-                  {isSaving ? "Lagrer økt..." : "Lagre økt"}
-                </span>
-              </GradientButton>
-              <OutlineButton
-                type="button"
-                onClick={() => setShowComplete(false)}
-                className="w-full !min-h-9 !px-2 !py-1.5 !text-[11px] sm:!min-h-10 sm:!text-sm"
-              >
-                Tilbake til timer
-              </OutlineButton>
-            </>
-          ) : (
-            <>
-              <GradientButton
-                type="button"
-                className="mb-2 w-full !min-h-10 !py-2 !text-sm !font-bold shadow-md sm:mb-3 sm:!min-h-[3.25rem] sm:!py-3.5 sm:!text-base"
-                onClick={openComplete}
-                disabled={!intervalProgramSteps.length}
-              >
-                <span className="inline-flex items-center justify-center gap-2">
-                  <Check className="h-5 w-5 shrink-0" strokeWidth={2.5} aria-hidden />
-                  Fullfør økt
-                </span>
-              </GradientButton>
-              <div className="grid grid-cols-2 gap-1.5 sm:gap-3">
+        <div className="sticky bottom-0 shrink-0 border-t border-white/10 bg-slate-950 p-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] shadow-lg">
+          <div className="grid grid-cols-2 gap-1.5">
+            {timerFinished ? (
+              <>
+                <GradientButton
+                  type="button"
+                  className={intervalFooterBtn}
+                  onClick={handleSave}
+                  disabled={isSaving}
+                >
+                  <span className="inline-flex items-center justify-center gap-1">
+                    <Check className="h-3.5 w-3.5 shrink-0" strokeWidth={2.5} aria-hidden />
+                    {isSaving ? "Lagrer..." : "Lagre økt"}
+                  </span>
+                </GradientButton>
+                <OutlineButton type="button" className={intervalFooterBtn} onClick={() => setShowComplete(false)}>
+                  Tilbake
+                </OutlineButton>
+              </>
+            ) : (
+              <>
                 {isRunning ? (
                   <OutlineButton
                     type="button"
                     disabled
                     aria-pressed="true"
                     aria-label="Økten er startet"
-                    className="w-full !min-h-9 !cursor-default !px-2 !py-1.5 !text-[11px] !motus-brand-surface !border-[var(--motus-brand-border-strong)] !opacity-100 sm:!min-h-10 sm:!text-sm"
+                    className={`${intervalFooterBtn} !cursor-default !motus-brand-surface !border-[var(--motus-brand-border-strong)] !opacity-100`}
                   >
                     <span className="inline-flex items-center justify-center gap-1">
-                      <Check className="h-3.5 w-3.5 shrink-0" strokeWidth={2.5} aria-hidden />
+                      <Check className="h-3 w-3 shrink-0" strokeWidth={2.5} aria-hidden />
                       Startet
                     </span>
                   </OutlineButton>
@@ -712,7 +697,7 @@ export function IntervalWorkoutSessionModal({
                     type="button"
                     onClick={handleStart}
                     disabled={!intervalProgramSteps.length}
-                    className="w-full !min-h-9 !px-2 !py-1.5 !text-[11px] sm:!min-h-10 sm:!text-sm"
+                    className={intervalFooterBtn}
                   >
                     Start økt
                   </GradientButton>
@@ -721,7 +706,7 @@ export function IntervalWorkoutSessionModal({
                   type="button"
                   onClick={() => setIsPaused((previous) => !previous)}
                   disabled={!isRunning}
-                  className="w-full !min-h-9 !px-2 !py-1.5 !text-[11px] sm:!min-h-10 sm:!text-sm"
+                  className={intervalFooterBtn}
                 >
                   {isPaused ? "Fortsett" : "Pause"}
                 </OutlineButton>
@@ -729,24 +714,24 @@ export function IntervalWorkoutSessionModal({
                   type="button"
                   onClick={handleSkip}
                   disabled={!intervalProgramSteps.length}
-                  className="w-full !min-h-9 !px-2 !py-1.5 !text-[11px] sm:!min-h-10 sm:!text-sm"
+                  className={intervalFooterBtn}
                 >
                   Hopp over
                 </OutlineButton>
-                <OutlineButton
+                <GradientButton
                   type="button"
-                  onClick={() => {
-                    resetTimer();
-                    setStatus("Intervalløkten er nullstilt.");
-                  }}
+                  onClick={openComplete}
                   disabled={!intervalProgramSteps.length}
-                  className="w-full !min-h-9 !px-2 !py-1.5 !text-[11px] sm:!min-h-10 sm:!text-sm"
+                  className={intervalFooterBtn}
                 >
-                  Nullstill
-                </OutlineButton>
-              </div>
-            </>
-          )}
+                  <span className="inline-flex items-center justify-center gap-1">
+                    <Check className="h-3 w-3 shrink-0" strokeWidth={2.5} aria-hidden />
+                    Fullfør
+                  </span>
+                </GradientButton>
+              </>
+            )}
+          </div>
         </div>
       </div>
     </div>
