@@ -1810,10 +1810,15 @@ export function MemberPortal(props: MemberPortalProps) {
     [memberProgramsInActiveLibrary, exerciseCategoryById, exercises],
   );
   const intervalProgramIdSet = useMemo(() => new Set(intervalPrograms.map((program) => program.id)), [intervalPrograms]);
-  const activeIntervalProgram = useMemo(
-    () => intervalPrograms.find((program) => program.id === selectedIntervalProgramId) ?? intervalPrograms[0] ?? null,
-    [intervalPrograms, selectedIntervalProgramId],
-  );
+  const activeIntervalProgram = useMemo(() => {
+    if (selectedIntervalProgramId) {
+      const selected =
+        memberProgramsInActiveLibrary.find((program) => program.id === selectedIntervalProgramId) ??
+        memberPrograms.find((program) => program.id === selectedIntervalProgramId);
+      if (selected) return selected;
+    }
+    return intervalPrograms.find((program) => program.id === selectedIntervalProgramId) ?? intervalPrograms[0] ?? null;
+  }, [intervalPrograms, memberPrograms, memberProgramsInActiveLibrary, selectedIntervalProgramId]);
   const intervalProgramSteps = useMemo(() => {
     if (!activeIntervalProgram) return [] as IntervalTimerStep[];
     const programTitle = activeIntervalProgram.title;
@@ -7189,22 +7194,6 @@ export function MemberPortal(props: MemberPortalProps) {
                 />
               ) : null}
               </div>
-              <IntervalWorkoutSessionModal
-                open={showIntervalTimerModal}
-                program={activeIntervalProgram}
-                exercises={exercises}
-                memberId={activeMemberId}
-                memberEmail={editableMember?.email ?? currentUserEmail}
-                onClose={() => {
-                  pendingPeriodPlanWorkoutStartRef.current = null;
-                  setShowIntervalTimerModal(false);
-                }}
-                onSaved={() => {
-                  setIntervalTimerStatus("Kondisjonsøkten er lagret. PT kan se den i loggen.");
-                  setShowIntervalTimerModal(false);
-                }}
-                logIntervalWorkout={handleLogIntervalWorkout}
-              />
             </>
           ) : null}
 
@@ -7391,6 +7380,22 @@ export function MemberPortal(props: MemberPortalProps) {
         </div>
       </div>
     </div>
+    <IntervalWorkoutSessionModal
+      open={showIntervalTimerModal}
+      program={activeIntervalProgram}
+      exercises={exercises}
+      memberId={activeMemberId}
+      memberEmail={editableMember?.email ?? currentUserEmail}
+      onClose={() => {
+        pendingPeriodPlanWorkoutStartRef.current = null;
+        setShowIntervalTimerModal(false);
+      }}
+      onSaved={() => {
+        setIntervalTimerStatus("Kondisjonsøkten er lagret. PT kan se den i loggen.");
+        setShowIntervalTimerModal(false);
+      }}
+      logIntervalWorkout={handleLogIntervalWorkout}
+    />
     <LiveWorkoutSessionModal
       variant="member"
       workoutMode={workoutMode}
