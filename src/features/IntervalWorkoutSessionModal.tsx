@@ -609,26 +609,26 @@ export function IntervalWorkoutSessionModal({
             </div>
           ) : currentStep ? (
             <div className="w-full rounded-xl border border-white/10 bg-white p-2.5 text-left text-slate-900 shadow-xl shadow-black/20 sm:rounded-2xl sm:p-4">
-              <div className="flex flex-wrap items-start justify-between gap-2">
-                <div className="min-w-0 flex-1">
-                  <div
-                    className={`inline-flex rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wide sm:text-[11px] ${intervalTimerBadgeToneClass(
-                      currentStep.tone,
-                    )}`}
-                  >
-                    {currentStep.phaseBadge}
-                  </div>
-                  <h2 className="mt-1.5 text-xl font-bold leading-tight text-slate-900 sm:text-2xl">{currentStep.headline}</h2>
-                  {currentStep.tone === "rest" && currentStep.afterExerciseName ? (
-                    <p className="mt-0.5 text-xs text-slate-600 sm:text-sm">Etter {currentStep.afterExerciseName}</p>
-                  ) : null}
-                  <p className="mt-1 text-[11px] text-slate-500 sm:text-xs">
-                    Steg {Math.min(stepIndex + 1, intervalProgramSteps.length || 1)} av {intervalProgramSteps.length || 0}
-                  </p>
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div
+                  className={`inline-flex rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wide sm:text-[11px] ${intervalTimerBadgeToneClass(
+                    currentStep.tone,
+                  )}`}
+                >
+                  {currentStep.phaseBadge}
                 </div>
-                <div className="shrink-0 text-right">
-                  <div className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">Gjenstår</div>
-                  <div className="text-4xl font-black tabular-nums tracking-tight text-slate-900 sm:text-5xl">
+                <p className="text-[11px] font-semibold tabular-nums text-slate-500 sm:text-xs">
+                  Steg {Math.min(stepIndex + 1, intervalProgramSteps.length || 1)} av {intervalProgramSteps.length || 0}
+                </p>
+              </div>
+              <h2 className="mt-1.5 text-lg font-bold leading-tight text-slate-900 sm:text-xl">{currentStep.headline}</h2>
+              {currentStep.tone === "rest" && currentStep.afterExerciseName ? (
+                <p className="mt-0.5 text-xs text-slate-600 sm:text-sm">Etter {currentStep.afterExerciseName}</p>
+              ) : null}
+              <div className="flex justify-center py-2 sm:py-3">
+                <div className="text-center">
+                  <div className="text-[10px] font-semibold uppercase tracking-wide text-slate-500 sm:text-xs">Gjenstår</div>
+                  <div className="text-6xl font-black tabular-nums tracking-tight text-slate-900 sm:text-7xl">
                     {formatSeconds(remainingSeconds)}
                   </div>
                 </div>
