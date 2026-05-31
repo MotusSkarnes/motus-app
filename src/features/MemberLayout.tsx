@@ -395,12 +395,42 @@ export function MemberLayout({
 
   async function persistMonthlyCheckInAnswers(answers: MemberMonthlyCheckInAnswers) {
     if (!activeMember) return;
-    const personalGoals = mergeCheckInIntoPersonalGoals(activeMember.personalGoals, answers);
-    updateMember({
-      memberId: activeMember.id,
-      changes: { personalGoals },
+    const loginEmail = appState.currentUser?.email.trim().toLowerCase() ?? "";
+    const canonicalMember = pickCanonicalMemberRowForProfile(activeMember, appState.members);
+    const personalGoals = mergeCheckInIntoPersonalGoals(
+      resolveMemberPersonalGoals(canonicalMember, appState.members),
+      answers,
+    );
+    const changes = {
+      goal: canonicalMember.goal,
+      level: canonicalMember.level,
+      injuries: canonicalMember.injuries,
+      personalGoals,
+      focus: canonicalMember.focus,
+    };
+    const emailKey = loginEmail || canonicalMember.email.trim().toLowerCase();
+    const targetMembers = emailKey
+      ? appState.members.filter((member) => member.email.trim().toLowerCase() === emailKey)
+      : findMembersByEmail(canonicalMember, appState.members);
+    const targetIds = Array.from(new Set(targetMembers.map((member) => member.id.trim()).filter(Boolean)));
+
+    const canonicalId = await persistOnboardingToSupabase(
+      { ...canonicalMember, email: emailKey || canonicalMember.email },
+      changes,
+      targetIds,
+      { formKind: "check-in" },
+    );
+
+    patchState((prev) => {
+      const members = prev.members.map((member) => {
+        const samePerson =
+          (canonicalId && member.id === canonicalId) ||
+          targetIds.includes(member.id) ||
+          (emailKey && member.email.trim().toLowerCase() === emailKey);
+        return samePerson ? { ...member, personalGoals } : member;
+      });
+      return { ...prev, members };
     });
-    await waitForMemberPersist(activeMember.id);
     setMemberCheckInOverlayOpen(false);
   }
 

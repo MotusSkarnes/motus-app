@@ -114,5 +114,6 @@ describe("mergeCheckInIntoPersonalGoals", () => {
     });
     expect(merged.startsWith("MOTUS_PROFILE_V1:")).toBe(true);
     expect(hasCompletedCheckInForMonth(merged, "2026-05")).toBe(true);
+    expect(merged).toContain('"onboarding"');
   });
 });

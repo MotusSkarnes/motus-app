@@ -1322,12 +1322,16 @@ export function waitForMemberPersist(memberId: string): Promise<void> {
   return pendingMemberPersists.get(memberId.trim()) ?? Promise.resolve();
 }
 
-/** Lagre oppstartsskjema én gang med verifisert sky-skriving (unngår race ved flere updateMember-kall). */
+export type PersistMemberProfileFormKind = "onboarding" | "check-in";
+
+/** Lagre profilblob (oppstart / månedlig sjekk-inn) med verifisert sky-skriving. */
 export async function persistOnboardingToSupabase(
   member: Member,
   changes: Pick<Member, "goal" | "level" | "injuries" | "personalGoals" | "focus">,
   relatedMemberIds: string[],
+  options?: { formKind?: PersistMemberProfileFormKind },
 ): Promise<string> {
+  const formKind = options?.formKind ?? "onboarding";
   if (!supabaseClient) {
     throw new Error("Supabase er ikke konfigurert — svarene kan ikke lagres i skyen.");
   }
@@ -1417,15 +1421,16 @@ export async function persistOnboardingToSupabase(
   }
 
   if (updated === 0) {
+    const label = formKind === "check-in" ? "månedlig sjekk-inn" : "oppstartsskjema";
     throw new Error(
       lastError
-        ? `Kunne ikke lagre oppstartsskjema: ${lastError}`
-        : "Kunne ikke lagre oppstartsskjema i databasen. Sjekk at du er logget inn med riktig e-post og prøv igjen.",
+        ? `Kunne ikke lagre ${label}: ${lastError}`
+        : `Kunne ikke lagre ${label} i databasen. Sjekk at du er logget inn med riktig e-post og prøv igjen.`,
     );
   }
 
   const resolvedId = persistId || dbMemberIds[0] || "";
-  if (resolvedId && !resolvedId.startsWith("auth-")) {
+  if (resolvedId && !resolvedId.startsWith("auth-") && formKind === "onboarding") {
     const { data: verifyRow, error: verifyError } = await supabaseClient
       .from("members")
       .select("personal_goals")
@@ -1446,7 +1451,7 @@ export async function persistOnboardingToSupabase(
   const notifyMemberId = resolvedId || persistId || member.id;
   void notifyTrainerMemberFormPush(
     notifyMemberId,
-    "onboarding",
+    formKind,
     memberForSync.name.trim() || memberForSync.email.trim() || "Medlem",
   );
 
@@ -1458,7 +1463,8 @@ function personalGoalsContainsProfileBlob(personalGoals: string | undefined): bo
   return (
     value.startsWith("MOTUS_PROFILE_V1:") ||
     value.includes("onboardingCompletedAt") ||
-    value.includes('"onboarding"')
+    value.includes('"onboarding"') ||
+    value.includes('"monthlyCheckIns"')
   );
 }
 
@@ -1698,7 +1704,7 @@ async function persistMember(member: Member, previousPersonalGoals?: string) {
 
     if (updated === 0 && isProfileBlobSave) {
       throw new Error(
-        "Kunne ikke lagre oppstartsskjema til skyen. Sjekk nettverk og at du er logget inn med riktig e-post, og prøv igjen.",
+        "Kunne ikke lagre profilen til skyen. Sjekk nettverk og at du er logget inn med riktig e-post, og prøv igjen.",
       );
     }
     return;

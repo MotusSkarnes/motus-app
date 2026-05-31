@@ -1,10 +1,9 @@
+import { PROFILE_METRICS_PREFIX, parsePersonalGoalsJson } from "./memberProfilePayload";
 import { isOnboardingCompleted } from "./memberOnboarding";
 import type { Member } from "./types";
 
 export const MEMBER_MONTHLY_CHECK_IN_VERSION = 1;
 export const CHECK_IN_COMPLETION_DAYS = 14;
-
-const PROFILE_METRICS_PREFIX = "MOTUS_PROFILE_V1:";
 
 export type MemberMonthlyCheckInAnswers = {
   version: typeof MEMBER_MONTHLY_CHECK_IN_VERSION;
@@ -210,7 +209,29 @@ export function mergeCheckInIntoPersonalGoals(
     : [];
   const withoutMonth = previous.filter((entry) => entry.monthKey !== checkIn.monthKey);
   const payload = {
-    ...existing,
+    sessionsPerWeekTarget: String(existing.sessionsPerWeekTarget ?? ""),
+    dailyStepsTarget: String(existing.dailyStepsTarget ?? ""),
+    targetWeight: String(existing.targetWeight ?? ""),
+    currentDailySteps: String(existing.currentDailySteps ?? ""),
+    ...(existing.homeVisibility && typeof existing.homeVisibility === "object"
+      ? { homeVisibility: existing.homeVisibility }
+      : {}),
+    ...(Array.isArray(existing.favoritePersonalRecords)
+      ? { favoritePersonalRecords: existing.favoritePersonalRecords }
+      : {}),
+    ...(existing.notificationPreferences && typeof existing.notificationPreferences === "object"
+      ? { notificationPreferences: existing.notificationPreferences }
+      : {}),
+    ...(existing.foodAvoidances && typeof existing.foodAvoidances === "object"
+      ? { foodAvoidances: existing.foodAvoidances }
+      : {}),
+    ...(existing.memberAppUi && typeof existing.memberAppUi === "object"
+      ? { memberAppUi: existing.memberAppUi }
+      : {}),
+    ...(existing.onboarding && typeof existing.onboarding === "object" ? { onboarding: existing.onboarding } : {}),
+    ...(String(existing.onboardingCompletedAt ?? "").trim()
+      ? { onboardingCompletedAt: String(existing.onboardingCompletedAt) }
+      : {}),
     monthlyCheckIns: [checkIn, ...withoutMonth].slice(0, 24),
   };
   return `${PROFILE_METRICS_PREFIX}${JSON.stringify(payload)}`;

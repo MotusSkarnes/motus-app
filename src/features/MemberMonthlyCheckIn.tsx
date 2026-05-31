@@ -144,8 +144,12 @@ export function MemberMonthlyCheckIn({ memberName, window, onComplete, onClose }
         version: 1,
         completedAt: new Date().toISOString(),
       });
-    } catch {
-      setError("Kunne ikke lagre. Prøv igjen.");
+    } catch (error) {
+      const message =
+        error instanceof Error && error.message.trim()
+          ? error.message.trim()
+          : "Kunne ikke lagre. Prøv igjen.";
+      setError(message);
     } finally {
       setSubmitting(false);
     }
