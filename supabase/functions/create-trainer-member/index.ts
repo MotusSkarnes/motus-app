@@ -147,42 +147,88 @@ Deno.serve(async (req) => {
   const goal = String(payload.goal ?? "").trim() || "Nytt mål settes her";
   const focus = String(payload.focus ?? "").trim() || "Ikke satt";
 
-  const { data: inserted, error: insertError } = await adminClient
-    .from("members")
-    .upsert(
-      {
+  const memberRow = {
+    id: memberId,
+    owner_user_id: ownerUserId,
+    name,
+    email,
+    is_active: true,
+    invited_at: null,
+    first_login_at: null,
+    phone,
+    birth_date: "",
+    gender: "",
+    weight: "",
+    height: "",
+    level: "Nybegynner",
+    membership_type: membershipType,
+    customer_type: customerType,
+    days_since_activity: "0",
+    goal,
+    focus,
+    personal_goals: "",
+    injuries: "Ingen info ennå",
+    coach_notes: "",
+    created_at: new Date().toISOString(),
+  };
+
+  let insertError = (await adminClient.from("members").upsert(memberRow, { onConflict: "id" })).error;
+  if (insertError) {
+    const message = insertError.message.toLowerCase();
+    const slimRow = { ...memberRow } as Record<string, unknown>;
+    if (message.includes("gender")) delete slimRow.gender;
+    if (message.includes("first_login_at")) delete slimRow.first_login_at;
+    if (message.includes("invited_at")) delete slimRow.invited_at;
+    if (Object.keys(slimRow).length !== Object.keys(memberRow).length) {
+      insertError = (await adminClient.from("members").upsert(slimRow, { onConflict: "id" })).error;
+    }
+  }
+  if (insertError) {
+    return jsonResponse(500, { error: insertError.message });
+  }
+
+  const selectCandidates = [
+    "id, owner_user_id, name, email, is_active, invited_at, first_login_at, phone, birth_date, gender, weight, height, level, membership_type, customer_type, days_since_activity, goal, focus, personal_goals, injuries, coach_notes",
+    "id, owner_user_id, name, email, is_active, phone, birth_date, weight, height, level, membership_type, customer_type, days_since_activity, goal, focus, personal_goals, injuries, coach_notes",
+  ];
+
+  let inserted: Record<string, unknown> | null = null;
+  for (const fields of selectCandidates) {
+    const { data, error: readError } = await adminClient.from("members").select(fields).eq("id", memberId).maybeSingle();
+    if (!readError && data) {
+      inserted = data as Record<string, unknown>;
+      break;
+    }
+  }
+
+  if (!inserted) {
+    return jsonResponse(200, {
+      ok: true,
+      member: {
         id: memberId,
-        owner_user_id: ownerUserId,
+        ownerUserId,
         name,
         email,
-        is_active: true,
-        invited_at: null,
-        first_login_at: null,
+        isActive: true,
+        invitedAt: "",
+        firstLoginAt: "",
         phone,
-        birth_date: "",
+        birthDate: "",
         gender: "",
         weight: "",
         height: "",
         level: "Nybegynner",
-        membership_type: membershipType,
-        customer_type: customerType,
-        days_since_activity: "0",
+        membershipType,
+        customerType,
+        daysSinceActivity: "0",
         goal,
         focus,
-        personal_goals: "",
+        personalGoals: "",
         injuries: "Ingen info ennå",
-        coach_notes: "",
-        created_at: new Date().toISOString(),
+        coachNotes: "",
+        avatarUrl: "",
       },
-      { onConflict: "id" },
-    )
-    .select(
-      "id, owner_user_id, name, email, is_active, invited_at, first_login_at, phone, birth_date, gender, weight, height, level, membership_type, customer_type, days_since_activity, goal, focus, personal_goals, injuries, coach_notes",
-    )
-    .single();
-
-  if (insertError || !inserted) {
-    return jsonResponse(500, { error: insertError?.message ?? "Could not create member" });
+    });
   }
 
   return jsonResponse(200, {

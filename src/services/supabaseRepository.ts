@@ -3385,19 +3385,31 @@ export async function fetchLogsFromSupabase(): Promise<WorkoutLog[] | null> {
   });
 }
 
-export async function fetchMembersFromSupabase(): Promise<Member[] | null> {
+type MembersQueryFilter =
+  | { kind: "all" }
+  | { kind: "id"; memberId: string }
+  | { kind: "email"; email: string };
+
+async function queryMemberRowsWithColumnFallback(
+  filter: MembersQueryFilter,
+): Promise<Record<string, unknown>[] | null> {
   if (!supabaseClient) return null;
 
   const runQuery = async (selectFields: string, orderByCreatedAt: boolean) => {
     let query = supabaseClient.from("members").select(selectFields);
-    if (orderByCreatedAt) {
+    if (filter.kind === "id") {
+      query = query.eq("id", filter.memberId.trim());
+    } else if (filter.kind === "email") {
+      query = query.ilike("email", filter.email.trim().toLowerCase());
+    }
+    if (orderByCreatedAt && filter.kind === "all") {
       query = query.order("created_at", { ascending: true });
     }
-    return query;
+    return filter.kind === "id" ? query.maybeSingle() : query;
   };
 
   let selectFields = MEMBERS_SELECT_WITH_AVATAR;
-  let orderByCreatedAt = true;
+  let orderByCreatedAt = filter.kind === "all";
   let result = await runQuery(selectFields, orderByCreatedAt);
   if (result.error && isMissingDbColumnError(result.error.message, "avatar_url")) {
     selectFields = MEMBERS_SELECT_WITH_AVATAR_WITHOUT_NUTRITION;
@@ -3429,7 +3441,17 @@ export async function fetchMembersFromSupabase(): Promise<Member[] | null> {
     return null;
   }
 
-  return (result.data ?? []).map((row) => mapMemberRowFromSupabase(row as Record<string, unknown>));
+  if (filter.kind === "id") {
+    const row = result.data as Record<string, unknown> | null;
+    return row ? [row] : [];
+  }
+  return (result.data ?? []) as Record<string, unknown>[];
+}
+
+export async function fetchMembersFromSupabase(): Promise<Member[] | null> {
+  const rows = await queryMemberRowsWithColumnFallback({ kind: "all" });
+  if (!rows) return null;
+  return rows.map((row) => mapMemberRowFromSupabase(row));
 }
 
 export async function checkMemberAccessBlocked(email: string): Promise<boolean> {
@@ -3863,7 +3885,7 @@ function parseCreateTrainerMemberInvokePayload(raw: unknown): Record<string, unk
 
 async function fetchCreatedTrainerMemberWithRetry(memberId: string, email: string): Promise<Member | null> {
   const normalizedEmail = email.trim().toLowerCase();
-  const delaysMs = [0, 200, 500, 1000];
+  const delaysMs = [0, 250, 750, 1500, 3000];
   for (const delayMs of delaysMs) {
     if (delayMs > 0) {
       await new Promise((resolve) => setTimeout(resolve, delayMs));
@@ -3879,34 +3901,18 @@ async function fetchCreatedTrainerMemberWithRetry(memberId: string, email: strin
 }
 
 async function fetchMemberByIdFromSupabase(memberId: string): Promise<Member | null> {
-  if (!supabaseClient) return null;
   const trimmedId = memberId.trim();
   if (!trimmedId) return null;
-
-  let result = await supabaseClient.from("members").select(MEMBERS_SELECT_WITH_AVATAR).eq("id", trimmedId).maybeSingle();
-  if (result.error && isMissingDbColumnError(result.error.message, "avatar_url")) {
-    result = await supabaseClient.from("members").select(MEMBERS_SELECT_BASE).eq("id", trimmedId).maybeSingle();
-  }
-  if (result.error || !result.data) {
-    return null;
-  }
-  return mapMemberRowFromSupabase(result.data as Record<string, unknown>);
+  const rows = await queryMemberRowsWithColumnFallback({ kind: "id", memberId: trimmedId });
+  if (!rows?.length) return null;
+  return mapMemberRowFromSupabase(rows[0]);
 }
 
 async function fetchActiveMemberByEmailFromSupabase(email: string): Promise<Member | null> {
-  if (!supabaseClient) return null;
   const normalizedEmail = email.trim().toLowerCase();
   if (!normalizedEmail.includes("@")) return null;
-
-  let result = await supabaseClient.from("members").select(MEMBERS_SELECT_WITH_AVATAR).ilike("email", normalizedEmail);
-  if (result.error && isMissingDbColumnError(result.error.message, "avatar_url")) {
-    result = await supabaseClient.from("members").select(MEMBERS_SELECT_BASE).ilike("email", normalizedEmail);
-  }
-  if (result.error || !result.data?.length) {
-    return null;
-  }
-
-  const rows = result.data as Record<string, unknown>[];
+  const rows = await queryMemberRowsWithColumnFallback({ kind: "email", email: normalizedEmail });
+  if (!rows?.length) return null;
   const activeMatches = rows
     .map((row) => mapMemberRowFromSupabase(row))
     .filter((member) => member.email.trim().toLowerCase() === normalizedEmail && member.isActive !== false);
@@ -3997,9 +4003,28 @@ async function invokeCreateTrainerMemberFunction(body: Record<string, unknown>):
       }
       const detail = String(parsed?.error ?? parsed?.message ?? raw ?? response.status);
       errorMessage = `HTTP ${response.status}: ${detail}`;
+      if (!response.ok) {
+        const memberId = String(body.memberId ?? "").trim();
+        const email = String(body.email ?? "").trim().toLowerCase();
+        const recovered =
+          (memberId ? await fetchMemberByIdFromSupabase(memberId) : null) ??
+          (email.includes("@") ? await fetchActiveMemberByEmailFromSupabase(email) : null);
+        if (recovered) {
+          return { ok: true, data: { ok: true, member: recovered }, errorMessage: null };
+        }
+      }
     } catch (fetchError) {
       errorMessage = `${errorMessage} (${String(fetchError)})`;
     }
+  }
+
+  const memberId = String(body.memberId ?? "").trim();
+  const email = String(body.email ?? "").trim().toLowerCase();
+  const recoveredAfterFailure =
+    (memberId ? await fetchMemberByIdFromSupabase(memberId) : null) ??
+    (email.includes("@") ? await fetchActiveMemberByEmailFromSupabase(email) : null);
+  if (recoveredAfterFailure) {
+    return { ok: true, data: { ok: true, member: recoveredAfterFailure }, errorMessage: null };
   }
 
   return { ok: false, data: null, errorMessage };
@@ -4059,6 +4084,12 @@ export async function createTrainerMemberViaEdgeFunction(
     }
     return { ok: false, message: "E-post finnes allerede som aktiv kunde." };
   }
+
+  const recoveredDespiteError = await fetchCreatedTrainerMemberWithRetry(member.id, normalizedEmail);
+  if (recoveredDespiteError) {
+    return { ok: true, member: recoveredDespiteError };
+  }
+
   return { ok: false, message: `Opprettelse feilet: ${message}` };
 }
 
