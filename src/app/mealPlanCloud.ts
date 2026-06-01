@@ -494,19 +494,17 @@ export async function loadMealPlanForTrainerEditor(
       const viaEdge = await fetchMealPlanForTrainerViaEdge(trimmedMemberId, memberEmail);
       if (viaEdge?.days?.length) resolvedRemote = viaEdge;
     }
-    if (resolvedRemote?.days?.length) {
-      const normalized = { ...resolvedRemote, memberId: trimmedMemberId };
+    const local = loadBestLocalMealPlan(lookupIds);
+    const preferred = pickPreferredMealPlan(
+      [resolvedRemote, local].filter((candidate): candidate is MealPlan => Boolean(candidate?.days?.length)),
+    );
+    if (preferred) {
+      const normalized = { ...preferred, memberId: trimmedMemberId };
+      const fromLocal = local && mealPlansEqual(preferred, local);
       if (!mealPlansEqual(loadMealPlanForMember(trimmedMemberId), normalized)) {
         persistMealPlan(normalized, { notify: false });
       }
-      return { status: "cloud", plan: normalized };
-    }
-
-    const local = loadBestLocalMealPlan(lookupIds);
-    if (local?.days?.length) {
-      const normalized = { ...local, memberId: trimmedMemberId };
-      persistMealPlan(normalized, { notify: false });
-      return { status: "local", plan: normalized };
+      return { status: fromLocal ? "local" : "cloud", plan: normalized };
     }
 
     if (hadFetchErrors) {
@@ -546,8 +544,9 @@ export function applyHydratedMealPlan(plan: MealPlan, aliasMemberIds: string[] =
 export async function persistMealPlanBundle(
   ownerUserId: string | undefined,
   plan: MealPlan,
+  options?: { notify?: boolean },
 ): Promise<{ cloudSynced: boolean; warning?: string }> {
-  persistMealPlan(plan);
+  persistMealPlan(plan, { notify: options?.notify });
   if (!ownerUserId?.trim() || !isSupabaseConfigured) {
     return { cloudSynced: false };
   }

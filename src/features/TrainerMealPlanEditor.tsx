@@ -24,6 +24,7 @@ import {
   persistMealPlanLocalAndScheduleCloud,
   pickPreferredMealPlan,
 } from "../app/mealPlanCloud";
+import { loadMealPlanForMember } from "../app/mealPlanStorage";
 import { useInspirationRecipeItems } from "../app/inspirationRecipeItems";
 import { defaultPortionGramsForFood } from "../app/foodPortionDefaults";
 import { hydrateMealPlanFoodNutrition } from "../app/mealPlanFoodNutrition";
@@ -122,6 +123,7 @@ export function TrainerMealPlanEditor({
   const [planWeeks, setPlanWeeks] = useState<number>(1);
   const [visibleWeekIndex, setVisibleWeekIndex] = useState(0);
   const loadGenerationRef = useRef(0);
+  const creatingPlanRef = useRef(false);
   const foodItemsForMacrosRef = useRef(foodItemsForMacros);
   foodItemsForMacrosRef.current = foodItemsForMacros;
   const recipesById = useMemo(() => new Map(recipeItems.map((recipe) => [recipe.id, recipe])), [recipeItems]);
@@ -175,6 +177,7 @@ export function TrainerMealPlanEditor({
   }, [applyPendingFood]);
 
   const reload = useCallback(async () => {
+    if (creatingPlanRef.current) return;
     const trimmedMemberId = memberId.trim();
     if (!trimmedMemberId) {
       setPlan(null);
@@ -241,27 +244,52 @@ export function TrainerMealPlanEditor({
 
   const handleCreateMealPlan = useCallback(async () => {
     const trimmedMemberId = memberId.trim();
-    if (!trimmedMemberId || creatingPlan) return;
+    if (!trimmedMemberId) {
+      setLoadError("Ingen klient valgt — velg en kunde i listen først.");
+      setPlanLoadStatus("error");
+      return;
+    }
+    if (creatingPlan) return;
+
+    const generation = ++loadGenerationRef.current;
+    creatingPlanRef.current = true;
     setCreatingPlan(true);
     setLoadError(null);
+    setSaveStatus(null);
     try {
       const draft = createDefaultMealPlan(trimmedMemberId);
       const hydrated = applyLoadedPlan(draft);
       setPlanSource("local");
       setPlanLoadStatus("ready");
-      const result = await persistMealPlanBundle(trainerOwnerUserId, hydrated);
+      setLoading(false);
+
+      const result = await persistMealPlanBundle(trainerOwnerUserId, hydrated, { notify: false });
+      if (generation !== loadGenerationRef.current) return;
+
+      const stored = loadMealPlanForMember(trimmedMemberId);
+      if (!stored?.days?.length) {
+        throw new Error("Matplan ble ikke lagret lokalt (nettleserlagring kan være full).");
+      }
+
       if (result.cloudSynced) {
         setPlanSource("cloud");
-        setSaveStatus("Matplan opprettet og lagret. Fyll ut uken og lagre ved behov.");
+        setSaveStatus("Matplan opprettet. Fyll ut uken og trykk Lagre matplan ved behov.");
       } else {
+        setPlanSource("local");
         setSaveStatus(result.warning ?? "Matplan opprettet lokalt. Lagre på nytt for sky-synk.");
       }
     } catch (error) {
+      if (generation !== loadGenerationRef.current) return;
       console.warn("create meal plan failed:", error);
-      setLoadError("Kunne ikke opprette matplan. Prøv igjen.");
+      setLoadError(
+        error instanceof Error && error.message.trim()
+          ? error.message.trim()
+          : "Kunne ikke opprette matplan. Prøv igjen.",
+      );
       setPlanLoadStatus("error");
       setPlan(null);
     } finally {
+      creatingPlanRef.current = false;
       setCreatingPlan(false);
     }
   }, [memberId, trainerOwnerUserId, applyLoadedPlan, creatingPlan]);
