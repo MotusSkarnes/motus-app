@@ -3613,6 +3613,148 @@
   color: #be123c;
 }
 
+.motus-saved-meals {
+  margin: 0.65rem 0 0.85rem;
+  padding: 0.65rem 0.75rem;
+  border-radius: 0.75rem;
+  border: 1px dashed #cbd5e1;
+  background: #f8fafc;
+}
+
+.motus-saved-meals--compact {
+  margin: 0.45rem 0 0.65rem;
+  padding: 0.55rem 0.65rem;
+}
+
+.motus-saved-meals__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.35rem 0.65rem;
+  margin-bottom: 0.45rem;
+}
+
+.motus-saved-meals__title {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin: 0;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #334155;
+}
+
+.motus-saved-meals__save-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  border: none;
+  background: none;
+  padding: 0;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  color: #0d9488;
+  cursor: pointer;
+}
+
+.motus-saved-meals__save-trigger:hover {
+  text-decoration: underline;
+}
+
+.motus-saved-meals__save-form {
+  margin-bottom: 0.55rem;
+}
+
+.motus-saved-meals__save-label {
+  display: block;
+  margin-bottom: 0.25rem;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  color: #475569;
+}
+
+.motus-saved-meals__save-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-top: 0.45rem;
+}
+
+.motus-saved-meals__save-hint {
+  margin: 0.35rem 0 0;
+  font-size: 0.625rem;
+  color: #64748b;
+}
+
+.motus-saved-meals__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.motus-saved-meals__item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.45rem 0.5rem;
+  border-radius: 0.55rem;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+}
+
+.motus-saved-meals__item-name {
+  margin: 0;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: #0f172a;
+}
+
+.motus-saved-meals__item-meta {
+  margin: 0.1rem 0 0;
+  font-size: 0.625rem;
+  color: #64748b;
+}
+
+.motus-saved-meals__item-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  flex-shrink: 0;
+}
+
+.motus-saved-meals__use {
+  border: none;
+  border-radius: 999px;
+  padding: 0.3rem 0.65rem;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  color: #ffffff;
+  background: linear-gradient(135deg, #0d9488, #14b8a6);
+  cursor: pointer;
+}
+
+.motus-saved-meals__delete {
+  border: none;
+  background: none;
+  padding: 0.2rem;
+  color: #94a3b8;
+  cursor: pointer;
+}
+
+.motus-saved-meals__delete:hover {
+  color: #be123c;
+}
+
+.motus-saved-meals__empty {
+  margin: 0;
+  font-size: 0.6875rem;
+  color: #64748b;
+}
+
 .motus-log-meal-panel__form-wrap {
   padding: 0.85rem;
   border-radius: 0.85rem;

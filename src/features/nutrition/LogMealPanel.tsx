@@ -10,11 +10,18 @@ import {
 import { loadMemberMealPlanState } from "../../app/memberMealPlanState";
 import { persistMemberMealPlanStateLocalAndScheduleCloud, syncMemberMealPlanState } from "../../app/memberMealPlanStateCloud";
 import { MEAL_PLAN_STATE_CHANGED_EVENT } from "../../app/memberMealPlanState";
+import type { MemberSavedMeal } from "../../app/memberSavedMeals";
+import {
+  addMemberSavedMeal,
+  applySavedMealQuickLogs,
+  removeMemberSavedMeal,
+} from "../../app/memberMealPlanTracking";
 import type { MealPlanTargets } from "../../app/mealPlanTypes";
 import { GradientButton } from "../../app/ui";
 import { sumQuickFoodLogMacros } from "../../app/quickFoodLogMacros";
 import { DailyLoggedMacrosSummary } from "./DailyLoggedMacrosSummary";
 import { FoodLogFormFields, type FoodLogDraft } from "./FoodLogFormFields";
+import { SavedMealsSection } from "./SavedMealsSection";
 import "../../foodbank.css";
 
 type LogMealPanelProps = {
@@ -80,17 +87,55 @@ export function LogMealPanel({ memberId, mealPlanTargets, onRefreshFoodBank, has
     return grouped;
   }, [logsToday]);
 
-  const persist = useCallback(
-    (nextLogs: MemberQuickFoodLogEntry[]) => {
-      const nextState: MemberMealPlanState = {
-        ...state,
-        quickFoodLogs: { ...state.quickFoodLogs, [dateKey]: nextLogs },
-        updatedAt: new Date().toISOString(),
-      };
+  const persistState = useCallback(
+    (nextState: MemberMealPlanState) => {
       setState(nextState);
       persistMemberMealPlanStateLocalAndScheduleCloud(memberId, nextState);
     },
-    [dateKey, memberId, state],
+    [memberId],
+  );
+
+  const persist = useCallback(
+    (nextLogs: MemberQuickFoodLogEntry[]) => {
+      persistState({
+        ...state,
+        quickFoodLogs: { ...state.quickFoodLogs, [dateKey]: nextLogs },
+        updatedAt: new Date().toISOString(),
+      });
+    },
+    [dateKey, persistState, state],
+  );
+
+  const currentSlotLogs = logsBySlot.get(mealSlotId) ?? [];
+  const savedMeals = state.savedMeals ?? [];
+
+  const handleApplySaved = useCallback(
+    (meal: MemberSavedMeal) => {
+      const targetSlot = meal.mealSlotId ?? mealSlotId;
+      const next = applySavedMealQuickLogs(memberId, state, dateKey, meal, targetSlot);
+      setState(next);
+      setStatus(`${meal.name} logget.`);
+      setOpen(true);
+    },
+    [dateKey, mealSlotId, memberId, state],
+  );
+
+  const handleSaveMeal = useCallback(
+    (meal: MemberSavedMeal) => {
+      const next = addMemberSavedMeal(memberId, state, meal);
+      setState(next);
+      setStatus(`«${meal.name}» er lagret.`);
+    },
+    [memberId, state],
+  );
+
+  const handleDeleteSaved = useCallback(
+    (savedMealId: string) => {
+      const next = removeMemberSavedMeal(memberId, state, savedMealId);
+      setState(next);
+      setStatus("Lagret måltid er fjernet.");
+    },
+    [memberId, state],
   );
 
   const handleLogFood = useCallback(
@@ -177,6 +222,16 @@ export function LogMealPanel({ memberId, mealPlanTargets, onRefreshFoodBank, has
                       {formatMacro(slotMacros.kcal, 0)} kcal · P {formatMacro(slotMacros.protein, 0)} g
                     </span>
                   </header>
+                  <SavedMealsSection
+                    mealSlotId={slot.id}
+                    mealSlotLabel={slot.label}
+                    savedMeals={savedMeals}
+                    currentSlotLogs={entries}
+                    onApply={handleApplySaved}
+                    onSave={handleSaveMeal}
+                    onDelete={handleDeleteSaved}
+                    compact
+                  />
                   <ul className="motus-log-meal-panel__list">
                     {entries.map((entry) => (
                       <li key={entry.id} className="motus-log-meal-panel__item">
@@ -260,6 +315,16 @@ export function LogMealPanel({ memberId, mealPlanTargets, onRefreshFoodBank, has
               </button>
             ))}
           </div>
+
+          <SavedMealsSection
+            mealSlotId={mealSlotId}
+            mealSlotLabel={memberMealSlotLabel(mealSlotId)}
+            savedMeals={savedMeals}
+            currentSlotLogs={currentSlotLogs}
+            onApply={handleApplySaved}
+            onSave={handleSaveMeal}
+            onDelete={handleDeleteSaved}
+          />
 
           <p className="motus-log-meal-panel__step-label">2. Søk og logg matvarer</p>
           <FoodLogFormFields onSubmit={handleLogFood} submitLabel="Legg til" />

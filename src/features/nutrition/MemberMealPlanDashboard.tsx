@@ -61,11 +61,15 @@ import {
   toggleShoppingChecked,
   skipFoodItem,
   unskipFoodItem,
+  addMemberSavedMeal,
   addQuickFoodLog,
+  applySavedMealQuickLogs,
+  removeMemberSavedMeal,
   removeQuickFoodLog,
   toIsoDateKey,
   weekdayShortLabel,
 } from "../../app/memberMealPlanTracking";
+import type { MemberSavedMeal } from "../../app/memberSavedMeals";
 import type { MealPlan, MealPlanDay, MealPlanFoodEntry, MealPlanMeal, MealPlanTargets } from "../../app/mealPlanTypes";
 import { useFoodBankItems } from "../../app/useFoodBankItems";
 import { Card } from "../../app/ui";
@@ -73,6 +77,7 @@ import { MotusFlameIcon } from "../MotusFlameIcon";
 import { MacroProgressBar } from "./MacroProgressBar";
 import { MacroProgressRing } from "./MacroProgressRing";
 import { InlineMealSelfLog, type SelfLogDraft } from "./InlineMealSelfLog";
+import { SavedMealsSection } from "./SavedMealsSection";
 import "../../foodbank.css";
 
 const WATER_TARGET_L = 2.5;
@@ -616,6 +621,30 @@ export function MemberMealPlanDashboard({ plan, memberId, onOpenAvoidances, onRe
     [memberId, selectedDateKey],
   );
 
+  const savedMeals = tracking.savedMeals ?? [];
+
+  const handleApplySavedMeal = useCallback(
+    (meal: MemberSavedMeal, targetMealId: string) => {
+      setTracking((prev) => applySavedMealQuickLogs(memberId, prev, selectedDateKey, meal, targetMealId));
+      setExpandedMealId(targetMealId);
+    },
+    [memberId, selectedDateKey],
+  );
+
+  const handleSaveSavedMeal = useCallback(
+    (meal: MemberSavedMeal) => {
+      setTracking((prev) => addMemberSavedMeal(memberId, prev, meal));
+    },
+    [memberId],
+  );
+
+  const handleDeleteSavedMeal = useCallback(
+    (savedMealId: string) => {
+      setTracking((prev) => removeMemberSavedMeal(memberId, prev, savedMealId));
+    },
+    [memberId],
+  );
+
   const handleWaterAdjust = useCallback(
     (delta: number) => {
       const next = Math.min(WATER_TARGET_L * 1.5, Math.max(0, waterLiters + delta));
@@ -1093,6 +1122,16 @@ export function MemberMealPlanDashboard({ plan, memberId, onOpenAvoidances, onRe
                           ))}
                         </ul>
                       ) : null}
+                      <SavedMealsSection
+                        compact
+                        mealSlotId={meal.id}
+                        mealSlotLabel={mealSlotLabel(meal.name)}
+                        savedMeals={savedMeals}
+                        currentSlotLogs={selfLogs}
+                        onApply={(saved) => handleApplySavedMeal(saved, meal.id)}
+                        onSave={handleSaveSavedMeal}
+                        onDelete={handleDeleteSavedMeal}
+                      />
                       <InlineMealSelfLog
                         mealId={meal.id}
                         compact

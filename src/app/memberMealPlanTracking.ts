@@ -1,5 +1,11 @@
 import { persistMemberMealPlanStateLocalAndScheduleCloud } from "./memberMealPlanStateCloud";
 import type { MealPlanMeal } from "./mealPlanTypes";
+import type { MemberSavedMeal } from "./memberSavedMeals";
+import {
+  addSavedMealToState,
+  quickLogEntriesFromSavedMeal,
+  removeSavedMealFromState,
+} from "./memberSavedMeals";
 import type { MemberMealPlanState, MemberQuickFoodLogEntry } from "./memberMealPlanState";
 import {
   expandLegacyLoggedFoodIds,
@@ -100,6 +106,52 @@ export function addQuickFoodLog(
   const nextState: MemberMealPlanState = {
     ...state,
     quickFoodLogs: { ...state.quickFoodLogs, [dateKey]: logs },
+    updatedAt: new Date().toISOString(),
+  };
+  persistMemberMealPlanStateLocalAndScheduleCloud(memberId, nextState);
+  return nextState;
+}
+
+export function applySavedMealQuickLogs(
+  memberId: string,
+  state: MemberMealPlanState,
+  dateKey: string,
+  savedMeal: MemberSavedMeal,
+  targetMealId: string,
+): MemberMealPlanState {
+  const entries = quickLogEntriesFromSavedMeal(savedMeal, targetMealId);
+  const logs = [...entries, ...(state.quickFoodLogs[dateKey] ?? [])];
+  const nextState: MemberMealPlanState = {
+    ...state,
+    quickFoodLogs: { ...state.quickFoodLogs, [dateKey]: logs },
+    updatedAt: new Date().toISOString(),
+  };
+  persistMemberMealPlanStateLocalAndScheduleCloud(memberId, nextState);
+  return nextState;
+}
+
+export function addMemberSavedMeal(
+  memberId: string,
+  state: MemberMealPlanState,
+  meal: MemberSavedMeal,
+): MemberMealPlanState {
+  const nextState: MemberMealPlanState = {
+    ...state,
+    savedMeals: addSavedMealToState(state.savedMeals ?? [], meal),
+    updatedAt: new Date().toISOString(),
+  };
+  persistMemberMealPlanStateLocalAndScheduleCloud(memberId, nextState);
+  return nextState;
+}
+
+export function removeMemberSavedMeal(
+  memberId: string,
+  state: MemberMealPlanState,
+  savedMealId: string,
+): MemberMealPlanState {
+  const nextState: MemberMealPlanState = {
+    ...state,
+    savedMeals: removeSavedMealFromState(state.savedMeals ?? [], savedMealId),
     updatedAt: new Date().toISOString(),
   };
   persistMemberMealPlanStateLocalAndScheduleCloud(memberId, nextState);

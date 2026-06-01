@@ -1,3 +1,5 @@
+import type { MemberSavedMeal } from "./memberSavedMeals";
+import { mergeMemberSavedMeals, parseMemberSavedMeals } from "./memberSavedMeals";
 import type { MealPlan, MealPlanMeal } from "./mealPlanTypes";
 
 export type MealSwapRef = {
@@ -39,6 +41,8 @@ export type MemberMealPlanState = {
   quickFoodLogs: Record<string, MemberQuickFoodLogEntry[]>;
   /** dateKey → planlagte matvarer medlem har hoppet over for dagen */
   skippedFoodIds: Record<string, string[]>;
+  /** Gjenbrukbare måltider medlem har lagret (f.eks. fast frokost). */
+  savedMeals: MemberSavedMeal[];
   updatedAt?: string;
 };
 
@@ -51,6 +55,7 @@ export const EMPTY_MEMBER_MEAL_PLAN_STATE: MemberMealPlanState = {
   mealSwaps: {},
   quickFoodLogs: {},
   skippedFoodIds: {},
+  savedMeals: [],
 };
 
 export const MEAL_PLAN_STATE_CHANGED_EVENT = "motus-meal-plan-state-changed";
@@ -65,6 +70,7 @@ const STATE_KEYS: Array<keyof MemberMealPlanState> = [
   "mealSwaps",
   "quickFoodLogs",
   "skippedFoodIds",
+  "savedMeals",
 ];
 
 function storageKey(memberId: string): string {
@@ -144,6 +150,7 @@ export function parseMemberMealPlanState(value: unknown): MemberMealPlanState {
         : row.skipped_food_ids && typeof row.skipped_food_ids === "object"
           ? (row.skipped_food_ids as Record<string, string[]>)
           : {},
+    savedMeals: parseMemberSavedMeals(row.savedMeals ?? row.saved_meals),
     updatedAt: typeof row.updatedAt === "string" ? row.updatedAt : typeof row.updated_at === "string" ? row.updated_at : undefined,
   };
 }
@@ -151,7 +158,17 @@ export function parseMemberMealPlanState(value: unknown): MemberMealPlanState {
 function needsStateNormalization(raw: unknown): boolean {
   if (!raw || typeof raw !== "object") return false;
   const row = raw as Record<string, unknown>;
-  if ("logged_meals" in row || "logged_food_ids" in row || "water_liters" in row || "checked_shopping" in row || "recipe_portions" in row || "meal_swaps" in row || "quick_food_logs" in row || "skipped_food_ids" in row) {
+  if (
+    "logged_meals" in row ||
+    "logged_food_ids" in row ||
+    "water_liters" in row ||
+    "checked_shopping" in row ||
+    "recipe_portions" in row ||
+    "meal_swaps" in row ||
+    "quick_food_logs" in row ||
+    "skipped_food_ids" in row ||
+    "saved_meals" in row
+  ) {
     return true;
   }
   return STATE_KEYS.some((key) => !(key in row));
@@ -284,6 +301,7 @@ export function mergeMemberMealPlanStates(local: MemberMealPlanState, remote: Me
     mealSwaps: { ...remote.mealSwaps, ...local.mealSwaps },
     quickFoodLogs: { ...remote.quickFoodLogs, ...local.quickFoodLogs },
     skippedFoodIds: { ...remote.skippedFoodIds, ...local.skippedFoodIds },
+    savedMeals: mergeMemberSavedMeals(local.savedMeals ?? [], remote.savedMeals ?? []),
     updatedAt: new Date(Math.max(localMs, remoteMs, Date.now())).toISOString(),
   };
 }
