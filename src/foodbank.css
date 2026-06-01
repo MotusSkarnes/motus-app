@@ -3755,6 +3755,156 @@
   color: #64748b;
 }
 
+.motus-saved-meals--inline {
+  margin: 0 0 0.75rem;
+  padding: 0;
+  border: none;
+  background: transparent;
+}
+
+.motus-meal-draft__basket {
+  margin-bottom: 0.85rem;
+  padding: 0.65rem 0.75rem;
+  border-radius: 0.75rem;
+  border: 1px solid #99f6e4;
+  background: #f0fdfa;
+}
+
+.motus-meal-draft--compact .motus-meal-draft__basket {
+  margin-bottom: 0.65rem;
+  padding: 0.55rem 0.65rem;
+}
+
+.motus-meal-draft__basket-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.35rem 0.65rem;
+  margin-bottom: 0.45rem;
+}
+
+.motus-meal-draft__basket-title {
+  margin: 0;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  color: #0f766e;
+}
+
+.motus-meal-draft__basket-sum {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  color: #115e59;
+}
+
+.motus-meal-draft__basket-empty-hint {
+  font-size: 0.6875rem;
+  color: #64748b;
+}
+
+.motus-meal-draft__list {
+  list-style: none;
+  margin: 0 0 0.55rem;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.motus-meal-draft__item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.4rem 0.5rem;
+  border-radius: 0.5rem;
+  background: #ffffff;
+  border: 1px solid #ccfbf1;
+}
+
+.motus-meal-draft__item-name {
+  margin: 0;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: #0f172a;
+}
+
+.motus-meal-draft__item-meta {
+  margin: 0.1rem 0 0;
+  font-size: 0.625rem;
+  color: #64748b;
+}
+
+.motus-meal-draft__remove {
+  flex-shrink: 0;
+  border: none;
+  background: none;
+  padding: 0.2rem;
+  color: #94a3b8;
+  cursor: pointer;
+}
+
+.motus-meal-draft__remove:hover {
+  color: #be123c;
+}
+
+.motus-meal-draft__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 0.75rem;
+  margin-bottom: 0.45rem;
+}
+
+.motus-meal-draft__log-btn {
+  min-height: 2.25rem;
+  padding: 0.4rem 1rem;
+  font-size: 0.8125rem;
+}
+
+.motus-meal-draft__save-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  border: none;
+  background: none;
+  padding: 0;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  color: #0d9488;
+  cursor: pointer;
+}
+
+.motus-meal-draft__save-trigger:hover {
+  text-decoration: underline;
+}
+
+.motus-meal-draft__search-label {
+  margin: 0 0 0.45rem;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  color: #475569;
+}
+
+.motus-log-meal-panel__slot-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.1rem;
+  height: 1.1rem;
+  margin-left: 0.25rem;
+  padding: 0 0.25rem;
+  border-radius: 999px;
+  font-size: 0.625rem;
+  font-weight: 700;
+  background: #ffffff;
+  color: #0d9488;
+}
+
+.motus-log-meal-panel__slot--active .motus-log-meal-panel__slot-badge {
+  background: rgba(255, 255, 255, 0.25);
+  color: #ffffff;
+}
+
 .motus-log-meal-panel__form-wrap {
   padding: 0.85rem;
   border-radius: 0.85rem;

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { Plus, Trash2, UtensilsCrossed } from "lucide-react";
 import { formatMacro } from "../../app/foodBankTypes";
 import { MEMBER_MEAL_SLOTS, memberMealSlotLabel } from "../../app/memberMealSlots";
+import { draftToQuickLogEntry, type MealDraftItem } from "../../app/mealDraft";
 import {
   toIsoDateKey,
   type MemberMealPlanState,
@@ -11,24 +12,18 @@ import { loadMemberMealPlanState } from "../../app/memberMealPlanState";
 import { persistMemberMealPlanStateLocalAndScheduleCloud, syncMemberMealPlanState } from "../../app/memberMealPlanStateCloud";
 import { MEAL_PLAN_STATE_CHANGED_EVENT } from "../../app/memberMealPlanState";
 import type { MemberSavedMeal } from "../../app/memberSavedMeals";
-import {
-  addMemberSavedMeal,
-  applySavedMealQuickLogs,
-  removeMemberSavedMeal,
-} from "../../app/memberMealPlanTracking";
+import { addMemberSavedMeal, addQuickFoodLogs, removeMemberSavedMeal } from "../../app/memberMealPlanTracking";
 import type { MealPlanTargets } from "../../app/mealPlanTypes";
 import { GradientButton } from "../../app/ui";
 import { sumQuickFoodLogMacros } from "../../app/quickFoodLogMacros";
 import { DailyLoggedMacrosSummary } from "./DailyLoggedMacrosSummary";
-import { FoodLogFormFields, type FoodLogDraft } from "./FoodLogFormFields";
-import { SavedMealsSection } from "./SavedMealsSection";
+import { MealDraftComposer } from "./MealDraftComposer";
 import "../../foodbank.css";
 
 type LogMealPanelProps = {
   memberId: string;
   mealPlanTargets?: MealPlanTargets | null;
   onRefreshFoodBank?: () => void;
-  /** Kunden har matplan fra PT — vis tilpasset tekst, men samme loggeflyt. */
   hasMealPlan?: boolean;
 };
 
@@ -44,12 +39,14 @@ function entryMacros(entry: MemberQuickFoodLogEntry): string {
 export function LogMealPanel({ memberId, mealPlanTargets, onRefreshFoodBank, hasMealPlan = false }: LogMealPanelProps) {
   const [open, setOpen] = useState(false);
   const [mealSlotId, setMealSlotId] = useState(MEMBER_MEAL_SLOTS[0]!.id);
+  const [draftBySlot, setDraftBySlot] = useState<Record<string, MealDraftItem[]>>({});
   const [status, setStatus] = useState<string | null>(null);
   const [state, setState] = useState<MemberMealPlanState>(() => loadMemberMealPlanState(memberId));
 
   const dateKey = todayKey();
   const logsToday = state.quickFoodLogs[dateKey] ?? [];
   const hasLogs = logsToday.length > 0;
+  const draftItems = draftBySlot[mealSlotId] ?? [];
 
   useEffect(() => {
     onRefreshFoodBank?.();
@@ -87,6 +84,10 @@ export function LogMealPanel({ memberId, mealPlanTargets, onRefreshFoodBank, has
     return grouped;
   }, [logsToday]);
 
+  const setDraftForSlot = useCallback((slotId: string, items: MealDraftItem[]) => {
+    setDraftBySlot((prev) => ({ ...prev, [slotId]: items }));
+  }, []);
+
   const persistState = useCallback(
     (nextState: MemberMealPlanState) => {
       setState(nextState);
@@ -95,36 +96,22 @@ export function LogMealPanel({ memberId, mealPlanTargets, onRefreshFoodBank, has
     [memberId],
   );
 
-  const persist = useCallback(
-    (nextLogs: MemberQuickFoodLogEntry[]) => {
-      persistState({
-        ...state,
-        quickFoodLogs: { ...state.quickFoodLogs, [dateKey]: nextLogs },
-        updatedAt: new Date().toISOString(),
-      });
-    },
-    [dateKey, persistState, state],
-  );
+  const handleCommitLog = useCallback(() => {
+    if (!draftItems.length) return;
+    const entries = draftItems.map((item) => draftToQuickLogEntry(item, mealSlotId));
+    const next = addQuickFoodLogs(memberId, state, dateKey, entries);
+    setState(next);
+    setDraftForSlot(mealSlotId, []);
+    const slotLabel = memberMealSlotLabel(mealSlotId);
+    setStatus(`${draftItems.length} ${draftItems.length === 1 ? "vare" : "varer"} logget til ${slotLabel.toLowerCase()}.`);
+    setOpen(hasLogs || draftItems.length > 1);
+  }, [dateKey, draftItems, hasLogs, mealSlotId, memberId, setDraftForSlot, state]);
 
-  const currentSlotLogs = logsBySlot.get(mealSlotId) ?? [];
-  const savedMeals = state.savedMeals ?? [];
-
-  const handleApplySaved = useCallback(
-    (meal: MemberSavedMeal) => {
-      const targetSlot = meal.mealSlotId ?? mealSlotId;
-      const next = applySavedMealQuickLogs(memberId, state, dateKey, meal, targetSlot);
-      setState(next);
-      setStatus(`${meal.name} logget.`);
-      setOpen(true);
-    },
-    [dateKey, mealSlotId, memberId, state],
-  );
-
-  const handleSaveMeal = useCallback(
+  const handleSaveTemplate = useCallback(
     (meal: MemberSavedMeal) => {
       const next = addMemberSavedMeal(memberId, state, meal);
       setState(next);
-      setStatus(`«${meal.name}» er lagret.`);
+      setStatus(`«${meal.name}» er lagret til senere bruk.`);
     },
     [memberId, state],
   );
@@ -138,30 +125,16 @@ export function LogMealPanel({ memberId, mealPlanTargets, onRefreshFoodBank, has
     [memberId, state],
   );
 
-  const handleLogFood = useCallback(
-    (draft: FoodLogDraft) => {
-      const entry: MemberQuickFoodLogEntry = {
-        id: `log-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`,
-        name: draft.food.name,
-        grams: draft.grams,
-        source: "food",
-        mealId: mealSlotId,
-        loggedAt: new Date().toISOString(),
-        nutritionPer100g: { ...draft.food.nutritionPer100g },
-      };
-      persist([entry, ...logsToday]);
-      const slotLabel = memberMealSlotLabel(mealSlotId);
-      setStatus(`${draft.food.name} logget til ${slotLabel.toLowerCase()}.`);
-      setOpen(hasLogs);
-    },
-    [hasLogs, logsToday, mealSlotId, persist],
-  );
-
   const removeLog = useCallback(
     (entryId: string) => {
-      persist(logsToday.filter((entry) => entry.id !== entryId));
+      const nextLogs = logsToday.filter((entry) => entry.id !== entryId);
+      persistState({
+        ...state,
+        quickFoodLogs: { ...state.quickFoodLogs, [dateKey]: nextLogs },
+        updatedAt: new Date().toISOString(),
+      });
     },
-    [logsToday, persist],
+    [dateKey, logsToday, persistState, state],
   );
 
   if (!open && !hasLogs) {
@@ -173,8 +146,8 @@ export function LogMealPanel({ memberId, mealPlanTargets, onRefreshFoodBank, has
         <h2 className="motus-log-meal-hero__title">Logg det du spiser</h2>
         <p className="motus-log-meal-hero__lead">
           {hasMealPlan
-            ? "Logg måltider og matvarer i tillegg til matplanen — eller når du spiser noe annet enn planlagt. Velg måltid og søk i matbanken."
-            : "Du har ingen matplan fra treneren ennå. Start med å logge et måltid — velg frokost, lunsj, middag og mer, og søk opp matvarer fra matbanken."}
+            ? "Bygg måltidet med matvarer du legger til — se listen underveis. Logg eller lagre favoritten når du er ferdig."
+            : "Bygg måltidet med matvarer du legger til — se listen underveis. Logg eller lagre favoritten når du er ferdig."}
         </p>
         <GradientButton type="button" className="motus-log-meal-cta" onClick={() => setOpen(true)}>
           <Plus className="h-4 w-4" aria-hidden />
@@ -222,16 +195,6 @@ export function LogMealPanel({ memberId, mealPlanTargets, onRefreshFoodBank, has
                       {formatMacro(slotMacros.kcal, 0)} kcal · P {formatMacro(slotMacros.protein, 0)} g
                     </span>
                   </header>
-                  <SavedMealsSection
-                    mealSlotId={slot.id}
-                    mealSlotLabel={slot.label}
-                    savedMeals={savedMeals}
-                    currentSlotLogs={entries}
-                    onApply={handleApplySaved}
-                    onSave={handleSaveMeal}
-                    onDelete={handleDeleteSaved}
-                    compact
-                  />
                   <ul className="motus-log-meal-panel__list">
                     {entries.map((entry) => (
                       <li key={entry.id} className="motus-log-meal-panel__item">
@@ -312,22 +275,23 @@ export function LogMealPanel({ memberId, mealPlanTargets, onRefreshFoodBank, has
                 onClick={() => setMealSlotId(slot.id)}
               >
                 {slot.label}
+                {(draftBySlot[slot.id]?.length ?? 0) > 0 ? (
+                  <span className="motus-log-meal-panel__slot-badge">{draftBySlot[slot.id]!.length}</span>
+                ) : null}
               </button>
             ))}
           </div>
 
-          <SavedMealsSection
+          <MealDraftComposer
             mealSlotId={mealSlotId}
             mealSlotLabel={memberMealSlotLabel(mealSlotId)}
-            savedMeals={savedMeals}
-            currentSlotLogs={currentSlotLogs}
-            onApply={handleApplySaved}
-            onSave={handleSaveMeal}
-            onDelete={handleDeleteSaved}
+            draftItems={draftItems}
+            onDraftChange={(items) => setDraftForSlot(mealSlotId, items)}
+            savedMeals={state.savedMeals ?? []}
+            onSaveTemplate={handleSaveTemplate}
+            onDeleteSaved={handleDeleteSaved}
+            onCommitLog={handleCommitLog}
           />
-
-          <p className="motus-log-meal-panel__step-label">2. Søk og logg matvarer</p>
-          <FoodLogFormFields onSubmit={handleLogFood} submitLabel="Legg til" />
         </div>
       ) : null}
 

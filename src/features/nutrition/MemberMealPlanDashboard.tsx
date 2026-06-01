@@ -62,8 +62,7 @@ import {
   skipFoodItem,
   unskipFoodItem,
   addMemberSavedMeal,
-  addQuickFoodLog,
-  applySavedMealQuickLogs,
+  addQuickFoodLogs,
   removeMemberSavedMeal,
   removeQuickFoodLog,
   toIsoDateKey,
@@ -76,8 +75,8 @@ import { Card } from "../../app/ui";
 import { MotusFlameIcon } from "../MotusFlameIcon";
 import { MacroProgressBar } from "./MacroProgressBar";
 import { MacroProgressRing } from "./MacroProgressRing";
-import { InlineMealSelfLog, type SelfLogDraft } from "./InlineMealSelfLog";
-import { SavedMealsSection } from "./SavedMealsSection";
+import { draftToQuickLogEntry, type MealDraftItem } from "../../app/mealDraft";
+import { MealDraftComposer } from "./MealDraftComposer";
 import "../../foodbank.css";
 
 const WATER_TARGET_L = 2.5;
@@ -275,6 +274,7 @@ export function MemberMealPlanDashboard({ plan, memberId, onOpenAvoidances, onRe
   const [expandedMealId, setExpandedMealId] = useState<string | null>(null);
   const [mealMenuId, setMealMenuId] = useState<string | null>(null);
   const [activeRecipeId, setActiveRecipeId] = useState<string | null>(null);
+  const [draftByMealId, setDraftByMealId] = useState<Record<string, MealDraftItem[]>>({});
   const mealSectionRef = useRef<HTMLDivElement | null>(null);
 
   const totalFoodInPlan = useMemo(() => countMealPlanFoodItems(plan), [plan]);
@@ -601,19 +601,6 @@ export function MemberMealPlanDashboard({ plan, memberId, onOpenAvoidances, onRe
     [memberId, selectedDateKey, selectedMealsResolved],
   );
 
-  const handleAddSelfLog = useCallback(
-    (draft: SelfLogDraft) => {
-      const entry: MemberQuickFoodLogEntry = {
-        ...draft,
-        id: `log-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`,
-        loggedAt: new Date().toISOString(),
-      };
-      setTracking((prev) => addQuickFoodLog(memberId, prev, selectedDateKey, entry));
-      setExpandedMealId(draft.mealId ?? null);
-    },
-    [memberId, selectedDateKey],
-  );
-
   const handleRemoveSelfLog = useCallback(
     (entryId: string) => {
       setTracking((prev) => removeQuickFoodLog(memberId, prev, selectedDateKey, entryId));
@@ -623,10 +610,13 @@ export function MemberMealPlanDashboard({ plan, memberId, onOpenAvoidances, onRe
 
   const savedMeals = tracking.savedMeals ?? [];
 
-  const handleApplySavedMeal = useCallback(
-    (meal: MemberSavedMeal, targetMealId: string) => {
-      setTracking((prev) => applySavedMealQuickLogs(memberId, prev, selectedDateKey, meal, targetMealId));
-      setExpandedMealId(targetMealId);
+  const handleCommitMealDraft = useCallback(
+    (mealId: string, items: MealDraftItem[]) => {
+      if (!items.length) return;
+      const entries = items.map((item) => draftToQuickLogEntry(item, mealId));
+      setTracking((prev) => addQuickFoodLogs(memberId, prev, selectedDateKey, entries));
+      setDraftByMealId((prev) => ({ ...prev, [mealId]: [] }));
+      setExpandedMealId(mealId);
     },
     [memberId, selectedDateKey],
   );
@@ -1122,22 +1112,16 @@ export function MemberMealPlanDashboard({ plan, memberId, onOpenAvoidances, onRe
                           ))}
                         </ul>
                       ) : null}
-                      <SavedMealsSection
+                      <MealDraftComposer
                         compact
                         mealSlotId={meal.id}
                         mealSlotLabel={mealSlotLabel(meal.name)}
+                        draftItems={draftByMealId[meal.id] ?? []}
+                        onDraftChange={(items) => setDraftByMealId((prev) => ({ ...prev, [meal.id]: items }))}
                         savedMeals={savedMeals}
-                        currentSlotLogs={selfLogs}
-                        onApply={(saved) => handleApplySavedMeal(saved, meal.id)}
-                        onSave={handleSaveSavedMeal}
-                        onDelete={handleDeleteSavedMeal}
-                      />
-                      <InlineMealSelfLog
-                        mealId={meal.id}
-                        compact
-                        autoOpen
-                        onAdd={(draft) => handleAddSelfLog(draft)}
-                        onPanelOpen={onRefreshFoodBank}
+                        onSaveTemplate={handleSaveSavedMeal}
+                        onDeleteSaved={handleDeleteSavedMeal}
+                        onCommitLog={() => handleCommitMealDraft(meal.id, draftByMealId[meal.id] ?? [])}
                       />
                   </div>
                 ) : null}

@@ -112,6 +112,23 @@ export function addQuickFoodLog(
   return nextState;
 }
 
+export function addQuickFoodLogs(
+  memberId: string,
+  state: MemberMealPlanState,
+  dateKey: string,
+  entries: MemberQuickFoodLogEntry[],
+): MemberMealPlanState {
+  if (!entries.length) return state;
+  const logs = [...entries, ...(state.quickFoodLogs[dateKey] ?? [])];
+  const nextState: MemberMealPlanState = {
+    ...state,
+    quickFoodLogs: { ...state.quickFoodLogs, [dateKey]: logs },
+    updatedAt: new Date().toISOString(),
+  };
+  persistMemberMealPlanStateLocalAndScheduleCloud(memberId, nextState);
+  return nextState;
+}
+
 export function applySavedMealQuickLogs(
   memberId: string,
   state: MemberMealPlanState,
