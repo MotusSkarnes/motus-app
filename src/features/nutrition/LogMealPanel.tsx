@@ -138,24 +138,42 @@ export function LogMealPanel({ memberId, mealPlanTargets, onRefreshFoodBank }: L
 
   return (
     <div className="motus-log-meal-panel">
-      {hasLogs ? <DailyLoggedMacrosSummary macros={macrosToday} targets={mealPlanTargets} /> : null}
+      {hasLogs ? (
+        <DailyLoggedMacrosSummary macros={macrosToday} targets={mealPlanTargets} title="I dag totalt" />
+      ) : null}
 
       {hasLogs && !open ? (
-        <div className="motus-log-meal-panel__summary">
-          <div className="motus-log-meal-panel__summary-head">
-            <h2 className="motus-log-meal-panel__title">Logget i dag</h2>
+        <section className="motus-log-meal-panel__summary" aria-label="Logget i dag">
+          <header className="motus-log-meal-panel__summary-head">
+            <div className="motus-log-meal-panel__summary-title-wrap">
+              <span className="motus-log-meal-panel__summary-icon" aria-hidden>
+                <UtensilsCrossed className="h-4 w-4" />
+              </span>
+              <div className="min-w-0">
+                <h2 className="motus-log-meal-panel__title">Logget i dag</h2>
+                <p className="motus-log-meal-panel__summary-sub">
+                  {logsToday.length} {logsToday.length === 1 ? "post" : "poster"} · {formatMacro(macrosToday.kcal, 0)} kcal
+                </p>
+              </div>
+            </div>
             <GradientButton type="button" className="motus-log-meal-cta motus-log-meal-cta--compact" onClick={() => setOpen(true)}>
               <Plus className="h-4 w-4" aria-hidden />
               Logg et måltid
             </GradientButton>
-          </div>
+          </header>
           <div className="motus-log-meal-panel__groups">
             {MEMBER_MEAL_SLOTS.map((slot) => {
               const entries = logsBySlot.get(slot.id) ?? [];
               if (!entries.length) return null;
+              const slotMacros = sumQuickFoodLogMacros(entries);
               return (
-                <div key={slot.id} className="motus-log-meal-panel__group">
-                  <h3 className="motus-log-meal-panel__group-title">{slot.label}</h3>
+                <article key={slot.id} className="motus-log-meal-panel__meal-group">
+                  <header className="motus-log-meal-panel__meal-head">
+                    <h3 className="motus-log-meal-panel__meal-title">{slot.label}</h3>
+                    <span className="motus-log-meal-panel__meal-sum">
+                      {formatMacro(slotMacros.kcal, 0)} kcal · P {formatMacro(slotMacros.protein, 0)} g
+                    </span>
+                  </header>
                   <ul className="motus-log-meal-panel__list">
                     {entries.map((entry) => (
                       <li key={entry.id} className="motus-log-meal-panel__item">
@@ -176,11 +194,41 @@ export function LogMealPanel({ memberId, mealPlanTargets, onRefreshFoodBank }: L
                       </li>
                     ))}
                   </ul>
-                </div>
+                </article>
               );
             })}
+            {(logsBySlot.get("other") ?? []).length > 0 ? (
+              <article className="motus-log-meal-panel__meal-group motus-log-meal-panel__meal-group--other">
+                <header className="motus-log-meal-panel__meal-head">
+                  <h3 className="motus-log-meal-panel__meal-title">Annet</h3>
+                  <span className="motus-log-meal-panel__meal-sum">
+                    {formatMacro(sumQuickFoodLogMacros(logsBySlot.get("other")).kcal, 0)} kcal
+                  </span>
+                </header>
+                <ul className="motus-log-meal-panel__list">
+                  {(logsBySlot.get("other") ?? []).map((entry) => (
+                    <li key={entry.id} className="motus-log-meal-panel__item">
+                      <div className="min-w-0">
+                        <p className="motus-log-meal-panel__item-name">
+                          {entry.name} · {formatMacro(entry.grams, 0)} g
+                        </p>
+                        <p className="motus-log-meal-panel__item-meta">{entryMacros(entry)}</p>
+                      </div>
+                      <button
+                        type="button"
+                        className="motus-log-meal-panel__remove"
+                        onClick={() => removeLog(entry.id)}
+                        aria-label={`Fjern ${entry.name}`}
+                      >
+                        <Trash2 className="h-4 w-4" aria-hidden />
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              </article>
+            ) : null}
           </div>
-        </div>
+        </section>
       ) : null}
 
       {open || !hasLogs ? (
