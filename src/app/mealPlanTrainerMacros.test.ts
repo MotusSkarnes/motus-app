@@ -23,7 +23,7 @@ describe("mealPlanTrainerMacros", () => {
     const day = plan.days[0];
     const meals = distributeDailyTargetsToMeals(day, { kcal: 2000, protein: 150, carbs: 200, fat: 65 }, "standard");
     const frokost = meals.find((m) => m.name === "Frokost");
-    expect(frokost?.targets?.kcal).toBe(500);
+    expect(frokost?.targets?.kcal).toBe(440);
   });
 
   it("kopierer måltid til annen dag", () => {

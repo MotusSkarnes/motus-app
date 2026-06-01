@@ -1,12 +1,8 @@
 import { Fragment, useEffect, useRef } from "react";
 import { Eye, MoreHorizontal, Plus, Soup, UtensilsCrossed } from "lucide-react";
 import type { InspirationRecipeItem } from "../../app/inspirationRecipeItems";
-import {
-  PLANNER_MEAL_SLOTS,
-  findMealForSlot,
-  mealCellDisplayTitle,
-  resolveMealCellImage,
-} from "../../app/mealPlanWeekPlanner";
+import { getPlannerMealSlotsForPlan } from "../../app/mealPlanMealSlots";
+import { findMealForSlot, mealCellDisplayTitle, resolveMealCellImage } from "../../app/mealPlanWeekPlanner";
 import type { FoodItem } from "../../app/foodBankTypes";
 import { formatMacro } from "../../app/foodBankTypes";
 import { computeMealMacros } from "../../app/mealPlanMacros";
@@ -40,6 +36,7 @@ export function TrainerMealPlanWeekGrid({
   onClearMeal,
 }: TrainerMealPlanWeekGridProps) {
   const rootRef = useRef<HTMLDivElement | null>(null);
+  const mealSlotLabels = getPlannerMealSlotsForPlan(plan);
   const weekdayShort = (label: string) => label.slice(0, 3);
   useEffect(() => {
     if (!selection) return;
@@ -64,7 +61,7 @@ export function TrainerMealPlanWeekGrid({
           </div>
         ))}
 
-        {PLANNER_MEAL_SLOTS.map((slot) => (
+        {mealSlotLabels.map((slot) => (
           <Fragment key={slot}>
             <div className="motus-pt-planner-grid__row-head" role="rowheader">
               {slot}

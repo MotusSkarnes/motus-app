@@ -54,6 +54,12 @@ import {
   type MicronutrientOverviewRow,
 } from "./nutrition/TrainerMealPlanNutritionOverview";
 import { TrainerMealPlanWeekGrid, type MealGridSelection } from "./nutrition/TrainerMealPlanWeekGrid";
+import { TrainerMealPlanSlotSetup } from "./nutrition/TrainerMealPlanSlotSetup";
+import {
+  DEFAULT_MEAL_PLAN_SLOT_IDS,
+  toggleMealPlanSlotId,
+  type MealPlanSlotId,
+} from "../app/mealPlanMealSlots";
 import { autoFillWeekFromMonday, averageWeekMacros, resizeMealPlanWeeks } from "../app/mealPlanWeekPlanner";
 import { parseInspirationRecipeFoodId, recipeToMealPlanEntry } from "../app/mealPlanRecipeEntry";
 import { resolveRecipeMealSlot } from "../app/recipeMealCategory";
@@ -124,6 +130,7 @@ export function TrainerMealPlanEditor({
   const [recipeReadOnlyId, setRecipeReadOnlyId] = useState<string | null>(null);
   const [planWeeks, setPlanWeeks] = useState<number>(1);
   const [visibleWeekIndex, setVisibleWeekIndex] = useState(0);
+  const [draftMealSlotIds, setDraftMealSlotIds] = useState<MealPlanSlotId[]>(() => [...DEFAULT_MEAL_PLAN_SLOT_IDS]);
   const loadGenerationRef = useRef(0);
   const creatingPlanRef = useRef(false);
   const suppressReloadUntilRef = useRef(0);
@@ -255,9 +262,14 @@ export function TrainerMealPlanEditor({
 
   const handleCreateMealPlan = useCallback(async () => {
     const trimmedMemberId = memberId.trim();
+    const mealSlotIds = draftMealSlotIds.length ? draftMealSlotIds : [...DEFAULT_MEAL_PLAN_SLOT_IDS];
     if (!trimmedMemberId) {
       setLoadError("Ingen klient valgt — velg en kunde i listen først.");
       setPlanLoadStatus("error");
+      return;
+    }
+    if (!mealSlotIds.length) {
+      setLoadError("Velg minst ett måltid for dagene.");
       return;
     }
     if (creatingPlan) return;
@@ -268,7 +280,7 @@ export function TrainerMealPlanEditor({
     setLoadError(null);
     setSaveStatus(null);
     try {
-      const draft = createDefaultMealPlan(trimmedMemberId);
+      const draft = createDefaultMealPlan(trimmedMemberId, { mealSlotIds });
       const hydrated = applyLoadedPlan(draft);
       flushSync(() => {
         setPlanSource("local");
@@ -307,7 +319,7 @@ export function TrainerMealPlanEditor({
       creatingPlanRef.current = false;
       setCreatingPlan(false);
     }
-  }, [memberId, memberEmail, trainerOwnerUserId, applyLoadedPlan, creatingPlan]);
+  }, [memberId, memberEmail, trainerOwnerUserId, applyLoadedPlan, creatingPlan, draftMealSlotIds]);
 
   useEffect(() => {
     const trimmedMemberId = memberId.trim();
@@ -967,7 +979,9 @@ export function TrainerMealPlanEditor({
       ...plan,
       days: plan.days.map((day) => (day.id === activeDay.id ? { ...day, meals } : day)),
     });
-    setSaveStatus(mode === "standard" ? "Makro fordelt på frokost/lunsj/middag/snacks." : "Makro fordelt likt på alle måltid.");
+    setSaveStatus(
+      mode === "standard" ? "Makro fordelt på valgte måltider for dagen." : "Makro fordelt likt på alle måltid.",
+    );
   }
 
   function handleClearMealTargets() {
@@ -1062,22 +1076,14 @@ export function TrainerMealPlanEditor({
 
   if (planLoadStatus === "none") {
     return (
-      <div className="rounded-2xl border border-slate-200 bg-white px-5 py-8 text-center shadow-sm">
-        <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-teal-50 text-teal-700">
-          <Soup className="h-6 w-6" aria-hidden />
-        </div>
-        <h3 className="mt-4 text-lg font-semibold text-slate-950">Ingen matplan</h3>
-        <p className="mx-auto mt-2 max-w-md text-sm text-slate-600">
-          Vi fant ingen matplan for <span className="font-medium text-slate-800">{memberName}</span> i systemet. Opprett en
-          ukeplan for å legge inn måltider og makromål.
-        </p>
-        <GradientButton type="button" className="mt-5" disabled={creatingPlan} onClick={() => void handleCreateMealPlan()}>
-          <Plus className="h-4 w-4" aria-hidden />
-          {creatingPlan ? "Oppretter …" : "Lag matplan"}
-        </GradientButton>
-        {loadError ? <p className="mt-3 text-sm font-medium text-rose-700">{loadError}</p> : null}
-        {saveStatus ? <p className="mt-3 text-sm text-teal-700">{saveStatus}</p> : null}
-      </div>
+      <TrainerMealPlanSlotSetup
+        memberName={memberName}
+        selectedSlotIds={draftMealSlotIds}
+        onToggleSlot={(slotId) => setDraftMealSlotIds((prev) => toggleMealPlanSlotId(prev, slotId))}
+        onCreate={() => void handleCreateMealPlan()}
+        creating={creatingPlan}
+        error={loadError}
+      />
     );
   }
 
@@ -1092,39 +1098,42 @@ export function TrainerMealPlanEditor({
         <p className="mt-2 text-xs text-sky-800/80">
           Tips: Sjekk at du har valgt riktig klient (duplikat e-post kan gi feil medlems-id).
         </p>
-        <div className="mt-4 flex flex-wrap justify-center gap-2 sm:justify-start">
-          <GradientButton type="button" className="text-xs" onClick={() => void reload()}>
+        <div className="mt-4">
+          <OutlineButton type="button" className="text-xs" onClick={() => void reload()}>
             Prøv igjen
-          </GradientButton>
-          <OutlineButton
-            type="button"
-            className="text-xs"
-            disabled={creatingPlan}
-            onClick={() => void handleCreateMealPlan()}
-          >
-            <Plus className="h-4 w-4" aria-hidden />
-            {creatingPlan ? "Oppretter …" : "Lag matplan"}
           </OutlineButton>
         </div>
-        {loadError ? <p className="mt-3 text-sm font-medium text-rose-700">{loadError}</p> : null}
-        {saveStatus ? <p className="mt-3 text-sm text-teal-700">{saveStatus}</p> : null}
+        <div className="mt-6 border-t border-sky-200/80 pt-6">
+          <TrainerMealPlanSlotSetup
+            memberName={memberName}
+            selectedSlotIds={draftMealSlotIds}
+            onToggleSlot={(slotId) => setDraftMealSlotIds((prev) => toggleMealPlanSlotId(prev, slotId))}
+            onCreate={() => void handleCreateMealPlan()}
+            creating={creatingPlan}
+            error={loadError}
+          />
+        </div>
       </div>
     );
   }
 
   if (planLoadStatus === "error") {
     return (
-      <div className="space-y-3 rounded-2xl border border-amber-200 bg-amber-50 px-5 py-6 text-sm text-amber-950">
-        <p className="font-medium">{loadError ?? "Matplanen kunne ikke lastes."}</p>
-        <div className="flex flex-wrap gap-2">
-          <OutlineButton type="button" className="text-xs" onClick={() => void reload()}>
+      <div className="space-y-4">
+        <div className="rounded-2xl border border-amber-200 bg-amber-50 px-5 py-4 text-sm text-amber-950">
+          <p className="font-medium">{loadError ?? "Matplanen kunne ikke lastes."}</p>
+          <OutlineButton type="button" className="mt-3 text-xs" onClick={() => void reload()}>
             Prøv igjen
           </OutlineButton>
-          <GradientButton type="button" className="text-xs" disabled={creatingPlan} onClick={() => void handleCreateMealPlan()}>
-            <Plus className="h-4 w-4" aria-hidden />
-            Lag matplan
-          </GradientButton>
         </div>
+        <TrainerMealPlanSlotSetup
+          memberName={memberName}
+          selectedSlotIds={draftMealSlotIds}
+          onToggleSlot={(slotId) => setDraftMealSlotIds((prev) => toggleMealPlanSlotId(prev, slotId))}
+          onCreate={() => void handleCreateMealPlan()}
+          creating={creatingPlan}
+          error={loadError}
+        />
       </div>
     );
   }

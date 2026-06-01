@@ -58,16 +58,18 @@ function normalizeMealKey(name: string): string {
   if (n.includes("frokost")) return "frokost";
   if (n.includes("lunsj")) return "lunsj";
   if (n.includes("middag")) return "middag";
-  if (n.includes("snack") || n.includes("mellom")) return "snacks";
+  if (n.includes("kvelds")) return "kvelds";
+  if (n.includes("snack") || n.includes("mellom")) return "mellommaltid";
   return "other";
 }
 
-/** Standard andeler: frokost 25 %, lunsj 30 %, middag 35 %, snacks 10 %. */
+/** Standard andeler per måltidstype (summerer til 1 for typisk 3–5 måltider). */
 const STANDARD_MEAL_SHARES: Record<string, number> = {
-  frokost: 0.25,
-  lunsj: 0.3,
-  middag: 0.35,
-  snacks: 0.1,
+  frokost: 0.22,
+  lunsj: 0.28,
+  middag: 0.32,
+  kvelds: 0.1,
+  mellommaltid: 0.08,
   other: 0,
 };
 
@@ -292,10 +294,10 @@ function normalizeKey(value: string): string {
     .replace(/[^a-z0-9]+/g, "");
 }
 
-function mealSlotFromName(name: string): "frokost" | "lunsj" | "middag" | "snacks" {
+function mealSlotFromName(name: string): keyof typeof STANDARD_MEAL_SHARES {
   const key = normalizeMealKey(name);
-  if (key === "frokost" || key === "lunsj" || key === "middag" || key === "snacks") return key;
-  return "snacks";
+  if (key in STANDARD_MEAL_SHARES && key !== "other") return key;
+  return "mellommaltid";
 }
 
 function findFoodByName(foods: FoodItem[], target: string): FoodItem | undefined {

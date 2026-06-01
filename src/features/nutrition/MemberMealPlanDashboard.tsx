@@ -97,7 +97,8 @@ function mealSlotLabel(name: string): string {
   if (n.includes("frokost")) return "FROKOST";
   if (n.includes("lunsj")) return "LUNSJ";
   if (n.includes("middag")) return "MIDDAG";
-  if (n.includes("snack") || n.includes("mellom")) return "SNACKS";
+  if (n.includes("kvelds")) return "KVELDS";
+  if (n.includes("mellom") || n.includes("snack")) return "MELLOMMÅLTID";
   return name.toUpperCase();
 }
 

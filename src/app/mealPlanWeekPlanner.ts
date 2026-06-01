@@ -1,27 +1,26 @@
 import { parseInspirationRecipeFoodId } from "./mealPlanRecipeEntry";
 import type { InspirationRecipeItem } from "./inspirationRecipeItems";
 import type { FoodItem } from "./foodBankTypes";
+import { mealNameToSlotId, mealSlotLabelFromId } from "./mealPlanMealSlots";
 import { computeMealMacros, type MacroTotals } from "./mealPlanMacros";
 import { sumDayMacros } from "./mealPlanTrainerMacros";
 import type { MealPlan, MealPlanDay, MealPlanMeal } from "./mealPlanTypes";
 import { uid } from "./storage";
 
-export const PLANNER_MEAL_SLOTS = ["Frokost", "Lunsj", "Middag", "Snacks"] as const;
+/** @deprecated Bruk getPlannerMealSlotsForPlan(plan) — beholdt for eldre tester. */
+export const PLANNER_MEAL_SLOTS = ["Frokost", "Lunsj", "Middag", "Mellommåltid"] as const;
 const WEEKDAY_LABELS = ["Mandag", "Tirsdag", "Onsdag", "Torsdag", "Fredag", "Lørdag", "Søndag"] as const;
 
 export function normalizeMealSlotName(name: string): string {
-  const n = name.trim().toLowerCase();
-  if (n.includes("frokost")) return "Frokost";
-  if (n.includes("lunsj")) return "Lunsj";
-  if (n.includes("middag")) return "Middag";
-  if (n.includes("snack") || n.includes("mellom")) return "Snacks";
+  const slotId = mealNameToSlotId(name);
+  if (slotId) return mealSlotLabelFromId(slotId);
   return name.trim();
 }
 
-export function findMealForSlot(day: MealPlanDay, slot: (typeof PLANNER_MEAL_SLOTS)[number]): MealPlanMeal | undefined {
-  const target = slot.toLowerCase();
+export function findMealForSlot(day: MealPlanDay, slotLabel: string): MealPlanMeal | undefined {
+  const target = slotLabel.trim().toLowerCase();
   return (
-    day.meals.find((meal) => normalizeMealSlotName(meal.name) === slot) ??
+    day.meals.find((meal) => normalizeMealSlotName(meal.name).toLowerCase() === target) ??
     day.meals.find((meal) => meal.name.trim().toLowerCase().includes(target.slice(0, 4)))
   );
 }
@@ -87,10 +86,7 @@ export function autoFillWeekFromMonday(plan: MealPlan): MealPlan {
         ...day,
         meals: day.meals.map((meal) => {
           const slot = normalizeMealSlotName(meal.name);
-          const sourceMeal =
-            PLANNER_MEAL_SLOTS.includes(slot as (typeof PLANNER_MEAL_SLOTS)[number])
-              ? findMealForSlot(monday, slot as (typeof PLANNER_MEAL_SLOTS)[number])
-              : undefined;
+          const sourceMeal = findMealForSlot(monday, slot);
           if (!sourceMeal?.items.length) return meal;
           return {
             ...meal,
@@ -125,6 +121,8 @@ function createEmptyMealsFromTemplate(templateDay?: MealPlanDay): MealPlanMeal[]
     items: [],
   }));
 }
+
+export { getPlannerMealSlotsForPlan } from "./mealPlanMealSlots";
 
 export function resizeMealPlanWeeks(plan: MealPlan, requestedWeeks: number): MealPlan {
   const weeks = Math.max(1, Math.min(12, Math.round(requestedWeeks)));
