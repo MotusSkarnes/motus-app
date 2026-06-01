@@ -48,6 +48,10 @@ export function MealPlanNutritionReportModal({
 }: MealPlanNutritionReportModalProps) {
   const displayName = memberName.trim() || "Kunden";
   const report = useMemo(() => buildMealPlanNutritionReport(plan, nutritionContext), [plan, nutritionContext]);
+  const reportLayoutKey = useMemo(
+    () => `${report.daysWithFood}:${report.dayTotals.map((row) => row.dayId).join(",")}`,
+    [report.daysWithFood, report.dayTotals],
+  );
 
   const [viewMode, setViewMode] = useState<ViewMode>("activeDay");
   const [selectedDayId, setSelectedDayId] = useState(activeDayId);
@@ -58,6 +62,10 @@ export function MealPlanNutritionReportModal({
     if (!open) return;
     setTab("macro");
     setPrintError(null);
+  }, [open]);
+
+  useEffect(() => {
+    if (!open) return;
     const activeHasFood = report.dayTotals.some((row) => row.dayId === activeDayId);
     if (activeHasFood) {
       setViewMode("activeDay");
@@ -76,7 +84,7 @@ export function MealPlanNutritionReportModal({
     }
     setViewMode("activeDay");
     setSelectedDayId(activeDayId);
-  }, [open, activeDayId, report]);
+  }, [open, activeDayId, report.daysWithFood, reportLayoutKey]);
 
   const displayTotals = useMemo(() => {
     if (report.daysWithFood === 0) return null;
