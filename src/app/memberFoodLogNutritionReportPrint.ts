@@ -79,16 +79,16 @@ function microTableHtml(rows: MicronutrientDailyRow[]): string {
   }
   const body = rows
     .map(
-      (row) => `<tr>
+      (row) => `<tr class="micro-status-${row.statusTone}">
         <td>${escapeHtml(row.label)}</td>
         <td>${escapeHtml(formatMicronutrientValue(row.value, row.decimals))} ${escapeHtml(row.unit)}</td>
-        <td>${escapeHtml(formatMicronutrientValue(row.target, row.decimals))} ${escapeHtml(row.unit)}</td>
-        <td>${Math.min(100, Math.round(row.coveragePct))}%</td>
+        <td>${escapeHtml(formatMicronutrientValue(row.lower, row.decimals))} / ${escapeHtml(formatMicronutrientValue(row.target, row.decimals))}${row.upper !== null ? ` / ${escapeHtml(formatMicronutrientValue(row.upper, row.decimals))}` : ""} ${escapeHtml(row.unit)}</td>
+        <td>${escapeHtml(row.statusLabel)}</td>
       </tr>`,
     )
     .join("");
   return `<table class="report-table">
-    <thead><tr><th>Stoff</th><th>Inntatt</th><th>Referanse</th><th>Dekning</th></tr></thead>
+    <thead><tr><th>Stoff</th><th>Inntatt</th><th>AR / RI / UL</th><th>Status</th></tr></thead>
     <tbody>${body}</tbody>
   </table>`;
 }

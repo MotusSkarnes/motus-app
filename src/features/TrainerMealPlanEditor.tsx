@@ -75,6 +75,7 @@ import {
 } from "../app/mealPlanMealSlots";
 import { buildMealPlanNutritionReport } from "../app/mealPlanNutritionTotals";
 import { micronutrientRowsForReport } from "../app/quickFoodLogNutrition";
+import { resolveNutritionReferenceContext } from "../app/personalizedNutritionReferences";
 import { autoFillWeekFromMonday, resizeMealPlanWeeks } from "../app/mealPlanWeekPlanner";
 import {
   buildInspirationRecipeNutritionById,
@@ -475,6 +476,10 @@ export function TrainerMealPlanEditor({
     () => ({ foodById, recipeNutritionById }),
     [foodById, recipeNutritionById],
   );
+  const nutritionReferenceContext = useMemo(
+    () => resolveNutritionReferenceContext(memberBirthDate, memberGender),
+    [memberBirthDate, memberGender],
+  );
 
   const planNutritionAverages = useMemo(
     () => (plan ? buildMealPlanNutritionReport(plan, nutritionContext) : null),
@@ -489,7 +494,7 @@ export function TrainerMealPlanEditor({
   }, [planNutritionAverages]);
   const weekAverageMicronutrients = useMemo<MicronutrientOverviewRow[]>(() => {
     if (!planNutritionAverages?.daysWithFood) return [];
-    return micronutrientRowsForReport(planNutritionAverages.dailyAverage).map((row) => ({
+    return micronutrientRowsForReport(planNutritionAverages.dailyAverage, nutritionReferenceContext).map((row) => ({
       key: row.key,
       label: row.label,
       unit: row.unit,
@@ -497,7 +502,7 @@ export function TrainerMealPlanEditor({
       target: row.target,
       coveragePct: row.coveragePct,
     }));
-  }, [planNutritionAverages]);
+  }, [planNutritionAverages, nutritionReferenceContext]);
 
   const selectedGridMeal = useMemo(() => {
     if (!plan || !gridSelection) return null;

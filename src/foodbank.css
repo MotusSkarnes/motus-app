@@ -4329,10 +4329,58 @@
   line-height: 1.35;
 }
 
+.motus-nutrition-report__micro-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem 0.65rem;
+  margin-bottom: 0.65rem;
+  padding: 0.5rem 0.6rem;
+  border-radius: 0.65rem;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+}
+
+.motus-nutrition-report__micro-legend-item {
+  font-size: 0.6875rem;
+  font-weight: 700;
+  padding: 0.15rem 0.45rem;
+  border-radius: 9999px;
+}
+
+.motus-nutrition-report__micro-legend-note {
+  flex: 1 1 100%;
+  margin: 0.15rem 0 0;
+  font-size: 0.625rem;
+  color: #64748b;
+  line-height: 1.4;
+}
+
 .motus-nutrition-report__micro-list {
   display: flex;
   flex-direction: column;
   gap: 0.55rem;
+}
+
+.motus-nutrition-report__micro-row {
+  padding: 0.45rem 0.5rem;
+  border-radius: 0.55rem;
+  border: 1px solid #e2e8f0;
+  background: #fff;
+}
+
+.motus-nutrition-report__micro-row--danger {
+  border-color: #fecaca;
+  background: #fef2f2;
+}
+
+.motus-nutrition-report__micro-row--warn {
+  border-color: #fde68a;
+  background: #fffbeb;
+}
+
+.motus-nutrition-report__micro-row--ok {
+  border-color: #bbf7d0;
+  background: #f0fdf4;
 }
 
 .motus-nutrition-report__micro-row-head {
@@ -4340,7 +4388,7 @@
   align-items: flex-start;
   justify-content: space-between;
   gap: 0.5rem;
-  margin-bottom: 0.25rem;
+  margin-bottom: 0.2rem;
 }
 
 .motus-nutrition-report__micro-label {
@@ -4349,16 +4397,73 @@
   color: #334155;
 }
 
-.motus-nutrition-report__micro-values {
-  font-size: 0.6875rem;
+.motus-nutrition-report__micro-status {
+  font-size: 0.625rem;
+  font-weight: 700;
+  padding: 0.1rem 0.4rem;
+  border-radius: 9999px;
+  white-space: nowrap;
+}
+
+.motus-nutrition-report__micro-status--danger {
+  color: #b91c1c;
+  background: #fee2e2;
+}
+
+.motus-nutrition-report__micro-status--warn {
+  color: #a16207;
+  background: #fef3c7;
+}
+
+.motus-nutrition-report__micro-status--ok {
+  color: #047857;
+  background: #d1fae5;
+}
+
+.motus-nutrition-report__micro-status--muted {
   color: #64748b;
-  text-align: right;
+  background: #f1f5f9;
+}
+
+.motus-nutrition-report__micro-values {
+  display: block;
+  font-size: 0.6875rem;
+  color: #475569;
+  margin-bottom: 0.25rem;
+}
+
+.motus-nutrition-report__micro-ref {
+  color: #64748b;
+}
+
+.motus-nutrition-report__bar-fill--danger {
+  background: linear-gradient(90deg, #f87171, #dc2626);
+}
+
+.motus-nutrition-report__bar-fill--warn {
+  background: linear-gradient(90deg, #fbbf24, #d97706);
+}
+
+.motus-nutrition-report__bar-fill--ok {
+  background: linear-gradient(90deg, #34d399, #059669);
 }
 
 .motus-nutrition-report__micro-pct {
   font-size: 0.625rem;
   font-weight: 600;
-  color: #0d9488;
+  color: #64748b;
+}
+
+.motus-nutrition-report__micro-row--ok .motus-nutrition-report__micro-pct {
+  color: #047857;
+}
+
+.motus-nutrition-report__micro-row--warn .motus-nutrition-report__micro-pct {
+  color: #a16207;
+}
+
+.motus-nutrition-report__micro-row--danger .motus-nutrition-report__micro-pct {
+  color: #b91c1c;
 }
 
 .motus-nutrition-report-modal__daily-breakdown {

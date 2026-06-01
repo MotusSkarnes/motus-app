@@ -21,7 +21,7 @@ import {
 } from "../../app/personalizedNutritionReferences";
 import { micronutrientRowsForReport } from "../../app/quickFoodLogNutrition";
 import { GradientButton, OutlineButton } from "../../app/ui";
-import { MacroReportTable, MicroReportTable, OmegaOverviewTable } from "./NutritionReportTables";
+import { MacroReportTable, MicroReportLegend, MicroReportTable, OmegaOverviewTable } from "./NutritionReportTables";
 
 type ViewMode = "activeDay" | "average";
 
@@ -240,6 +240,7 @@ export function MealPlanNutritionReportModal({
             </section>
           ) : (
             <section aria-label="Mikronæringsstoffer">
+              <MicroReportLegend />
               <MicroReportTable rows={microRows} />
               <p className="motus-nutrition-report-modal__footnote">{referenceFootnote}</p>
 

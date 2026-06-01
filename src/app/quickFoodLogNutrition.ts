@@ -8,6 +8,12 @@ import {
 import type { MemberQuickFoodLogEntry } from "./memberMealPlanState";
 import { computeMacrosForGrams, EMPTY_MACRO_TOTALS, type MacroTotals } from "./mealPlanMacros";
 import { HEALTH_DIRECTORATE_MICRONUTRIENT_DAILY } from "./healthDirectorateNutritionReferences";
+import type { MicronutrientReferenceBounds, MicronutrientStatusCode } from "./micronutrientReferenceRanges";
+import {
+  classifyMicronutrientStatus,
+  micronutrientStatusMeta,
+  resolveMicronutrientBounds,
+} from "./micronutrientReferenceRanges";
 import type { NutritionReferenceContext } from "./personalizedNutritionReferences";
 
 export type FoodLogNutritionTotals = MacroTotals & {
@@ -37,6 +43,11 @@ export type MicronutrientDailyRow = {
   value: number;
   target: number;
   coveragePct: number;
+  lower: number;
+  upper: number | null;
+  status: MicronutrientStatusCode;
+  statusLabel: string;
+  statusTone: "danger" | "warn" | "ok" | "muted";
 };
 
 export function sumQuickFoodLogNutrition(logs: MemberQuickFoodLogEntry[] | undefined): FoodLogNutritionTotals {
@@ -131,13 +142,22 @@ export function divideFoodLogNutritionTotals(totals: FoodLogNutritionTotals, div
 
 export function micronutrientRowsFromLogTotals(
   totals: FoodLogNutritionTotals,
-  referenceContext?: Pick<NutritionReferenceContext, "micronutrientDaily">,
+  referenceContext?: NutritionReferenceContext,
 ): MicronutrientDailyRow[] {
   const dailyTargets = referenceContext?.micronutrientDaily ?? HEALTH_DIRECTORATE_MICRONUTRIENT_DAILY;
   return FOOD_MICRONUTRIENT_FIELDS.map((field) => {
     const value = totals.micronutrients[field.key] ?? 0;
-    const target = dailyTargets[field.key];
+    const bounds: MicronutrientReferenceBounds = referenceContext
+      ? resolveMicronutrientBounds(field.key, referenceContext)
+      : {
+          lower: (dailyTargets[field.key] ?? 0) * 0.8,
+          recommended: dailyTargets[field.key] ?? 0,
+          upper: null,
+        };
+    const target = bounds.recommended;
     const coveragePct = target > 0 ? (value / target) * 100 : 0;
+    const status = classifyMicronutrientStatus(value, bounds);
+    const statusMeta = micronutrientStatusMeta(status);
     return {
       key: field.key,
       label: field.label,
@@ -146,6 +166,11 @@ export function micronutrientRowsFromLogTotals(
       value,
       target,
       coveragePct,
+      lower: bounds.lower,
+      upper: bounds.upper,
+      status,
+      statusLabel: statusMeta.label,
+      statusTone: statusMeta.tone,
     };
   });
 }
@@ -153,7 +178,7 @@ export function micronutrientRowsFromLogTotals(
 /** Alle mikronæringsstoffer for rapport — inkl. 0 inntak. */
 export function micronutrientRowsForReport(
   totals: FoodLogNutritionTotals,
-  referenceContext?: Pick<NutritionReferenceContext, "micronutrientDaily">,
+  referenceContext?: NutritionReferenceContext,
 ): MicronutrientDailyRow[] {
   return micronutrientRowsFromLogTotals(totals, referenceContext);
 }

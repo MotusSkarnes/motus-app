@@ -26,7 +26,7 @@ import {
 import { micronutrientRowsForReport } from "../../app/quickFoodLogNutrition";
 import type { MealPlanTargets } from "../../app/mealPlanTypes";
 import { GradientButton, OutlineButton } from "../../app/ui";
-import { MacroReportTable, MicroReportTable, OmegaOverviewTable } from "./NutritionReportTables";
+import { MacroReportTable, MicroReportLegend, MicroReportTable, OmegaOverviewTable } from "./NutritionReportTables";
 
 type PeriodPreset = "selected" | "7" | "14" | "30" | "custom";
 type ReportTab = "macro" | "micro";
@@ -264,6 +264,7 @@ export function MemberFoodLogNutritionReportModal({
             </section>
           ) : (
             <section aria-label="Mikronæringsstoffer">
+              <MicroReportLegend />
               <MicroReportTable rows={microRows} />
               <p className="motus-nutrition-report-modal__footnote">{referenceFootnote}</p>
 
