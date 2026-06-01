@@ -108,6 +108,44 @@ export function MicroReportTable({ rows }: { rows: MicronutrientDailyRow[] }) {
   );
 }
 
+type MicroReportFilterProps = {
+  issuesOnly: boolean;
+  onIssuesOnlyChange: (value: boolean) => void;
+  totalCount: number;
+  hiddenOkCount: number;
+};
+
+export function MicroReportFilter({ issuesOnly, onIssuesOnlyChange, totalCount, hiddenOkCount }: MicroReportFilterProps) {
+  return (
+    <div className="motus-nutrition-report__micro-filter motus-nutrition-report-no-print">
+      <div className="motus-nutrition-report-modal__chips">
+        <button
+          type="button"
+          className={`motus-nutrition-report-modal__chip ${issuesOnly ? "is-active" : ""}`}
+          onClick={() => onIssuesOnlyChange(!issuesOnly)}
+          aria-pressed={issuesOnly}
+        >
+          Vis bare avvik
+        </button>
+        {issuesOnly ? (
+          <button
+            type="button"
+            className="motus-nutrition-report-modal__chip"
+            onClick={() => onIssuesOnlyChange(false)}
+          >
+            Vis alle ({totalCount})
+          </button>
+        ) : null}
+      </div>
+      {issuesOnly && hiddenOkCount > 0 ? (
+        <p className="motus-nutrition-report__micro-filter-hint">
+          Skjuler {hiddenOkCount} {hiddenOkCount === 1 ? "stoff" : "stoffer"} innenfor anbefalt område.
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
 export function MicroReportLegend() {
   return (
     <div className="motus-nutrition-report__micro-legend" role="note">

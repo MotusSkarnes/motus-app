@@ -23,10 +23,10 @@ import {
   nutritionReferenceWarningMessage,
   resolveNutritionReferenceContext,
 } from "../../app/personalizedNutritionReferences";
-import { micronutrientRowsForReport } from "../../app/quickFoodLogNutrition";
+import { filterMicronutrientReportRows, micronutrientRowsForReport } from "../../app/quickFoodLogNutrition";
 import type { MealPlanTargets } from "../../app/mealPlanTypes";
 import { GradientButton, OutlineButton } from "../../app/ui";
-import { MacroReportTable, MicroReportLegend, MicroReportTable, OmegaOverviewTable } from "./NutritionReportTables";
+import { MacroReportTable, MicroReportFilter, MicroReportLegend, MicroReportTable, OmegaOverviewTable } from "./NutritionReportTables";
 
 type PeriodPreset = "selected" | "7" | "14" | "30" | "custom";
 type ReportTab = "macro" | "micro";
@@ -61,6 +61,7 @@ export function MemberFoodLogNutritionReportModal({
   const [customTo, setCustomTo] = useState(selectedDateKey);
   const [aggregateMode, setAggregateMode] = useState<AggregateMode>("average");
   const [tab, setTab] = useState<ReportTab>("macro");
+  const [microIssuesOnly, setMicroIssuesOnly] = useState(false);
   const [printError, setPrintError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -70,6 +71,7 @@ export function MemberFoodLogNutritionReportModal({
     setPeriodPreset("7");
     setAggregateMode("average");
     setTab("macro");
+    setMicroIssuesOnly(false);
     setPrintError(null);
   }, [open, selectedDateKey]);
 
@@ -112,6 +114,11 @@ export function MemberFoodLogNutritionReportModal({
     () => micronutrientRowsForReport(displayTotals, referenceContext),
     [displayTotals, referenceContext],
   );
+  const microOkCount = useMemo(() => microRows.filter((row) => row.statusTone === "ok").length, [microRows]);
+  const visibleMicroRows = useMemo(
+    () => filterMicronutrientReportRows(microRows, microIssuesOnly),
+    [microRows, microIssuesOnly],
+  );
   const omegaRows = useMemo(() => buildOmegaOverviewRows(displayTotals.fattyAcids), [displayTotals.fattyAcids]);
 
   const periodSummary =
@@ -129,7 +136,7 @@ export function MemberFoodLogNutritionReportModal({
       periodSummary,
       totals: displayTotals,
       mealPlanTargets,
-      microRows,
+      microRows: visibleMicroRows,
       referenceContext,
       dailyKcal:
         report.daysWithLogs > 1
@@ -144,7 +151,7 @@ export function MemberFoodLogNutritionReportModal({
       return;
     }
     setPrintError(null);
-  }, [displayName, displayTotals, mealPlanTargets, microRows, periodSummary, referenceContext, report]);
+  }, [displayName, displayTotals, mealPlanTargets, visibleMicroRows, periodSummary, referenceContext, report]);
 
   if (!open) return null;
 
@@ -265,7 +272,21 @@ export function MemberFoodLogNutritionReportModal({
           ) : (
             <section aria-label="Mikronæringsstoffer">
               <MicroReportLegend />
-              <MicroReportTable rows={microRows} />
+              <MicroReportFilter
+                issuesOnly={microIssuesOnly}
+                onIssuesOnlyChange={setMicroIssuesOnly}
+                totalCount={microRows.length}
+                hiddenOkCount={microOkCount}
+              />
+              {visibleMicroRows.length === 0 ? (
+                <p className="text-sm text-slate-600">
+                  {microIssuesOnly
+                    ? "Ingen avvik funnet — alle stoffer er innenfor anbefalt område."
+                    : "Ingen mikronæringsdata i valgt periode."}
+                </p>
+              ) : (
+                <MicroReportTable rows={visibleMicroRows} />
+              )}
               <p className="motus-nutrition-report-modal__footnote">{referenceFootnote}</p>
 
               <h3 className="motus-nutrition-report-modal__subheading">Omega-fettsyrer</h3>

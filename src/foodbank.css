@@ -4329,6 +4329,16 @@
   line-height: 1.35;
 }
 
+.motus-nutrition-report__micro-filter {
+  margin-bottom: 0.65rem;
+}
+
+.motus-nutrition-report__micro-filter-hint {
+  margin: 0.35rem 0 0;
+  font-size: 0.6875rem;
+  color: #64748b;
+}
+
 .motus-nutrition-report__micro-legend {
   display: flex;
   flex-wrap: wrap;

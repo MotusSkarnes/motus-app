@@ -19,9 +19,9 @@ import {
   nutritionReferenceWarningMessage,
   resolveNutritionReferenceContext,
 } from "../../app/personalizedNutritionReferences";
-import { micronutrientRowsForReport } from "../../app/quickFoodLogNutrition";
+import { filterMicronutrientReportRows, micronutrientRowsForReport } from "../../app/quickFoodLogNutrition";
 import { GradientButton, OutlineButton } from "../../app/ui";
-import { MacroReportTable, MicroReportLegend, MicroReportTable, OmegaOverviewTable } from "./NutritionReportTables";
+import { MacroReportTable, MicroReportFilter, MicroReportLegend, MicroReportTable, OmegaOverviewTable } from "./NutritionReportTables";
 
 type ViewMode = "activeDay" | "average";
 
@@ -56,11 +56,13 @@ export function MealPlanNutritionReportModal({
   const [viewMode, setViewMode] = useState<ViewMode>("activeDay");
   const [selectedDayId, setSelectedDayId] = useState(activeDayId);
   const [tab, setTab] = useState<"macro" | "micro">("macro");
+  const [microIssuesOnly, setMicroIssuesOnly] = useState(false);
   const [printError, setPrintError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!open) return;
     setTab("macro");
+    setMicroIssuesOnly(false);
     setPrintError(null);
   }, [open]);
 
@@ -112,6 +114,11 @@ export function MealPlanNutritionReportModal({
     if (!displayTotals) return [];
     return micronutrientRowsForReport(displayTotals, referenceContext);
   }, [displayTotals, referenceContext]);
+  const microOkCount = useMemo(() => microRows.filter((row) => row.statusTone === "ok").length, [microRows]);
+  const visibleMicroRows = useMemo(
+    () => filterMicronutrientReportRows(microRows, microIssuesOnly),
+    [microRows, microIssuesOnly],
+  );
 
   const omegaRows = useMemo(() => {
     if (!displayTotals) return [];
@@ -134,7 +141,7 @@ export function MealPlanNutritionReportModal({
       periodSummary: `Matplan · ${periodSummary}`,
       totals: displayTotals,
       mealPlanTargets: plan.targets,
-      microRows,
+      microRows: visibleMicroRows,
       referenceContext,
       dailyKcal:
         report.daysWithFood > 1
@@ -149,7 +156,7 @@ export function MealPlanNutritionReportModal({
       return;
     }
     setPrintError(null);
-  }, [displayName, displayTotals, microRows, periodSummary, plan.targets, referenceContext, report.dayTotals]);
+  }, [displayName, displayTotals, visibleMicroRows, periodSummary, plan.targets, referenceContext, report.dayTotals]);
 
   if (!open) return null;
 
@@ -241,7 +248,21 @@ export function MealPlanNutritionReportModal({
           ) : (
             <section aria-label="Mikronæringsstoffer">
               <MicroReportLegend />
-              <MicroReportTable rows={microRows} />
+              <MicroReportFilter
+                issuesOnly={microIssuesOnly}
+                onIssuesOnlyChange={setMicroIssuesOnly}
+                totalCount={microRows.length}
+                hiddenOkCount={microOkCount}
+              />
+              {visibleMicroRows.length === 0 ? (
+                <p className="text-sm text-slate-600">
+                  {microIssuesOnly
+                    ? "Ingen avvik — alle stoffer er innenfor anbefalt område."
+                    : "Ingen mikronæringsdata i planen."}
+                </p>
+              ) : (
+                <MicroReportTable rows={visibleMicroRows} />
+              )}
               <p className="motus-nutrition-report-modal__footnote">{referenceFootnote}</p>
 
               <h3 className="motus-nutrition-report-modal__subheading">Omega-fettsyrer</h3>

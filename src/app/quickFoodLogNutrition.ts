@@ -182,3 +182,12 @@ export function micronutrientRowsForReport(
 ): MicronutrientDailyRow[] {
   return micronutrientRowsFromLogTotals(totals, referenceContext);
 }
+
+/** Skjuler rader med status «innenfor anbefalt» (grønn). */
+export function filterMicronutrientReportRows(
+  rows: MicronutrientDailyRow[],
+  issuesOnly: boolean,
+): MicronutrientDailyRow[] {
+  if (!issuesOnly) return rows;
+  return rows.filter((row) => row.statusTone !== "ok");
+}
