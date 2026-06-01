@@ -90,7 +90,7 @@ describe("programBlocks", () => {
     expect(groups[1]?.exerciseName).toBe("Planke");
   });
 
-  it("treats last mislabeled drag row as nedjogg when previous row is drag", () => {
+  it("treats last mislabeled drag row as nedtrapping when previous row is drag", () => {
     const exercises = [
       {
         id: "w",
@@ -132,7 +132,7 @@ describe("programBlocks", () => {
     ];
     expect(isLegacyIntervalCooldownDrag(exercises, 2)).toBe(true);
     const normalized = normalizeLegacyIntervalCooldownExerciseNames(exercises);
-    expect(normalized[2]?.exerciseName).toBe("Nedjogg");
+    expect(normalized[2]?.exerciseName).toBe("Nedtrapping");
   });
 
   it("keeps hidden status when deduping duplicate program rows", () => {

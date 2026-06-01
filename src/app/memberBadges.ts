@@ -653,14 +653,14 @@ function buildSecretBadges(input: MemberBadgeInput): MemberBadge[] {
   );
 }
 
-const PASSIVE_CARDIO_NAME_PATTERN = /^(oppvarming|nedjogg)\b/i;
+const PASSIVE_CARDIO_NAME_PATTERN = /^(oppvarming|nedjogg|nedtrapp)\b/i;
 
 function parseBadgeMetricNumber(raw: string | undefined): number {
   const n = Number(String(raw ?? "").replace(",", ".").trim());
   return Number.isFinite(n) && n > 0 ? n : 0;
 }
 
-/** Kumulativt aktive kondisjonsminutter fra fullførte øvelsesrader (uten oppvarming/nedjogg). */
+/** Kumulativt aktive kondisjonsminutter fra fullførte øvelsesrader (uten oppvarming/nedtrapping). */
 export function computeActiveCardioMinutesFromLogs(
   logs: Array<{ status: string; results?: Array<{ completed?: boolean; exerciseCategory?: string; exerciseName?: string; performedDurationMinutes?: string }> }>,
 ): number {

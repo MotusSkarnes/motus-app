@@ -9,9 +9,11 @@ import { GradientButton, OutlineButton, StatusMessage, TextArea, TextInput } fro
 import type { Exercise, TrainingProgram, WorkoutExerciseResult, WorkoutReflection } from "../app/types";
 import type { LogIntervalWorkoutInput } from "../services/appRepository";
 import {
+  CARDIO_COOLDOWN_STEP_NAME,
   cardioIntervalEditFieldLabels,
   cardioIntervalMetricHints,
   cardioIntervalRestMetricHints,
+  isCardioCooldownStepName,
   resolveCardioEquipmentIdForProgramRow,
   type CardioEquipmentId,
 } from "../app/cardioEquipment";
@@ -54,7 +56,7 @@ function formatIntervalTimerHrHint(targetHrPercent: string | undefined): string 
 
 function computeIntervalPhaseBadge(tone: IntervalTimerStep["tone"], headlineForBadge: string): string {
   if (tone === "warmup") return "Oppvarming";
-  if (tone === "cooldown") return "Nedjogg";
+  if (tone === "cooldown") return CARDIO_COOLDOWN_STEP_NAME;
   if (tone === "rest") return "Pause";
   const lower = headlineForBadge.trim().toLowerCase();
   if (lower.startsWith("drag")) return "Drag";
@@ -91,11 +93,6 @@ function intervalStepAllowsSpeedInclineEdit(step: IntervalTimerStep | null): boo
   return step.speedHint !== "-" || step.inclineHint !== "-";
 }
 
-function isIntervalCooldownName(name: string): boolean {
-  const lower = name.trim().toLowerCase();
-  return lower.includes("nedjogg") || lower.includes("nedtrapp") || lower.includes("cooldown");
-}
-
 function getReflectionEmoji(level: 1 | 2 | 3 | 4 | 5): string {
   if (level <= 1) return "🥳";
   if (level === 2) return "🙂";
@@ -128,7 +125,7 @@ function buildIntervalProgramSteps(program: TrainingProgram, exercises: Exercise
       rawRestValue > 0 && rawRestValue <= 15 ? Math.round(rawRestValue * 60) : Math.round(rawRestValue);
 
     const lowerName = exercise.exerciseName.toLowerCase();
-    const isCooldown = isIntervalCooldownName(exercise.exerciseName) || isLegacyIntervalCooldownDrag(program.exercises, index);
+    const isCooldown = isCardioCooldownStepName(exercise.exerciseName) || isLegacyIntervalCooldownDrag(program.exercises, index);
     let tone: IntervalTimerStep["tone"] =
       lowerName.includes("oppvarm") ? "warmup" : isCooldown ? "cooldown" : "work";
     const nameImpliesExplicitWorkSegment =
@@ -152,7 +149,7 @@ function buildIntervalProgramSteps(program: TrainingProgram, exercises: Exercise
 
       let headline: string;
       if (tone === "warmup") headline = "Oppvarming";
-      else if (tone === "cooldown") headline = "Nedjogg";
+      else if (tone === "cooldown") headline = CARDIO_COOLDOWN_STEP_NAME;
       else if (tone === "work") {
         workOrdinal += 1;
         if (lowerName.includes("tabata")) headline = `Tabata ${workOrdinal}`;

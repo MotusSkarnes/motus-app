@@ -136,6 +136,7 @@ import {
   readPersistedAuthBootstrapParams,
 } from "./supabaseAuthBootstrap";
 import { parseStoredLogDate } from "./dateFormat";
+import { CARDIO_COOLDOWN_STEP_NAME, isCardioCooldownStepName } from "./cardioEquipment";
 import {
   isLegacyIntervalCooldownDrag,
   normalizeLegacyIntervalCooldownExerciseNames,
@@ -525,10 +526,13 @@ function normalizeProgramExerciseNames(
   const legacyNormalizedExercises = normalizeLegacyIntervalCooldownExerciseNames(program.exercises);
   let programChanged = legacyNormalizedExercises !== program.exercises;
   const normalizedExercises = legacyNormalizedExercises.map((programExercise, index) => {
-    if (programExercise.exerciseName === "Nedjogg" || isLegacyIntervalCooldownDrag(legacyNormalizedExercises, index)) {
-      if (programExercise.exerciseName === "Nedjogg") return programExercise;
+    if (
+      isCardioCooldownStepName(programExercise.exerciseName) ||
+      isLegacyIntervalCooldownDrag(legacyNormalizedExercises, index)
+    ) {
+      if (programExercise.exerciseName.trim() === CARDIO_COOLDOWN_STEP_NAME) return programExercise;
       programChanged = true;
-      return { ...programExercise, exerciseName: "Nedjogg" };
+      return { ...programExercise, exerciseName: CARDIO_COOLDOWN_STEP_NAME };
     }
     const source = exercisesById.get(programExercise.exerciseId.trim());
     if (!source || source.name === programExercise.exerciseName) return programExercise;

@@ -1,3 +1,4 @@
+import { isCardioCooldownStepName } from "./cardioEquipment";
 import type { ProgramExercise } from "./types";
 
 export type CardioIntensityLevel = "low" | "medium" | "high";
@@ -51,7 +52,7 @@ function isIntervalDraftRow(
     Boolean(options?.conditioningBuilder) ||
     /^oppvarming$/i.test(row.exerciseName.trim()) ||
     /^drag\b/i.test(row.exerciseName.trim()) ||
-    /^nedjogg/i.test(row.exerciseName.trim()) ||
+    isCardioCooldownStepName(row.exerciseName) ||
     Boolean(String(row.durationMinutes ?? "").trim())
   );
 }

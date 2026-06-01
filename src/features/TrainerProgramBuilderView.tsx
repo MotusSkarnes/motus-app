@@ -47,7 +47,7 @@ import { EmptyState, GradientButton, OutlineButton, PillButton, SelectBox, TextI
 import { useToast } from "../app/toast";
 import type { Exercise, ProgramExercise, TrainingProgram } from "../app/types";
 import type { CardioIntensityLevel } from "../app/cardioIntervalIntensity";
-import type { CardioEquipmentId } from "../app/cardioEquipment";
+import { isCardioCooldownStepName, type CardioEquipmentId } from "../app/cardioEquipment";
 import { CardioExerciseExtraFields } from "./CardioExerciseExtraFields";
 import { ProgramExercisePrescriptionFields } from "./ProgramExercisePrescriptionFields";
 
@@ -75,7 +75,7 @@ function isCardioProgramRow(
   if (programsSubTab === "conditioning") return true;
   if (linkedExercise?.category === "Kondisjon") return true;
   const name = item.exerciseName.trim();
-  if (/^oppvarming$/i.test(name) || /^nedjogg/i.test(name) || /^drag\b/i.test(name)) return true;
+  if (/^oppvarming$/i.test(name) || isCardioCooldownStepName(name) || /^drag\b/i.test(name)) return true;
   return Boolean(String(item.durationMinutes ?? "").trim());
 }
 

@@ -1,10 +1,11 @@
 import type { Exercise, ProgramExercise } from "./types";
 
-export type CardioEquipmentId = "treadmill" | "rowing" | "bike" | "airbike";
+export type CardioEquipmentId = "treadmill" | "rowing" | "skierg" | "bike" | "airbike";
 
 export const CARDIO_EQUIPMENT_OPTIONS: Array<{ id: CardioEquipmentId; label: string; hint: string }> = [
   { id: "treadmill", label: "Tredemølle", hint: "Fart (km/t) og stigning" },
   { id: "rowing", label: "Romaskin", hint: "Split, taktfrekvens og dempfer" },
+  { id: "skierg", label: "Stakemaskin", hint: "Split, taktfrekvens og dempfer" },
   { id: "bike", label: "Sykkel", hint: "Motstand / watt og kadens" },
   { id: "airbike", label: "Airbike", hint: "RPM og valgfri motstand" },
 ];
@@ -19,6 +20,19 @@ const MATCHERS: Record<CardioEquipmentId, (exercise: Exercise) => boolean> = {
     const eq = exercise.equipment.trim().toLowerCase();
     const name = exercise.name.trim().toLowerCase();
     return eq.includes("romaskin") || eq.includes("roing") || name.includes("romaskin") || name.includes("roing");
+  },
+  skierg: (exercise) => {
+    const eq = exercise.equipment.trim().toLowerCase();
+    const name = exercise.name.trim().toLowerCase();
+    return (
+      eq.includes("stakemaskin") ||
+      eq.includes("ski erg") ||
+      eq.includes("skierg") ||
+      eq.includes("ski-erg") ||
+      name.includes("stakemaskin") ||
+      name.includes("ski erg") ||
+      name.includes("skierg")
+    );
   },
   bike: (exercise) => {
     const eq = exercise.equipment.trim().toLowerCase();
@@ -61,6 +75,14 @@ export function defaultCardioEquipmentId(): CardioEquipmentId {
   return "rowing";
 }
 
+/** Avsluttende rolig fase i kondisjons-/intervallprogram (ikke bare løp). */
+export const CARDIO_COOLDOWN_STEP_NAME = "Nedtrapping";
+
+export function isCardioCooldownStepName(name: string): boolean {
+  const lower = name.trim().toLowerCase();
+  return lower.startsWith("nedjogg") || lower.startsWith("nedtrapp") || lower.includes("cooldown");
+}
+
 type CardioStepKind = "warmup" | "drag" | "cooldown";
 
 export function buildCardioTemplateRow(
@@ -99,7 +121,7 @@ export function buildCardioTemplateRow(
   if (kind === "cooldown") {
     return {
       id: "",
-      exerciseName: "Nedjogg",
+      exerciseName: CARDIO_COOLDOWN_STEP_NAME,
       sets: "1",
       durationMinutes: "5",
       holdSeconds: "",
@@ -122,9 +144,19 @@ export function buildCardioTemplateRow(
     restSeconds: "180",
     speed: equipmentId === "treadmill" ? "14" : "",
     incline: equipmentId === "treadmill" ? "2" : "",
-    seatSetting: equipmentId === "rowing" ? "5" : equipmentId === "bike" ? "8" : "",
-    customField1: equipmentId === "rowing" ? "2:05" : equipmentId === "bike" ? "180" : "",
-    customField2: equipmentId === "rowing" ? "26" : equipmentId === "bike" ? "85" : equipmentId === "airbike" ? "55" : "",
+    seatSetting: equipmentId === "rowing" || equipmentId === "skierg" ? "5" : equipmentId === "bike" ? "8" : "",
+    customField1:
+      equipmentId === "rowing" ? "2:05" : equipmentId === "skierg" ? "2:20" : equipmentId === "bike" ? "180" : "",
+    customField2:
+      equipmentId === "rowing"
+        ? "26"
+        : equipmentId === "skierg"
+          ? "40"
+          : equipmentId === "bike"
+            ? "85"
+            : equipmentId === "airbike"
+              ? "55"
+              : "",
     ...shared,
   };
 }
@@ -143,13 +175,13 @@ export function rebindDraftToCardioEquipment(
       options?.conditioningBuilder ||
       /^oppvarming$/i.test(row.exerciseName.trim()) ||
       /^drag\b/i.test(row.exerciseName.trim()) ||
-      /^nedjogg/i.test(row.exerciseName.trim()) ||
+      isCardioCooldownStepName(row.exerciseName) ||
       Boolean(String(row.durationMinutes ?? "").trim());
     if (!isCardioRow) return row;
 
     const kind: CardioStepKind = /^oppvarming$/i.test(row.exerciseName.trim())
       ? "warmup"
-      : /^nedjogg/i.test(row.exerciseName.trim())
+      : isCardioCooldownStepName(row.exerciseName)
         ? "cooldown"
         : "drag";
     const dragMatch = row.exerciseName.trim().match(/^drag\s*(\d+)?/i);
@@ -190,7 +222,7 @@ export function cardioIntervalMetricHints(
   fallback: CardioEquipmentId = "treadmill",
 ): { equipmentId: CardioEquipmentId; primaryHint: string; secondaryHint: string } {
   const equipmentId = resolveCardioEquipmentIdForProgramRow(row, bankExercise, fallback);
-  if (equipmentId === "rowing") {
+  if (equipmentId === "rowing" || equipmentId === "skierg") {
     return {
       equipmentId,
       primaryHint: row.customField1?.trim() ? `${row.customField1.trim()} /500 m` : "-",
@@ -219,7 +251,8 @@ export function cardioIntervalMetricHints(
 }
 
 export function cardioIntervalEditFieldLabels(equipmentId: CardioEquipmentId): { primary: string; secondary: string } {
-  if (equipmentId === "rowing") return { primary: "Split (min / 500 m)", secondary: "Taktfrekvens (spm)" };
+  if (equipmentId === "rowing" || equipmentId === "skierg")
+    return { primary: "Split (min / 500 m)", secondary: "Taktfrekvens (spm)" };
   if (equipmentId === "bike") return { primary: "Watt", secondary: "Kadens (rpm)" };
   if (equipmentId === "airbike") return { primary: "Motstand", secondary: "RPM" };
   return { primary: "Fart (km/t)", secondary: "Stigning (%)" };
@@ -227,6 +260,7 @@ export function cardioIntervalEditFieldLabels(equipmentId: CardioEquipmentId): {
 
 export function cardioIntervalRestMetricHints(equipmentId: CardioEquipmentId): { primaryHint: string; secondaryHint: string } {
   if (equipmentId === "rowing") return { primaryHint: "Lett ro", secondaryHint: "Lav spm" };
+  if (equipmentId === "skierg") return { primaryHint: "Lett staking", secondaryHint: "Lav spm" };
   if (equipmentId === "bike") return { primaryHint: "Lett tråkk", secondaryHint: "Lav watt" };
   if (equipmentId === "airbike") return { primaryHint: "Lett tempo", secondaryHint: "Lav motstand" };
   return { primaryHint: "Rolig", secondaryHint: "0–1%" };

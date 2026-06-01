@@ -73,6 +73,7 @@ import {
   purgeExpiredPausedWorkouts,
 } from "../app/pausedWorkoutStorage";
 import { printHtmlDocument } from "../app/printHtmlDocument";
+import { CARDIO_COOLDOWN_STEP_NAME, isCardioCooldownStepName } from "../app/cardioEquipment";
 import {
   buildTrainingProgramDisplayKey,
   buildWorkoutResultGroups,
@@ -972,13 +973,10 @@ function formatIntervalTimerHrHint(targetHrPercent: string | undefined): string 
   return `${raw} % av makspuls`;
 }
 
-function isMemberIntervalCooldownName(name: string): boolean {
-  const lower = name.trim().toLowerCase();
-  return lower.includes("nedjogg") || lower.includes("nedtrapp") || lower.includes("cooldown");
-}
-
 function memberProgramExerciseName(program: TrainingProgram, index: number): string {
-  return isLegacyIntervalCooldownDrag(program.exercises, index) ? "Nedjogg" : program.exercises[index]?.exerciseName ?? "";
+  return isLegacyIntervalCooldownDrag(program.exercises, index)
+    ? CARDIO_COOLDOWN_STEP_NAME
+    : program.exercises[index]?.exerciseName ?? "";
 }
 
 function firstNameFromDisplayName(name: string): string {
@@ -1014,7 +1012,7 @@ type IntervalTimerStep = {
 
 function computeIntervalPhaseBadge(tone: IntervalTimerStep["tone"], headlineForBadge: string): string {
   if (tone === "warmup") return "Oppvarming";
-  if (tone === "cooldown") return "Nedjogg";
+  if (tone === "cooldown") return CARDIO_COOLDOWN_STEP_NAME;
   if (tone === "rest") return "Pause";
   const lower = headlineForBadge.trim().toLowerCase();
   if (lower.startsWith("drag")) return "Drag";
@@ -1856,7 +1854,7 @@ export function MemberPortal(props: MemberPortalProps) {
       if (workDurationSeconds > 0) {
         const lowerName = exercise.exerciseName.toLowerCase();
         const isCooldown =
-          isMemberIntervalCooldownName(exercise.exerciseName) ||
+          isCardioCooldownStepName(exercise.exerciseName) ||
           isLegacyIntervalCooldownDrag(activeIntervalProgram.exercises, index);
         let tone: IntervalTimerStep["tone"] =
           lowerName.includes("oppvarm") ? "warmup" : isCooldown ? "cooldown" : "work";
@@ -1878,7 +1876,7 @@ export function MemberPortal(props: MemberPortalProps) {
 
         let headline: string;
         if (tone === "warmup") headline = "Oppvarming";
-        else if (tone === "cooldown") headline = "Nedjogg";
+        else if (tone === "cooldown") headline = CARDIO_COOLDOWN_STEP_NAME;
         else if (tone === "work") {
           workOrdinal += 1;
           if (lowerName.includes("tabata")) headline = `Tabata ${workOrdinal}`;
@@ -1903,11 +1901,11 @@ export function MemberPortal(props: MemberPortalProps) {
       }
 
       const isClassic4x4Drag = /4x4/i.test(programTitle) && /drag/i.test(exercise.exerciseName);
-      // Eksplisitt "0" = ingen pause (trengs etter siste drag før nedjogg). Tom streng = eldre programmer uten hvilefelt → behold 4×4-fallback.
+      // Eksplisitt "0" = ingen pause (trengs etter siste drag før nedtrapping). Tom streng = eldre programmer uten hvilefelt → behold 4×4-fallback.
       const legacy4x4DragPauseSeconds = rawRestStr === "" && isClassic4x4Drag ? 180 : 0;
       const restDurationSeconds = normalizedRestSeconds > 0 ? normalizedRestSeconds : legacy4x4DragPauseSeconds;
       const nextIsCooldown =
-        isMemberIntervalCooldownName(activeIntervalProgram.exercises[index + 1]?.exerciseName ?? "") ||
+        isCardioCooldownStepName(activeIntervalProgram.exercises[index + 1]?.exerciseName ?? "") ||
         isLegacyIntervalCooldownDrag(activeIntervalProgram.exercises, index + 1);
       if (restDurationSeconds > 0 && index < activeIntervalProgram.exercises.length - 1 && !nextIsCooldown) {
         const afterLabel = lastWorkHeadline || exercise.exerciseName.trim() || `Steg ${index + 1}`;

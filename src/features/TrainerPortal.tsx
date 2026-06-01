@@ -67,8 +67,10 @@ import {
 } from "../app/exercisePrescriptionFields";
 import {
   buildCardioTemplateRow,
+  CARDIO_COOLDOWN_STEP_NAME,
   defaultCardioEquipmentId,
   inferCardioEquipmentIdFromExercise,
+  isCardioCooldownStepName,
   mapExerciseToCardioEquipment,
   pickCardioExerciseForEquipment,
   rebindDraftToCardioEquipment,
@@ -509,8 +511,8 @@ function nextLastFollowUpMapForIds(
   return out;
 }
 
-function hasCardioNedjoggRow(draft: ProgramExercise[]): boolean {
-  return draft.some((row) => row.exerciseName.trim().toLowerCase().startsWith("nedjogg"));
+function hasCardioCooldownRow(draft: ProgramExercise[]): boolean {
+  return draft.some((row) => isCardioCooldownStepName(row.exerciseName));
 }
 
 function countCardioDragRows(draft: ProgramExercise[]): number {
@@ -534,7 +536,7 @@ function isCardioDraftRow(
   if (options?.conditioningBuilder) return true;
   if (linkedExercise?.category === "Kondisjon") return true;
   const name = item.exerciseName.trim();
-  if (/^oppvarming$/i.test(name) || /^nedjogg/i.test(name) || /^drag\b/i.test(name)) return true;
+  if (/^oppvarming$/i.test(name) || isCardioCooldownStepName(name) || /^drag\b/i.test(name)) return true;
   return Boolean(String(item.durationMinutes ?? "").trim());
 }
 
@@ -2365,11 +2367,13 @@ function pickFirstName(value: unknown): string {
     );
     setProgramExercisesDraft([warmup]);
     setEditingTemplateProgramId(null);
-    setTemplateAssignStatus("Oppvarming er lagt til. Legg til drag, juster verdier og legg til nedjogg til slutt.");
+    setTemplateAssignStatus(
+      `Oppvarming er lagt til. Legg til drag, juster verdier og legg til ${CARDIO_COOLDOWN_STEP_NAME.toLowerCase()} til slutt.`,
+    );
   }
 
   function appendCardioDragRow() {
-    if (hasCardioNedjoggRow(programExercisesDraft)) return;
+    if (hasCardioCooldownRow(programExercisesDraft)) return;
     const base = pickCardioExerciseForEquipment(exercises, cardioEquipmentId);
     if (!base) {
       setTemplateAssignStatus("Fant ingen kondisjonsøvelse for valgt utstyr.");
@@ -2391,7 +2395,7 @@ function pickFirstName(value: unknown): string {
   }
 
   function appendCardioCooldownRow() {
-    if (hasCardioNedjoggRow(programExercisesDraft)) return;
+    if (hasCardioCooldownRow(programExercisesDraft)) return;
     const base = pickCardioExerciseForEquipment(exercises, cardioEquipmentId);
     if (!base) {
       setTemplateAssignStatus("Fant ingen kondisjonsøvelse for valgt utstyr.");
@@ -2402,7 +2406,9 @@ function pickFirstName(value: unknown): string {
       cardioIntervalIntensity,
     );
     setProgramExercisesDraft((prev) => [...prev, cooldown]);
-    setTemplateAssignStatus("Nedjogg lagt til. Fjern nedjogg-raden om du vil legge til flere drag.");
+    setTemplateAssignStatus(
+      `${CARDIO_COOLDOWN_STEP_NAME} lagt til. Fjern ${CARDIO_COOLDOWN_STEP_NAME.toLowerCase()}-raden om du vil legge til flere drag.`,
+    );
   }
 
   function handlePeriodPlanWeeksDraftChange(value: string) {
@@ -6827,7 +6833,7 @@ function pickFirstName(value: unknown): string {
                 <div className="rounded-xl border bg-white p-3 space-y-3" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
                   <div className="text-sm font-semibold text-slate-700">Steg for intervalløkt</div>
                   <p className="text-xs text-slate-500 leading-relaxed">
-                  Velg utstyr først, start med oppvarming, legg inn drag med arbeidstid/pause, og avslutt med nedjogg.
+                  Velg utstyr først, start med oppvarming, legg inn drag med arbeidstid/pause, og avslutt med nedtrapping.
                   </p>
                 <CardioEquipmentSelect value={cardioEquipmentId} onChange={(equipmentId) => applyCardioEquipmentToDraft(equipmentId)} />
                 <CardioIntensitySelect
@@ -6842,16 +6848,16 @@ function pickFirstName(value: unknown): string {
                     <OutlineButton
                       type="button"
                       onClick={appendCardioDragRow}
-                      disabled={programExercisesDraft.length === 0 || hasCardioNedjoggRow(programExercisesDraft)}
+                      disabled={programExercisesDraft.length === 0 || hasCardioCooldownRow(programExercisesDraft)}
                     >
                       Legg til drag
                     </OutlineButton>
                     <OutlineButton
                       type="button"
                       onClick={appendCardioCooldownRow}
-                      disabled={programExercisesDraft.length === 0 || hasCardioNedjoggRow(programExercisesDraft)}
+                      disabled={programExercisesDraft.length === 0 || hasCardioCooldownRow(programExercisesDraft)}
                     >
-                      Legg til nedjogg
+                      Legg til nedtrapping
                     </OutlineButton>
                   </div>
                 </div>

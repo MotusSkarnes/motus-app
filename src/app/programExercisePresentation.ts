@@ -4,6 +4,7 @@ import {
   resolveExercisePrescriptionFields,
   resolvePrescriptionFieldLabel,
 } from "./exercisePrescriptionFields";
+import { CARDIO_COOLDOWN_STEP_NAME } from "./cardioEquipment";
 import { EXERCISE_BLOCK_LABELS, isLegacyIntervalCooldownDrag, type WorkoutResultGroup } from "./programBlocks";
 import { resolveWorkoutLoadUnit, resolveWorkoutRepsUnit } from "./workoutResultUnits";
 import type { Exercise, ProgramExercise, TrainingProgram, WorkoutExerciseResult } from "./types";
@@ -36,7 +37,7 @@ function cardioTargetHrPrescriptionSuffix(targetHrPercent: string | undefined): 
 }
 
 export function resolveProgramExerciseName(rows: ProgramExercise[], index: number): string {
-  return isLegacyIntervalCooldownDrag(rows, index) ? "Nedjogg" : rows[index]?.exerciseName ?? "";
+  return isLegacyIntervalCooldownDrag(rows, index) ? CARDIO_COOLDOWN_STEP_NAME : rows[index]?.exerciseName ?? "";
 }
 
 function findLinkedExercise(

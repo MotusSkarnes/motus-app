@@ -197,7 +197,7 @@ export function programsBuilderTitle(subTab: TrainingSubTab): string {
 export function programsBuilderDescription(subTab: TrainingSubTab): string {
   switch (subTab) {
     case "conditioning":
-      return "Bygg intervall- og kondisjonsøkter med oppvarming, drag og nedjogg.";
+      return "Bygg intervall- og kondisjonsøkter med oppvarming, drag og nedtrapping.";
     case "mobility":
       return "Bygg mobilitets- og tøyningsøkter med hold/sek på hvert steg.";
     case "rehab":

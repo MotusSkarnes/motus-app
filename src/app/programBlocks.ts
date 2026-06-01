@@ -1,6 +1,7 @@
 import { isHoldBasedExerciseCategory, programExerciseHoldSeconds } from "./exerciseCategories";
 import { mergeProgramAuthorFields } from "./programAuthor";
 import { mergeProgramImageUrl } from "./programImage";
+import { CARDIO_COOLDOWN_STEP_NAME, isCardioCooldownStepName } from "./cardioEquipment";
 import type {
   Exercise,
   MemberProgramLibraryStatus,
@@ -123,20 +124,20 @@ function isIntervalTimedProgram(exercises: ProgramExercise[]): boolean {
       Number(row.durationMinutes) > 0 ||
       /^oppvarming$/i.test(name) ||
       /^drag\b/i.test(name) ||
-      /^nedjogg/i.test(name) ||
+      isCardioCooldownStepName(name) ||
       /cooldown/i.test(name)
     );
   });
 }
 
-/** Siste rad i intervallprogram som fortsatt heter «Drag …» men er nedjogg (eldre maler). */
+/** Siste rad i intervallprogram som fortsatt heter «Drag …» men er nedtrapping (eldre maler). */
 export function isLegacyIntervalCooldownDrag(exercises: ProgramExercise[], index: number): boolean {
   const exercise = exercises[index];
   const previousExercise = exercises[index - 1];
   if (!exercise || index !== exercises.length - 1 || !isIntervalTimedProgram(exercises)) return false;
 
   const name = exercise.exerciseName.trim();
-  if (/^nedjogg/i.test(name) || /nedtrapp/i.test(name) || /cooldown/i.test(name)) return false;
+  if (isCardioCooldownStepName(name)) return false;
   if (!/^drag\b/i.test(name)) return false;
 
   const restSeconds = Number(String(exercise.restSeconds ?? "").trim() || "0");
@@ -175,9 +176,10 @@ export function normalizeProgramsLegacyCooldownNames(programs: TrainingProgram[]
 export function normalizeLegacyIntervalCooldownExerciseNames(exercises: ProgramExercise[]): ProgramExercise[] {
   let changed = false;
   const normalized = exercises.map((exercise, index) => {
-    if (!isLegacyIntervalCooldownDrag(exercises, index) || exercise.exerciseName.trim() === "Nedjogg") return exercise;
+    if (!isLegacyIntervalCooldownDrag(exercises, index) || exercise.exerciseName.trim() === CARDIO_COOLDOWN_STEP_NAME)
+      return exercise;
     changed = true;
-    return { ...exercise, exerciseName: "Nedjogg" };
+    return { ...exercise, exerciseName: CARDIO_COOLDOWN_STEP_NAME };
   });
   return changed ? normalized : exercises;
 }

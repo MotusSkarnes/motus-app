@@ -62,15 +62,23 @@ export function CardioExerciseExtraFields({
           </div>
         </>
       ) : null}
-      {equipmentId === "rowing" ? (
+      {equipmentId === "rowing" || equipmentId === "skierg" ? (
         <>
           <div className="space-y-1">
             <div className="text-[11px] font-medium text-slate-500">Split (min / 500 m)</div>
-            <TextInput value={item.customField1 ?? ""} onChange={(e) => onUpdate("customField1", e.target.value)} placeholder="2:05" />
+            <TextInput
+              value={item.customField1 ?? ""}
+              onChange={(e) => onUpdate("customField1", e.target.value)}
+              placeholder={equipmentId === "skierg" ? "2:20" : "2:05"}
+            />
           </div>
           <div className="space-y-1">
             <div className="text-[11px] font-medium text-slate-500">Taktfrekvens (spm)</div>
-            <TextInput value={item.customField2 ?? ""} onChange={(e) => onUpdate("customField2", e.target.value)} placeholder="26" />
+            <TextInput
+              value={item.customField2 ?? ""}
+              onChange={(e) => onUpdate("customField2", e.target.value)}
+              placeholder={equipmentId === "skierg" ? "40" : "26"}
+            />
           </div>
           <div className="space-y-1">
             <div className="text-[11px] font-medium text-slate-500">Dempfer</div>
