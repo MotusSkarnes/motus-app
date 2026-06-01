@@ -1,6 +1,7 @@
 import type { InspirationRecipeItem } from "./inspirationRecipeItems";
 import { buildDefaultFoodBankItems } from "./foodBankSeed";
-import type { FoodItem } from "./foodBankTypes";
+import type { FoodItem, FoodNutrition } from "./foodBankTypes";
+import { computeRecipeMacros } from "./recipeMacros";
 import type { MealPlanFoodEntry, MealPlanTargets } from "./mealPlanTypes";
 import { buildScaledRecipeView, resolveRecipeScalingMode } from "./recipeMealScaling";
 import type { RecipeMealSlot } from "./recipeMealCategory";
@@ -35,6 +36,34 @@ const EMPTY_NUTRITION = {
 
 function resolveFoodBank(foodItems: FoodItem[]): FoodItem[] {
   return foodItems.length > 0 ? foodItems : buildDefaultFoodBankItems();
+}
+
+/** Per 100 g (én porsjon) — brukes når lagret matplan mangler mikronærings-snapshot. */
+export function buildInspirationRecipeNutritionById(
+  recipes: InspirationRecipeItem[],
+  foodItems: FoodItem[],
+): Map<string, FoodNutrition> {
+  const bank = resolveFoodBank(foodItems);
+  const byId = new Map<string, FoodNutrition>();
+  for (const recipe of recipes) {
+    const body = recipe.body.trim() || recipe.description.trim();
+    if (!body) continue;
+    const macros = computeRecipeMacros(body, bank);
+    if (!macros) continue;
+    const per = macros.perServing;
+    byId.set(recipe.id, {
+      kcal: Math.round(per.kcal),
+      protein: Math.round(per.protein * 10) / 10,
+      carbs: Math.round(per.carbs * 10) / 10,
+      fat: Math.round(per.fat * 10) / 10,
+      fiber: 0,
+      sugar: 0,
+      saturatedFat: 0,
+      sodium: 0,
+      micronutrients: { ...macros.perServingMicronutrients },
+    });
+  }
+  return byId;
 }
 
 /** Legger alltid til oppskrift i matplanen; makroer beregnes når ingredienslisten kan parses. */

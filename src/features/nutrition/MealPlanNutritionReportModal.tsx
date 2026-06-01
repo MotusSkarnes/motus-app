@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Printer, X } from "lucide-react";
 import { openNutritionReportPrintWindow } from "../../app/memberFoodLogNutritionReportPrint";
+import type { MealPlanNutritionContext } from "../../app/mealPlanFoodNutrition";
 import { buildMealPlanNutritionReport } from "../../app/mealPlanNutritionTotals";
 import type { MealPlan } from "../../app/mealPlanTypes";
-import type { FoodItem } from "../../app/foodBankTypes";
 import {
   buildExtraFatDisplayRows,
   buildOmegaOverviewRows,
@@ -33,7 +33,7 @@ type MealPlanNutritionReportModalProps = {
   memberGender?: string;
   plan: MealPlan;
   activeDayId: string;
-  foodById: Map<string, FoodItem>;
+  nutritionContext: MealPlanNutritionContext;
 };
 
 export function MealPlanNutritionReportModal({
@@ -44,10 +44,10 @@ export function MealPlanNutritionReportModal({
   memberGender = "",
   plan,
   activeDayId,
-  foodById,
+  nutritionContext,
 }: MealPlanNutritionReportModalProps) {
   const displayName = memberName.trim() || "Kunden";
-  const report = useMemo(() => buildMealPlanNutritionReport(plan, foodById), [plan, foodById]);
+  const report = useMemo(() => buildMealPlanNutritionReport(plan, nutritionContext), [plan, nutritionContext]);
 
   const [viewMode, setViewMode] = useState<ViewMode>("activeDay");
   const [selectedDayId, setSelectedDayId] = useState(activeDayId);

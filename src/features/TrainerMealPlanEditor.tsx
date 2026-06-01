@@ -63,7 +63,12 @@ import {
   type MealPlanSlotId,
 } from "../app/mealPlanMealSlots";
 import { autoFillWeekFromMonday, averageWeekMacros, resizeMealPlanWeeks } from "../app/mealPlanWeekPlanner";
-import { parseInspirationRecipeFoodId, recipeToMealPlanEntry } from "../app/mealPlanRecipeEntry";
+import {
+  buildInspirationRecipeNutritionById,
+  parseInspirationRecipeFoodId,
+  recipeToMealPlanEntry,
+} from "../app/mealPlanRecipeEntry";
+import { resolveEntryNutritionForTotals } from "../app/mealPlanFoodNutrition";
 import { resolveRecipeMealSlot } from "../app/recipeMealCategory";
 import { buildScaledRecipeView, resolveRecipeScalingMode } from "../app/recipeMealScaling";
 import type { MealPlan, MealPlanFoodEntry, MealPlanMeal, MealPlanTargets } from "../app/mealPlanTypes";
@@ -436,6 +441,14 @@ export function TrainerMealPlanEditor({
   }, [gridSelection, visibleWeekDays]);
 
   const foodById = useMemo(() => new Map(foodItems.map((food) => [food.id, food])), [foodItems]);
+  const recipeNutritionById = useMemo(
+    () => buildInspirationRecipeNutritionById(recipeItems, foodItemsForMacros),
+    [recipeItems, foodItemsForMacros],
+  );
+  const nutritionContext = useMemo(
+    () => ({ foodById, recipeNutritionById }),
+    [foodById, recipeNutritionById],
+  );
 
   const weekAverageMacros = useMemo(
     () => (plan ? averageWeekMacros(plan, foodById) : { kcal: 0, protein: 0, carbs: 0, fat: 0 }),
@@ -451,7 +464,7 @@ export function TrainerMealPlanEditor({
       for (const meal of day.meals) {
         for (const item of meal.items) {
           const itemMicros = normalizeMicronutrients(
-            item.nutritionPer100g.micronutrients ?? foodById.get(item.foodId)?.nutritionPer100g.micronutrients,
+            resolveEntryNutritionForTotals(item, nutritionContext).micronutrients,
           );
           const scale = item.grams > 0 ? item.grams / 100 : 0;
           for (const field of FOOD_MICRONUTRIENT_FIELDS) {
@@ -472,7 +485,7 @@ export function TrainerMealPlanEditor({
         coveragePct: target > 0 ? Math.max(0, (value / target) * 100) : 0,
       };
     });
-  }, [plan, foodById]);
+  }, [plan, nutritionContext]);
 
   const selectedGridMeal = useMemo(() => {
     if (!plan || !gridSelection) return null;
@@ -2094,6 +2107,7 @@ export function TrainerMealPlanEditor({
           plan={plan}
           activeDayId={activeDayId}
           foodById={foodById}
+          nutritionContext={nutritionContext}
         />
       ) : null}
     </div>

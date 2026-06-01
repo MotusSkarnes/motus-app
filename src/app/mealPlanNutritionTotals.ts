@@ -1,7 +1,6 @@
 import { EMPTY_FATTY_ACIDS, normalizeFattyAcids } from "./foodBankFattyAcids";
 import { EMPTY_MICRONUTRIENTS, FOOD_MICRONUTRIENT_FIELDS } from "./foodBankMicronutrients";
-import type { FoodItem } from "./foodBankTypes";
-import { resolveEntryNutrition } from "./mealPlanFoodNutrition";
+import { resolveEntryNutritionForTotals, type MealPlanNutritionContext } from "./mealPlanFoodNutrition";
 import { computeMacrosForGrams } from "./mealPlanMacros";
 import type { MealPlan, MealPlanDay, MealPlanFoodEntry } from "./mealPlanTypes";
 import {
@@ -17,7 +16,7 @@ export function mealPlanDayHasFood(day: MealPlanDay): boolean {
 
 export function sumMealPlanFoodEntriesNutrition(
   entries: MealPlanFoodEntry[],
-  foodById?: Map<string, FoodItem>,
+  context?: MealPlanNutritionContext,
 ): FoodLogNutritionTotals {
   if (!entries.length) {
     return { ...EMPTY_FOOD_LOG_NUTRITION, micronutrients: { ...EMPTY_MICRONUTRIENTS } };
@@ -26,7 +25,7 @@ export function sumMealPlanFoodEntriesNutrition(
   return entries.reduce((acc, entry) => {
     const grams = entry.grams > 0 ? entry.grams : 0;
     const scale = grams / 100;
-    const n = resolveEntryNutrition(entry, foodById);
+    const n = resolveEntryNutritionForTotals(entry, context);
     const macros = computeMacrosForGrams(n, grams);
     const micros = n.micronutrients ?? EMPTY_MICRONUTRIENTS;
     const fa = normalizeFattyAcids(n.fattyAcids);
@@ -60,9 +59,9 @@ export function sumMealPlanFoodEntriesNutrition(
   });
 }
 
-export function sumMealPlanDayNutrition(day: MealPlanDay, foodById?: Map<string, FoodItem>): FoodLogNutritionTotals {
+export function sumMealPlanDayNutrition(day: MealPlanDay, context?: MealPlanNutritionContext): FoodLogNutritionTotals {
   const entries = day.meals.flatMap((meal) => meal.items);
-  return sumMealPlanFoodEntriesNutrition(entries, foodById);
+  return sumMealPlanFoodEntriesNutrition(entries, context);
 }
 
 export type MealPlanNutritionReport = {
@@ -72,7 +71,7 @@ export type MealPlanNutritionReport = {
   dailyAverage: FoodLogNutritionTotals;
 };
 
-export function buildMealPlanNutritionReport(plan: MealPlan, foodById?: Map<string, FoodItem>): MealPlanNutritionReport {
+export function buildMealPlanNutritionReport(plan: MealPlan, context?: MealPlanNutritionContext): MealPlanNutritionReport {
   const dayTotals: MealPlanNutritionReport["dayTotals"] = [];
 
   for (const day of plan.days) {
@@ -80,7 +79,7 @@ export function buildMealPlanNutritionReport(plan: MealPlan, foodById?: Map<stri
     dayTotals.push({
       dayId: day.id,
       label: day.label.trim() || "Dag",
-      totals: sumMealPlanDayNutrition(day, foodById),
+      totals: sumMealPlanDayNutrition(day, context),
     });
   }
 

@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { hydrateMealPlanFoodNutrition, resolveEntryNutrition } from "./mealPlanFoodNutrition";
+import {
+  hydrateMealPlanFoodNutrition,
+  resolveEntryNutrition,
+  resolveEntryNutritionForTotals,
+} from "./mealPlanFoodNutrition";
 import { computeEntryMacros } from "./mealPlanMacros";
 import type { FoodItem } from "./foodBankTypes";
 import type { MealPlan } from "./mealPlanTypes";
@@ -11,7 +15,17 @@ const bankFood: FoodItem = {
   source: "trainer",
   portionGrams: 150,
   portionLabel: "150 g",
-  nutritionPer100g: { kcal: 110, protein: 23, carbs: 0, fat: 1.5, fiber: 0, sugar: 0, saturatedFat: 0.3, sodium: 50 },
+  nutritionPer100g: {
+    kcal: 110,
+    protein: 23,
+    carbs: 0,
+    fat: 1.5,
+    fiber: 0,
+    sugar: 0,
+    saturatedFat: 0.3,
+    sodium: 50,
+    micronutrients: { vitaminC: 12 },
+  },
 };
 
 describe("mealPlanFoodNutrition", () => {
@@ -60,5 +74,21 @@ describe("mealPlanFoodNutrition", () => {
     };
     const hydrated = hydrateMealPlanFoodNutrition(plan, [bankFood]);
     expect(hydrated.days[0].meals[0].items[0].nutritionPer100g.protein).toBe(23);
+  });
+
+  it("henter mikronæringsstoffer fra matvarebank når snapshot bare har makro", () => {
+    const foodById = new Map([[bankFood.id, bankFood]]);
+    const oldSnapshot = {
+      kcal: 110,
+      protein: 23,
+      carbs: 0,
+      fat: 1.5,
+      fiber: 0,
+      sugar: 0,
+      saturatedFat: 0.3,
+      sodium: 50,
+    };
+    const nutrition = resolveEntryNutritionForTotals({ foodId: bankFood.id, nutritionPer100g: oldSnapshot }, { foodById });
+    expect(nutrition.micronutrients?.vitaminC).toBe(12);
   });
 });
