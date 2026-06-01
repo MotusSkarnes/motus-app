@@ -3015,6 +3015,134 @@
   cursor: not-allowed;
 }
 
+/* PT: stort vindu for matplan-steg 3 */
+.motus-meal-plan-builder-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 70;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.75rem;
+  background: rgba(15, 23, 42, 0.5);
+}
+
+.motus-meal-plan-builder-modal {
+  display: flex;
+  flex-direction: column;
+  width: min(98vw, 1680px);
+  height: min(96vh, 1100px);
+  max-height: 96vh;
+  border-radius: 1rem;
+  background: #f8fafc;
+  box-shadow: 0 24px 64px rgba(15, 23, 42, 0.28);
+  overflow: hidden;
+}
+
+.motus-meal-plan-builder-modal__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.85rem 1rem;
+  border-bottom: 1px solid rgba(15, 23, 42, 0.08);
+  background: #fff;
+}
+
+.motus-meal-plan-builder-modal__title {
+  margin: 0;
+  font-size: 1.125rem;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.motus-meal-plan-builder-modal__subtitle {
+  margin: 0.15rem 0 0;
+  font-size: 0.8125rem;
+  color: #64748b;
+}
+
+.motus-meal-plan-builder-modal__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.motus-meal-plan-builder-modal__close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  border: none;
+  border-radius: 0.65rem;
+  background: transparent;
+  color: #64748b;
+  cursor: pointer;
+}
+
+.motus-meal-plan-builder-modal__close:hover {
+  background: #f1f5f9;
+  color: #0f172a;
+}
+
+.motus-meal-plan-builder-modal__body {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: 1rem;
+}
+
+.motus-meal-plan-builder-modal__workspace {
+  display: grid;
+  gap: 1rem;
+  align-items: start;
+}
+
+@media (min-width: 1100px) {
+  .motus-meal-plan-builder-modal__workspace {
+    grid-template-columns: minmax(0, 1fr) minmax(16rem, 20rem);
+  }
+}
+
+.motus-meal-plan-builder-modal__workspace-main {
+  min-width: 0;
+  border-radius: 1rem;
+  border: 1px solid rgba(15, 23, 42, 0.06);
+  background: #fff;
+  padding: 1rem;
+  box-shadow: 0 4px 24px -14px rgba(15, 23, 42, 0.1);
+}
+
+.motus-meal-plan-builder-modal__workspace-side {
+  min-width: 0;
+  border-radius: 1rem;
+  border: 1px solid rgba(15, 23, 42, 0.06);
+  background: #fff;
+  padding: 1rem;
+  box-shadow: 0 4px 24px -14px rgba(15, 23, 42, 0.1);
+}
+
+.motus-meal-plan-builder-modal .motus-pt-planner-grid {
+  grid-template-columns: 5rem repeat(7, minmax(6.75rem, 1fr));
+  gap: 0.45rem;
+  min-width: 52rem;
+}
+
+.motus-meal-plan-builder-modal .motus-pt-planner-grid__card {
+  min-height: 4.5rem;
+}
+
+.motus-meal-plan-builder-modal .motus-pt-planner-grid__card-title {
+  font-size: 0.75rem;
+}
+
+.motus-meal-plan-builder-modal .motus-pt-planner-detail {
+  margin-top: 1rem;
+}
+
 .motus-matplan-meal-card--v2.motus-matplan-meal-card--expanded {
   grid-template-columns: 4.5rem minmax(0, 1fr) auto;
   grid-template-rows: auto auto;

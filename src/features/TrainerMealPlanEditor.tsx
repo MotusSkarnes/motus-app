@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { flushSync } from "react-dom";
+import { createPortal, flushSync } from "react-dom";
 import {
   adjustMacroSplit,
   applyMacroSplitToTargets,
@@ -13,7 +13,22 @@ import type { MacroSplitField } from "../app/mealPlanMacroSplit";
 import { balanceMealPlanTargets, describeTargetBalance } from "../app/mealPlanTargetBalance";
 import type { MacroTargetField } from "../app/mealPlanTargetBalance";
 import { MacroSplitPercentControls } from "../components/MacroSplitPercentControls";
-import { BarChart3, Calendar, Copy, HelpCircle, Plus, Save, Search, ShoppingCart, Soup, Sparkles, Trash2, Wand2, X } from "lucide-react";
+import {
+  BarChart3,
+  Calendar,
+  Copy,
+  HelpCircle,
+  Maximize2,
+  Plus,
+  Save,
+  Search,
+  ShoppingCart,
+  Soup,
+  Sparkles,
+  Trash2,
+  Wand2,
+  X,
+} from "lucide-react";
 import { MEAL_PLAN_CHANGED_EVENT } from "../app/mealPlanStorage";
 import { createDefaultMealPlan } from "../app/mealPlanDefaults";
 import {
@@ -126,6 +141,7 @@ export function TrainerMealPlanEditor({
   const [creatingPlan, setCreatingPlan] = useState(false);
   const [deletingPlan, setDeletingPlan] = useState(false);
   const [nutritionReportOpen, setNutritionReportOpen] = useState(false);
+  const [builderWorkspaceOpen, setBuilderWorkspaceOpen] = useState(false);
   const [saveStatus, setSaveStatus] = useState<string | null>(null);
   const [foodPicker, setFoodPicker] = useState<FoodPickerState>(null);
   const [recipePicker, setRecipePicker] = useState<RecipePickerState>(null);
@@ -408,6 +424,20 @@ export function TrainerMealPlanEditor({
     window.addEventListener(MEAL_PLAN_CHANGED_EVENT, handler);
     return () => window.removeEventListener(MEAL_PLAN_CHANGED_EVENT, handler);
   }, [reload]);
+
+  useEffect(() => {
+    if (!builderWorkspaceOpen) return;
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setBuilderWorkspaceOpen(false);
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.body.style.overflow = prevOverflow;
+      window.removeEventListener("keydown", onKeyDown);
+    };
+  }, [builderWorkspaceOpen]);
 
   const activeDay = useMemo(
     () => plan?.days.find((day) => day.id === activeDayId) ?? plan?.days[0] ?? null,
@@ -1204,6 +1234,173 @@ export function TrainerMealPlanEditor({
     );
   }
 
+  const mealPlanBuilderWorkspace = (
+    <div className="motus-meal-plan-builder-modal__workspace">
+      <div className="motus-meal-plan-builder-modal__workspace-main">
+        <div className="motus-pt-planner-toolbar">
+          <OutlineButton type="button" onClick={suggestAiDayPlan}>
+            <Sparkles className="h-4 w-4" aria-hidden />
+            AI-forslag
+          </OutlineButton>
+          <OutlineButton type="button" disabled className="opacity-60">
+            <Copy className="h-4 w-4" aria-hidden />
+            Kopier fra mal
+          </OutlineButton>
+          <OutlineButton type="button" onClick={handleAutoFillWeek}>
+            <Wand2 className="h-4 w-4" aria-hidden />
+            Auto-fyll uke
+          </OutlineButton>
+        </div>
+        {totalWeeks > 1 ? (
+          <div className="mb-2 flex items-center justify-between rounded-xl border border-slate-200 bg-slate-50 px-3 py-2">
+            <OutlineButton
+              type="button"
+              className="text-xs"
+              onClick={() => setVisibleWeekIndex((prev) => Math.max(0, prev - 1))}
+              disabled={visibleWeekIndex <= 0}
+            >
+              Forrige uke
+            </OutlineButton>
+            <span className="text-xs font-medium text-slate-700">
+              Viser uke {visibleWeekIndex + 1} av {totalWeeks}
+            </span>
+            <OutlineButton
+              type="button"
+              className="text-xs"
+              onClick={() => setVisibleWeekIndex((prev) => Math.min(totalWeeks - 1, prev + 1))}
+              disabled={visibleWeekIndex >= totalWeeks - 1}
+            >
+              Neste uke
+            </OutlineButton>
+          </div>
+        ) : null}
+        {visibleWeekPlan ? (
+          <TrainerMealPlanWeekGrid
+            plan={visibleWeekPlan}
+            foodById={foodById}
+            recipesById={recipesById}
+            selection={gridSelection}
+            onSelect={selectGridCell}
+            onPreview={previewGridCell}
+            onCloseMenu={() => setGridSelection(null)}
+            onAddFood={(sel) => openFoodPicker(sel.dayId, sel.mealId)}
+            onAddRecipe={(sel) => {
+              setRecipePicker(sel);
+              setRecipeSearch("");
+            }}
+            onClearMeal={clearGridMeal}
+          />
+        ) : null}
+
+        {selectedGridMeal && selectedGridDay && gridSelection ? (
+          <div className="motus-pt-planner-detail">
+            <div className="motus-pt-planner-detail__head">
+              <h3 className="font-bold text-slate-900">
+                {selectedGridMeal.name} · {selectedGridDay.label}
+              </h3>
+              <span className="text-xs text-slate-500">{formatMacroTotals(computeMealMacros(selectedGridMeal, foodById))}</span>
+            </div>
+            <MealMacroMiniBar
+              mealName={selectedGridMeal.name}
+              used={computeMealMacros(selectedGridMeal, foodById)}
+              targets={selectedGridMeal.targets}
+            />
+            <ul className="mt-2 space-y-2">
+              {selectedGridMeal.items.map((item) => (
+                <li
+                  key={item.id}
+                  className="flex items-center justify-between gap-2 rounded-lg border border-slate-100 bg-slate-50 px-2 py-1.5 text-sm"
+                >
+                  <span className="min-w-0 flex-1">
+                    <span className="font-medium text-slate-800">{item.foodName}</span>
+                    {item.note ? <span className="block text-xs text-slate-500">{item.note}</span> : null}
+                    <label className="motus-meal-entry-grams mt-1 flex flex-wrap items-center gap-1 text-xs text-slate-600">
+                      {(() => {
+                        const isRecipe = Boolean(parseInspirationRecipeFoodId(item.foodId));
+                        const amountValue = isRecipe
+                          ? String(Math.max(0.1, Math.round((item.grams / RECIPE_PORTION_GRAMS) * 10) / 10))
+                          : String(item.grams);
+                        return (
+                          <>
+                            <span className="font-medium">{isRecipe ? "Porsjoner" : "Mengde"}</span>
+                            <TextInput
+                              value={amountValue}
+                              onChange={(e) =>
+                                updateFoodEntryAmount(
+                                  gridSelection.dayId,
+                                  gridSelection.mealId,
+                                  item.id,
+                                  e.target.value,
+                                  isRecipe,
+                                )
+                              }
+                              inputMode="decimal"
+                              className="motus-meal-entry-grams-input !py-1 !text-xs"
+                              aria-label={`${isRecipe ? "Porsjoner" : "Gram"} ${item.foodName}`}
+                            />
+                            <span>{isRecipe ? "stk" : "g"}</span>
+                          </>
+                        );
+                      })()}
+                    </label>
+                  </span>
+                  <button
+                    type="button"
+                    className="rounded-lg p-1 text-slate-400 hover:bg-white hover:text-red-600"
+                    aria-label={`Fjern ${item.foodName}`}
+                    onClick={() => removeFoodEntry(gridSelection.dayId, gridSelection.mealId, item.id)}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </button>
+                </li>
+              ))}
+            </ul>
+            <div className="mt-2 flex flex-wrap gap-2">
+              <OutlineButton onClick={() => openFoodPicker(gridSelection.dayId, gridSelection.mealId)}>
+                <Plus className="h-4 w-4" aria-hidden />
+                Matvare
+              </OutlineButton>
+              <OutlineButton
+                onClick={() => {
+                  setRecipePicker(gridSelection);
+                  setRecipeSearch("");
+                }}
+              >
+                <Soup className="h-4 w-4" aria-hidden />
+                Oppskrift
+              </OutlineButton>
+              <OutlineButton
+                type="button"
+                onClick={() => openCopyMeal(gridSelection.dayId, selectedGridMeal)}
+                disabled={selectedGridMeal.items.length === 0}
+              >
+                <Copy className="h-4 w-4" aria-hidden />
+                Kopier til dager
+              </OutlineButton>
+            </div>
+          </div>
+        ) : (
+          <p className="text-sm text-slate-500">Klikk en celle i rutenettet for å redigere måltidet.</p>
+        )}
+      </div>
+
+      {activeDay ? (
+        <aside className="motus-meal-plan-builder-modal__workspace-side">
+          <TrainerMealPlanMacroPanel
+            dayLabel={activeDay.label}
+            dailyTargets={plan.targets}
+            dayUsed={dayUsed}
+            dayRemaining={dayRemaining}
+            onDistribute={handleDistributeMeals}
+            onClearMealTargets={handleClearMealTargets}
+            adjustmentSuggestions={macroAdjustmentSuggestions}
+            onApplySuggestion={applyMacroSuggestion}
+          />
+        </aside>
+      ) : null}
+    </div>
+  );
+
   return (
     <div className="motus-pt-planner">
       <div className="motus-pt-planner__top-actions">
@@ -1352,167 +1549,22 @@ export function TrainerMealPlanEditor({
           </section>
 
           <section className="motus-pt-planner-step">
-            <h2 className="motus-pt-planner-step__title">
-              <span className="motus-pt-planner-step__num">3</span> Bygg matplan
-            </h2>
-            <div className="motus-pt-planner-toolbar">
-              <OutlineButton type="button" onClick={suggestAiDayPlan}>
-                <Sparkles className="h-4 w-4" aria-hidden />
-                AI-forslag
-              </OutlineButton>
-              <OutlineButton type="button" disabled className="opacity-60">
-                <Copy className="h-4 w-4" aria-hidden />
-                Kopier fra mal
-              </OutlineButton>
-              <OutlineButton type="button" onClick={handleAutoFillWeek}>
-                <Wand2 className="h-4 w-4" aria-hidden />
-                Auto-fyll uke
-              </OutlineButton>
+            <div className="flex flex-wrap items-start justify-between gap-2">
+              <h2 className="motus-pt-planner-step__title !mb-0">
+                <span className="motus-pt-planner-step__num">3</span> Bygg matplan
+              </h2>
+              <GradientButton type="button" className="shrink-0 text-xs" onClick={() => setBuilderWorkspaceOpen(true)}>
+                <Maximize2 className="h-4 w-4" aria-hidden />
+                Åpne planlegger
+              </GradientButton>
             </div>
-            {totalWeeks > 1 ? (
-              <div className="mb-2 flex items-center justify-between rounded-xl border border-slate-200 bg-slate-50 px-3 py-2">
-                <OutlineButton
-                  type="button"
-                  className="text-xs"
-                  onClick={() => setVisibleWeekIndex((prev) => Math.max(0, prev - 1))}
-                  disabled={visibleWeekIndex <= 0}
-                >
-                  Forrige uke
-                </OutlineButton>
-                <span className="text-xs font-medium text-slate-700">
-                  Viser uke {visibleWeekIndex + 1} av {totalWeeks}
-                </span>
-                <OutlineButton
-                  type="button"
-                  className="text-xs"
-                  onClick={() => setVisibleWeekIndex((prev) => Math.min(totalWeeks - 1, prev + 1))}
-                  disabled={visibleWeekIndex >= totalWeeks - 1}
-                >
-                  Neste uke
-                </OutlineButton>
-              </div>
-            ) : null}
-            {visibleWeekPlan ? (
-              <TrainerMealPlanWeekGrid
-                plan={visibleWeekPlan}
-                foodById={foodById}
-                recipesById={recipesById}
-                selection={gridSelection}
-                onSelect={selectGridCell}
-                onPreview={previewGridCell}
-                onCloseMenu={() => setGridSelection(null)}
-                onAddFood={(sel) => openFoodPicker(sel.dayId, sel.mealId)}
-                onAddRecipe={(sel) => {
-                  setRecipePicker(sel);
-                  setRecipeSearch("");
-                }}
-                onClearMeal={clearGridMeal}
-              />
-            ) : null}
-
-            {selectedGridMeal && selectedGridDay && gridSelection ? (
-              <div className="motus-pt-planner-detail">
-                <div className="motus-pt-planner-detail__head">
-                  <h3 className="font-bold text-slate-900">
-                    {selectedGridMeal.name} · {selectedGridDay.label}
-                  </h3>
-                  <span className="text-xs text-slate-500">{formatMacroTotals(computeMealMacros(selectedGridMeal, foodById))}</span>
-                </div>
-                <MealMacroMiniBar
-                  mealName={selectedGridMeal.name}
-                  used={computeMealMacros(selectedGridMeal, foodById)}
-                  targets={selectedGridMeal.targets}
-                />
-                <ul className="mt-2 space-y-2">
-                  {selectedGridMeal.items.map((item) => (
-                    <li
-                      key={item.id}
-                      className="flex items-center justify-between gap-2 rounded-lg border border-slate-100 bg-slate-50 px-2 py-1.5 text-sm"
-                    >
-                      <span className="min-w-0 flex-1">
-                        <span className="font-medium text-slate-800">{item.foodName}</span>
-                        {item.note ? <span className="block text-xs text-slate-500">{item.note}</span> : null}
-                        <label className="motus-meal-entry-grams mt-1 flex flex-wrap items-center gap-1 text-xs text-slate-600">
-                          {(() => {
-                            const isRecipe = Boolean(parseInspirationRecipeFoodId(item.foodId));
-                            const amountValue = isRecipe
-                              ? String(Math.max(0.1, Math.round((item.grams / RECIPE_PORTION_GRAMS) * 10) / 10))
-                              : String(item.grams);
-                            return (
-                              <>
-                                <span className="font-medium">{isRecipe ? "Porsjoner" : "Mengde"}</span>
-                                <TextInput
-                                  value={amountValue}
-                                  onChange={(e) =>
-                                    updateFoodEntryAmount(
-                                      gridSelection.dayId,
-                                      gridSelection.mealId,
-                                      item.id,
-                                      e.target.value,
-                                      isRecipe,
-                                    )
-                                  }
-                                  inputMode="decimal"
-                                  className="motus-meal-entry-grams-input !py-1 !text-xs"
-                                  aria-label={`${isRecipe ? "Porsjoner" : "Gram"} ${item.foodName}`}
-                                />
-                                <span>{isRecipe ? "stk" : "g"}</span>
-                              </>
-                            );
-                          })()}
-                        </label>
-                      </span>
-                      <button
-                        type="button"
-                        className="rounded-lg p-1 text-slate-400 hover:bg-white hover:text-red-600"
-                        aria-label={`Fjern ${item.foodName}`}
-                        onClick={() => removeFoodEntry(gridSelection.dayId, gridSelection.mealId, item.id)}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-                <div className="mt-2 flex flex-wrap gap-2">
-                  <OutlineButton onClick={() => openFoodPicker(gridSelection.dayId, gridSelection.mealId)}>
-                    <Plus className="h-4 w-4" aria-hidden />
-                    Matvare
-                  </OutlineButton>
-                  <OutlineButton
-                    onClick={() => {
-                      setRecipePicker(gridSelection);
-                      setRecipeSearch("");
-                    }}
-                  >
-                    <Soup className="h-4 w-4" aria-hidden />
-                    Oppskrift
-                  </OutlineButton>
-                  <OutlineButton
-                    type="button"
-                    onClick={() => openCopyMeal(gridSelection.dayId, selectedGridMeal)}
-                    disabled={selectedGridMeal.items.length === 0}
-                  >
-                    <Copy className="h-4 w-4" aria-hidden />
-                    Kopier til dager
-                  </OutlineButton>
-                </div>
-              </div>
-            ) : (
-              <p className="text-sm text-slate-500">Klikk en celle i rutenettet for å redigere måltidet.</p>
-            )}
-
-            {activeDay ? (
-              <TrainerMealPlanMacroPanel
-                dayLabel={activeDay.label}
-                dailyTargets={plan.targets}
-                dayUsed={dayUsed}
-                dayRemaining={dayRemaining}
-                onDistribute={handleDistributeMeals}
-                onClearMealTargets={handleClearMealTargets}
-                adjustmentSuggestions={macroAdjustmentSuggestions}
-                onApplySuggestion={applyMacroSuggestion}
-              />
-            ) : null}
+            <p className="mt-2 text-sm text-slate-600">
+              {countMealPlanFoodItems(plan)} matvarer · {planWeeks} {planWeeks === 1 ? "uke" : "uker"}
+              {builderWorkspaceOpen ? " · planleggeren er åpen i stort vindu" : ""}
+            </p>
+            <p className="mt-1 text-xs text-slate-500">
+              Bruk stort vindu for ukeplanen — enkelt å flytte til egen skjerm. Lukk med Esc eller «Lukk».
+            </p>
           </section>
 
           <section className="motus-pt-planner-step">
@@ -2096,6 +2148,61 @@ export function TrainerMealPlanEditor({
           </div>
         </div>
       ) : null}
+
+      {builderWorkspaceOpen && typeof document !== "undefined"
+        ? createPortal(
+            <div
+              className="motus-meal-plan-builder-backdrop"
+              role="presentation"
+              onClick={() => setBuilderWorkspaceOpen(false)}
+            >
+              <div
+                className="motus-meal-plan-builder-modal"
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="motus-meal-plan-builder-title"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <header className="motus-meal-plan-builder-modal__head">
+                  <div className="min-w-0">
+                    <h2 id="motus-meal-plan-builder-title" className="motus-meal-plan-builder-modal__title">
+                      Bygg matplan
+                    </h2>
+                    <p className="motus-meal-plan-builder-modal__subtitle">
+                      {memberName}
+                      {planWeeks > 0 ? ` · ${planWeeks} ${planWeeks === 1 ? "uke" : "uker"}` : ""}
+                    </p>
+                  </div>
+                  <div className="motus-meal-plan-builder-modal__actions">
+                    <OutlineButton
+                      type="button"
+                      className="text-xs"
+                      disabled={deletingPlan}
+                      onClick={() => setNutritionReportOpen(true)}
+                    >
+                      <BarChart3 className="h-4 w-4" aria-hidden />
+                      Næringsoversikt
+                    </OutlineButton>
+                    <GradientButton type="button" className="shrink-0 text-xs" disabled={deletingPlan} onClick={() => void handleSave()}>
+                      <Save className="h-4 w-4" aria-hidden />
+                      Lagre
+                    </GradientButton>
+                    <button
+                      type="button"
+                      className="motus-meal-plan-builder-modal__close motus-pressable"
+                      onClick={() => setBuilderWorkspaceOpen(false)}
+                      aria-label="Lukk planlegger"
+                    >
+                      <X className="h-5 w-5" aria-hidden />
+                    </button>
+                  </div>
+                </header>
+                <div className="motus-meal-plan-builder-modal__body">{mealPlanBuilderWorkspace}</div>
+              </div>
+            </div>,
+            document.body,
+          )
+        : null}
 
       {plan ? (
         <MealPlanNutritionReportModal
