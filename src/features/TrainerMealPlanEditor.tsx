@@ -29,6 +29,7 @@ import { loadMealPlanForMember } from "../app/mealPlanStorage";
 import { useInspirationRecipeItems } from "../app/inspirationRecipeItems";
 import { defaultPortionGramsForFood } from "../app/foodPortionDefaults";
 import { hydrateMealPlanFoodNutrition } from "../app/mealPlanFoodNutrition";
+import { consumeMealPlanPendingFood } from "../app/mealPlanPendingFood";
 import { computeEntryMacros, computeMealMacros, formatMacroTotals } from "../app/mealPlanMacros";
 import {
   copyMealToDays,
