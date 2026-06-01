@@ -1,5 +1,5 @@
 import { createDefaultMealPlan } from "./mealPlanDefaults";
-import { loadMealPlanForMember, persistMealPlan, readAllMealPlans } from "./mealPlanStorage";
+import { loadMealPlanForMember, notifyMealPlanChanged, persistMealPlan, readAllMealPlans } from "./mealPlanStorage";
 import type { MealPlan, MealPlanDay, MealPlanFoodEntry, MealPlanMeal, MealPlanTargets } from "./mealPlanTypes";
 import { isSupabaseConfigured, supabaseClient } from "../services/supabaseClient";
 
@@ -541,12 +541,33 @@ export function applyHydratedMealPlan(plan: MealPlan, aliasMemberIds: string[] =
   return changed;
 }
 
+/** Lagrer samme plan under alle kjente member_id for personen (viktig ved duplikat-rader). */
+export async function persistMealPlanForLookupIds(
+  plan: MealPlan,
+  memberId: string,
+  memberEmail?: string,
+  options?: { notify?: boolean },
+): Promise<string[]> {
+  const lookupIds = await resolveMealPlanLookupIds(memberId, memberEmail, { forTrainerView: true });
+  const ids = [...new Set([memberId.trim(), ...lookupIds].filter(Boolean))];
+  if (!ids.length) return [];
+  const canonicalMemberId = memberId.trim() || ids[0];
+  const payload = { ...plan, memberId: canonicalMemberId };
+  for (const id of ids) {
+    persistMealPlan({ ...payload, memberId: id }, { notify: false });
+  }
+  if (options?.notify !== false) {
+    notifyMealPlanChanged();
+  }
+  return ids;
+}
+
 export async function persistMealPlanBundle(
   ownerUserId: string | undefined,
   plan: MealPlan,
-  options?: { notify?: boolean },
+  options?: { notify?: boolean; memberEmail?: string },
 ): Promise<{ cloudSynced: boolean; warning?: string }> {
-  persistMealPlan(plan, { notify: options?.notify });
+  await persistMealPlanForLookupIds(plan, plan.memberId, options?.memberEmail, { notify: options?.notify });
   if (!ownerUserId?.trim() || !isSupabaseConfigured) {
     return { cloudSynced: false };
   }

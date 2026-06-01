@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { flushSync } from "react-dom";
 import {
   adjustMacroSplit,
   applyMacroSplitToTargets,
@@ -124,6 +125,10 @@ export function TrainerMealPlanEditor({
   const [visibleWeekIndex, setVisibleWeekIndex] = useState(0);
   const loadGenerationRef = useRef(0);
   const creatingPlanRef = useRef(false);
+  const suppressReloadUntilRef = useRef(0);
+  const memberEmailRef = useRef(memberEmail);
+  const trackedMemberIdRef = useRef(memberId.trim());
+  memberEmailRef.current = memberEmail;
   const foodItemsForMacrosRef = useRef(foodItemsForMacros);
   foodItemsForMacrosRef.current = foodItemsForMacros;
   const recipesById = useMemo(() => new Map(recipeItems.map((recipe) => [recipe.id, recipe])), [recipeItems]);
@@ -178,6 +183,7 @@ export function TrainerMealPlanEditor({
 
   const reload = useCallback(async () => {
     if (creatingPlanRef.current) return;
+    if (Date.now() < suppressReloadUntilRef.current) return;
     const trimmedMemberId = memberId.trim();
     if (!trimmedMemberId) {
       setPlan(null);
@@ -192,7 +198,11 @@ export function TrainerMealPlanEditor({
     setPlanLoadStatus("loading");
     setLoadError(null);
     try {
-      const result = await loadMealPlanForTrainerEditor(trimmedMemberId, trainerOwnerUserId ?? "", memberEmail);
+      const result = await loadMealPlanForTrainerEditor(
+        trimmedMemberId,
+        trainerOwnerUserId ?? "",
+        memberEmailRef.current,
+      );
       if (generation !== loadGenerationRef.current) return;
       if (result.status === "none") {
         setPlan(null);
@@ -240,7 +250,7 @@ export function TrainerMealPlanEditor({
         setLoading(false);
       }
     }
-  }, [memberId, memberEmail, trainerOwnerUserId, applyLoadedPlan]);
+  }, [memberId, trainerOwnerUserId, applyLoadedPlan]);
 
   const handleCreateMealPlan = useCallback(async () => {
     const trimmedMemberId = memberId.trim();
@@ -251,20 +261,24 @@ export function TrainerMealPlanEditor({
     }
     if (creatingPlan) return;
 
-    const generation = ++loadGenerationRef.current;
     creatingPlanRef.current = true;
+    suppressReloadUntilRef.current = Date.now() + 5000;
     setCreatingPlan(true);
     setLoadError(null);
     setSaveStatus(null);
     try {
       const draft = createDefaultMealPlan(trimmedMemberId);
       const hydrated = applyLoadedPlan(draft);
-      setPlanSource("local");
-      setPlanLoadStatus("ready");
-      setLoading(false);
+      flushSync(() => {
+        setPlanSource("local");
+        setPlanLoadStatus("ready");
+        setLoading(false);
+      });
 
-      const result = await persistMealPlanBundle(trainerOwnerUserId, hydrated, { notify: false });
-      if (generation !== loadGenerationRef.current) return;
+      const result = await persistMealPlanBundle(trainerOwnerUserId, hydrated, {
+        notify: false,
+        memberEmail: memberEmailRef.current,
+      });
 
       const stored = loadMealPlanForMember(trimmedMemberId);
       if (!stored?.days?.length) {
@@ -279,7 +293,6 @@ export function TrainerMealPlanEditor({
         setSaveStatus(result.warning ?? "Matplan opprettet lokalt. Lagre på nytt for sky-synk.");
       }
     } catch (error) {
-      if (generation !== loadGenerationRef.current) return;
       console.warn("create meal plan failed:", error);
       setLoadError(
         error instanceof Error && error.message.trim()
@@ -288,13 +301,17 @@ export function TrainerMealPlanEditor({
       );
       setPlanLoadStatus("error");
       setPlan(null);
+      suppressReloadUntilRef.current = 0;
     } finally {
       creatingPlanRef.current = false;
       setCreatingPlan(false);
     }
-  }, [memberId, trainerOwnerUserId, applyLoadedPlan, creatingPlan]);
+  }, [memberId, memberEmail, trainerOwnerUserId, applyLoadedPlan, creatingPlan]);
 
   useEffect(() => {
+    const trimmedMemberId = memberId.trim();
+    if (trimmedMemberId === trackedMemberIdRef.current) return;
+    trackedMemberIdRef.current = trimmedMemberId;
     loadGenerationRef.current += 1;
     setPlan(null);
     setActiveDayId("");
@@ -302,11 +319,16 @@ export function TrainerMealPlanEditor({
     setPlanLoadStatus("loading");
     setPlanSource(null);
     setLoading(true);
-  }, [memberId, memberEmail]);
+  }, [memberId]);
 
   useEffect(() => {
     void reload();
-  }, [memberId, memberEmail, trainerOwnerUserId, reload]);
+  }, [memberId, trainerOwnerUserId, reload]);
+
+  useEffect(() => {
+    if (!memberEmail.trim() || creatingPlanRef.current) return;
+    void reload();
+  }, [memberEmail, reload]);
 
   useEffect(() => {
     setPlan((prev) => {
@@ -1052,6 +1074,8 @@ export function TrainerMealPlanEditor({
           <Plus className="h-4 w-4" aria-hidden />
           {creatingPlan ? "Oppretter …" : "Lag matplan"}
         </GradientButton>
+        {loadError ? <p className="mt-3 text-sm font-medium text-rose-700">{loadError}</p> : null}
+        {saveStatus ? <p className="mt-3 text-sm text-teal-700">{saveStatus}</p> : null}
       </div>
     );
   }
@@ -1081,6 +1105,8 @@ export function TrainerMealPlanEditor({
             {creatingPlan ? "Oppretter …" : "Lag matplan"}
           </OutlineButton>
         </div>
+        {loadError ? <p className="mt-3 text-sm font-medium text-rose-700">{loadError}</p> : null}
+        {saveStatus ? <p className="mt-3 text-sm text-teal-700">{saveStatus}</p> : null}
       </div>
     );
   }

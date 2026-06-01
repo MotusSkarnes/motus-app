@@ -6687,6 +6687,7 @@ function pickFirstName(value: unknown): string {
                       }
                       mealPlan={
                         <TrainerMealPlanEditor
+                          key={selectedMember.id}
                           memberId={selectedMember.id}
                           memberEmail={selectedMemberProfile?.email ?? selectedMember.email}
                           memberName={selectedMemberProfile?.name ?? selectedMember.name}
