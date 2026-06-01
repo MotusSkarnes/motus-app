@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { createDefaultMealPlan } from "./mealPlanDefaults";
-import { autoFillWeekFromMonday, resizeMealPlanWeeks } from "./mealPlanWeekPlanner";
+import { averageWeekMacros, autoFillWeekFromMonday, resizeMealPlanWeeks } from "./mealPlanWeekPlanner";
 
 describe("resizeMealPlanWeeks", () => {
   it("resizes plan from 1 to 12 and back to 1 week", () => {
@@ -14,6 +14,24 @@ describe("resizeMealPlanWeeks", () => {
     expect(reduced.days).toHaveLength(7);
     expect(reduced.days[0]?.label).toBe("Mandag");
     expect(reduced.days[6]?.label).toBe("Søndag");
+  });
+});
+
+describe("averageWeekMacros", () => {
+  it("divides by days with food only, not empty plan days", () => {
+    const plan = createDefaultMealPlan("member-1");
+    plan.days[0]!.meals[0]!.items = [
+      {
+        id: "food-1",
+        foodId: "egg",
+        foodName: "Egg",
+        grams: 100,
+        nutritionPer100g: { kcal: 200, protein: 20, carbs: 0, fat: 10, fiber: 0, sugar: 0, saturatedFat: 0, sodium: 0 },
+      },
+    ];
+    const avg = averageWeekMacros(plan, new Map());
+    expect(avg.kcal).toBe(200);
+    expect(avg.protein).toBe(20);
   });
 });
 

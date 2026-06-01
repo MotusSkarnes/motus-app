@@ -64,11 +64,7 @@ import { RecipeAvoidanceWarning } from "../components/RecipeAvoidanceWarning";
 import { RecipeIngredientList } from "../components/RecipeIngredientList";
 import { RecipeMacroBlocks } from "../components/RecipeMacroBlocks";
 import { MealMacroMiniBar, TrainerMealPlanMacroPanel } from "./TrainerMealPlanMacroPanel";
-import {
-  MICRONUTRIENT_DAILY_TARGETS,
-  TrainerMealPlanNutritionOverview,
-  type MicronutrientOverviewRow,
-} from "./nutrition/TrainerMealPlanNutritionOverview";
+import { TrainerMealPlanNutritionOverview, type MicronutrientOverviewRow } from "./nutrition/TrainerMealPlanNutritionOverview";
 import { TrainerMealPlanWeekGrid, type MealGridSelection } from "./nutrition/TrainerMealPlanWeekGrid";
 import { MealPlanNutritionReportModal } from "./nutrition/MealPlanNutritionReportModal";
 import { TrainerMealPlanSlotSetup } from "./nutrition/TrainerMealPlanSlotSetup";
@@ -77,18 +73,18 @@ import {
   toggleMealPlanSlotId,
   type MealPlanSlotId,
 } from "../app/mealPlanMealSlots";
-import { autoFillWeekFromMonday, averageWeekMacros, resizeMealPlanWeeks } from "../app/mealPlanWeekPlanner";
+import { buildMealPlanNutritionReport } from "../app/mealPlanNutritionTotals";
+import { micronutrientRowsForReport } from "../app/quickFoodLogNutrition";
+import { autoFillWeekFromMonday, resizeMealPlanWeeks } from "../app/mealPlanWeekPlanner";
 import {
   buildInspirationRecipeNutritionById,
   parseInspirationRecipeFoodId,
   recipeToMealPlanEntry,
 } from "../app/mealPlanRecipeEntry";
-import { resolveEntryNutritionForTotals } from "../app/mealPlanFoodNutrition";
 import { resolveRecipeMealSlot } from "../app/recipeMealCategory";
 import { buildScaledRecipeView, resolveRecipeScalingMode } from "../app/recipeMealScaling";
 import type { MealPlan, MealPlanFoodEntry, MealPlanMeal, MealPlanTargets } from "../app/mealPlanTypes";
 import type { FoodItem } from "../app/foodBankTypes";
-import { FOOD_MICRONUTRIENT_FIELDS, normalizeMicronutrients } from "../app/foodBankMicronutrients";
 import { useFoodBankItems } from "../app/useFoodBankItems";
 import { uid } from "../app/storage";
 import { GradientButton, OutlineButton, StatusMessage, TextArea, TextInput } from "../app/ui";
@@ -480,42 +476,28 @@ export function TrainerMealPlanEditor({
     [foodById, recipeNutritionById],
   );
 
-  const weekAverageMacros = useMemo(
-    () => (plan ? averageWeekMacros(plan, foodById) : { kcal: 0, protein: 0, carbs: 0, fat: 0 }),
-    [plan, foodById],
+  const planNutritionAverages = useMemo(
+    () => (plan ? buildMealPlanNutritionReport(plan, nutritionContext) : null),
+    [plan, nutritionContext],
   );
-  const weekAverageMicronutrients = useMemo<MicronutrientOverviewRow[]>(() => {
-    if (!plan || !plan.days.length) return [];
-    const totals = Object.fromEntries(FOOD_MICRONUTRIENT_FIELDS.map((field) => [field.key, 0])) as Record<
-      (typeof FOOD_MICRONUTRIENT_FIELDS)[number]["key"],
-      number
-    >;
-    for (const day of plan.days) {
-      for (const meal of day.meals) {
-        for (const item of meal.items) {
-          const itemMicros = normalizeMicronutrients(
-            resolveEntryNutritionForTotals(item, nutritionContext).micronutrients,
-          );
-          const scale = item.grams > 0 ? item.grams / 100 : 0;
-          for (const field of FOOD_MICRONUTRIENT_FIELDS) {
-            totals[field.key] += itemMicros[field.key] * scale;
-          }
-        }
-      }
+  const weekAverageMacros = useMemo(() => {
+    const avg = planNutritionAverages?.dailyAverage;
+    if (!avg || !planNutritionAverages?.daysWithFood) {
+      return { kcal: 0, protein: 0, carbs: 0, fat: 0 };
     }
-    return FOOD_MICRONUTRIENT_FIELDS.map((field) => {
-      const value = totals[field.key] / plan.days.length;
-      const target = MICRONUTRIENT_DAILY_TARGETS[field.key] ?? 0;
-      return {
-        key: field.key,
-        label: field.label,
-        unit: field.unit,
-        value,
-        target,
-        coveragePct: target > 0 ? Math.max(0, (value / target) * 100) : 0,
-      };
-    });
-  }, [plan, nutritionContext]);
+    return { kcal: avg.kcal, protein: avg.protein, carbs: avg.carbs, fat: avg.fat };
+  }, [planNutritionAverages]);
+  const weekAverageMicronutrients = useMemo<MicronutrientOverviewRow[]>(() => {
+    if (!planNutritionAverages?.daysWithFood) return [];
+    return micronutrientRowsForReport(planNutritionAverages.dailyAverage).map((row) => ({
+      key: row.key,
+      label: row.label,
+      unit: row.unit,
+      value: row.value,
+      target: row.target,
+      coveragePct: row.coveragePct,
+    }));
+  }, [planNutritionAverages]);
 
   const selectedGridMeal = useMemo(() => {
     if (!plan || !gridSelection) return null;
@@ -1571,7 +1553,12 @@ export function TrainerMealPlanEditor({
             <h2 className="motus-pt-planner-step__title">
               <span className="motus-pt-planner-step__num">4</span> Ernæringsoversikt
             </h2>
-            <p className="text-xs text-slate-500 mb-2">Gjennomsnitt per dag</p>
+            <p className="text-xs text-slate-500 mb-2">
+              Gjennomsnitt per dag
+              {planNutritionAverages?.daysWithFood
+                ? ` · ${planNutritionAverages.daysWithFood} ${planNutritionAverages.daysWithFood === 1 ? "dag" : "dager"} med matvarer`
+                : ""}
+            </p>
             <TrainerMealPlanNutritionOverview averageUsed={weekAverageMacros} targets={plan.targets} micronutrients={weekAverageMicronutrients} />
           </section>
 

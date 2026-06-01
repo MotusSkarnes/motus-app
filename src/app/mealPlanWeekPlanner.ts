@@ -3,6 +3,7 @@ import type { InspirationRecipeItem } from "./inspirationRecipeItems";
 import type { FoodItem } from "./foodBankTypes";
 import { mealNameToSlotId, mealSlotLabelFromId } from "./mealPlanMealSlots";
 import { computeMealMacros, type MacroTotals } from "./mealPlanMacros";
+import { mealPlanDayHasFood } from "./mealPlanNutritionTotals";
 import { sumDayMacros } from "./mealPlanTrainerMacros";
 import type { MealPlan, MealPlanDay, MealPlanMeal } from "./mealPlanTypes";
 import { uid } from "./storage";
@@ -53,8 +54,11 @@ export function averageWeekMacros(plan: MealPlan, foodById: Map<string, FoodItem
   if (!plan.days.length) {
     return { kcal: 0, protein: 0, carbs: 0, fat: 0 };
   }
+  let daysWithFood = 0;
   const totals = plan.days.reduce(
     (acc, day) => {
+      if (!mealPlanDayHasFood(day)) return acc;
+      daysWithFood += 1;
       const dayTotals = sumDayMacros(day, foodById);
       return {
         kcal: acc.kcal + dayTotals.kcal,
@@ -65,12 +69,14 @@ export function averageWeekMacros(plan: MealPlan, foodById: Map<string, FoodItem
     },
     { kcal: 0, protein: 0, carbs: 0, fat: 0 },
   );
-  const n = plan.days.length;
+  if (daysWithFood === 0) {
+    return { kcal: 0, protein: 0, carbs: 0, fat: 0 };
+  }
   return {
-    kcal: totals.kcal / n,
-    protein: totals.protein / n,
-    carbs: totals.carbs / n,
-    fat: totals.fat / n,
+    kcal: totals.kcal / daysWithFood,
+    protein: totals.protein / daysWithFood,
+    carbs: totals.carbs / daysWithFood,
+    fat: totals.fat / daysWithFood,
   };
 }
 
