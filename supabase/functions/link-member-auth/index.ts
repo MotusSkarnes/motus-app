@@ -484,7 +484,7 @@ Deno.serve(async (req) => {
   // Do not infer a "single foreign bucket" owner rescue here. A trainer can have
   // exactly one unrelated member_id bucket, and moving it would reassign another
   // customer's programs to this auth user.
-  let rescuedPrograms = 0;
+  const rescuedPrograms = 0;
 
   // Explicit one-off rescue path when caller knows orphan source member_id.
   let explicitSourcePrograms = 0;
