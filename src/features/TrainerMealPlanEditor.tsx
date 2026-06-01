@@ -13,7 +13,7 @@ import type { MacroSplitField } from "../app/mealPlanMacroSplit";
 import { balanceMealPlanTargets, describeTargetBalance } from "../app/mealPlanTargetBalance";
 import type { MacroTargetField } from "../app/mealPlanTargetBalance";
 import { MacroSplitPercentControls } from "../components/MacroSplitPercentControls";
-import { Calendar, Copy, HelpCircle, Plus, Save, Search, ShoppingCart, Soup, Sparkles, Trash2, Wand2, X } from "lucide-react";
+import { BarChart3, Calendar, Copy, HelpCircle, Plus, Save, Search, ShoppingCart, Soup, Sparkles, Trash2, Wand2, X } from "lucide-react";
 import { MEAL_PLAN_CHANGED_EVENT } from "../app/mealPlanStorage";
 import { createDefaultMealPlan } from "../app/mealPlanDefaults";
 import {
@@ -55,6 +55,7 @@ import {
   type MicronutrientOverviewRow,
 } from "./nutrition/TrainerMealPlanNutritionOverview";
 import { TrainerMealPlanWeekGrid, type MealGridSelection } from "./nutrition/TrainerMealPlanWeekGrid";
+import { MealPlanNutritionReportModal } from "./nutrition/MealPlanNutritionReportModal";
 import { TrainerMealPlanSlotSetup } from "./nutrition/TrainerMealPlanSlotSetup";
 import {
   DEFAULT_MEAL_PLAN_SLOT_IDS,
@@ -80,6 +81,8 @@ type TrainerMealPlanEditorProps = {
   memberName: string;
   memberGoal?: string;
   memberPersonalGoals?: string;
+  memberBirthDate?: string;
+  memberGender?: string;
   trainerOwnerUserId?: string;
 };
 
@@ -99,6 +102,8 @@ export function TrainerMealPlanEditor({
   memberName,
   memberGoal = "",
   memberPersonalGoals = "",
+  memberBirthDate = "",
+  memberGender = "",
   trainerOwnerUserId,
 }: TrainerMealPlanEditorProps) {
   const foodItems = useFoodBankItems();
@@ -115,6 +120,7 @@ export function TrainerMealPlanEditor({
   const [loadError, setLoadError] = useState<string | null>(null);
   const [creatingPlan, setCreatingPlan] = useState(false);
   const [deletingPlan, setDeletingPlan] = useState(false);
+  const [nutritionReportOpen, setNutritionReportOpen] = useState(false);
   const [saveStatus, setSaveStatus] = useState<string | null>(null);
   const [foodPicker, setFoodPicker] = useState<FoodPickerState>(null);
   const [recipePicker, setRecipePicker] = useState<RecipePickerState>(null);
@@ -1194,6 +1200,15 @@ export function TrainerMealPlanEditor({
         </OutlineButton>
         <OutlineButton
           type="button"
+          className="text-xs"
+          disabled={deletingPlan || creatingPlan}
+          onClick={() => setNutritionReportOpen(true)}
+        >
+          <BarChart3 className="h-4 w-4" aria-hidden />
+          Næringsoversikt
+        </OutlineButton>
+        <OutlineButton
+          type="button"
           className="text-xs !border-rose-200 !text-rose-800 hover:!bg-rose-50"
           disabled={deletingPlan || creatingPlan}
           onClick={() => void handleDeleteMealPlan()}
@@ -2067,6 +2082,19 @@ export function TrainerMealPlanEditor({
             </div>
           </div>
         </div>
+      ) : null}
+
+      {plan ? (
+        <MealPlanNutritionReportModal
+          open={nutritionReportOpen}
+          onClose={() => setNutritionReportOpen(false)}
+          memberName={memberName}
+          memberBirthDate={memberBirthDate}
+          memberGender={memberGender}
+          plan={plan}
+          activeDayId={activeDayId}
+          foodById={foodById}
+        />
       ) : null}
     </div>
   );

@@ -6693,6 +6693,8 @@ function pickFirstName(value: unknown): string {
                           memberName={selectedMemberProfile?.name ?? selectedMember.name}
                           memberGoal={selectedMemberProfile?.goal ?? selectedMember.goal}
                           memberPersonalGoals={selectedMemberProfile?.personalGoals ?? selectedMember.personalGoals ?? ""}
+                          memberBirthDate={selectedMemberProfile?.birthDate ?? selectedMember.birthDate}
+                          memberGender={selectedMemberProfile?.gender ?? selectedMember.gender}
                           trainerOwnerUserId={currentTrainerOwnerUserId}
                         />
                       }
