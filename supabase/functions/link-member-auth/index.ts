@@ -161,18 +161,19 @@ Deno.serve(async (req) => {
     if (!matchedUser) {
       return jsonResponse(404, { error: "No member row found for email" });
     }
+    const bootstrapOwnerUserId = trainerOwnerUserId || sourceOwnerUserId || "";
     const fallbackId = memberId || String(matchedUser.user_metadata?.member_id ?? "").trim() || matchedUser.id;
     const fallbackName =
       String(matchedUser.user_metadata?.full_name ?? matchedUser.user_metadata?.name ?? "").trim() || firstNameFromEmail(email);
     const { error: upsertError } = await adminClient.from("members").upsert(
       {
         id: fallbackId,
-        owner_user_id: matchedUser.id,
+        owner_user_id: bootstrapOwnerUserId,
         name: fallbackName,
         email,
         is_active: true,
         membership_type: "Standard",
-        customer_type: "Medlem",
+        customer_type: bootstrapOwnerUserId ? "PT-kunde" : "Medlem",
         days_since_activity: "0",
         goal: "",
         focus: "",
@@ -187,7 +188,7 @@ Deno.serve(async (req) => {
     }
     upsertCandidate({
       id: fallbackId,
-      owner_user_id: bootstrapOwnerUserId ?? "",
+      owner_user_id: bootstrapOwnerUserId,
       is_active: true,
       created_at: null,
       email,

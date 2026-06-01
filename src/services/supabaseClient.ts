@@ -24,7 +24,9 @@ export const supabaseClient = isSupabaseConfigured
       auth: {
         // URL-tokens håndteres manuelt (invite/aktiver) så bruker ikke hopper inn i app før passord er satt.
         detectSessionInUrl: false,
-        flowType: "pkce",
+        // Implicit: invitasjon sendes fra server (invite-member) — PKCE krever code_verifier i mottakerens
+        // nettleser og gir «Invitasjonslenke feilet» når kun ?code=... kommer tilbake fra e-post.
+        flowType: "implicit",
         persistSession: true,
       },
     })

@@ -35,6 +35,18 @@ describe("readAuthParamsFromLocation", () => {
     expect(params?.authCode).toBe("abc123");
   });
 
+  it("treats bare PKCE code as invite activation (server-sent invite email)", () => {
+    const params = readAuthParamsFromLocation("https://app.example/?code=abc123");
+    expect(params?.recoveryInviteFlow).toBe(true);
+    expect(params?.authCode).toBe("abc123");
+  });
+
+  it("treats recovery code as password reset flow", () => {
+    const params = readAuthParamsFromLocation("https://app.example/?type=recovery&recovery=1&code=abc123");
+    expect(params?.recoveryInviteFlow).toBe(false);
+    expect(params?.authCode).toBe("abc123");
+  });
+
   it("returns null for normal app open", () => {
     expect(readAuthParamsFromLocation("https://app.example/")).toBeNull();
   });
@@ -42,7 +54,7 @@ describe("readAuthParamsFromLocation", () => {
 
 describe("member invite redirect helpers", () => {
   it("builds invite redirect url with query flags", () => {
-    expect(buildMemberInviteRedirectUrl("https://motuspt.no")).toBe("https://motuspt.no/?type=invite&invite=1");
+    expect(buildMemberInviteRedirectUrl("https://motuspt.no")).toBe("https://motuspt.no/aktiver?type=invite&invite=1");
   });
 
   it("recognizes activate path", () => {

@@ -1,5 +1,10 @@
 import type { AuthBootstrapParams } from "../app/supabaseAuthBootstrap";
-import { buildMemberInviteRedirectUrl, readPersistedAuthBootstrapParams } from "../app/supabaseAuthBootstrap";
+import {
+  buildMemberInviteRedirectUrl,
+  readAuthParamsFromLocation,
+  readPersistedAuthBootstrapParams,
+  type AuthBootstrapParams,
+} from "../app/supabaseAuthBootstrap";
 import { configuredSupabaseAnonKey, configuredSupabaseUrl } from "./supabaseClient";
 import {
   emptyTrainerProfile,
@@ -304,12 +309,28 @@ function mergeAuthBootstrapParams(
   };
 }
 
+function isPkceVerifierError(message: string): boolean {
+  const normalized = message.trim().toLowerCase();
+  return (
+    normalized.includes("code verifier") ||
+    normalized.includes("pkce") ||
+    normalized.includes("flow state") ||
+    normalized.includes("invalid flow")
+  );
+}
+
+function readAuthParamsFromCurrentLocation(): AuthBootstrapParams | null {
+  if (typeof window === "undefined") return null;
+  return readAuthParamsFromLocation(window.location.href);
+}
+
 export async function establishSessionFromAuthBootstrap(
   input: EnsureAuthSessionForPasswordInput,
 ): Promise<{ ok: boolean; message?: string }> {
   if (!supabaseClient) return { ok: false, message: "Tjenesten er ikke tilgjengelig akkurat nå." };
 
   const params = mergeAuthBootstrapParams(input, readPersistedAuthBootstrapParams());
+  const failures: string[] = [];
 
   const {
     data: { session: existingSession },
@@ -321,33 +342,58 @@ export async function establishSessionFromAuthBootstrap(
   if (accessToken && refreshToken) {
     const fromTokens = await establishRecoverySessionFromTokens({ accessToken, refreshToken });
     if (fromTokens.ok) return fromTokens;
+    failures.push(fromTokens.message ?? "Kunne ikke bruke innloggingstoken fra lenken.");
   }
 
   const authCode = params.authCode?.trim() ?? "";
   if (authCode) {
     const fromCode = await exchangeAuthCodeForSession(authCode);
     if (fromCode.ok) return fromCode;
+    const codeMsg = fromCode.message ?? "Auth-kode feilet.";
+    failures.push(isPkceVerifierError(codeMsg) ? "Lenken er utløpt eller allerede brukt. Be om ny invitasjon." : codeMsg);
   }
 
   const tokenHash = params.tokenHash?.trim() ?? "";
   if (tokenHash) {
     const fromHash = params.recoveryInviteFlow ? await verifyInviteToken(tokenHash) : await verifyRecoveryToken(tokenHash);
     if (fromHash.ok) return fromHash;
+    failures.push(fromHash.message ?? "Kunne ikke verifisere token fra lenken.");
   }
 
-  // detectSessionInUrl kan fullføre asynkront etter første forsøk
   if (typeof window !== "undefined") {
-    await new Promise((resolve) => window.setTimeout(resolve, 350));
+    await new Promise((resolve) => window.setTimeout(resolve, 400));
+    const fresh = readAuthParamsFromCurrentLocation();
+    if (fresh) {
+      const freshAccess = fresh.accessToken?.trim() ?? "";
+      const freshRefresh = fresh.refreshToken?.trim() ?? "";
+      if (freshAccess && freshRefresh) {
+        const fromFreshTokens = await establishRecoverySessionFromTokens({
+          accessToken: freshAccess,
+          refreshToken: freshRefresh,
+        });
+        if (fromFreshTokens.ok) return fromFreshTokens;
+      }
+      const freshHash = fresh.tokenHash?.trim() ?? "";
+      if (freshHash) {
+        const fromFreshHash = fresh.recoveryInviteFlow
+          ? await verifyInviteToken(freshHash)
+          : await verifyRecoveryToken(freshHash);
+        if (fromFreshHash.ok) return fromFreshHash;
+      }
+    }
   }
+
   const {
     data: { session: delayedSession },
   } = await supabaseClient.auth.getSession();
   if (delayedSession?.access_token) return { ok: true };
 
+  const detail = failures.find(Boolean);
   return {
     ok: false,
     message:
-      "Kunne ikke koble til invitasjonen. Åpne lenken direkte fra e-posten på nytt (ikke kopiert adresse uten #...-delen).",
+      detail ??
+      "Kunne ikke koble til invitasjonen. Åpne lenken direkte fra e-posten på nytt (ikke kopiert adresse). Be PT sende «Invitasjon på nytt».",
   };
 }
 

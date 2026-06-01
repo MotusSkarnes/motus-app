@@ -40,7 +40,7 @@ function isSafeRedirectOrigin(origin: string): boolean {
 }
 
 /** Må matche Supabase Redirect URLs (ofte Site URL + query). Appen støtter også /aktiver. */
-const MEMBER_INVITE_AUTH_QUERY = "/?type=invite&invite=1";
+const MEMBER_INVITE_AUTH_QUERY = "/aktiver?type=invite&invite=1";
 
 function buildInviteRedirectUrl(origin: string): string {
   return `${trimSlash(origin)}${MEMBER_INVITE_AUTH_QUERY}`;

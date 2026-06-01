@@ -23,8 +23,8 @@ export function isMemberInviteActivatePath(pathname: string): boolean {
 /** Redirect som Supabase Auth typisk allerede har i allow-list (Site URL + query). */
 export function buildMemberInviteRedirectUrl(origin: string): string {
   const base = origin.replace(/\/+$/, "").trim();
-  if (!base) return "/?type=invite&invite=1";
-  return `${base}/?type=invite&invite=1`;
+  if (!base) return `${MEMBER_INVITE_ACTIVATE_PATH}?type=invite&invite=1`;
+  return `${base}${MEMBER_INVITE_ACTIVATE_PATH}?type=invite&invite=1`;
 }
 
 export function readAuthParamsFromLocation(href: string): AuthBootstrapParams | null {
@@ -40,17 +40,23 @@ export function readAuthParamsFromLocation(href: string): AuthBootstrapParams | 
   const type = hash.get("type") ?? query.get("type");
   const recoveryFlag = hash.get("recovery") ?? query.get("recovery");
   const inviteFlag = hash.get("invite") ?? query.get("invite");
-  const tokenHash = hash.get("token_hash") ?? query.get("token_hash");
+  const tokenHash =
+    hash.get("token_hash") ?? query.get("token_hash") ?? hash.get("token") ?? query.get("token");
   const accessToken = hash.get("access_token") ?? query.get("access_token");
   const refreshToken = hash.get("refresh_token") ?? query.get("refresh_token");
   const authCode = query.get("code") ?? hash.get("code");
   const isInviteType = type === "invite" || type === "signup" || inviteFlag === "1" || pathnameInvite;
   const isRecoveryType = type === "recovery" || recoveryFlag === "1";
+  const hasAuthPayload = Boolean(tokenHash || (accessToken && refreshToken) || authCode);
 
-  if (!isInviteType && !isRecoveryType && !authCode) return null;
+  if (!isInviteType && !isRecoveryType && !hasAuthPayload) return null;
+
+  // PKCE ?code= uten invite-flagg behandles som invitasjon (medlems e-post), ikke vanlig innlogging.
+  const recoveryInviteFlow =
+    isInviteType || (Boolean(authCode) && !isRecoveryType) || (pathnameInvite && hasAuthPayload);
 
   return {
-    recoveryInviteFlow: isInviteType || (Boolean(authCode) && (inviteFlag === "1" || pathnameInvite)),
+    recoveryInviteFlow,
     tokenHash,
     accessToken,
     refreshToken,
