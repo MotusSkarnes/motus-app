@@ -27,6 +27,12 @@ create policy "member_meal_plans_select"
       from public.members m
       where lower(trim(m.email)) = lower(trim(coalesce(auth.jwt() ->> 'email', '')))
     )
+    or exists (
+      select 1
+      from public.members m
+      where m.id::text = member_meal_plans.member_id
+        and m.owner_user_id = auth.uid()
+    )
   );
 
 drop policy if exists "member_meal_plans_insert_own" on public.member_meal_plans;

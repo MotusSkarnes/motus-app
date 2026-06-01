@@ -87,9 +87,35 @@ function parseMeal(value: unknown, dayIndex: number, mealIndex: number): MealPla
   };
 }
 
+function coerceJsonArray(value: unknown): unknown[] {
+  if (Array.isArray(value)) return value;
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    if (!trimmed) return [];
+    try {
+      const parsed: unknown = JSON.parse(trimmed);
+      if (Array.isArray(parsed)) return parsed;
+      if (parsed && typeof parsed === "object") {
+        const nested = (parsed as Record<string, unknown>).days;
+        if (Array.isArray(nested)) return nested;
+      }
+    } catch {
+      return [];
+    }
+  }
+  if (value && typeof value === "object") {
+    const nested = (value as Record<string, unknown>).days;
+    if (Array.isArray(nested)) return nested;
+  }
+  return [];
+}
+
 function parseDays(value: unknown): MealPlanDay[] {
-  if (!Array.isArray(value)) return [];
-  return value
+  const source = coerceJsonArray(value);
+  if (!source.length && value != null && value !== "" && !Array.isArray(value)) {
+    return [];
+  }
+  return source
     .map((day, dayIndex) => {
       if (!day || typeof day !== "object") return null;
       const row = day as Record<string, unknown>;
@@ -148,7 +174,10 @@ export function mealPlanFromRow(memberId: string, row: Record<string, unknown>):
 
 type MealPlanRowFetch = { plan: MealPlan | null; failed: boolean };
 
-async function fetchMealPlanRow(memberId: string): Promise<MealPlanRowFetch> {
+async function fetchMealPlanRow(
+  memberId: string,
+  options?: { allowEmptyDays?: boolean },
+): Promise<MealPlanRowFetch> {
   if (!supabaseClient || !memberId.trim()) return { plan: null, failed: false };
   try {
     const { data, error } = await withTimeout(
@@ -169,7 +198,7 @@ async function fetchMealPlanRow(memberId: string): Promise<MealPlanRowFetch> {
     if (!data) return { plan: null, failed: false };
     const rowMemberId = String((data as { member_id?: string }).member_id ?? memberId).trim() || memberId;
     const plan = mealPlanFromRow(rowMemberId, data as Record<string, unknown>);
-    if (!plan.days.length) return { plan: null, failed: false };
+    if (!options?.allowEmptyDays && !plan.days.length) return { plan: null, failed: false };
     return { plan, failed: false };
   } catch (error) {
     console.warn("member_meal_plans fetch threw:", memberId, error);
@@ -183,11 +212,45 @@ export type MealPlanSupabaseFetch = {
   hadFetchErrors: boolean;
 };
 
-export async function fetchMealPlanFromSupabase(memberIds: string | string[]): Promise<MealPlanSupabaseFetch> {
+/** PT: henter matplan via edge (service role) når direkte RLS-oppslag feiler eller gir tomme rader. */
+export async function fetchMealPlanForTrainerViaEdge(
+  memberId: string,
+  memberEmail?: string,
+): Promise<MealPlan | null> {
+  if (!supabaseClient || !isSupabaseConfigured) return null;
+  const trimmedMemberId = memberId.trim();
+  const trimmedEmail = memberEmail?.trim() ?? "";
+  if (!trimmedMemberId && !trimmedEmail.includes("@")) return null;
+  try {
+    const { data, error } = await supabaseClient.functions.invoke("fetch-trainer-member-meal-plan", {
+      body: {
+        memberId: trimmedMemberId || undefined,
+        memberEmail: trimmedEmail || undefined,
+      },
+    });
+    if (error) {
+      console.warn("fetch-trainer-member-meal-plan invoke failed:", error.message);
+      return null;
+    }
+    const planRow = (data as { plan?: Record<string, unknown> | null } | null)?.plan;
+    if (!planRow || typeof planRow !== "object") return null;
+    const rowMemberId = String(planRow.member_id ?? trimmedMemberId).trim() || trimmedMemberId;
+    const plan = mealPlanFromRow(rowMemberId, planRow);
+    return plan.days.length ? plan : null;
+  } catch (invokeError) {
+    console.warn("fetch-trainer-member-meal-plan threw:", invokeError);
+    return null;
+  }
+}
+
+export async function fetchMealPlanFromSupabase(
+  memberIds: string | string[],
+  options?: { allowEmptyDays?: boolean },
+): Promise<MealPlanSupabaseFetch> {
   const ids = [...new Set((Array.isArray(memberIds) ? memberIds : [memberIds]).map((id) => id.trim()).filter(Boolean))];
   if (!ids.length) return { plan: null, hadFetchErrors: false };
-  const results = await Promise.all(ids.map((id) => fetchMealPlanRow(id)));
-  const hadFetchErrors = results.some((row) => row.failed);
+  const results = await Promise.all(ids.map((id) => fetchMealPlanRow(id, options)));
+  const hadFetchErrors = results.length > 0 && results.every((row) => row.failed);
   const plans = results.map((row) => row.plan).filter((plan): plan is MealPlan => Boolean(plan));
   return { plan: pickPreferredMealPlan(plans), hadFetchErrors };
 }
@@ -269,24 +332,34 @@ export async function resolveMealPlanLookupIds(
   const primary = primaryMemberId.trim();
   if (primary) ids.add(primary);
 
-  const email = memberEmail?.trim().toLowerCase();
-  if (options?.forTrainerView) {
-    if (email?.includes("@")) {
-      for (const id of await memberIdsForEmail(email)) {
-        ids.add(id);
-      }
+  let email = memberEmail?.trim().toLowerCase() ?? "";
+  if (!email.includes("@") && primary && supabaseClient) {
+    try {
+      const { data: memberRow } = await supabaseClient
+        .from("members")
+        .select("email")
+        .eq("id", primary)
+        .maybeSingle();
+      email = String((memberRow as { email?: string } | null)?.email ?? "")
+        .trim()
+        .toLowerCase();
+    } catch {
+      /* ignore */
     }
-    return [...ids];
   }
 
-  for (const id of await readLinkedMealPlanMemberIds(primaryMemberId)) {
-    if (id) ids.add(id);
-  }
-  if (email?.includes("@")) {
+  if (email.includes("@")) {
     for (const id of await memberIdsForEmail(email)) {
       ids.add(id);
     }
   }
+
+  if (!options?.forTrainerView) {
+    for (const id of await readLinkedMealPlanMemberIds(primaryMemberId)) {
+      if (id) ids.add(id);
+    }
+  }
+
   return [...ids];
 }
 
@@ -413,9 +486,16 @@ export async function loadMealPlanForTrainerEditor(
     const trimmedMemberId = memberId.trim() || lookupIds[0] || "";
     if (!trimmedMemberId) return { status: "none" };
 
-    const { plan: remote, hadFetchErrors } = await fetchMealPlanFromSupabase(lookupIds);
-    if (remote?.days?.length) {
-      const normalized = { ...remote, memberId: trimmedMemberId };
+    const { plan: remote, hadFetchErrors } = await fetchMealPlanFromSupabase(lookupIds, {
+      allowEmptyDays: true,
+    });
+    let resolvedRemote = remote?.days?.length ? remote : null;
+    if (!resolvedRemote) {
+      const viaEdge = await fetchMealPlanForTrainerViaEdge(trimmedMemberId, memberEmail);
+      if (viaEdge?.days?.length) resolvedRemote = viaEdge;
+    }
+    if (resolvedRemote?.days?.length) {
+      const normalized = { ...resolvedRemote, memberId: trimmedMemberId };
       if (!mealPlansEqual(loadMealPlanForMember(trimmedMemberId), normalized)) {
         persistMealPlan(normalized, { notify: false });
       }
@@ -423,7 +503,7 @@ export async function loadMealPlanForTrainerEditor(
     }
 
     const local = loadBestLocalMealPlan(lookupIds);
-    if (local?.days?.length && (countMealPlanFoodItems(local) > 0 || local.notes.trim())) {
+    if (local?.days?.length) {
       const normalized = { ...local, memberId: trimmedMemberId };
       persistMealPlan(normalized, { notify: false });
       return { status: "local", plan: normalized };

@@ -1,5 +1,5 @@
--- Kjør i Supabase SQL Editor hvis medlem ikke ser matvarer PT har lagt inn.
--- Utvider SELECT-policy slik at JWT member_id matcher (som øvrige medlemstabeller).
+-- PT skal kunne lese matplan for egne kunder selv om member_meal_plans.owner_user_id er utdatert.
+-- Kjør i Supabase SQL Editor hvis PT ser «Matplanen vises ikke akkurat nå».
 
 drop policy if exists "member_meal_plans_select" on public.member_meal_plans;
 create policy "member_meal_plans_select"
