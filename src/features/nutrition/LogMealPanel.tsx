@@ -21,6 +21,8 @@ type LogMealPanelProps = {
   memberId: string;
   mealPlanTargets?: MealPlanTargets | null;
   onRefreshFoodBank?: () => void;
+  /** Kunden har matplan fra PT — vis tilpasset tekst, men samme loggeflyt. */
+  hasMealPlan?: boolean;
 };
 
 function todayKey(): string {
@@ -32,7 +34,7 @@ function entryMacros(entry: MemberQuickFoodLogEntry): string {
   return `${formatMacro(entry.nutritionPer100g.kcal * scale, 0)} kcal · P ${formatMacro(entry.nutritionPer100g.protein * scale, 1)} g`;
 }
 
-export function LogMealPanel({ memberId, mealPlanTargets, onRefreshFoodBank }: LogMealPanelProps) {
+export function LogMealPanel({ memberId, mealPlanTargets, onRefreshFoodBank, hasMealPlan = false }: LogMealPanelProps) {
   const [open, setOpen] = useState(false);
   const [mealSlotId, setMealSlotId] = useState(MEMBER_MEAL_SLOTS[0]!.id);
   const [status, setStatus] = useState<string | null>(null);
@@ -125,8 +127,9 @@ export function LogMealPanel({ memberId, mealPlanTargets, onRefreshFoodBank }: L
         </div>
         <h2 className="motus-log-meal-hero__title">Logg det du spiser</h2>
         <p className="motus-log-meal-hero__lead">
-          Du har ingen matplan fra treneren ennå. Start med å logge et måltid — velg frokost, lunsj, middag og mer, og søk
-          opp matvarer fra matbanken.
+          {hasMealPlan
+            ? "Logg måltider og matvarer i tillegg til matplanen — eller når du spiser noe annet enn planlagt. Velg måltid og søk i matbanken."
+            : "Du har ingen matplan fra treneren ennå. Start med å logge et måltid — velg frokost, lunsj, middag og mer, og søk opp matvarer fra matbanken."}
         </p>
         <GradientButton type="button" className="motus-log-meal-cta" onClick={() => setOpen(true)}>
           <Plus className="h-4 w-4" aria-hidden />

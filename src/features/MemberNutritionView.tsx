@@ -128,12 +128,18 @@ export function MemberNutritionView({ member, members, onSavePersonalGoals }: Me
       );
     }
     return (
-      <>
+      <div className="space-y-4">
         {!cloudSynced ? (
-          <Card className="mb-3 border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+          <Card className="border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
             Kunne ikke hente matplan fra sky ennå. Sjekk nett og oppdater siden, eller be PT trykke «Lagre» på matplanen din.
           </Card>
         ) : null}
+        <LogMealPanel
+          memberId={memberId}
+          mealPlanTargets={plan?.targets}
+          onRefreshFoodBank={refreshMemberFoodBank}
+          hasMealPlan
+        />
         <MemberMealPlanDashboard
           plan={plan!}
           memberId={memberId}
@@ -141,7 +147,7 @@ export function MemberNutritionView({ member, members, onSavePersonalGoals }: Me
           onOpenAvoidances={() => setNutritionTab("avoidances")}
           onRefreshFoodBank={refreshMemberFoodBank}
         />
-      </>
+      </div>
     );
   }, [loading, plan, cloudSynced, memberId, memberName, setNutritionTab, refreshMemberFoodBank]);
 
