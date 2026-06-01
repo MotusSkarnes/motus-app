@@ -49,10 +49,19 @@ create policy "member_meal_plans_update_own"
   with check (auth.uid() = owner_user_id);
 
 drop policy if exists "member_meal_plans_delete_own" on public.member_meal_plans;
-create policy "member_meal_plans_delete_own"
+drop policy if exists "member_meal_plans_delete" on public.member_meal_plans;
+create policy "member_meal_plans_delete"
   on public.member_meal_plans
   for delete
   to authenticated
-  using (auth.uid() = owner_user_id);
+  using (
+    auth.uid() = owner_user_id
+    or exists (
+      select 1
+      from public.members m
+      where m.id::text = member_meal_plans.member_id
+        and m.owner_user_id = auth.uid()
+    )
+  );
 
 comment on table public.member_meal_plans is 'PT-matplan tildelt kunde; days = [{ label, meals: [{ name, items: [{ foodId, foodName, grams, nutritionPer100g }] }] }].';

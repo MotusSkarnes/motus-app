@@ -104,6 +104,41 @@ export function persistMealPlan(plan: MealPlan, options?: { notify?: boolean }):
   }
 }
 
+/** Fjerner lagret matplan (og historikk) for én eller flere member_id. */
+export function clearMealPlanLocalForMemberIds(memberIds: string[], options?: { notify?: boolean }): number {
+  const idSet = new Set(memberIds.map((id) => id.trim()).filter(Boolean));
+  if (!idSet.size) return 0;
+
+  const all = readPlans();
+  const history = readHistory();
+  let removed = 0;
+
+  for (const key of Object.keys(all)) {
+    const plan = all[key];
+    const planMemberId = plan?.memberId?.trim() ?? "";
+    if (idSet.has(key) || (planMemberId && idSet.has(planMemberId))) {
+      delete all[key];
+      removed += 1;
+    }
+  }
+
+  let historyRemoved = 0;
+  for (const id of idSet) {
+    if (history[id]) {
+      delete history[id];
+      historyRemoved += 1;
+    }
+  }
+
+  if (removed > 0 || historyRemoved > 0) {
+    writePlans(all);
+    writeHistory(history);
+    if (options?.notify !== false) notifyMealPlanChanged();
+  }
+
+  return removed;
+}
+
 export function loadOrCreateMealPlanForMember(memberId: string): MealPlan {
   const existing = loadMealPlanForMember(memberId);
   if (existing) return existing;

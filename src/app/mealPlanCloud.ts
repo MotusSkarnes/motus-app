@@ -1,5 +1,11 @@
 import { createDefaultMealPlan } from "./mealPlanDefaults";
-import { loadMealPlanForMember, notifyMealPlanChanged, persistMealPlan, readAllMealPlans } from "./mealPlanStorage";
+import {
+  clearMealPlanLocalForMemberIds,
+  loadMealPlanForMember,
+  notifyMealPlanChanged,
+  persistMealPlan,
+  readAllMealPlans,
+} from "./mealPlanStorage";
 import type { MealPlan, MealPlanDay, MealPlanFoodEntry, MealPlanMeal, MealPlanTargets } from "./mealPlanTypes";
 import { isSupabaseConfigured, supabaseClient } from "../services/supabaseClient";
 
@@ -426,12 +432,67 @@ export function flushMealPlanCloudSave(ownerUserId: string): void {
   runPendingMealPlanCloudSave();
 }
 
+export function cancelScheduledMealPlanCloudSave(): void {
+  if (saveTimer) clearTimeout(saveTimer);
+  saveTimer = null;
+  pendingSave = null;
+}
+
+export async function deleteMealPlanFromSupabase(memberIds: string[]): Promise<{ deleted: number; failed: number }> {
+  if (!supabaseClient) return { deleted: 0, failed: memberIds.length };
+  const ids = [...new Set(memberIds.map((id) => id.trim()).filter(Boolean))];
+  let deleted = 0;
+  let failed = 0;
+  for (const memberId of ids) {
+    try {
+      const { error, count } = await supabaseClient
+        .from("member_meal_plans")
+        .delete({ count: "exact" })
+        .eq("member_id", memberId);
+      if (error) {
+        if (!isMealPlanTableMissing(error.message)) {
+          console.warn("member_meal_plans delete failed:", memberId, error.message);
+        }
+        failed += 1;
+      } else if ((count ?? 0) > 0) {
+        deleted += 1;
+      }
+    } catch (error) {
+      console.warn("member_meal_plans delete threw:", memberId, error);
+      failed += 1;
+    }
+  }
+  return { deleted, failed };
+}
+
+export async function deleteMealPlanForLookupIds(
+  memberId: string,
+  memberEmail: string | undefined,
+  ownerUserId: string | undefined,
+): Promise<{ lookupIds: string[]; cloudDeleted: number; cloudFailed: number }> {
+  cancelScheduledMealPlanCloudSave();
+  const lookupIds = await resolveMealPlanLookupIds(memberId, memberEmail, { forTrainerView: true });
+  const ids = [...new Set([memberId.trim(), ...lookupIds].filter(Boolean))];
+  clearMealPlanLocalForMemberIds(ids, { notify: false });
+
+  let cloudDeleted = 0;
+  let cloudFailed = 0;
+  if (ownerUserId?.trim() && isSupabaseConfigured) {
+    const result = await deleteMealPlanFromSupabase(ids);
+    cloudDeleted = result.deleted;
+    cloudFailed = result.failed;
+  }
+
+  notifyMealPlanChanged();
+  return { lookupIds: ids, cloudDeleted, cloudFailed };
+}
+
 /** Sky er kilde når rad finnes; overskriver aldri PT-plan med tom standardplan. */
 export async function syncMealPlanForMember(
   memberId: string,
   ownerUserId: string,
   memberEmail?: string,
-): Promise<{ plan: MealPlan; cloudSynced: boolean }> {
+): Promise<{ plan: MealPlan | null; cloudSynced: boolean }> {
   const lookupIds = await resolveMealPlanLookupIds(memberId, memberEmail, {
     forTrainerView: Boolean(ownerUserId.trim()),
   });
@@ -454,17 +515,8 @@ export async function syncMealPlanForMember(
     return { plan: normalized, cloudSynced: false };
   }
 
-  const fallback = local ?? createDefaultMealPlan(trimmedMemberId);
-  const normalized = { ...fallback, memberId: trimmedMemberId };
-  persistMealPlan(normalized, { notify: false });
-
-  // Medlem skal aldri overskrive PT sin plan i sky med tom standardplan.
-  if (ownerUserId.trim() && isSupabaseConfigured && countMealPlanFoodItems(normalized) > 0) {
-    const uploaded = await saveMealPlanToSupabase(ownerUserId, normalized);
-    return { plan: normalized, cloudSynced: uploaded };
-  }
-
-  return { plan: normalized, cloudSynced: false };
+  clearMealPlanLocalForMemberIds(lookupIds.length ? lookupIds : [trimmedMemberId], { notify: false });
+  return { plan: null, cloudSynced: true };
 }
 
 export type TrainerMealPlanLoadResult =

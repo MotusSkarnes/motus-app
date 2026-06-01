@@ -18,6 +18,7 @@ import { MEAL_PLAN_CHANGED_EVENT } from "../app/mealPlanStorage";
 import { createDefaultMealPlan } from "../app/mealPlanDefaults";
 import {
   countMealPlanFoodItems,
+  deleteMealPlanForLookupIds,
   flushMealPlanCloudSave,
   loadMealPlanForTrainerEditor,
   mealPlansEqual,
@@ -113,6 +114,7 @@ export function TrainerMealPlanEditor({
   const [planSource, setPlanSource] = useState<"cloud" | "local" | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [creatingPlan, setCreatingPlan] = useState(false);
+  const [deletingPlan, setDeletingPlan] = useState(false);
   const [saveStatus, setSaveStatus] = useState<string | null>(null);
   const [foodPicker, setFoodPicker] = useState<FoodPickerState>(null);
   const [recipePicker, setRecipePicker] = useState<RecipePickerState>(null);
@@ -320,6 +322,45 @@ export function TrainerMealPlanEditor({
       setCreatingPlan(false);
     }
   }, [memberId, memberEmail, trainerOwnerUserId, applyLoadedPlan, creatingPlan, draftMealSlotIds]);
+
+  const handleDeleteMealPlan = useCallback(async () => {
+    const trimmedMemberId = memberId.trim();
+    if (!trimmedMemberId || deletingPlan || creatingPlan) return;
+
+    const confirmed =
+      typeof window !== "undefined" &&
+      window.confirm(
+        `Fjerne hele matplanen for ${memberName}? Medlemmet ser ikke planen lenger, men kan fortsatt logge egne måltider.`,
+      );
+    if (!confirmed) return;
+
+    setDeletingPlan(true);
+    creatingPlanRef.current = true;
+    suppressReloadUntilRef.current = Date.now() + 5000;
+    setLoadError(null);
+    setSaveStatus(null);
+    try {
+      const result = await deleteMealPlanForLookupIds(trimmedMemberId, memberEmailRef.current, trainerOwnerUserId);
+      loadGenerationRef.current += 1;
+      setPlan(null);
+      setPlanSource(null);
+      setPlanLoadStatus("none");
+      setLoading(false);
+      setGridSelection(null);
+      setPreviewSelection(null);
+      setSaveStatus(
+        result.cloudFailed > 0
+          ? "Matplan fjernet lokalt. Kunne ikke slette i sky — sjekk tilgang eller kjør RLS-patch for sletting."
+          : "Matplanen er fjernet. Du kan opprette en ny når du vil.",
+      );
+    } catch (error) {
+      console.warn("delete meal plan failed:", error);
+      setLoadError("Kunne ikke fjerne matplan. Prøv igjen.");
+    } finally {
+      creatingPlanRef.current = false;
+      setDeletingPlan(false);
+    }
+  }, [memberId, memberName, trainerOwnerUserId, deletingPlan, creatingPlan]);
 
   useEffect(() => {
     const trimmedMemberId = memberId.trim();
@@ -1151,7 +1192,16 @@ export function TrainerMealPlanEditor({
           <HelpCircle className="h-4 w-4" aria-hidden />
           Hjelp
         </OutlineButton>
-        <GradientButton onClick={() => void handleSave()} className="shrink-0">
+        <OutlineButton
+          type="button"
+          className="text-xs !border-rose-200 !text-rose-800 hover:!bg-rose-50"
+          disabled={deletingPlan || creatingPlan}
+          onClick={() => void handleDeleteMealPlan()}
+        >
+          <Trash2 className="h-4 w-4" aria-hidden />
+          {deletingPlan ? "Fjerner …" : "Fjern matplan"}
+        </OutlineButton>
+        <GradientButton onClick={() => void handleSave()} className="shrink-0" disabled={deletingPlan}>
           <Save className="h-4 w-4" aria-hidden />
           Lagre matplan
         </GradientButton>
