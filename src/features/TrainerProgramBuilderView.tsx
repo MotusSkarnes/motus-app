@@ -46,12 +46,9 @@ import { resolveExercisePrescriptionFields } from "../app/exercisePrescriptionFi
 import { EmptyState, GradientButton, OutlineButton, PillButton, SelectBox, TextInput } from "../app/ui";
 import { useToast } from "../app/toast";
 import type { Exercise, ProgramExercise, TrainingProgram } from "../app/types";
-import {
-  applyCardioIntensityToExercise,
-  inferCardioIntensityFromExercise,
-  type CardioIntensityLevel,
-} from "../app/cardioIntervalIntensity";
-import { CardioIntensitySelect } from "./CardioIntensitySelect";
+import type { CardioIntensityLevel } from "../app/cardioIntervalIntensity";
+import type { CardioEquipmentId } from "../app/cardioEquipment";
+import { CardioExerciseExtraFields } from "./CardioExerciseExtraFields";
 import { ProgramExercisePrescriptionFields } from "./ProgramExercisePrescriptionFields";
 
 type MuscleFilter = "all" | "bein" | "overkropp" | "kjerne";
@@ -139,6 +136,7 @@ export type TrainerProgramBuilderViewProps = {
   onDeleteTemplate: (program: TrainingProgram) => void;
   programsSubTabConditioningExtras?: ReactNode;
   cardioIntervalIntensity?: CardioIntensityLevel;
+  cardioEquipmentId?: CardioEquipmentId;
   assignTemplateSection: ReactNode;
 };
 
@@ -185,6 +183,7 @@ export function TrainerProgramBuilderView({
   onDeleteTemplate,
   programsSubTabConditioningExtras,
   cardioIntervalIntensity,
+  cardioEquipmentId = "rowing",
   assignTemplateSection,
 }: TrainerProgramBuilderViewProps) {
   const { pushToast } = useToast();
@@ -385,7 +384,6 @@ export function TrainerProgramBuilderView({
               const linkedExercise = exercisesById.get(item.exerciseId);
               const isExpanded = expandedDraftId === item.id;
               const isCardio = isCardioProgramRow(item, linkedExercise, programsSubTab);
-              const isTreadmill = (linkedExercise?.equipment ?? "").trim().toLowerCase().includes("tredem");
               const prescriptionFields = resolveExercisePrescriptionFields(linkedExercise);
               const prescription = draftExercisePrescriptionLabel(item, index, programExercisesDraft, linkedExercise, programsSubTab);
 
@@ -471,39 +469,19 @@ export function TrainerProgramBuilderView({
                         setsPlaceholder={isCardio ? cardioSetPlaceholder() : "Sett"}
                         trailing={
                           isCardio ? (
-                            <>
-                              <CardioIntensitySelect
-                                className="sm:col-span-2 xl:col-span-3"
-                                value={inferCardioIntensityFromExercise(item) ?? cardioIntervalIntensity ?? "medium"}
-                                onChange={(level) => {
-                                  const next = applyCardioIntensityToExercise(item, level);
-                                  onProgramExercisesDraftChange(
-                                    programExercisesDraft.map((row) => (row.id === item.id ? next : row)),
-                                  );
-                                }}
-                                hint="Klassifisering for deg — fart, stigning og puls fyller du inn under."
-                              />
-                              <div className="space-y-1">
-                                <div className="text-[11px] font-medium text-slate-500">Puls (% av makspuls)</div>
-                                <TextInput
-                                  value={item.targetHrPercent ?? ""}
-                                  onChange={(e) => onUpdateDraftExercise(item.id, "targetHrPercent", e.target.value)}
-                                  placeholder="f.eks. 85–90"
-                                />
-                              </div>
-                              {isTreadmill ? (
-                                <>
-                                  <div className="space-y-1">
-                                    <div className="text-[11px] font-medium text-slate-500">Fart (km/t)</div>
-                                    <TextInput value={item.speed ?? ""} onChange={(e) => onUpdateDraftExercise(item.id, "speed", e.target.value)} />
-                                  </div>
-                                  <div className="space-y-1">
-                                    <div className="text-[11px] font-medium text-slate-500">Stigning (%)</div>
-                                    <TextInput value={item.incline ?? ""} onChange={(e) => onUpdateDraftExercise(item.id, "incline", e.target.value)} />
-                                  </div>
-                                </>
-                              ) : null}
-                            </>
+                            <CardioExerciseExtraFields
+                              item={item}
+                              linkedExercise={linkedExercise}
+                              fallbackEquipmentId={cardioEquipmentId}
+                              cardioIntervalIntensity={cardioIntervalIntensity ?? "medium"}
+                              intensityHint="Klassifisering for deg — feltene under følger valgt utstyr."
+                              onUpdate={(field, value) => onUpdateDraftExercise(item.id, field, value)}
+                              onReplaceItem={(next) =>
+                                onProgramExercisesDraftChange(
+                                  programExercisesDraft.map((row) => (row.id === item.id ? next : row)),
+                                )
+                              }
+                            />
                           ) : null
                         }
                       />

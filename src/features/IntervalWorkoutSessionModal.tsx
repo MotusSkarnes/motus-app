@@ -8,6 +8,13 @@ import { expandProgramExercisesToWorkoutResults, isLegacyIntervalCooldownDrag, p
 import { GradientButton, OutlineButton, StatusMessage, TextArea, TextInput } from "../app/ui";
 import type { Exercise, TrainingProgram, WorkoutExerciseResult, WorkoutReflection } from "../app/types";
 import type { LogIntervalWorkoutInput } from "../services/appRepository";
+import {
+  cardioIntervalEditFieldLabels,
+  cardioIntervalMetricHints,
+  cardioIntervalRestMetricHints,
+  resolveCardioEquipmentIdForProgramRow,
+  type CardioEquipmentId,
+} from "../app/cardioEquipment";
 
 type IntervalTimerStep = {
   headline: string;
@@ -97,15 +104,20 @@ function getReflectionEmoji(level: 1 | 2 | 3 | 4 | 5): string {
   return "🥵";
 }
 
-function buildIntervalProgramSteps(program: TrainingProgram): IntervalTimerStep[] {
+function buildIntervalProgramSteps(program: TrainingProgram, exercises: Exercise[]): IntervalTimerStep[] {
   const programTitle = program.title;
   const steps: IntervalTimerStep[] = [];
+  const exercisesById = new Map(exercises.map((item) => [item.id, item]));
   let workOrdinal = 0;
   let dragOrdinal = 0;
   let lastWorkHeadline = "";
+  let sessionEquipment: CardioEquipmentId = "treadmill";
 
   for (let index = 0; index < program.exercises.length; index++) {
     const exercise = program.exercises[index];
+    const bankExercise = exercisesById.get(exercise.exerciseId);
+    const metrics = cardioIntervalMetricHints(exercise, bankExercise);
+    if (index === 0) sessionEquipment = metrics.equipmentId;
     const minutesPart = (Number(exercise.durationMinutes) || 0) * 60;
     const secondsPart = Number(exercise.holdSeconds) || 0;
     const workDurationSeconds = Math.max(0, Math.round(minutesPart + secondsPart));
@@ -161,21 +173,22 @@ function buildIntervalProgramSteps(program: TrainingProgram): IntervalTimerStep[
           headline: repeatedHeadline,
           phaseBadge: computeIntervalPhaseBadge(tone, repeatedHeadline),
           durationSeconds: workDurationSeconds,
-          speedHint: exercise.speed ? `${exercise.speed} km/t` : "-",
-          inclineHint: exercise.incline ? `${exercise.incline}%` : "-",
+          speedHint: metrics.primaryHint,
+          inclineHint: metrics.secondaryHint,
           hrHint: formatIntervalTimerHrHint(exercise.targetHrPercent),
           tone,
           sourceExerciseIndex: index,
         });
 
         if (restDurationSeconds > 0 && repeatIndex < repeatCount) {
+          const restHints = cardioIntervalRestMetricHints(metrics.equipmentId);
           steps.push({
             headline: "Pause",
             phaseBadge: "Pause",
             afterExerciseName: repeatedHeadline,
             durationSeconds: restDurationSeconds,
-            speedHint: "Rolig",
-            inclineHint: "0-1%",
+            speedHint: restHints.primaryHint,
+            inclineHint: restHints.secondaryHint,
             hrHint: "",
             tone: "rest",
           });
@@ -189,13 +202,14 @@ function buildIntervalProgramSteps(program: TrainingProgram): IntervalTimerStep[
     const restAfterRow = normalizedRestSeconds > 0 && (!isDragSlot || repeatCount <= 1) && hasNextStep && !nextIsCooldown;
     if (restAfterRow) {
       const afterLabel = lastWorkHeadline || exercise.exerciseName.trim() || `Steg ${index + 1}`;
+      const restHints = cardioIntervalRestMetricHints(sessionEquipment);
       steps.push({
         headline: "Pause",
         phaseBadge: "Pause",
         afterExerciseName: afterLabel,
         durationSeconds: normalizedRestSeconds,
-        speedHint: "Rolig",
-        inclineHint: "0-1%",
+        speedHint: restHints.primaryHint,
+        inclineHint: restHints.secondaryHint,
         hrHint: "",
         tone: "rest",
       });
@@ -247,7 +261,10 @@ export function IntervalWorkoutSessionModal({
   logIntervalWorkout,
 }: IntervalWorkoutSessionModalProps) {
   useScreenWakeLock(open);
-  const intervalProgramSteps = useMemo(() => (program ? buildIntervalProgramSteps(program) : []), [program]);
+  const intervalProgramSteps = useMemo(
+    () => (program ? buildIntervalProgramSteps(program, exercises) : []),
+    [program, exercises],
+  );
 
   const [isRunning, setIsRunning] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
@@ -277,6 +294,14 @@ export function IntervalWorkoutSessionModal({
   const { stepIndex, remainingSeconds, resetToStep, start: startIntervalTimer, skipToNext, clearDeadline } = intervalTimer;
 
   const currentStep = intervalProgramSteps[stepIndex] ?? null;
+  const currentStepEquipment = useMemo((): CardioEquipmentId => {
+    if (!program || currentStep?.sourceExerciseIndex === undefined) return "treadmill";
+    const row = program.exercises[currentStep.sourceExerciseIndex];
+    if (!row) return "treadmill";
+    const bank = exercises.find((item) => item.id === row.exerciseId);
+    return resolveCardioEquipmentIdForProgramRow(row, bank);
+  }, [program, exercises, currentStep?.sourceExerciseIndex]);
+  const intervalEditLabels = cardioIntervalEditFieldLabels(currentStepEquipment);
   const totalSeconds = useMemo(
     () => intervalProgramSteps.reduce((sum, step) => sum + step.durationSeconds, 0),
     [intervalProgramSteps],
@@ -639,7 +664,7 @@ export function IntervalWorkoutSessionModal({
                   {canEditSpeedIncline ? (
                     <div className="grid gap-3 sm:grid-cols-2">
                       <label className="space-y-1">
-                        <span className="text-xs font-medium text-slate-600">Fart (km/t)</span>
+                        <span className="text-xs font-medium text-slate-600">{intervalEditLabels.primary}</span>
                         <TextInput
                           value={currentOverride.speed}
                           onChange={(event) =>
@@ -652,7 +677,7 @@ export function IntervalWorkoutSessionModal({
                         />
                       </label>
                       <label className="space-y-1">
-                        <span className="text-xs font-medium text-slate-600">Stigning (%)</span>
+                        <span className="text-xs font-medium text-slate-600">{intervalEditLabels.secondary}</span>
                         <TextInput
                           value={currentOverride.incline}
                           onChange={(event) =>

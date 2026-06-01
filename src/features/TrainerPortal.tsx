@@ -65,6 +65,17 @@ import {
   prescriptionFieldsForExerciseSave,
   resolveExercisePrescriptionFields,
 } from "../app/exercisePrescriptionFields";
+import {
+  buildCardioTemplateRow,
+  defaultCardioEquipmentId,
+  inferCardioEquipmentIdFromExercise,
+  mapExerciseToCardioEquipment,
+  pickCardioExerciseForEquipment,
+  rebindDraftToCardioEquipment,
+  type CardioEquipmentId,
+} from "../app/cardioEquipment";
+import { CardioEquipmentSelect } from "./CardioEquipmentSelect";
+import { CardioExerciseExtraFields } from "./CardioExerciseExtraFields";
 import { CardioIntensitySelect } from "./CardioIntensitySelect";
 import { ProgramExercisePrescriptionFields } from "./ProgramExercisePrescriptionFields";
 import {
@@ -498,25 +509,6 @@ function nextLastFollowUpMapForIds(
   return out;
 }
 
-/** Øvelse brukt som malrad ved oppretting av kondisjonsintervaller fra øvelsesbanken. */
-function pickCardioIntervalExerciseForTemplate(allExercises: Exercise[]): Exercise | undefined {
-  if (!allExercises.length) return undefined;
-  const eqLo = (e: Exercise) => e.equipment.trim().toLowerCase();
-  const nameLo = (e: Exercise) => e.name.trim().toLowerCase();
-  const isKond = (e: Exercise) => e.category === "Kondisjon";
-  const isTreadmill = (e: Exercise) =>
-    eqLo(e).includes("tredem") || eqLo(e).includes("mølle") || nameLo(e).includes("mølle");
-  const isBike = (e: Exercise) => eqLo(e).includes("sykkel") || nameLo(e).includes("sykkel");
-
-  return (
-    allExercises.find((e) => isKond(e) && isTreadmill(e) && nameLo(e).includes("intervall")) ??
-    allExercises.find((e) => isKond(e) && isTreadmill(e)) ??
-    allExercises.find((e) => isKond(e) && isBike(e)) ??
-    allExercises.find((e) => isKond(e)) ??
-    allExercises[0]
-  );
-}
-
 function hasCardioNedjoggRow(draft: ProgramExercise[]): boolean {
   return draft.some((row) => row.exerciseName.trim().toLowerCase().startsWith("nedjogg"));
 }
@@ -795,6 +787,7 @@ function pickFirstName(value: unknown): string {
   const [selectedWorkoutLogId, setSelectedWorkoutLogId] = useState<string | null>(null);
   const [programExercisesDraft, setProgramExercisesDraft] = useState<ProgramExercise[]>([]);
   const [cardioIntervalIntensity, setCardioIntervalIntensity] = useState<CardioIntensityLevel>("medium");
+  const [cardioEquipmentId, setCardioEquipmentId] = useState<CardioEquipmentId>(defaultCardioEquipmentId);
   const [templateProgramTitle, setTemplateProgramTitle] = useState("Ny treningsmal");
   const [editingTemplateProgramId, setEditingTemplateProgramId] = useState<string | null>(null);
   const [expandedTemplateProgramId, setExpandedTemplateProgramId] = useState<string | null>(null);
@@ -2249,7 +2242,9 @@ function pickFirstName(value: unknown): string {
   }
 
   function addExerciseToDraft(exercise: Exercise) {
-    setProgramExercisesDraft((prev) => [...prev, buildProgramExerciseFromBank(exercise)]);
+    const mapped =
+      programsSubTab === "conditioning" ? mapExerciseToCardioEquipment(exercise, cardioEquipmentId) : exercise;
+    setProgramExercisesDraft((prev) => [...prev, buildProgramExerciseFromBank(mapped)]);
   }
 
   function moveDraftExercise(sourceId: string, targetId: string) {
@@ -2332,6 +2327,16 @@ function pickFirstName(value: unknown): string {
     setProgramCoverCleared(false);
     setProgramExercisesDraft([]);
     setCardioIntervalIntensity("medium");
+    setCardioEquipmentId(defaultCardioEquipmentId());
+  }
+
+  function applyCardioEquipmentToDraft(equipmentId: CardioEquipmentId) {
+    setCardioEquipmentId(equipmentId);
+    setProgramExercisesDraft((prev) =>
+      rebindDraftToCardioEquipment(prev, exercises, equipmentId, {
+        conditioningBuilder: programsSubTab === "conditioning",
+      }),
+    );
   }
 
   function applyCardioIntensityLevelToDraft(level: CardioIntensityLevel, options?: { exerciseId?: string }) {
@@ -2349,26 +2354,13 @@ function pickFirstName(value: unknown): string {
       const ok = typeof window !== "undefined" && window.confirm("Erstatte gjeldende utkast med ny kondisjonsmal (kun oppvarming)?");
       if (!ok) return;
     }
-    const base = pickCardioIntervalExerciseForTemplate(exercises);
+    const base = pickCardioExerciseForEquipment(exercises, cardioEquipmentId);
     if (!base) {
-      setTemplateAssignStatus("Fant ingen kondisjonsøvelse i biblioteket. Legg til en mølle- eller kondisjonsøvelse først.");
+      setTemplateAssignStatus("Fant ingen kondisjonsøvelse for valgt utstyr. Legg til øvelsen i øvelsesbanken først.");
       return;
     }
     const warmup = applyCardioIntensityToExercise(
-      {
-      id: uid("draft-ex"),
-      exerciseId: base.id,
-      exerciseName: "Oppvarming",
-      sets: "1",
-      reps: "",
-      weight: "",
-      durationMinutes: "10",
-        speed: "",
-        incline: "",
-      restSeconds: "0",
-      notes: "",
-        targetHrPercent: "",
-      },
+      { ...buildCardioTemplateRow(base, "warmup", cardioEquipmentId, { intensity: cardioIntervalIntensity }), id: uid("draft-ex") },
       cardioIntervalIntensity,
     );
     setProgramExercisesDraft([warmup]);
@@ -2378,25 +2370,19 @@ function pickFirstName(value: unknown): string {
 
   function appendCardioDragRow() {
     if (hasCardioNedjoggRow(programExercisesDraft)) return;
-    const base = pickCardioIntervalExerciseForTemplate(exercises);
+    const base = pickCardioExerciseForEquipment(exercises, cardioEquipmentId);
     if (!base) {
-      setTemplateAssignStatus("Fant ingen kondisjonsøvelse i biblioteket.");
+      setTemplateAssignStatus("Fant ingen kondisjonsøvelse for valgt utstyr.");
       return;
     }
     const nextIndex = countCardioDragRows(programExercisesDraft) + 1;
     const drag = applyCardioIntensityToExercise(
       {
-      id: uid("draft-ex"),
-      exerciseId: base.id,
-      exerciseName: `Drag ${nextIndex}`,
-      sets: "4",
-      reps: "",
-      weight: "",
-      durationMinutes: "4",
-        speed: "",
-        incline: "",
-      restSeconds: "180",
-      notes: "",
+        ...buildCardioTemplateRow(base, "drag", cardioEquipmentId, {
+          dragIndex: nextIndex,
+          intensity: cardioIntervalIntensity,
+        }),
+        id: uid("draft-ex"),
       },
       cardioIntervalIntensity,
     );
@@ -2406,26 +2392,13 @@ function pickFirstName(value: unknown): string {
 
   function appendCardioCooldownRow() {
     if (hasCardioNedjoggRow(programExercisesDraft)) return;
-    const base = pickCardioIntervalExerciseForTemplate(exercises);
+    const base = pickCardioExerciseForEquipment(exercises, cardioEquipmentId);
     if (!base) {
-      setTemplateAssignStatus("Fant ingen kondisjonsøvelse i biblioteket.");
+      setTemplateAssignStatus("Fant ingen kondisjonsøvelse for valgt utstyr.");
       return;
     }
     const cooldown = applyCardioIntensityToExercise(
-      {
-      id: uid("draft-ex"),
-      exerciseId: base.id,
-      exerciseName: "Nedjogg",
-      sets: "1",
-      reps: "",
-      weight: "",
-      durationMinutes: "5",
-        speed: "",
-        incline: "",
-      restSeconds: "0",
-      notes: "",
-        targetHrPercent: "",
-      },
+      { ...buildCardioTemplateRow(base, "cooldown", cardioEquipmentId, { intensity: cardioIntervalIntensity }), id: uid("draft-ex") },
       cardioIntervalIntensity,
     );
     setProgramExercisesDraft((prev) => [...prev, cooldown]);
@@ -2613,6 +2586,10 @@ function pickFirstName(value: unknown): string {
     setProgramExercisesDraft(draft);
     if (subTab === "conditioning") {
       setCardioIntervalIntensity(inferCardioIntensityFromDraft(draft));
+      const first = draft[0];
+      const linked = first ? exercisesById.get(first.exerciseId) : undefined;
+      const inferredEquipment = linked ? inferCardioEquipmentIdFromExercise(linked) : null;
+      if (inferredEquipment) setCardioEquipmentId(inferredEquipment);
     }
     setTemplateAssignStatus(`Redigerer mal: ${program.title}`);
   }
@@ -2623,6 +2600,7 @@ function pickFirstName(value: unknown): string {
     setProgramFormImageUrl("");
     setProgramExercisesDraft([]);
     setCardioIntervalIntensity("medium");
+    setCardioEquipmentId(defaultCardioEquipmentId());
     setTemplateAssignStatus(null);
   }
 
@@ -6368,7 +6346,6 @@ function pickFirstName(value: unknown): string {
                             {(() => {
                               const linkedExercise = exercisesById.get(item.exerciseId);
                               const isCardio = isCardioDraftRow(item, linkedExercise);
-                              const isTreadmill = (linkedExercise?.equipment ?? "").trim().toLowerCase().includes("tredem");
                               const prescriptionFields = resolveExercisePrescriptionFields(linkedExercise);
                               return (
                                 <ProgramExercisePrescriptionFields
@@ -6379,38 +6356,21 @@ function pickFirstName(value: unknown): string {
                                   setsLabel={isCardio ? cardioSetLabel() : "Antall sett"}
                                   setsPlaceholder={isCardio ? cardioSetPlaceholder() : "Sett"}
                                   trailing={
-                                    <>
-                              {isCardio && isTreadmill ? (
-                                <>
-                                  <div className="space-y-1">
-                                    <div className="text-[11px] font-medium text-slate-500">Fart (km/t)</div>
-                                    <TextInput value={item.speed ?? ""} onChange={(e) => updateDraftExercise(item.id, "speed", e.target.value)} placeholder="Fart" />
-                                  </div>
-                                  <div className="space-y-1">
-                                    <div className="text-[11px] font-medium text-slate-500">Incline (%)</div>
-                                    <TextInput value={item.incline ?? ""} onChange={(e) => updateDraftExercise(item.id, "incline", e.target.value)} placeholder="Incline" />
-                                  </div>
-                                </>
-                              ) : null}
-                              {isCardio ? (
-                                <>
-                                  <CardioIntensitySelect
-                                    className="sm:col-span-2 xl:col-span-3"
-                                    value={inferCardioIntensityFromExercise(item) ?? cardioIntervalIntensity}
-                                    onChange={(level) => applyCardioIntensityLevelToDraft(level, { exerciseId: item.id })}
-                                    hint="Klassifisering — fart, stigning og puls bestemmer du for kunden."
-                                  />
-                                  <div className="space-y-1">
-                                    <div className="text-[11px] font-medium text-slate-500">Puls (% av makspuls)</div>
-                                    <TextInput
-                                      value={item.targetHrPercent ?? ""}
-                                      onChange={(e) => updateDraftExercise(item.id, "targetHrPercent", e.target.value)}
-                                      placeholder="f.eks. 85–90"
-                                    />
-                                  </div>
-                                </>
-                              ) : null}
-                                    </>
+                                    isCardio ? (
+                                      <CardioExerciseExtraFields
+                                        item={item}
+                                        linkedExercise={linkedExercise}
+                                        fallbackEquipmentId={cardioEquipmentId}
+                                        cardioIntervalIntensity={cardioIntervalIntensity}
+                                        intensityHint="Klassifisering — verdier under tilpasses valgt utstyr."
+                                        onUpdate={(field, value) => updateDraftExercise(item.id, field, value)}
+                                        onReplaceItem={(next) =>
+                                          setProgramExercisesDraft((prev) =>
+                                            prev.map((row) => (row.id === item.id ? next : row)),
+                                          )
+                                        }
+                                      />
+                                    ) : null
                                   }
                                 />
                               );
@@ -6861,13 +6821,15 @@ function pickFirstName(value: unknown): string {
           onStartEditTemplate={startEditTemplateProgram}
           onDeleteTemplate={deleteTemplateProgram}
           cardioIntervalIntensity={cardioIntervalIntensity}
+          cardioEquipmentId={cardioEquipmentId}
           programsSubTabConditioningExtras={
             programsSubTab === "conditioning" ? (
                 <div className="rounded-xl border bg-white p-3 space-y-3" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
                   <div className="text-sm font-semibold text-slate-700">Steg for intervalløkt</div>
                   <p className="text-xs text-slate-500 leading-relaxed">
-                  Start med oppvarming, legg inn drag med arbeidstid/pause, og avslutt med nedjogg.
+                  Velg utstyr først, start med oppvarming, legg inn drag med arbeidstid/pause, og avslutt med nedjogg.
                   </p>
+                <CardioEquipmentSelect value={cardioEquipmentId} onChange={(equipmentId) => applyCardioEquipmentToDraft(equipmentId)} />
                 <CardioIntensitySelect
                   value={cardioIntervalIntensity}
                   onChange={(level) => applyCardioIntensityLevelToDraft(level)}
