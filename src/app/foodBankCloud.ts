@@ -72,7 +72,10 @@ export function foodBankShouldUploadLocal(items: FoodItem[], favoriteIds: string
 
 function foodBankItemsSignature(items: FoodItem[]): string {
   return items
-    .map((item) => item.id)
+    .map((item) => {
+      const n = item.nutritionPer100g;
+      return `${item.id}\u0002${n.water ?? ""}\u0002${n.kcal ?? ""}`;
+    })
     .sort()
     .join("\u0001");
 }

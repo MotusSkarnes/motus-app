@@ -3,6 +3,7 @@ import {
   buildNutritionLookupByFoodName,
   normalizeFoodLookupKey,
   rehydrateMemberMealPlanState,
+  mergeNutritionWithBank,
   resolveNutritionFromFoodItems,
   resolveNutritionFromLookup,
 } from "./memberNutritionRehydrate";
@@ -141,5 +142,25 @@ describe("memberNutritionRehydrate", () => {
     };
     const resolved = resolveNutritionFromFoodItems("Olden uten kullsyre", stored, [bank]);
     expect(resolved.water).toBe(100);
+  });
+
+  it("fills water from bank when log snapshot already has macros", () => {
+    const bank = food("Olden, mineralvann uten kullsyre", 100);
+    const stored = {
+      kcal: 0,
+      protein: 0,
+      carbs: 0,
+      fat: 0,
+      fiber: 0,
+      sugar: 0,
+      saturatedFat: 0,
+      sodium: 0,
+      water: 0,
+    };
+    const withMacros = { ...stored, kcal: 1, protein: 0, carbs: 0, fat: 0 };
+    const resolved = resolveNutritionFromFoodItems("Olden uten kullsyre", withMacros, [bank]);
+    expect(resolved.kcal).toBe(1);
+    expect(resolved.water).toBe(100);
+    expect(mergeNutritionWithBank(withMacros, bank.nutritionPer100g).water).toBe(100);
   });
 });

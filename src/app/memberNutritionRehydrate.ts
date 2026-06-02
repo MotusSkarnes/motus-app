@@ -82,6 +82,18 @@ export function cloneNutritionSnapshot(nutrition: FoodNutrition): FoodNutrition 
   };
 }
 
+/** Beholder logget makro, men fyller inn vann/mikro fra matvarebank når loggen mangler det. */
+export function mergeNutritionWithBank(stored: FoodNutrition, bank: FoodNutrition): FoodNutrition {
+  const merged = cloneNutritionSnapshot(stored);
+  const bankClone = cloneNutritionSnapshot(bank);
+  if ((bankClone.water ?? 0) > (merged.water ?? 0)) merged.water = bankClone.water;
+  const storedMicroKeys = Object.keys(merged.micronutrients ?? {}).length;
+  const bankMicroKeys = Object.keys(bankClone.micronutrients ?? {}).length;
+  if (bankMicroKeys > storedMicroKeys) merged.micronutrients = bankClone.micronutrients;
+  if (!merged.fattyAcids && bankClone.fattyAcids) merged.fattyAcids = bankClone.fattyAcids;
+  return merged;
+}
+
 export function nutritionSnapshotsEqual(left: FoodNutrition, right: FoodNutrition): boolean {
   if (Object.is(left, right)) return true;
   const keys = new Set([...Object.keys(left), ...Object.keys(right)]) as Set<keyof FoodNutrition>;
@@ -123,18 +135,18 @@ export function resolveNutritionFromFoodItems(
   if (!items.length) return stored;
   if (!normalizeFoodLookupKey(foodName)) return stored;
 
-  let best: FoodNutrition | null = null;
-  let bestScore = nutritionSnapshotScore(stored);
+  let bestBank: FoodNutrition | null = null;
+  let bestBankScore = -1;
   for (const item of items) {
     if (!foodNameKeysMatch(foodName, item.name)) continue;
     const score = nutritionSnapshotScore(item.nutritionPer100g);
-    if (score > bestScore) {
-      bestScore = score;
-      best = item.nutritionPer100g;
+    if (score > bestBankScore) {
+      bestBankScore = score;
+      bestBank = item.nutritionPer100g;
     }
   }
-  if (!best) return stored;
-  return cloneNutritionSnapshot(best);
+  if (!bestBank) return stored;
+  return mergeNutritionWithBank(stored, bestBank);
 }
 
 export function rehydrateMemberMealPlanState(
