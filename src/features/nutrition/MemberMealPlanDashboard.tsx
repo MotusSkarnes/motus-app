@@ -434,6 +434,16 @@ export function MemberMealPlanDashboard({ plan, memberId, onOpenAvoidances, onRe
   const displayMacrosToday = combinedMacrosToday;
   const displayMacrosProgress = isSelectedToday ? combinedMacrosToday : combinedMacrosSelected;
   const waterLiters = tracking.waterLiters[todayKey] ?? 0;
+  const waterFromFoodTodayLiters = useMemo(() => {
+    const gramsFromFood = quickLogsToday.reduce((sum, entry) => {
+      const waterPer100g = entry.nutritionPer100g.water ?? 0;
+      if (!Number.isFinite(waterPer100g) || waterPer100g <= 0) return sum;
+      const scale = entry.grams > 0 ? entry.grams / 100 : 0;
+      return sum + waterPer100g * scale;
+    }, 0);
+    return gramsFromFood / 1000;
+  }, [quickLogsToday]);
+  const totalWaterTodayLiters = waterLiters + waterFromFoodTodayLiters;
   const kcalRemaining = Math.max(0, Math.round(targetKcal - displayMacrosToday.kcal));
   const streakDays = computeNutritionStreak(tracking.loggedMeals, tracking.loggedFoodIds);
   const todayMealsWithFood = useMemo(
@@ -769,9 +779,9 @@ export function MemberMealPlanDashboard({ plan, memberId, onOpenAvoidances, onRe
             />
           </div>
         </div>
-        <div className="motus-matplan-water-chip" aria-label={`Vann ${waterLiters} av ${WATER_TARGET_L} liter`}>
+        <div className="motus-matplan-water-chip" aria-label={`Vann totalt ${totalWaterTodayLiters.toFixed(1)} liter i dag`}>
           <Droplets className="h-3.5 w-3.5" aria-hidden />
-          Vann {waterLiters.toFixed(1)} / {WATER_TARGET_L} L
+          Vann totalt {totalWaterTodayLiters.toFixed(1)} L
         </div>
       </section>
 
@@ -1126,7 +1136,10 @@ export function MemberMealPlanDashboard({ plan, memberId, onOpenAvoidances, onRe
           <div>
             <h3 className="motus-matplan-water-controls__title">Vann i dag</h3>
             <p className="motus-matplan-water-controls__hint">
-              {waterLiters.toFixed(1)} / {WATER_TARGET_L} L
+              Drikke: {waterLiters.toFixed(1)} L · Fra mat: {waterFromFoodTodayLiters.toFixed(1)} L
+            </p>
+            <p className="motus-matplan-water-controls__hint">
+              Totalt: {totalWaterTodayLiters.toFixed(1)} / {WATER_TARGET_L} L
             </p>
           </div>
           <div className="motus-matplan-water-controls__actions">

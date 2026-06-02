@@ -9,8 +9,8 @@ import { uid } from "./storage";
 
 export const MATVARETABELLEN_FOODS_URL = "https://www.matvaretabellen.no/api/nb/foods.json";
 
-export const FOOD_IMPORT_CSV_TEMPLATE = `navn;kategori;kilde;opprinnelse;porsjon;porsjon_gram;kcal;protein;karbohydrater;fett;kostfiber;sukker;mettet_fett;natrium_mg;${micronutrientCsvHeaderColumns()};emoji
-Kyllingbryst;proteinkilder;egen;Kjøtt & fjærkre;100 g;100;165;31;0;3.6;0;0;1;74;;;;;;;;;;;;;;;;;🍗`;
+export const FOOD_IMPORT_CSV_TEMPLATE = `navn;kategori;kilde;opprinnelse;porsjon;porsjon_gram;kcal;protein;karbohydrater;fett;kostfiber;sukker;mettet_fett;natrium_mg;vann_g;${micronutrientCsvHeaderColumns()};emoji
+Kyllingbryst;proteinkilder;egen;Kjøtt & fjærkre;100 g;100;165;31;0;3.6;0;0;1;74;65;;;;;;;;;;;;;;;;;🍗`;
 
 export type FoodImportMergeMode = "skip" | "update";
 
@@ -51,6 +51,7 @@ const NUTRIENT_IDS = {
   sugar: "Sukker",
   saturatedFat: "Mettet",
   sodium: "Na",
+  water: "Vann",
 } as const;
 
 const FOOD_GROUP_CATEGORY: Record<string, FoodCategoryId> = {
@@ -170,6 +171,7 @@ export function mapMatvaretabellenFood(food: MatvaretabellenFood, trainerName: s
         sugar: constituentAmount(food, NUTRIENT_IDS.sugar),
         saturatedFat,
         sodium: constituentAmount(food, NUTRIENT_IDS.sodium),
+        water: constituentAmount(food, NUTRIENT_IDS.water),
         fattyAcids: fattyAcidsFromMatvaretabellen(food.constituents, fat, saturatedFat),
         micronutrients: micronutrientsFromMatvaretabellen(food.constituents),
       };
@@ -255,6 +257,10 @@ const CSV_HEADER_ALIASES: Record<string, string> = {
   natrium_na_mg: "natrium_mg",
   natrium_mg: "natrium_mg",
   salt_nacl_g: "salt_g",
+  vann_g: "vann_g",
+  vann: "vann_g",
+  water_g: "vann_g",
+  water: "vann_g",
   vitamin_a_rae_rae: "vitamin_a_ug",
   vitamin_d_ug: "vitamin_d_ug",
   vitamin_e_mg_ate: "vitamin_e_mg",
@@ -321,6 +327,7 @@ function rowToFoodItem(row: Record<string, string>, trainerName: string, lineNo:
       sodium:
         parseNumber(row.natrium_mg ?? row.sodium) ||
         Math.round(parseNumber(row.salt_g) * 393),
+      water: parseNumber(row.vann_g ?? row.water_g ?? row.vann ?? row.water),
       micronutrients: micronutrientsFromCsvRow(row),
     },
   };

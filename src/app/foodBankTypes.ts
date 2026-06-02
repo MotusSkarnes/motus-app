@@ -20,6 +20,8 @@ export type FoodNutrition = {
   sugar: number;
   saturatedFat: number;
   sodium: number;
+  /** Vanninnhold per 100 g (gram). */
+  water?: number;
   /** Enumettet / flerumettet / omega per 100 g (Matvaretabellen). */
   fattyAcids?: FoodFattyAcids;
   /** Vitaminer og mineraler per 100 g (fra Matvaretabellen, CSV eller manuell registrering). */
