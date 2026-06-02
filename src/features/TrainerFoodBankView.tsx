@@ -24,7 +24,7 @@ import {
   refreshTrainerFoodBankAfterApproval,
 } from "../app/foodBankCloud";
 import {
-  fetchMemberMealPlanStateFromSupabase,
+  fetchMemberMealPlanStateRowsFromSupabase,
   saveMemberMealPlanStateToSupabase,
 } from "../app/memberMealPlanStateCloud";
 import { resolveMealPlanLookupIds } from "../app/mealPlanCloud";
@@ -54,6 +54,7 @@ import {
 import type { MemberMealPlanState } from "../app/memberMealPlanState";
 import {
   buildNutritionLookupByFoodName,
+  mergeMemberMealPlanStatesForNutritionRehydrate,
   rehydrateMemberMealPlanState,
 } from "../app/memberNutritionRehydrate";
 import { setMealPlanPendingFood } from "../app/mealPlanPendingFood";
@@ -540,7 +541,8 @@ export function TrainerFoodBankView({
     try {
       for (const member of nutritionMembers) {
         const lookupIds = await resolveMealPlanLookupIds(member.id, undefined, { forTrainerView: true });
-        const state = await fetchMemberMealPlanStateFromSupabase(lookupIds);
+        const stateRows = await fetchMemberMealPlanStateRowsFromSupabase(lookupIds);
+        const state = mergeMemberMealPlanStatesForNutritionRehydrate(stateRows.map((row) => row.state));
         if (!state) continue;
         const { next, updates } = rehydrateStateNutritionData(state);
         if (updates <= 0) continue;
