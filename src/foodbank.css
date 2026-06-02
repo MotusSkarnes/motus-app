@@ -3286,22 +3286,26 @@
 }
 
 .motus-matplan-orphan-logs {
-  margin-top: 0.75rem;
-  padding: 0.65rem;
-  border-radius: 0.75rem;
-  border: 1px solid #e2e8f0;
-  background: #f8fafc;
+  margin-top: 0.95rem;
+  padding: 0.85rem;
+  border-radius: 0.95rem;
+  border: 1px solid #bae6fd;
+  background: linear-gradient(180deg, #f8fbff 0%, #f0f9ff 100%);
 }
 
 .motus-matplan-orphan-logs__title {
-  margin: 0 0 0.35rem;
-  font-size: 0.75rem;
-  font-weight: 700;
-  color: #475569;
+  margin: 0 0 0.45rem;
+  font-size: 0.84rem;
+  font-weight: 800;
+  color: #0f172a;
 }
 
 .motus-matplan-orphan-logs__group {
-  margin-top: 0.5rem;
+  margin-top: 0.55rem;
+  padding: 0.55rem;
+  border-radius: 0.75rem;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
 }
 
 .motus-matplan-orphan-logs__group-title {

@@ -11,6 +11,7 @@ import {
   Plus,
   Share2,
   ShoppingCart,
+  SquarePen,
   UtensilsCrossed,
   Wheat,
   X,
@@ -276,6 +277,9 @@ export function MemberMealPlanDashboard({ plan, memberId, onOpenAvoidances, onRe
   const [mealMenuId, setMealMenuId] = useState<string | null>(null);
   const [activeRecipeId, setActiveRecipeId] = useState<string | null>(null);
   const [draftByMealId, setDraftByMealId] = useState<Record<string, MealDraftItem[]>>({});
+  const [editingOutsideLogId, setEditingOutsideLogId] = useState<string | null>(null);
+  const [editingOutsideLogName, setEditingOutsideLogName] = useState("");
+  const [editingOutsideLogGrams, setEditingOutsideLogGrams] = useState("");
   const mealSectionRef = useRef<HTMLDivElement | null>(null);
 
   const totalFoodInPlan = useMemo(() => countMealPlanFoodItems(plan), [plan]);
@@ -608,6 +612,45 @@ export function MemberMealPlanDashboard({ plan, memberId, onOpenAvoidances, onRe
     },
     [memberId, selectedDateKey],
   );
+
+  const handleStartOutsideLogEdit = useCallback((entry: MemberQuickFoodLogEntry) => {
+    setEditingOutsideLogId(entry.id);
+    setEditingOutsideLogName(entry.name);
+    setEditingOutsideLogGrams(String(formatMacro(entry.grams, 0)));
+  }, []);
+
+  const handleCancelOutsideLogEdit = useCallback(() => {
+    setEditingOutsideLogId(null);
+    setEditingOutsideLogName("");
+    setEditingOutsideLogGrams("");
+  }, []);
+
+  const handleSaveOutsideLogEdit = useCallback(() => {
+    if (!editingOutsideLogId) return;
+    const nextName = editingOutsideLogName.trim();
+    const nextGrams = Number(editingOutsideLogGrams.replace(",", "."));
+    if (!nextName || !Number.isFinite(nextGrams) || nextGrams <= 0) return;
+    setTracking((prev) => {
+      const dayLogs = prev.quickFoodLogs[selectedDateKey] ?? [];
+      const updated = dayLogs.map((entry) =>
+        entry.id === editingOutsideLogId
+          ? {
+              ...entry,
+              name: nextName,
+              grams: Math.round(nextGrams),
+            }
+          : entry,
+      );
+      const next = {
+        ...prev,
+        quickFoodLogs: { ...prev.quickFoodLogs, [selectedDateKey]: updated },
+        updatedAt: new Date().toISOString(),
+      };
+      persistMemberMealPlanStateLocalAndScheduleCloud(memberId, next);
+      return next;
+    });
+    handleCancelOutsideLogEdit();
+  }, [editingOutsideLogGrams, editingOutsideLogId, editingOutsideLogName, handleCancelOutsideLogEdit, memberId, selectedDateKey]);
 
   const savedMeals = tracking.savedMeals ?? [];
 
@@ -1140,19 +1183,72 @@ export function MemberMealPlanDashboard({ plan, memberId, onOpenAvoidances, onRe
         </div>
         {outsidePlanLogs.length > 0 ? (
           <div className="motus-matplan-orphan-logs">
-            <h3 className="motus-matplan-orphan-logs__title">Logget utenfor matplanen</h3>
+            <h3 className="motus-matplan-orphan-logs__title">Logget utenfor planen i dag</h3>
             {[...outsidePlanLogsBySlot.entries()].map(([slotId, entries]) => (
               <div key={slotId} className="motus-matplan-orphan-logs__group">
                 <h4 className="motus-matplan-orphan-logs__group-title">{memberMealSlotLabel(slotId)}</h4>
                 <ul className="motus-matplan-meal-foods motus-matplan-meal-foods--self">
                   {entries.map((entry) => (
                     <li key={entry.id} className="motus-matplan-meal-food motus-matplan-meal-food--self">
-                      <div className="motus-matplan-meal-food-main">
-                        <span className="motus-matplan-meal-food-name">{entry.name}</span>
-                        <span className="motus-matplan-meal-food-grams">{formatMacro(entry.grams, 0)} g</span>
-                      </div>
-                      <div className="motus-matplan-meal-food-meta">{selfLogMacroLine(entry)}</div>
+                      {editingOutsideLogId === entry.id ? (
+                        <div className="w-full space-y-2">
+                          <div className="grid gap-2 sm:grid-cols-2">
+                            <label className="text-xs font-semibold text-slate-600">
+                              Matvare
+                              <input
+                                value={editingOutsideLogName}
+                                onChange={(event) => setEditingOutsideLogName(event.target.value)}
+                                className="mt-1 w-full rounded-lg border border-slate-300 px-2 py-1.5 text-sm"
+                              />
+                            </label>
+                            <label className="text-xs font-semibold text-slate-600">
+                              Gram
+                              <input
+                                value={editingOutsideLogGrams}
+                                onChange={(event) => setEditingOutsideLogGrams(event.target.value)}
+                                inputMode="decimal"
+                                className="mt-1 w-full rounded-lg border border-slate-300 px-2 py-1.5 text-sm"
+                              />
+                            </label>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <button
+                              type="button"
+                              className="motus-matplan-food-log motus-pressable"
+                              onClick={handleSaveOutsideLogEdit}
+                            >
+                              Lagre
+                            </button>
+                            <button
+                              type="button"
+                              className="motus-matplan-food-skip motus-pressable"
+                              onClick={handleCancelOutsideLogEdit}
+                            >
+                              Avbryt
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <>
+                          <div className="motus-matplan-meal-food-main">
+                            <span className="motus-matplan-meal-food-name">{entry.name}</span>
+                            <span className="motus-matplan-meal-food-grams">{formatMacro(entry.grams, 0)} g</span>
+                          </div>
+                          <div className="motus-matplan-meal-food-meta">{selfLogMacroLine(entry)}</div>
+                        </>
+                      )}
                       <div className="motus-matplan-meal-food-actions">
+                        {editingOutsideLogId !== entry.id ? (
+                          <button
+                            type="button"
+                            className="motus-matplan-food-log motus-pressable"
+                            onClick={() => handleStartOutsideLogEdit(entry)}
+                            aria-label={`Rediger ${entry.name}`}
+                          >
+                            <SquarePen className="h-3.5 w-3.5" aria-hidden />
+                            Rediger
+                          </button>
+                        ) : null}
                         <button
                           type="button"
                           className="motus-matplan-food-remove motus-pressable"
