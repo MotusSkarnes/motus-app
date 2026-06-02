@@ -3,7 +3,7 @@ import { Plus, Trash2, UtensilsCrossed } from "lucide-react";
 import { formatMacro } from "../../app/foodBankTypes";
 import { MEMBER_MEAL_SLOTS, memberMealSlotLabel } from "../../app/memberMealSlots";
 import { draftToQuickLogEntry, type MealDraftItem } from "../../app/mealDraft";
-import { buildNutritionLookupByFoodName } from "../../app/memberNutritionRehydrate";
+import { resolveNutritionFromFoodItems } from "../../app/memberNutritionRehydrate";
 import {
   toIsoDateKey,
   type MemberMealPlanState,
@@ -73,8 +73,6 @@ export function LogMealPanel({ memberId, mealPlanTargets, onRefreshFoodBank, has
   }, [memberId]);
 
   const macrosToday = useMemo(() => sumQuickFoodLogMacros(logsToday), [logsToday]);
-  const nutritionLookup = useMemo(() => buildNutritionLookupByFoodName(foodItems), [foodItems]);
-
   const logsBySlot = useMemo(() => {
     const grouped = new Map<string, MemberQuickFoodLogEntry[]>();
     for (const slot of MEMBER_MEAL_SLOTS) {
@@ -102,14 +100,17 @@ export function LogMealPanel({ memberId, mealPlanTargets, onRefreshFoodBank, has
 
   const handleCommitLog = useCallback(() => {
     if (!draftItems.length) return;
-    const entries = draftItems.map((item) => draftToQuickLogEntry(item, mealSlotId));
+    const entries = draftItems.map((item) => {
+      const nutritionPer100g = resolveNutritionFromFoodItems(item.name, item.nutritionPer100g, foodItems);
+      return draftToQuickLogEntry({ ...item, nutritionPer100g }, mealSlotId);
+    });
     const next = addQuickFoodLogs(memberId, state, dateKey, entries);
     setState(next);
     setDraftForSlot(mealSlotId, []);
     const slotLabel = memberMealSlotLabel(mealSlotId);
     setStatus(`${draftItems.length} ${draftItems.length === 1 ? "vare" : "varer"} logget til ${slotLabel.toLowerCase()}.`);
     setOpen(hasLogs || draftItems.length > 1);
-  }, [dateKey, draftItems, hasLogs, mealSlotId, memberId, setDraftForSlot, state]);
+  }, [dateKey, draftItems, foodItems, hasLogs, mealSlotId, memberId, setDraftForSlot, state]);
 
   const handleSaveTemplate = useCallback(
     (meal: MemberSavedMeal) => {
@@ -297,7 +298,7 @@ export function LogMealPanel({ memberId, mealPlanTargets, onRefreshFoodBank, has
             onSaveTemplate={handleSaveTemplate}
             onDeleteSaved={handleDeleteSaved}
             onCommitLog={handleCommitLog}
-            nutritionLookup={nutritionLookup}
+            foodItems={foodItems}
           />
         </div>
       ) : null}

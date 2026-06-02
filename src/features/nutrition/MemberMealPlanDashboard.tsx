@@ -77,7 +77,7 @@ import { MotusFlameIcon } from "../MotusFlameIcon";
 import { MacroProgressBar } from "./MacroProgressBar";
 import { MacroProgressRing } from "./MacroProgressRing";
 import { draftToQuickLogEntry, type MealDraftItem } from "../../app/mealDraft";
-import { buildNutritionLookupByFoodName, resolveNutritionFromLookup } from "../../app/memberNutritionRehydrate";
+import { resolveNutritionFromFoodItems } from "../../app/memberNutritionRehydrate";
 import { MealDraftComposer } from "./MealDraftComposer";
 import { LogMealPanel } from "./LogMealPanel";
 import "../../foodbank.css";
@@ -234,7 +234,6 @@ export function MemberMealPlanDashboard({ plan, memberId, onOpenAvoidances, onRe
   const foodItems = useFoodBankItems();
   const { items: inspirationRecipes } = useInspirationRecipeItems();
   const foodById = useMemo(() => new Map(foodItems.map((f) => [f.id, f])), [foodItems]);
-  const nutritionLookup = useMemo(() => buildNutritionLookupByFoodName(foodItems), [foodItems]);
   const recipesById = useMemo(
     () => new Map(inspirationRecipes.map((recipe) => [recipe.id, recipe])),
     [inspirationRecipes],
@@ -439,14 +438,14 @@ export function MemberMealPlanDashboard({ plan, memberId, onOpenAvoidances, onRe
   const waterLiters = tracking.waterLiters[todayKey] ?? 0;
   const waterFromQuickLogsTodayLiters = useMemo(() => {
     const gramsFromQuickLogs = quickLogsToday.reduce((sum, entry) => {
-      const resolvedNutrition = resolveNutritionFromLookup(entry.name, entry.nutritionPer100g, nutritionLookup);
+      const resolvedNutrition = resolveNutritionFromFoodItems(entry.name, entry.nutritionPer100g, foodItems);
       const waterPer100g = resolvedNutrition.water ?? 0;
       if (!Number.isFinite(waterPer100g) || waterPer100g <= 0) return sum;
       const scale = entry.grams > 0 ? entry.grams / 100 : 0;
       return sum + waterPer100g * scale;
     }, 0);
     return gramsFromQuickLogs / 1000;
-  }, [quickLogsToday, nutritionLookup]);
+  }, [quickLogsToday, foodItems]);
   const waterFromLoggedPlanFoodTodayLiters = useMemo(
     () => sumLoggedWaterLitersFromFoodItems(todayDayResolved, loggedFoodToday, foodById),
     [todayDayResolved, loggedFoodToday, foodById],
@@ -635,12 +634,15 @@ export function MemberMealPlanDashboard({ plan, memberId, onOpenAvoidances, onRe
   const handleCommitMealDraft = useCallback(
     (mealId: string, items: MealDraftItem[]) => {
       if (!items.length) return;
-      const entries = items.map((item) => draftToQuickLogEntry(item, mealId));
+      const entries = items.map((item) => {
+        const nutritionPer100g = resolveNutritionFromFoodItems(item.name, item.nutritionPer100g, foodItems);
+        return draftToQuickLogEntry({ ...item, nutritionPer100g }, mealId);
+      });
       setTracking((prev) => addQuickFoodLogs(memberId, prev, selectedDateKey, entries));
       setDraftByMealId((prev) => ({ ...prev, [mealId]: [] }));
       setExpandedMealId(mealId);
     },
-    [memberId, selectedDateKey],
+    [foodItems, memberId, selectedDateKey],
   );
 
   const handleSaveSavedMeal = useCallback(
@@ -1126,7 +1128,7 @@ export function MemberMealPlanDashboard({ plan, memberId, onOpenAvoidances, onRe
                         onSaveTemplate={handleSaveSavedMeal}
                         onDeleteSaved={handleDeleteSavedMeal}
                         onCommitLog={() => handleCommitMealDraft(meal.id, draftByMealId[meal.id] ?? [])}
-                        nutritionLookup={nutritionLookup}
+                        foodItems={foodItems}
                       />
                   </div>
                 ) : null}

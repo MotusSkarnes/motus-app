@@ -3,6 +3,7 @@ import {
   buildNutritionLookupByFoodName,
   normalizeFoodLookupKey,
   rehydrateMemberMealPlanState,
+  resolveNutritionFromFoodItems,
   resolveNutritionFromLookup,
 } from "./memberNutritionRehydrate";
 import type { FoodItem } from "./foodBankTypes";
@@ -91,7 +92,7 @@ describe("memberNutritionRehydrate", () => {
         },
       ],
     };
-    const { next, updates } = rehydrateMemberMealPlanState(state, lookup);
+    const { next, updates } = rehydrateMemberMealPlanState(state, [food("Agurk", 95)]);
     expect(updates).toBe(2);
     expect(next.quickFoodLogs["2026-06-02"]![0]!.nutritionPer100g.water).toBe(95);
     expect(next.savedMeals[0]!.items[0]!.nutritionPer100g.water).toBe(95);
@@ -123,5 +124,22 @@ describe("memberNutritionRehydrate", () => {
     const lookup = buildNutritionLookupByFoodName([sparse, rich]);
     const resolved = resolveNutritionFromLookup("Olden Mineralvann", sparse.nutritionPer100g, lookup);
     expect(resolved.water).toBe(99);
+  });
+
+  it("matches fuzzy log name to food bank entry for water", () => {
+    const bank = food("Olden, mineralvann uten kullsyre", 100);
+    const stored = {
+      kcal: 0,
+      protein: 0,
+      carbs: 0,
+      fat: 0,
+      fiber: 0,
+      sugar: 0,
+      saturatedFat: 0,
+      sodium: 0,
+      water: 0,
+    };
+    const resolved = resolveNutritionFromFoodItems("Olden uten kullsyre", stored, [bank]);
+    expect(resolved.water).toBe(100);
   });
 });

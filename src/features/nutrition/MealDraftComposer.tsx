@@ -11,7 +11,8 @@ import {
   type MealDraftItem,
 } from "../../app/mealDraft";
 import type { FoodNutrition } from "../../app/foodBankTypes";
-import { resolveNutritionFromLookup, type NutritionLookup } from "../../app/memberNutritionRehydrate";
+import { resolveNutritionFromFoodItems } from "../../app/memberNutritionRehydrate";
+import type { FoodItem } from "../../app/foodBankTypes";
 import { savedMealsForSlot, type MemberSavedMeal } from "../../app/memberSavedMeals";
 import { sumQuickFoodLogMacros } from "../../app/quickFoodLogMacros";
 import { GradientButton, OutlineButton, TextInput } from "../../app/ui";
@@ -26,7 +27,7 @@ type MealDraftComposerProps = {
   onSaveTemplate: (meal: MemberSavedMeal) => void;
   onDeleteSaved: (savedMealId: string) => void;
   onCommitLog: () => void;
-  nutritionLookup?: NutritionLookup;
+  foodItems?: FoodItem[];
   compact?: boolean;
 };
 
@@ -44,7 +45,7 @@ export function MealDraftComposer({
   onSaveTemplate,
   onDeleteSaved,
   onCommitLog,
-  nutritionLookup,
+  foodItems = [],
   compact = false,
 }: MealDraftComposerProps) {
   const [saveOpen, setSaveOpen] = useState(false);
@@ -64,7 +65,7 @@ export function MealDraftComposer({
   function loadSavedToDraft(meal: MemberSavedMeal) {
     const refreshed = mealDraftItemsFromSavedMeal(meal).map((item) => ({
       ...item,
-      nutritionPer100g: resolveNutritionFromLookup(item.name, item.nutritionPer100g, nutritionLookup ?? new Map<string, FoodNutrition>()),
+      nutritionPer100g: resolveNutritionFromFoodItems(item.name, item.nutritionPer100g, foodItems),
     }));
     onDraftChange(refreshed);
   }

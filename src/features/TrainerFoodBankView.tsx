@@ -524,8 +524,8 @@ export function TrainerFoodBankView({
 
   const rehydrateStateNutritionData = useCallback(
     (state: MemberMealPlanState): { next: MemberMealPlanState; updates: number } =>
-      rehydrateMemberMealPlanState(state, nutritionByFoodName),
-    [nutritionByFoodName],
+      rehydrateMemberMealPlanState(state, items),
+    [items],
   );
 
   const updateMemberNutritionData = useCallback(async () => {
