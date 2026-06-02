@@ -1,9 +1,12 @@
 import { describe, expect, it } from "vitest";
 import {
+  applyMatvaretabellenNutritionBackfill,
   FOOD_IMPORT_CSV_TEMPLATE,
   foodMatchKey,
+  mapMatvaretabellenFood,
   mergeFoodImports,
   parseMotusCsv,
+  type MatvaretabellenFood,
 } from "./foodBankImport";
 import type { FoodItem } from "./foodBankTypes";
 
@@ -68,6 +71,53 @@ describe("foodBankImport", () => {
 
   it("builds stable match keys", () => {
     expect(foodMatchKey({ name: "  Egg ", source: "egen" })).toBe("egen::egg");
+  });
+
+  it("backfills seed broccoli from Matvaretabellen variant name", () => {
+    const seedBrokkoli: FoodItem = {
+      id: "food-seed-brokkoli",
+      name: "Brokkoli",
+      portionLabel: "100 g",
+      portionGrams: 100,
+      category: "gronnsaker",
+      origin: "Grønnsaker",
+      source: "matvaretabell",
+      createdBy: "Motus PT",
+      createdAt: "2024-01-12T10:00:00.000Z",
+      nutritionPer100g: {
+        kcal: 34,
+        protein: 2.8,
+        carbs: 7,
+        fat: 0.4,
+        fiber: 2.6,
+        sugar: 1.7,
+        saturatedFat: 0.1,
+        sodium: 33,
+      },
+    };
+    const matvaretabellenBrokkoli = mapMatvaretabellenFood(
+      {
+        foodName: "Brokkoli, norsk, rå",
+        foodGroupId: "6",
+        calories: { quantity: 34 },
+        constituents: [
+          { nutrientId: "Protein", quantity: 2.8, unit: "g" },
+          { nutrientId: "Karbo", quantity: 7, unit: "g" },
+          { nutrientId: "Fett", quantity: 0.4, unit: "g" },
+          { nutrientId: "Vann", quantity: 93, unit: "g" },
+        ],
+      } satisfies MatvaretabellenFood,
+      "Trener",
+    );
+    expect(matvaretabellenBrokkoli).not.toBeNull();
+    const { items, backfilled } = applyMatvaretabellenNutritionBackfill(
+      [seedBrokkoli],
+      matvaretabellenBrokkoli ? [matvaretabellenBrokkoli] : [],
+    );
+    expect(backfilled).toBe(1);
+    expect(items[0]?.nutritionPer100g.water).toBe(93);
+    expect(items[0]?.nutritionSyncedAt).toBeTruthy();
+    expect(items[0]?.createdAt).toBe("2024-01-12T10:00:00.000Z");
   });
 
   it("parses Matvaretabellen-style tab-delimited headers in any order", () => {

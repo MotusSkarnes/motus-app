@@ -799,6 +799,7 @@ export function TrainerFoodBankView({
                 <div className="is-nested"><dt>Mettet fett</dt><dd>{formatMacro(selectedItem.nutritionPer100g.saturatedFat, 1)} g</dd></div>
                 <div><dt>Kostfiber</dt><dd>{formatMacro(selectedItem.nutritionPer100g.fiber, 1)} g</dd></div>
                 <div><dt>Natrium</dt><dd>{formatMacro(selectedItem.nutritionPer100g.sodium)} mg</dd></div>
+                <div><dt>Vann</dt><dd>{formatMacro(selectedItem.nutritionPer100g.water ?? 0, 1)} g</dd></div>
               </dl>
               <p className="motus-foodbank-detail-note">Verdier per 100 g</p>
             </section>
@@ -816,6 +817,9 @@ export function TrainerFoodBankView({
                 <div><dt>Kilde</dt><dd>{foodSourceLabel(selectedItem.source)}</dd></div>
                 <div><dt>Opprettet av</dt><dd>{selectedItem.createdBy}</dd></div>
                 <div><dt>Dato lagt til</dt><dd>{formatDateLabel(selectedItem.createdAt)}</dd></div>
+                {selectedItem.nutritionSyncedAt ? (
+                  <div><dt>Næring sist synket</dt><dd>{formatDateLabel(selectedItem.nutritionSyncedAt)}</dd></div>
+                ) : null}
               </dl>
             </section>
 

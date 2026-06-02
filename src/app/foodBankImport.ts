@@ -4,7 +4,8 @@ import {
   micronutrientsFromCsvRow,
   micronutrientsFromMatvaretabellen,
 } from "./foodBankMicronutrients";
-import { foodCategoryMeta, type FoodCategoryId, type FoodItem, type FoodSource } from "./foodBankTypes";
+import { cloneNutritionSnapshot } from "./memberNutritionRehydrate";
+import { foodCategoryMeta, type FoodCategoryId, type FoodItem, type FoodNutrition, type FoodSource } from "./foodBankTypes";
 import { uid } from "./storage";
 
 export const MATVARETABELLEN_FOODS_URL = "https://www.matvaretabellen.no/api/nb/foods.json";
@@ -84,6 +85,77 @@ const VALID_SOURCES = new Set<FoodSource>(["matvaretabell", "usda", "egen"]);
 
 export function foodMatchKey(item: Pick<FoodItem, "name" | "source">): string {
   return `${item.source}::${item.name.trim().toLowerCase()}`;
+}
+
+export function normalizeFoodImportNameKey(name: string): string {
+  return name
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/\p{M}/gu, "")
+    .replace(/[^a-z0-9æøå]+/g, "")
+    .trim();
+}
+
+function nutritionRichnessScore(nutrition: FoodNutrition): number {
+  let score = 0;
+  if ((nutrition.kcal ?? 0) > 0) score += 1;
+  if ((nutrition.protein ?? 0) > 0) score += 1;
+  if ((nutrition.carbs ?? 0) > 0) score += 1;
+  if ((nutrition.fat ?? 0) > 0) score += 1;
+  if ((nutrition.water ?? 0) > 0) score += 4;
+  if (nutrition.micronutrients && Object.keys(nutrition.micronutrients).length > 0) score += 2;
+  if (nutrition.fattyAcids && Object.keys(nutrition.fattyAcids).length > 0) score += 1;
+  return score;
+}
+
+/** Matcher f.eks. «Brokkoli» mot «Brokkoli, norsk, rå» fra Matvaretabellen. */
+export function findMatvaretabellenNutritionMatch(existingName: string, imported: FoodItem[]): FoodItem | null {
+  const key = normalizeFoodImportNameKey(existingName);
+  if (!key || !imported.length) return null;
+
+  let best: FoodItem | null = null;
+  let bestScore = -1;
+  for (const candidate of imported) {
+    const candidateKey = normalizeFoodImportNameKey(candidate.name);
+    if (!candidateKey) continue;
+    const nameMatches = candidateKey === key || candidateKey.startsWith(key) || key.startsWith(candidateKey);
+    if (!nameMatches) continue;
+    const richness = nutritionRichnessScore(candidate.nutritionPer100g);
+    if (richness > bestScore) {
+      bestScore = richness;
+      best = candidate;
+    }
+  }
+  return best;
+}
+
+/** Oppdaterer eksisterende rader (inkl. seed) når navnet ligner Matvaretabellen-variant. */
+export function applyMatvaretabellenNutritionBackfill(
+  existing: FoodItem[],
+  imported: FoodItem[],
+): { items: FoodItem[]; backfilled: number } {
+  const syncedAt = new Date().toISOString();
+  let backfilled = 0;
+  const items = existing.map((item) => {
+    if (item.isCustom === true || item.isEdited === true) return item;
+    const match = findMatvaretabellenNutritionMatch(item.name, imported);
+    if (!match) return item;
+
+    const nextNutrition = cloneNutritionSnapshot(match.nutritionPer100g);
+    const currentScore = nutritionRichnessScore(item.nutritionPer100g);
+    const nextScore = nutritionRichnessScore(nextNutrition);
+    const currentWater = Number(item.nutritionPer100g.water ?? 0);
+    const nextWater = Number(nextNutrition.water ?? 0);
+    if (nextScore <= currentScore && nextWater <= currentWater) return item;
+
+    backfilled += 1;
+    return {
+      ...item,
+      nutritionPer100g: nextNutrition,
+      nutritionSyncedAt: syncedAt,
+    };
+  });
+  return { items, backfilled };
 }
 
 function parseNumber(value: string | number | undefined | null): number {
@@ -466,6 +538,7 @@ export function mergeFoodImports(
       createdBy: previous.createdBy,
       isCustom: previous.isCustom || candidate.isCustom,
       isEdited: previous.isEdited || candidate.isEdited || previous.isCustom !== true,
+      nutritionSyncedAt: new Date().toISOString(),
     };
     updated += 1;
   }

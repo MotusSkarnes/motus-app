@@ -43,6 +43,8 @@ export type FoodItem = {
   isCustom?: boolean;
   /** Egne endringer på matvare fra tabell/import (samme id, ingen kopi). */
   isEdited?: boolean;
+  /** Sist næringsdata ble synket fra Matvaretabellen/import. */
+  nutritionSyncedAt?: string;
   nutritionPer100g: FoodNutrition;
 };
 
