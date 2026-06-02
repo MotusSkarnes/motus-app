@@ -23,6 +23,7 @@ import { memberMealSlotLabel } from "../../app/memberMealSlots";
 import { sumQuickFoodLogMacros } from "../../app/quickFoodLogMacros";
 import {
   computeMealMacros,
+  sumLoggedWaterLitersFromFoodItems,
   sumLoggedMacrosFromFoodItems,
   type MacroTotals,
 } from "../../app/mealPlanMacros";
@@ -436,15 +437,20 @@ export function MemberMealPlanDashboard({ plan, memberId, onOpenAvoidances, onRe
   const displayMacrosToday = combinedMacrosToday;
   const displayMacrosProgress = isSelectedToday ? combinedMacrosToday : combinedMacrosSelected;
   const waterLiters = tracking.waterLiters[todayKey] ?? 0;
-  const waterFromFoodTodayLiters = useMemo(() => {
-    const gramsFromFood = quickLogsToday.reduce((sum, entry) => {
+  const waterFromQuickLogsTodayLiters = useMemo(() => {
+    const gramsFromQuickLogs = quickLogsToday.reduce((sum, entry) => {
       const waterPer100g = entry.nutritionPer100g.water ?? 0;
       if (!Number.isFinite(waterPer100g) || waterPer100g <= 0) return sum;
       const scale = entry.grams > 0 ? entry.grams / 100 : 0;
       return sum + waterPer100g * scale;
     }, 0);
-    return gramsFromFood / 1000;
+    return gramsFromQuickLogs / 1000;
   }, [quickLogsToday]);
+  const waterFromLoggedPlanFoodTodayLiters = useMemo(
+    () => sumLoggedWaterLitersFromFoodItems(todayDayResolved, loggedFoodToday, foodById),
+    [todayDayResolved, loggedFoodToday, foodById],
+  );
+  const waterFromFoodTodayLiters = waterFromQuickLogsTodayLiters + waterFromLoggedPlanFoodTodayLiters;
   const totalWaterTodayLiters = waterLiters + waterFromFoodTodayLiters;
   const kcalRemaining = Math.max(0, Math.round(targetKcal - displayMacrosToday.kcal));
   const streakDays = computeNutritionStreak(tracking.loggedMeals, tracking.loggedFoodIds);

@@ -64,6 +64,26 @@ export function sumLoggedMacrosFromFoodItems(
   return sumMacroTotals(rows);
 }
 
+export function sumLoggedWaterLitersFromFoodItems(
+  day: MealPlanDay,
+  loggedFoodIds: Set<string>,
+  foodById?: Map<string, FoodItem>,
+): number {
+  let gramsFromWater = 0;
+  for (const meal of day.meals) {
+    for (const item of meal.items) {
+      if (!loggedFoodIds.has(item.id)) continue;
+      const nutrition = resolveEntryNutrition(item, foodById);
+      const waterPer100g = Number(nutrition.water ?? 0);
+      if (!Number.isFinite(waterPer100g) || waterPer100g <= 0) continue;
+      const grams = Number(item.grams);
+      if (!Number.isFinite(grams) || grams <= 0) continue;
+      gramsFromWater += waterPer100g * (grams / 100);
+    }
+  }
+  return gramsFromWater / 1000;
+}
+
 export function formatMacroTotals(totals: MacroTotals): string {
   return `${formatMacro(totals.kcal)} kcal · P ${formatMacro(totals.protein)} · K ${formatMacro(totals.carbs)} · F ${formatMacro(totals.fat)}`;
 }
