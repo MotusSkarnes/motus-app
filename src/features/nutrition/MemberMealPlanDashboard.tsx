@@ -769,15 +769,10 @@ export function MemberMealPlanDashboard({ plan, memberId, onOpenAvoidances, onRe
             />
           </div>
         </div>
-        <button
-          type="button"
-          className="motus-matplan-water-chip motus-pressable"
-          onClick={() => handleWaterAdjust(WATER_STEP_L)}
-          aria-label={`Vann ${waterLiters} av ${WATER_TARGET_L} liter, trykk for å legge til`}
-        >
+        <div className="motus-matplan-water-chip" aria-label={`Vann ${waterLiters} av ${WATER_TARGET_L} liter`}>
           <Droplets className="h-3.5 w-3.5" aria-hidden />
           Vann {waterLiters.toFixed(1)} / {WATER_TARGET_L} L
-        </button>
+        </div>
       </section>
 
       <section className="motus-matplan-section" aria-label="Måltider" ref={mealSectionRef}>
@@ -1127,6 +1122,32 @@ export function MemberMealPlanDashboard({ plan, memberId, onOpenAvoidances, onRe
             hasMealPlan
           />
         </div>
+        <section className="motus-matplan-water-controls" aria-label="Vanninntak i dag">
+          <div>
+            <h3 className="motus-matplan-water-controls__title">Vann i dag</h3>
+            <p className="motus-matplan-water-controls__hint">
+              {waterLiters.toFixed(1)} / {WATER_TARGET_L} L
+            </p>
+          </div>
+          <div className="motus-matplan-water-controls__actions">
+            <button
+              type="button"
+              className="motus-matplan-water-controls__btn motus-pressable"
+              onClick={() => handleWaterAdjust(-WATER_STEP_L)}
+              aria-label="Trekk fra vann"
+            >
+              −
+            </button>
+            <button
+              type="button"
+              className="motus-matplan-water-controls__btn motus-matplan-water-controls__btn--add motus-pressable"
+              onClick={() => handleWaterAdjust(WATER_STEP_L)}
+              aria-label="Legg til vann"
+            >
+              +
+            </button>
+          </div>
+        </section>
       </section>
 
       <div className="motus-matplan-footer">

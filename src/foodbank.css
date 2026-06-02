@@ -2355,7 +2355,55 @@
   font-size: 0.6875rem;
   font-weight: 700;
   color: #0f766e;
-  cursor: pointer;
+}
+
+.motus-matplan-water-controls {
+  margin-top: 0.8rem;
+  padding: 0.7rem 0.8rem;
+  border-radius: 0.85rem;
+  border: 1px solid #cbd5e1;
+  background: #f8fafc;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+}
+
+.motus-matplan-water-controls__title {
+  margin: 0;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.motus-matplan-water-controls__hint {
+  margin: 0.15rem 0 0;
+  font-size: 0.7rem;
+  color: #64748b;
+}
+
+.motus-matplan-water-controls__actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.motus-matplan-water-controls__btn {
+  width: 1.85rem;
+  height: 1.85rem;
+  border-radius: 999px;
+  border: 1px solid #cbd5e1;
+  background: #ffffff;
+  color: #334155;
+  font-size: 1rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.motus-matplan-water-controls__btn--add {
+  border-color: #99f6e4;
+  background: #ccfbf1;
+  color: #0f766e;
 }
 
 .motus-matplan-ring__value--xl {
