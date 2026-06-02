@@ -1,5 +1,6 @@
 import { EMPTY_FATTY_ACIDS, normalizeFattyAcids } from "./foodBankFattyAcids";
 import { hasMicronutrientData, normalizeMicronutrients } from "./foodBankMicronutrients";
+import { mergeNutritionWithBank, resolveNutritionFromFoodItems } from "./memberNutritionRehydrate";
 import type { FoodItem, FoodNutrition } from "./foodBankTypes";
 import { parseInspirationRecipeFoodId } from "./mealPlanRecipeEntry";
 import type { MealPlan, MealPlanFoodEntry } from "./mealPlanTypes";
@@ -22,6 +23,8 @@ function nutritionHasValues(nutrition: FoodNutrition | undefined): boolean {
 
 export type MealPlanNutritionContext = {
   foodById?: Map<string, FoodItem>;
+  /** Hele matvarebanken (inkl. duplikater/navn) for vann/mikro via navnematch. */
+  foodItems?: FoodItem[];
   /** recipe.id → nutrition per 100 g (én porsjon), fra computeRecipeMacros */
   recipeNutritionById?: Map<string, FoodNutrition>;
 };
@@ -37,7 +40,7 @@ function pickMicronutrients(...sources: Array<FoodNutrition | undefined>): FoodN
 
 /** Makro + mikro for rapporter: fyller inn fra oppskrift/matvarebank når snapshot mangler mikronæringsstoffer. */
 export function resolveEntryNutritionForTotals(
-  entry: Pick<MealPlanFoodEntry, "foodId" | "nutritionPer100g">,
+  entry: Pick<MealPlanFoodEntry, "foodId" | "foodName" | "nutritionPer100g">,
   context?: MealPlanNutritionContext,
 ): FoodNutrition {
   const snapshot = entry.nutritionPer100g ?? EMPTY_NUTRITION;
@@ -55,24 +58,39 @@ export function resolveEntryNutritionForTotals(
   const micronutrients = pickMicronutrients(base, fromRecipe, fromBank);
   const fattyAcids = normalizeFattyAcids(base.fattyAcids ?? fromRecipe?.fattyAcids ?? fromBank?.fattyAcids);
 
-  return {
-    ...base,
-    fiber: base.fiber || fromRecipe?.fiber || fromBank?.fiber || 0,
-    sugar: base.sugar || fromRecipe?.sugar || fromBank?.sugar || 0,
-    saturatedFat: base.saturatedFat || fromRecipe?.saturatedFat || fromBank?.saturatedFat || 0,
-    sodium: base.sodium || fromRecipe?.sodium || fromBank?.sodium || 0,
-    water: base.water || fromRecipe?.water || fromBank?.water || 0,
-    micronutrients,
-    fattyAcids,
-  };
+  let result: FoodNutrition = mergeNutritionWithBank(
+    {
+      ...base,
+      fiber: base.fiber || fromRecipe?.fiber || fromBank?.fiber || 0,
+      sugar: base.sugar || fromRecipe?.sugar || fromBank?.sugar || 0,
+      saturatedFat: base.saturatedFat || fromRecipe?.saturatedFat || fromBank?.saturatedFat || 0,
+      sodium: base.sodium || fromRecipe?.sodium || fromBank?.sodium || 0,
+      water: base.water || fromRecipe?.water || fromBank?.water || 0,
+      micronutrients,
+      fattyAcids,
+    },
+    fromBank ?? EMPTY_NUTRITION,
+  );
+  if (fromRecipe) result = mergeNutritionWithBank(result, fromRecipe);
+
+  const foodItems = context?.foodItems;
+  const foodName = entry.foodName?.trim() ?? "";
+  if (foodItems?.length && foodName) {
+    result = resolveNutritionFromFoodItems(foodName, result, foodItems, entry.foodId);
+  }
+  return result;
 }
 
 /** Bruk lagret snapshot, eller slå opp matvarebanken når snapshot mangler (f.eks. eldre sky-rader). */
 export function resolveEntryNutrition(
-  entry: Pick<MealPlanFoodEntry, "foodId" | "nutritionPer100g">,
+  entry: Pick<MealPlanFoodEntry, "foodId" | "foodName" | "nutritionPer100g">,
   foodById?: Map<string, FoodItem>,
+  foodItems?: FoodItem[],
 ): FoodNutrition {
-  return resolveEntryNutritionForTotals(entry, { foodById });
+  return resolveEntryNutritionForTotals(entry, {
+    foodById,
+    foodItems: foodItems ?? (foodById ? [...foodById.values()] : undefined),
+  });
 }
 
 export function foodItemsToById(foodItems: FoodItem[]): Map<string, FoodItem> {

@@ -398,13 +398,13 @@ export function MemberMealPlanDashboard({ plan, memberId, onOpenAvoidances, onRe
     [tracking.quickFoodLogs, selectedDateKey],
   );
   const loggedMacrosToday = useMemo(
-    () => sumLoggedMacrosFromFoodItems(todayDayResolved, loggedFoodToday, foodById),
-    [todayDayResolved, loggedFoodToday, foodById],
+    () => sumLoggedMacrosFromFoodItems(todayDayResolved, loggedFoodToday, foodById, foodItems),
+    [todayDayResolved, loggedFoodToday, foodById, foodItems],
   );
   const loggedMacrosSelected = useMemo(() => {
     if (!selectedDayResolved) return loggedMacrosToday;
-    return sumLoggedMacrosFromFoodItems(selectedDayResolved, loggedFoodSelected, foodById);
-  }, [selectedDayResolved, loggedFoodSelected, foodById, loggedMacrosToday]);
+    return sumLoggedMacrosFromFoodItems(selectedDayResolved, loggedFoodSelected, foodById, foodItems);
+  }, [selectedDayResolved, loggedFoodSelected, foodById, foodItems, loggedMacrosToday]);
   const quickLogMacrosToday = useMemo(
     () => sumQuickFoodLogMacros(tracking.quickFoodLogs[todayKey]),
     [tracking.quickFoodLogs, todayKey],
@@ -447,8 +447,8 @@ export function MemberMealPlanDashboard({ plan, memberId, onOpenAvoidances, onRe
     return gramsFromQuickLogs / 1000;
   }, [quickLogsToday, foodItems]);
   const waterFromLoggedPlanFoodTodayLiters = useMemo(
-    () => sumLoggedWaterLitersFromFoodItems(todayDayResolved, loggedFoodToday, foodById),
-    [todayDayResolved, loggedFoodToday, foodById],
+    () => sumLoggedWaterLitersFromFoodItems(todayDayResolved, loggedFoodToday, foodById, foodItems),
+    [todayDayResolved, loggedFoodToday, foodById, foodItems],
   );
   const waterFromFoodTodayLiters = waterFromQuickLogsTodayLiters + waterFromLoggedPlanFoodTodayLiters;
   const totalWaterTodayLiters = waterLiters + waterFromFoodTodayLiters;

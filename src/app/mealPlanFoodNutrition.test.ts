@@ -4,7 +4,7 @@ import {
   resolveEntryNutrition,
   resolveEntryNutritionForTotals,
 } from "./mealPlanFoodNutrition";
-import { computeEntryMacros } from "./mealPlanMacros";
+import { computeEntryMacros, sumLoggedWaterLitersFromFoodItems } from "./mealPlanMacros";
 import type { FoodItem } from "./foodBankTypes";
 import type { MealPlan } from "./mealPlanTypes";
 
@@ -74,6 +74,48 @@ describe("mealPlanFoodNutrition", () => {
     };
     const hydrated = hydrateMealPlanFoodNutrition(plan, [bankFood]);
     expect(hydrated.days[0].meals[0].items[0].nutritionPer100g.protein).toBe(23);
+  });
+
+  it("henter vann fra matvarebank ved avhuket matplan selv med gammel foodId", () => {
+    const agurkBank: FoodItem = {
+      ...bankFood,
+      id: "food-agurk-rich",
+      name: "Agurk, rå",
+      nutritionPer100g: {
+        ...bankFood.nutritionPer100g,
+        kcal: 15,
+        protein: 0.7,
+        water: 95,
+      },
+    };
+    const foodItems = [agurkBank];
+    const foodById = new Map([[agurkBank.id, agurkBank]]);
+    const entry = {
+      id: "plan-entry-1",
+      foodId: "legacy-agurk-id",
+      foodName: "Agurk",
+      grams: 200,
+      nutritionPer100g: {
+        kcal: 15,
+        protein: 0.7,
+        carbs: 2,
+        fat: 0.1,
+        fiber: 0.5,
+        sugar: 1,
+        saturatedFat: 0,
+        sodium: 2,
+        water: 0,
+      },
+    };
+    const nutrition = resolveEntryNutrition(entry, foodById, foodItems);
+    expect(nutrition.water).toBe(95);
+    const liters = sumLoggedWaterLitersFromFoodItems(
+      { id: "d1", label: "Man", meals: [{ id: "m1", name: "Lunsj", items: [entry] }] },
+      new Set([entry.id]),
+      foodById,
+      foodItems,
+    );
+    expect(liters).toBeCloseTo(0.19, 2);
   });
 
   it("henter mikronæringsstoffer fra matvarebank når snapshot bare har makro", () => {

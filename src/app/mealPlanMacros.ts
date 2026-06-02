@@ -24,10 +24,11 @@ export function computeMacrosForGrams(nutritionPer100g: FoodNutrition, grams: nu
 }
 
 export function computeEntryMacros(
-  entry: Pick<MealPlanFoodEntry, "foodId" | "grams" | "nutritionPer100g">,
+  entry: Pick<MealPlanFoodEntry, "foodId" | "foodName" | "grams" | "nutritionPer100g">,
   foodById?: Map<string, FoodItem>,
+  foodItems?: FoodItem[],
 ): MacroTotals {
-  return computeMacrosForGrams(resolveEntryNutrition(entry, foodById), entry.grams);
+  return computeMacrosForGrams(resolveEntryNutrition(entry, foodById, foodItems), entry.grams);
 }
 
 export function sumMacroTotals(rows: MacroTotals[]): MacroTotals {
@@ -42,23 +43,24 @@ export function sumMacroTotals(rows: MacroTotals[]): MacroTotals {
   );
 }
 
-export function computeMealMacros(meal: MealPlanMeal, foodById?: Map<string, FoodItem>): MacroTotals {
-  return sumMacroTotals(meal.items.map((item) => computeEntryMacros(item, foodById)));
+export function computeMealMacros(meal: MealPlanMeal, foodById?: Map<string, FoodItem>, foodItems?: FoodItem[]): MacroTotals {
+  return sumMacroTotals(meal.items.map((item) => computeEntryMacros(item, foodById, foodItems)));
 }
 
-export function computeDayMacros(day: MealPlanDay, foodById?: Map<string, FoodItem>): MacroTotals {
-  return sumMacroTotals(day.meals.map((meal) => computeMealMacros(meal, foodById)));
+export function computeDayMacros(day: MealPlanDay, foodById?: Map<string, FoodItem>, foodItems?: FoodItem[]): MacroTotals {
+  return sumMacroTotals(day.meals.map((meal) => computeMealMacros(meal, foodById, foodItems)));
 }
 
 export function sumLoggedMacrosFromFoodItems(
   day: MealPlanDay,
   loggedFoodIds: Set<string>,
   foodById?: Map<string, FoodItem>,
+  foodItems?: FoodItem[],
 ): MacroTotals {
   const rows: MacroTotals[] = [];
   for (const meal of day.meals) {
     for (const item of meal.items) {
-      if (loggedFoodIds.has(item.id)) rows.push(computeEntryMacros(item, foodById));
+      if (loggedFoodIds.has(item.id)) rows.push(computeEntryMacros(item, foodById, foodItems));
     }
   }
   return sumMacroTotals(rows);
@@ -68,12 +70,13 @@ export function sumLoggedWaterLitersFromFoodItems(
   day: MealPlanDay,
   loggedFoodIds: Set<string>,
   foodById?: Map<string, FoodItem>,
+  foodItems?: FoodItem[],
 ): number {
   let gramsFromWater = 0;
   for (const meal of day.meals) {
     for (const item of meal.items) {
       if (!loggedFoodIds.has(item.id)) continue;
-      const nutrition = resolveEntryNutrition(item, foodById);
+      const nutrition = resolveEntryNutrition(item, foodById, foodItems);
       const waterPer100g = Number(nutrition.water ?? 0);
       if (!Number.isFinite(waterPer100g) || waterPer100g <= 0) continue;
       const grams = Number(item.grams);
