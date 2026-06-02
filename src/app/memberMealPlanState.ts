@@ -13,6 +13,8 @@ export type MemberQuickFoodLogEntry = {
   grams: number;
   source: "food" | "recipe" | "ai";
   loggedAt: string;
+  /** Matvarebank-id ved logging (sikrer riktig vann/næring ved oppslag). */
+  foodId?: string;
   /** Måltidsplass i matplanen (f.eks. frokost) når loggen hører til et bestemt måltid. */
   mealId?: string;
   nutritionPer100g: {
@@ -288,20 +290,40 @@ export function pctToward(current: number, target: number): number {
   return Math.max(0, Math.min(100, Math.round((current / target) * 100)));
 }
 
+function mergeQuickFoodLogsByDate(
+  remote: MemberMealPlanState["quickFoodLogs"],
+  local: MemberMealPlanState["quickFoodLogs"],
+): MemberMealPlanState["quickFoodLogs"] {
+  const dateKeys = new Set([...Object.keys(remote), ...Object.keys(local)]);
+  const merged: MemberMealPlanState["quickFoodLogs"] = {};
+  for (const dateKey of dateKeys) {
+    const byId = new Map<string, MemberQuickFoodLogEntry>();
+    for (const entry of remote[dateKey] ?? []) byId.set(entry.id, entry);
+    for (const entry of local[dateKey] ?? []) {
+      const existing = byId.get(entry.id);
+      const entryMs = Date.parse(entry.loggedAt) || 0;
+      const existingMs = existing ? Date.parse(existing.loggedAt) || 0 : 0;
+      if (!existing || entryMs >= existingMs) byId.set(entry.id, entry);
+    }
+    if (byId.size > 0) merged[dateKey] = Array.from(byId.values());
+  }
+  return merged;
+}
+
 export function mergeMemberMealPlanStates(local: MemberMealPlanState, remote: MemberMealPlanState): MemberMealPlanState {
   const localMs = stateUpdatedAtMs(local);
   const remoteMs = stateUpdatedAtMs(remote);
-  if (remoteMs > localMs) return remote;
-  if (localMs > remoteMs) return local;
   return {
-    loggedMeals: { ...remote.loggedMeals, ...local.loggedMeals },
-    loggedFoodIds: { ...remote.loggedFoodIds, ...local.loggedFoodIds },
+    loggedMeals: remoteMs >= localMs ? { ...local.loggedMeals, ...remote.loggedMeals } : { ...remote.loggedMeals, ...local.loggedMeals },
+    loggedFoodIds:
+      remoteMs >= localMs ? { ...local.loggedFoodIds, ...remote.loggedFoodIds } : { ...remote.loggedFoodIds, ...local.loggedFoodIds },
     waterLiters: { ...remote.waterLiters, ...local.waterLiters },
     checkedShopping: [...new Set([...remote.checkedShopping, ...local.checkedShopping])],
     recipePortions: { ...remote.recipePortions, ...local.recipePortions },
-    mealSwaps: { ...remote.mealSwaps, ...local.mealSwaps },
-    quickFoodLogs: { ...remote.quickFoodLogs, ...local.quickFoodLogs },
-    skippedFoodIds: { ...remote.skippedFoodIds, ...local.skippedFoodIds },
+    mealSwaps: remoteMs >= localMs ? { ...local.mealSwaps, ...remote.mealSwaps } : { ...remote.mealSwaps, ...local.mealSwaps },
+    quickFoodLogs: mergeQuickFoodLogsByDate(remote.quickFoodLogs, local.quickFoodLogs),
+    skippedFoodIds:
+      remoteMs >= localMs ? { ...local.skippedFoodIds, ...remote.skippedFoodIds } : { ...remote.skippedFoodIds, ...local.skippedFoodIds },
     savedMeals: mergeMemberSavedMeals(local.savedMeals ?? [], remote.savedMeals ?? []),
     updatedAt: new Date(Math.max(localMs, remoteMs, Date.now())).toISOString(),
   };

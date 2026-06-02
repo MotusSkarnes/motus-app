@@ -65,7 +65,7 @@ export function MealDraftComposer({
   function loadSavedToDraft(meal: MemberSavedMeal) {
     const refreshed = mealDraftItemsFromSavedMeal(meal).map((item) => ({
       ...item,
-      nutritionPer100g: resolveNutritionFromFoodItems(item.name, item.nutritionPer100g, foodItems),
+      nutritionPer100g: resolveNutritionFromFoodItems(item.name, item.nutritionPer100g, foodItems, item.foodId),
     }));
     onDraftChange(refreshed);
   }

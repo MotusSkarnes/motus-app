@@ -11,6 +11,7 @@ export type MealDraftItem = {
   name: string;
   grams: number;
   source: MemberQuickFoodLogEntry["source"];
+  foodId?: string;
   nutritionPer100g: MemberQuickFoodLogEntry["nutritionPer100g"];
 };
 
@@ -20,6 +21,7 @@ export function createMealDraftItem(food: FoodItem, grams: number): MealDraftIte
     name: food.name,
     grams,
     source: "food",
+    foodId: food.id,
     nutritionPer100g: { ...food.nutritionPer100g },
   };
 }
@@ -44,6 +46,7 @@ export function draftToQuickLogEntry(item: MealDraftItem, mealId: string): Membe
     name: item.name,
     grams: item.grams,
     source: item.source,
+    foodId: item.foodId,
     mealId: mealId.trim(),
     loggedAt: new Date().toISOString(),
     nutritionPer100g: { ...item.nutritionPer100g },

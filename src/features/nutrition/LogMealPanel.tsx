@@ -101,7 +101,7 @@ export function LogMealPanel({ memberId, mealPlanTargets, onRefreshFoodBank, has
   const handleCommitLog = useCallback(() => {
     if (!draftItems.length) return;
     const entries = draftItems.map((item) => {
-      const nutritionPer100g = resolveNutritionFromFoodItems(item.name, item.nutritionPer100g, foodItems);
+      const nutritionPer100g = resolveNutritionFromFoodItems(item.name, item.nutritionPer100g, foodItems, item.foodId);
       return draftToQuickLogEntry({ ...item, nutritionPer100g }, mealSlotId);
     });
     const next = addQuickFoodLogs(memberId, state, dateKey, entries);

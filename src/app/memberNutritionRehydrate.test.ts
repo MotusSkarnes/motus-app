@@ -144,6 +144,26 @@ describe("memberNutritionRehydrate", () => {
     expect(resolved.water).toBe(100);
   });
 
+  it("merges water from all fuzzy bank matches when one duplicate lacks water", () => {
+    const stale = food("Olden uten kullsyre", 0);
+    stale.nutritionPer100g.kcal = 5;
+    const rich = food("Olden, mineralvann uten kullsyre", 100);
+    const stored = {
+      kcal: 5,
+      protein: 0,
+      carbs: 0,
+      fat: 0,
+      fiber: 0,
+      sugar: 0,
+      saturatedFat: 0,
+      sodium: 0,
+      water: 0,
+    };
+    const resolved = resolveNutritionFromFoodItems("Olden uten kullsyre", stored, [stale, rich]);
+    expect(resolved.water).toBe(100);
+    expect(resolved.kcal).toBe(5);
+  });
+
   it("fills water from bank when log snapshot already has macros", () => {
     const bank = food("Olden, mineralvann uten kullsyre", 100);
     const stored = {

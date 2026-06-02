@@ -131,22 +131,31 @@ export function resolveNutritionFromFoodItems(
   foodName: string,
   stored: MemberQuickFoodLogEntry["nutritionPer100g"],
   items: FoodItem[],
+  foodId?: string,
 ): MemberQuickFoodLogEntry["nutritionPer100g"] {
   if (!items.length) return stored;
-  if (!normalizeFoodLookupKey(foodName)) return stored;
 
-  let bestBank: FoodNutrition | null = null;
-  let bestBankScore = -1;
-  for (const item of items) {
-    if (!foodNameKeysMatch(foodName, item.name)) continue;
-    const score = nutritionSnapshotScore(item.nutritionPer100g);
-    if (score > bestBankScore) {
-      bestBankScore = score;
-      bestBank = item.nutritionPer100g;
+  let merged = cloneNutritionSnapshot(stored);
+  let matched = false;
+
+  const id = foodId?.trim();
+  if (id) {
+    const byId = items.find((item) => item.id === id);
+    if (byId) {
+      matched = true;
+      merged = mergeNutritionWithBank(merged, byId.nutritionPer100g);
     }
   }
-  if (!bestBank) return stored;
-  return mergeNutritionWithBank(stored, bestBank);
+
+  if (normalizeFoodLookupKey(foodName)) {
+    for (const item of items) {
+      if (!foodNameKeysMatch(foodName, item.name)) continue;
+      matched = true;
+      merged = mergeNutritionWithBank(merged, item.nutritionPer100g);
+    }
+  }
+
+  return matched ? merged : stored;
 }
 
 export function rehydrateMemberMealPlanState(
@@ -158,7 +167,7 @@ export function rehydrateMemberMealPlanState(
     Object.entries(state.quickFoodLogs).map(([dateKey, logs]) => [
       dateKey,
       logs.map((entry) => {
-        const latest = resolveNutritionFromFoodItems(entry.name, entry.nutritionPer100g, foodItems);
+        const latest = resolveNutritionFromFoodItems(entry.name, entry.nutritionPer100g, foodItems, entry.foodId);
         if (nutritionSnapshotsEqual(entry.nutritionPer100g, latest)) return entry;
         updates += 1;
         return { ...entry, nutritionPer100g: latest };
@@ -168,7 +177,7 @@ export function rehydrateMemberMealPlanState(
   const savedMeals = (state.savedMeals ?? []).map((meal) => ({
     ...meal,
     items: meal.items.map((item) => {
-      const latest = resolveNutritionFromFoodItems(item.name, item.nutritionPer100g, foodItems);
+      const latest = resolveNutritionFromFoodItems(item.name, item.nutritionPer100g, foodItems, item.foodId);
       if (nutritionSnapshotsEqual(item.nutritionPer100g, latest)) return item;
       updates += 1;
       return { ...item, nutritionPer100g: latest };

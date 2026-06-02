@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { NutritionHubTab } from "./nutrition/NutritionHub";
-import { scheduleMemberFoodBankSync } from "../app/foodBankCloud";
+import { scheduleMemberFoodBankSync, syncMemberFoodBankFromTrainer } from "../app/foodBankCloud";
 import { buildDefaultFoodBankItems } from "../app/foodBankSeed";
 import { hydrateMealPlanFoodNutrition } from "../app/mealPlanFoodNutrition";
 import { countMealPlanFoodItems, mealPlansEqual, syncMealPlanForMember } from "../app/mealPlanCloud";
@@ -72,6 +72,8 @@ export function MemberNutritionView({ member, members, onSavePersonalGoals }: Me
   }, [member.ownerUserId, member.id]);
 
   useEffect(() => {
+    const ptOwnerUserId = member.ownerUserId?.trim() ?? "";
+    if (ptOwnerUserId) void syncMemberFoodBankFromTrainer(ptOwnerUserId, member.id);
     refreshMemberFoodBank();
     const onVisible = () => {
       if (document.visibilityState === "visible") refreshMemberFoodBank();

@@ -438,7 +438,7 @@ export function MemberMealPlanDashboard({ plan, memberId, onOpenAvoidances, onRe
   const waterLiters = tracking.waterLiters[todayKey] ?? 0;
   const waterFromQuickLogsTodayLiters = useMemo(() => {
     const gramsFromQuickLogs = quickLogsToday.reduce((sum, entry) => {
-      const resolvedNutrition = resolveNutritionFromFoodItems(entry.name, entry.nutritionPer100g, foodItems);
+      const resolvedNutrition = resolveNutritionFromFoodItems(entry.name, entry.nutritionPer100g, foodItems, entry.foodId);
       const waterPer100g = resolvedNutrition.water ?? 0;
       if (!Number.isFinite(waterPer100g) || waterPer100g <= 0) return sum;
       const scale = entry.grams > 0 ? entry.grams / 100 : 0;
@@ -635,7 +635,7 @@ export function MemberMealPlanDashboard({ plan, memberId, onOpenAvoidances, onRe
     (mealId: string, items: MealDraftItem[]) => {
       if (!items.length) return;
       const entries = items.map((item) => {
-        const nutritionPer100g = resolveNutritionFromFoodItems(item.name, item.nutritionPer100g, foodItems);
+        const nutritionPer100g = resolveNutritionFromFoodItems(item.name, item.nutritionPer100g, foodItems, item.foodId);
         return draftToQuickLogEntry({ ...item, nutritionPer100g }, mealId);
       });
       setTracking((prev) => addQuickFoodLogs(memberId, prev, selectedDateKey, entries));

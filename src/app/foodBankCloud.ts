@@ -11,6 +11,7 @@ import {
 } from "./foodBankStorage";
 import { applyKnownPortionDefaults } from "./foodPortionDefaults";
 import { fetchApprovedFoodItemsForMember, fetchApprovedFoodItemsForTrainer } from "./memberFoodSubmissionsCloud";
+import { mergeNutritionWithBank } from "./memberNutritionRehydrate";
 import { enrichFoodItem } from "./foodBankMicronutrientEnrichment";
 import { normalizeMicronutrients } from "./foodBankMicronutrients";
 import type { FoodItem } from "./foodBankTypes";
@@ -101,7 +102,15 @@ function mergeFoodItems(preferred: FoodItem[], fallback: FoodItem[]): FoodItem[]
   for (const item of preferred) {
     const id = item.id?.trim();
     if (!id) continue;
-    byId.set(id, item);
+    const existing = byId.get(id);
+    if (!existing) {
+      byId.set(id, item);
+      continue;
+    }
+    byId.set(id, {
+      ...item,
+      nutritionPer100g: mergeNutritionWithBank(existing.nutritionPer100g, item.nutritionPer100g),
+    });
   }
   return Array.from(byId.values());
 }
@@ -295,7 +304,6 @@ export async function syncMemberFoodBankFromTrainer(
     approvedItems,
   );
 
-  notifyFoodBankChangedIfNeeded(baseItems, mergedItems);
   cacheTrainerFoodBankSnapshot({
     items: mergedItems,
     favoriteIds: loadFavoriteFoodIds(),
