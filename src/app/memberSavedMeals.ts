@@ -50,6 +50,7 @@ export function parseMemberSavedMeals(value: unknown): MemberSavedMeal[] {
           sugar: Number(n.sugar) || 0,
           saturatedFat: Number(n.saturatedFat ?? n.saturated_fat) || 0,
           sodium: Number(n.sodium) || 0,
+          water: Number(n.water) || 0,
         },
       });
     }

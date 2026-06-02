@@ -24,6 +24,7 @@ export type MemberQuickFoodLogEntry = {
     sugar: number;
     saturatedFat: number;
     sodium: number;
+    water?: number;
   };
 };
 

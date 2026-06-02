@@ -114,6 +114,26 @@ export function FoodBankImportModal({ trainerName, existingItems, onClose, onImp
     onClose();
   };
 
+  const importAllMatvaretabellenUpdates = () => {
+    if (!apiFoods) {
+      setStatus("Hent matvarer fra Matvaretabellen først.");
+      return;
+    }
+    const imported = apiFoods
+      .map((food) => mapMatvaretabellenFood(food, trainerName))
+      .filter((row): row is FoodItem => row !== null);
+    if (!imported.length) {
+      setStatus("Fant ingen gyldige rader å oppdatere.");
+      return;
+    }
+    const merged = mergeFoodImports(existingItems, imported, "update");
+    onImported(
+      merged.items,
+      `Matvaretabellen (full oppdatering): ${merged.updated} oppdatert, ${merged.added} nye, ${merged.skipped} hoppet over.`,
+    );
+    onClose();
+  };
+
   return (
     <div className="motus-foodbank-modal-backdrop" role="presentation" onClick={onClose}>
       <div
@@ -202,6 +222,11 @@ export function FoodBankImportModal({ trainerName, existingItems, onClose, onImp
                 {apiLoading ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : <Upload className="h-4 w-4" aria-hidden />}
                 {apiLoading ? "Henter…" : "Hent fra Matvaretabellen"}
               </OutlineButton>
+              {apiFoods ? (
+                <OutlineButton type="button" onClick={importAllMatvaretabellenUpdates} disabled={apiLoading}>
+                  Oppdater hele basen (inkl. vann)
+                </OutlineButton>
+              ) : null}
               {apiFoods ? (
                 <label className="motus-foodbank-field">
                   <span className="motus-foodbank-field-label">Filtrer før import</span>
