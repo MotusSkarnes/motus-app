@@ -24,6 +24,10 @@ import {
   refreshTrainerFoodBankAfterApproval,
 } from "../app/foodBankCloud";
 import {
+  fetchMemberMealPlanStateFromSupabase,
+  saveMemberMealPlanStateToSupabase,
+} from "../app/memberMealPlanStateCloud";
+import {
   FOOD_BANK_CHANGED_EVENT,
   deleteFoodItem,
   loadFavoriteFoodIds,
@@ -46,6 +50,7 @@ import {
   type FoodMacroFilter,
   type FoodSource,
 } from "../app/foodBankTypes";
+import type { MemberMealPlanState } from "../app/memberMealPlanState";
 import { setMealPlanPendingFood } from "../app/mealPlanPendingFood";
 import { uid } from "../app/storage";
 import { GradientButton, OutlineButton, SelectBox, TextInput } from "../app/ui";
@@ -116,6 +121,15 @@ type FoodFormState = {
   sodium: string;
   micronutrients: Record<FoodMicronutrientKey, string>;
 };
+
+function normalizeFoodLookupKey(name: string): string {
+  return name
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/\p{M}/gu, "")
+    .replace(/[^a-z0-9æøå]+/g, "")
+    .trim();
+}
 
 function emptyForm(): FoodFormState {
   return {
@@ -242,6 +256,7 @@ export function TrainerFoodBankView({
   const [mealPlanPickFood, setMealPlanPickFood] = useState<FoodItem | null>(null);
   const [mealPlanGrams, setMealPlanGrams] = useState("100");
   const [importOpen, setImportOpen] = useState(false);
+  const [memberDataHydrating, setMemberDataHydrating] = useState(false);
   const [sourceStatsOpen, setSourceStatsOpen] = useState(false);
 
   const reload = useCallback(() => {
@@ -301,6 +316,15 @@ export function TrainerFoodBankView({
     });
     return sortFoodBankItems(filtered, chip, recentIds);
   }, [items, chip, search, favoriteSet, recentIds, sources, favoritesOnly, mineOnly, macroFilter, trainerName]);
+  const nutritionByFoodName = useMemo(() => {
+    const byName = new Map<string, FoodItem["nutritionPer100g"]>();
+    for (const item of items) {
+      const key = normalizeFoodLookupKey(item.name);
+      if (!key || byName.has(key)) continue;
+      byName.set(key, item.nutritionPer100g);
+    }
+    return byName;
+  }, [items]);
   const sourceStats = useMemo(() => {
     const totals: Record<FoodSource, number> = {
       matvaretabell: 0,
@@ -508,6 +532,117 @@ export function TrainerFoodBankView({
     setMealPlanPickFood(item);
   };
 
+  const cloneNutritionSnapshot = (nutrition: FoodItem["nutritionPer100g"]): FoodItem["nutritionPer100g"] => ({
+    ...nutrition,
+    micronutrients: { ...(nutrition.micronutrients ?? {}) },
+  });
+
+  const arePlainRecordsEqual = (left: unknown, right: unknown): boolean => {
+    if (Object.is(left, right)) return true;
+    if (
+      left === null ||
+      right === null ||
+      typeof left !== "object" ||
+      typeof right !== "object" ||
+      Array.isArray(left) ||
+      Array.isArray(right)
+    ) {
+      return false;
+    }
+    const leftRecord = left as Record<string, unknown>;
+    const rightRecord = right as Record<string, unknown>;
+    const keys = new Set([...Object.keys(leftRecord), ...Object.keys(rightRecord)]);
+    for (const key of keys) {
+      const leftValue = leftRecord[key];
+      const rightValue = rightRecord[key];
+      if (
+        leftValue !== null &&
+        rightValue !== null &&
+        typeof leftValue === "object" &&
+        typeof rightValue === "object" &&
+        !Array.isArray(leftValue) &&
+        !Array.isArray(rightValue)
+      ) {
+        if (!arePlainRecordsEqual(leftValue, rightValue)) return false;
+        continue;
+      }
+      if (!Object.is(leftValue, rightValue)) return false;
+    }
+    return true;
+  };
+
+  const rehydrateStateNutritionData = useCallback(
+    (state: MemberMealPlanState): { next: MemberMealPlanState; updates: number } => {
+      let updates = 0;
+      const quickFoodLogs = Object.fromEntries(
+        Object.entries(state.quickFoodLogs).map(([dateKey, logs]) => [
+          dateKey,
+          logs.map((entry) => {
+            const key = normalizeFoodLookupKey(entry.name);
+            const latest = nutritionByFoodName.get(key);
+            if (!latest) return entry;
+            if (arePlainRecordsEqual(entry.nutritionPer100g, latest)) return entry;
+            updates += 1;
+            return { ...entry, nutritionPer100g: cloneNutritionSnapshot(latest) };
+          }),
+        ]),
+      );
+      const savedMeals = (state.savedMeals ?? []).map((meal) => ({
+        ...meal,
+        items: meal.items.map((item) => {
+          const key = normalizeFoodLookupKey(item.name);
+          const latest = nutritionByFoodName.get(key);
+          if (!latest) return item;
+          if (arePlainRecordsEqual(item.nutritionPer100g, latest)) return item;
+          updates += 1;
+          return { ...item, nutritionPer100g: cloneNutritionSnapshot(latest) };
+        }),
+      }));
+      return {
+        next: {
+          ...state,
+          quickFoodLogs,
+          savedMeals,
+          updatedAt: updates > 0 ? new Date().toISOString() : state.updatedAt,
+        },
+        updates,
+      };
+    },
+    [nutritionByFoodName],
+  );
+
+  const updateMemberNutritionData = useCallback(async () => {
+    if (!nutritionMembers.length) {
+      setMealPlanNotice("Ingen kunder med ernæringstilgang å oppdatere.");
+      window.setTimeout(() => setMealPlanNotice(null), 4500);
+      return;
+    }
+    setMemberDataHydrating(true);
+    let membersUpdated = 0;
+    let rowsUpdated = 0;
+    try {
+      for (const member of nutritionMembers) {
+        const state = await fetchMemberMealPlanStateFromSupabase(member.id);
+        if (!state) continue;
+        const { next, updates } = rehydrateStateNutritionData(state);
+        if (updates <= 0) continue;
+        const saved = await saveMemberMealPlanStateToSupabase(member.id, next);
+        if (saved) {
+          membersUpdated += 1;
+          rowsUpdated += updates;
+        }
+      }
+      setMealPlanNotice(
+        membersUpdated > 0
+          ? `Oppdaterte næringsdata hos ${membersUpdated} kunder (${rowsUpdated} poster).`
+          : "Fant ingen eldre kundedata som trengte næringsoppdatering.",
+      );
+      window.setTimeout(() => setMealPlanNotice(null), 5500);
+    } finally {
+      setMemberDataHydrating(false);
+    }
+  }, [nutritionMembers, rehydrateStateNutritionData]);
+
   return (
     <div className="motus-foodbank">
       {section === "foods" && trainerOwnerUserId?.trim() ? (
@@ -540,6 +675,9 @@ export function TrainerFoodBankView({
             <OutlineButton onClick={() => setImportOpen(true)}>
               <Upload className="h-4 w-4" aria-hidden />
               Importer matvarer
+            </OutlineButton>
+            <OutlineButton onClick={() => void updateMemberNutritionData()} disabled={memberDataHydrating || !nutritionMembers.length}>
+              {memberDataHydrating ? "Oppdaterer kundedata…" : "Oppdater kundedata (alle variabler)"}
             </OutlineButton>
             <OutlineButton onClick={() => setSourceStatsOpen(true)}>
               <PieChart className="h-4 w-4" aria-hidden />
