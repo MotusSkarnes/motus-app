@@ -28,6 +28,7 @@ export function FoodLogFormFields({ onSubmit, submitLabel = "Logg", compact = fa
   const [measureMode, setMeasureMode] = useState<FoodMeasureMode>("grams");
   const [quantityInput, setQuantityInput] = useState("100");
   const [error, setError] = useState<string | null>(null);
+  const hasSearchQuery = search.trim().length > 0;
 
   const filteredFoods = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -91,25 +92,29 @@ export function FoodLogFormFields({ onSubmit, submitLabel = "Logg", compact = fa
         placeholder="Søk matvare…"
         className="motus-food-log-form__search"
       />
-      <div className="motus-food-log-form__food-list" role="listbox" aria-label="Matvarer">
-        {filteredFoods.length === 0 ? (
-          <p className="motus-food-log-form__empty">Ingen matvarer matcher søket.</p>
-        ) : (
-          filteredFoods.map((item) => (
-            <button
-              key={item.id}
-              type="button"
-              role="option"
-              aria-selected={item.id === selectedFoodId}
-              className={`motus-food-log-form__food-option ${item.id === selectedFoodId ? "motus-food-log-form__food-option--active" : ""}`}
-              onClick={() => setSelectedFoodId(item.id)}
-            >
-              <span className="motus-food-log-form__food-name">{item.name}</span>
-              <span className="motus-food-log-form__food-meta">{defaultPortionGramsForFood(item)} g / 100g</span>
-            </button>
-          ))
-        )}
-      </div>
+      {hasSearchQuery ? (
+        <div className="motus-food-log-form__food-list" role="listbox" aria-label="Matvarer">
+          {filteredFoods.length === 0 ? (
+            <p className="motus-food-log-form__empty">Ingen matvarer matcher søket.</p>
+          ) : (
+            filteredFoods.map((item) => (
+              <button
+                key={item.id}
+                type="button"
+                role="option"
+                aria-selected={item.id === selectedFoodId}
+                className={`motus-food-log-form__food-option ${item.id === selectedFoodId ? "motus-food-log-form__food-option--active" : ""}`}
+                onClick={() => setSelectedFoodId(item.id)}
+              >
+                <span className="motus-food-log-form__food-name">{item.name}</span>
+                <span className="motus-food-log-form__food-meta">{defaultPortionGramsForFood(item)} g / 100g</span>
+              </button>
+            ))
+          )}
+        </div>
+      ) : (
+        <p className="text-xs text-slate-500">Skriv i søkefeltet for å se varer.</p>
+      )}
       {selectedFood ? (
         <>
           <div className="motus-food-log-form__measure-row">
