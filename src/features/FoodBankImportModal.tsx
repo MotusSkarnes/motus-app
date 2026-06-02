@@ -24,6 +24,25 @@ type FoodBankImportModalProps = {
   onImported: (items: FoodItem[], summary: string) => void;
 };
 
+function normalizeFoodNameKey(name: string): string {
+  return name
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/\p{M}/gu, "")
+    .replace(/[^a-z0-9æøå]+/g, "")
+    .trim();
+}
+
+function chooseBestNutritionCandidate(candidates: FoodItem[]): FoodItem | null {
+  if (!candidates.length) return null;
+  return candidates.reduce((best, current) => {
+    const bestWater = Number(best.nutritionPer100g.water ?? 0);
+    const currentWater = Number(current.nutritionPer100g.water ?? 0);
+    if (currentWater > bestWater) return current;
+    return best;
+  });
+}
+
 export function FoodBankImportModal({ trainerName, existingItems, onClose, onImported }: FoodBankImportModalProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [tab, setTab] = useState<"file" | "matvaretabellen">("file");
@@ -127,9 +146,36 @@ export function FoodBankImportModal({ trainerName, existingItems, onClose, onImp
       return;
     }
     const merged = mergeFoodImports(existingItems, imported, "update");
+    const importedByName = new Map<string, FoodItem[]>();
+    for (const item of imported) {
+      const key = normalizeFoodNameKey(item.name);
+      if (!key) continue;
+      const rows = importedByName.get(key) ?? [];
+      rows.push(item);
+      importedByName.set(key, rows);
+    }
+    let backfilledWater = 0;
+    const withWaterBackfill = merged.items.map((item) => {
+      const key = normalizeFoodNameKey(item.name);
+      const matches = importedByName.get(key);
+      if (!matches?.length) return item;
+      const best = chooseBestNutritionCandidate(matches);
+      if (!best) return item;
+      const currentWater = Number(item.nutritionPer100g.water ?? 0);
+      const bestWater = Number(best.nutritionPer100g.water ?? 0);
+      if (bestWater <= 0 || bestWater === currentWater) return item;
+      backfilledWater += 1;
+      return {
+        ...item,
+        nutritionPer100g: {
+          ...item.nutritionPer100g,
+          water: bestWater,
+        },
+      };
+    });
     onImported(
-      merged.items,
-      `Matvaretabellen (full oppdatering): ${merged.updated} oppdatert, ${merged.added} nye, ${merged.skipped} hoppet over.`,
+      withWaterBackfill,
+      `Matvaretabellen (full oppdatering): ${merged.updated} oppdatert, ${merged.added} nye, ${merged.skipped} hoppet over, ${backfilledWater} vann-felter etterfylt.`,
     );
     onClose();
   };

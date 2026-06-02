@@ -116,4 +116,12 @@ describe("memberNutritionRehydrate", () => {
     );
     expect(resolved.water).toBe(90);
   });
+
+  it("prefers duplicate food name entry with richer nutrition data", () => {
+    const sparse = food("Olden Mineralvann", 0);
+    const rich = food("Olden Mineralvann", 99);
+    const lookup = buildNutritionLookupByFoodName([sparse, rich]);
+    const resolved = resolveNutritionFromLookup("Olden Mineralvann", sparse.nutritionPer100g, lookup);
+    expect(resolved.water).toBe(99);
+  });
 });

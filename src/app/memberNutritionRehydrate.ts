@@ -12,12 +12,31 @@ export function normalizeFoodLookupKey(name: string): string {
     .trim();
 }
 
+function nutritionSnapshotScore(nutrition: FoodNutrition): number {
+  let score = 0;
+  if ((nutrition.kcal ?? 0) > 0) score += 1;
+  if ((nutrition.protein ?? 0) > 0) score += 1;
+  if ((nutrition.carbs ?? 0) > 0) score += 1;
+  if ((nutrition.fat ?? 0) > 0) score += 1;
+  if ((nutrition.water ?? 0) > 0) score += 2;
+  if (nutrition.micronutrients && Object.keys(nutrition.micronutrients).length > 0) score += 2;
+  if (nutrition.fattyAcids && Object.keys(nutrition.fattyAcids).length > 0) score += 1;
+  return score;
+}
+
 export function buildNutritionLookupByFoodName(items: FoodItem[]): NutritionLookup {
   const byName = new Map<string, FoodNutrition>();
   for (const item of items) {
     const key = normalizeFoodLookupKey(item.name);
-    if (!key || byName.has(key)) continue;
-    byName.set(key, item.nutritionPer100g);
+    if (!key) continue;
+    const current = byName.get(key);
+    if (!current) {
+      byName.set(key, item.nutritionPer100g);
+      continue;
+    }
+    if (nutritionSnapshotScore(item.nutritionPer100g) > nutritionSnapshotScore(current)) {
+      byName.set(key, item.nutritionPer100g);
+    }
   }
   return byName;
 }
