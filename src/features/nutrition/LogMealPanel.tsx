@@ -3,6 +3,7 @@ import { Plus, Trash2, UtensilsCrossed } from "lucide-react";
 import { formatMacro } from "../../app/foodBankTypes";
 import { MEMBER_MEAL_SLOTS, memberMealSlotLabel } from "../../app/memberMealSlots";
 import { draftToQuickLogEntry, type MealDraftItem } from "../../app/mealDraft";
+import { buildNutritionLookupByFoodName } from "../../app/memberNutritionRehydrate";
 import {
   toIsoDateKey,
   type MemberMealPlanState,
@@ -14,6 +15,7 @@ import { MEAL_PLAN_STATE_CHANGED_EVENT } from "../../app/memberMealPlanState";
 import type { MemberSavedMeal } from "../../app/memberSavedMeals";
 import { addMemberSavedMeal, addQuickFoodLogs, removeMemberSavedMeal } from "../../app/memberMealPlanTracking";
 import type { MealPlanTargets } from "../../app/mealPlanTypes";
+import { useFoodBankItems } from "../../app/useFoodBankItems";
 import { GradientButton } from "../../app/ui";
 import { sumQuickFoodLogMacros } from "../../app/quickFoodLogMacros";
 import { DailyLoggedMacrosSummary } from "./DailyLoggedMacrosSummary";
@@ -37,6 +39,7 @@ function entryMacros(entry: MemberQuickFoodLogEntry): string {
 }
 
 export function LogMealPanel({ memberId, mealPlanTargets, onRefreshFoodBank, hasMealPlan = false }: LogMealPanelProps) {
+  const foodItems = useFoodBankItems();
   const [open, setOpen] = useState(false);
   const [mealSlotId, setMealSlotId] = useState(MEMBER_MEAL_SLOTS[0]!.id);
   const [draftBySlot, setDraftBySlot] = useState<Record<string, MealDraftItem[]>>({});
@@ -70,6 +73,7 @@ export function LogMealPanel({ memberId, mealPlanTargets, onRefreshFoodBank, has
   }, [memberId]);
 
   const macrosToday = useMemo(() => sumQuickFoodLogMacros(logsToday), [logsToday]);
+  const nutritionLookup = useMemo(() => buildNutritionLookupByFoodName(foodItems), [foodItems]);
 
   const logsBySlot = useMemo(() => {
     const grouped = new Map<string, MemberQuickFoodLogEntry[]>();
@@ -293,6 +297,7 @@ export function LogMealPanel({ memberId, mealPlanTargets, onRefreshFoodBank, has
             onSaveTemplate={handleSaveTemplate}
             onDeleteSaved={handleDeleteSaved}
             onCommitLog={handleCommitLog}
+            nutritionLookup={nutritionLookup}
           />
         </div>
       ) : null}

@@ -76,6 +76,7 @@ import { MotusFlameIcon } from "../MotusFlameIcon";
 import { MacroProgressBar } from "./MacroProgressBar";
 import { MacroProgressRing } from "./MacroProgressRing";
 import { draftToQuickLogEntry, type MealDraftItem } from "../../app/mealDraft";
+import { buildNutritionLookupByFoodName } from "../../app/memberNutritionRehydrate";
 import { MealDraftComposer } from "./MealDraftComposer";
 import { LogMealPanel } from "./LogMealPanel";
 import "../../foodbank.css";
@@ -232,6 +233,7 @@ export function MemberMealPlanDashboard({ plan, memberId, onOpenAvoidances, onRe
   const foodItems = useFoodBankItems();
   const { items: inspirationRecipes } = useInspirationRecipeItems();
   const foodById = useMemo(() => new Map(foodItems.map((f) => [f.id, f])), [foodItems]);
+  const nutritionLookup = useMemo(() => buildNutritionLookupByFoodName(foodItems), [foodItems]);
   const recipesById = useMemo(
     () => new Map(inspirationRecipes.map((recipe) => [recipe.id, recipe])),
     [inspirationRecipes],
@@ -1117,6 +1119,7 @@ export function MemberMealPlanDashboard({ plan, memberId, onOpenAvoidances, onRe
                         onSaveTemplate={handleSaveSavedMeal}
                         onDeleteSaved={handleDeleteSavedMeal}
                         onCommitLog={() => handleCommitMealDraft(meal.id, draftByMealId[meal.id] ?? [])}
+                        nutritionLookup={nutritionLookup}
                       />
                   </div>
                 ) : null}
