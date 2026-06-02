@@ -27,12 +27,20 @@ export type FoodImportMergeResult = {
   skipped: number;
 };
 
-type MatvaretabellenFood = {
+export type MatvaretabellenFood = {
   foodName?: string;
   foodGroupId?: string;
   calories?: { quantity?: number };
   portions?: Array<{ portionName?: string; quantity?: number; unit?: string }>;
   constituents?: Array<{ nutrientId?: string; quantity?: number; unit?: string }>;
+};
+
+export type MatvaretabellenImportDiagnostics = {
+  totalRows: number;
+  filteredRows: number;
+  mappableRows: number;
+  droppedRows: number;
+  importRows: number;
 };
 
 const NUTRIENT_IDS = {
@@ -477,6 +485,22 @@ export function filterMatvaretabellenFoods(foods: MatvaretabellenFood[], query: 
     const name = String(food.foodName ?? "").toLowerCase();
     return tokens.every((token) => name.includes(token));
   });
+}
+
+export function buildMatvaretabellenImportDiagnostics(
+  foods: MatvaretabellenFood[],
+  trainerName: string,
+  query: string,
+): MatvaretabellenImportDiagnostics {
+  const filtered = filterMatvaretabellenFoods(foods, query);
+  const mappableRows = filtered.reduce((count, food) => (mapMatvaretabellenFood(food, trainerName) ? count + 1 : count), 0);
+  return {
+    totalRows: foods.length,
+    filteredRows: filtered.length,
+    mappableRows,
+    droppedRows: filtered.length - mappableRows,
+    importRows: mappableRows,
+  };
 }
 
 export function downloadFoodImportTemplate(): void {

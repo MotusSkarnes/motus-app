@@ -1,12 +1,14 @@
 import { useMemo, useRef, useState } from "react";
 import { Download, Loader2, Upload, X } from "lucide-react";
 import {
+  buildMatvaretabellenImportDiagnostics,
   downloadFoodImportTemplate,
   fetchMatvaretabellenFoods,
   filterMatvaretabellenFoods,
   mapMatvaretabellenFood,
   mergeFoodImports,
   parseFoodImportText,
+  type MatvaretabellenFood,
   type FoodImportMergeMode,
 } from "../app/foodBankImport";
 import type { FoodItem } from "../app/foodBankTypes";
@@ -14,7 +16,6 @@ import { GradientButton, OutlineButton, TextInput } from "../app/ui";
 import "../foodbank.css";
 
 const MAX_FILE_IMPORT = 500;
-const MAX_API_IMPORT = 300;
 
 type FoodBankImportModalProps = {
   trainerName: string;
@@ -31,13 +32,20 @@ export function FoodBankImportModal({ trainerName, existingItems, onClose, onImp
   const [pendingFileItems, setPendingFileItems] = useState<FoodItem[]>([]);
   const [status, setStatus] = useState<string | null>(null);
   const [apiLoading, setApiLoading] = useState(false);
-  const [apiFoods, setApiFoods] = useState<Array<{ foodName?: string }> | null>(null);
+  const [apiFoods, setApiFoods] = useState<MatvaretabellenFood[] | null>(null);
   const [apiQuery, setApiQuery] = useState("");
 
   const apiMatches = useMemo(() => {
     if (!apiFoods) return [];
-    return filterMatvaretabellenFoods(apiFoods, apiQuery).slice(0, MAX_API_IMPORT);
+    return filterMatvaretabellenFoods(apiFoods, apiQuery);
   }, [apiFoods, apiQuery]);
+  const apiDiagnostics = useMemo(
+    () =>
+      apiFoods
+        ? buildMatvaretabellenImportDiagnostics(apiFoods, trainerName, apiQuery)
+        : null,
+    [apiFoods, trainerName, apiQuery],
+  );
 
   const readFile = async (file: File) => {
     setStatus(null);
@@ -75,7 +83,10 @@ export function FoodBankImportModal({ trainerName, existingItems, onClose, onImp
     try {
       const foods = await fetchMatvaretabellenFoods();
       setApiFoods(foods);
-      setStatus(`Hentet ${foods.length} matvarer fra Matvaretabellen. Bruk søk for å begrense importen.`);
+      const diagnostics = buildMatvaretabellenImportDiagnostics(foods, trainerName, apiQuery);
+      setStatus(
+        `Hentet ${diagnostics.totalRows} rader. Av disse er ${diagnostics.mappableRows} gyldige for import i nåværende visning og ${diagnostics.droppedRows} droppes (mangler data/navn).`,
+      );
     } catch (error) {
       setStatus(error instanceof Error ? error.message : "Kunne ikke hente fra Matvaretabellen.");
     } finally {
@@ -185,7 +196,7 @@ export function FoodBankImportModal({ trainerName, existingItems, onClose, onImp
           ) : (
             <div className="motus-foodbank-import-panel">
               <p className="motus-foodbank-import-copy">
-                Henter åpne data fra Matvaretabellen (Mattilsynet). Søk før import — maks {MAX_API_IMPORT} matvarer per gang.
+                Henter åpne data fra Matvaretabellen (Mattilsynet). Du kan importere alle treff i én runde.
               </p>
               <OutlineButton type="button" onClick={() => void loadMatvaretabellen()} disabled={apiLoading}>
                 {apiLoading ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : <Upload className="h-4 w-4" aria-hidden />}
@@ -200,8 +211,10 @@ export function FoodBankImportModal({ trainerName, existingItems, onClose, onImp
                     placeholder="f.eks. kylling laks havregryn"
                   />
                   <span className="motus-foodbank-import-preview">
-                    {apiQuery.trim()
-                      ? `${apiMatches.length} treff (viser maks ${MAX_API_IMPORT})`
+                    {apiDiagnostics
+                      ? apiQuery.trim()
+                        ? `${apiDiagnostics.filteredRows} treff totalt. ${apiDiagnostics.mappableRows} kan importeres nå, ${apiDiagnostics.droppedRows} droppes.`
+                        : `Alle ${apiDiagnostics.totalRows} rader. ${apiDiagnostics.mappableRows} kan importeres nå, ${apiDiagnostics.droppedRows} droppes.`
                       : `Alle ${apiFoods.length} matvarer — skriv søkeord for å begrense`}
                   </span>
                 </label>
@@ -220,7 +233,7 @@ export function FoodBankImportModal({ trainerName, existingItems, onClose, onImp
             </GradientButton>
           ) : (
             <GradientButton onClick={importFromMatvaretabellen} disabled={!apiFoods || apiLoading}>
-              Importer{apiQuery.trim() ? ` (${apiMatches.length})` : ""}
+              Importer{apiDiagnostics ? ` (${apiDiagnostics.importRows})` : apiQuery.trim() ? ` (${apiMatches.length})` : ""}
             </GradientButton>
           )}
         </div>
