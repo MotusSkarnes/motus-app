@@ -6,6 +6,7 @@ import {
   Clock3,
   Grid3X3,
   LayoutList,
+  PieChart,
   Plus,
   Search,
   SlidersHorizontal,
@@ -241,6 +242,7 @@ export function TrainerFoodBankView({
   const [mealPlanPickFood, setMealPlanPickFood] = useState<FoodItem | null>(null);
   const [mealPlanGrams, setMealPlanGrams] = useState("100");
   const [importOpen, setImportOpen] = useState(false);
+  const [sourceStatsOpen, setSourceStatsOpen] = useState(false);
 
   const reload = useCallback(() => {
     setItems(loadFoodBankItems());
@@ -299,6 +301,26 @@ export function TrainerFoodBankView({
     });
     return sortFoodBankItems(filtered, chip, recentIds);
   }, [items, chip, search, favoriteSet, recentIds, sources, favoritesOnly, mineOnly, macroFilter, trainerName]);
+  const sourceStats = useMemo(() => {
+    const totals: Record<FoodSource, number> = {
+      matvaretabell: 0,
+      usda: 0,
+      egen: 0,
+    };
+    let customCount = 0;
+    let editedCount = 0;
+    for (const item of items) {
+      totals[item.source] = (totals[item.source] ?? 0) + 1;
+      if (item.isCustom) customCount += 1;
+      if (item.isEdited) editedCount += 1;
+    }
+    return {
+      total: items.length,
+      totals,
+      customCount,
+      editedCount,
+    };
+  }, [items]);
 
   const pageCount = Math.max(1, Math.ceil(filteredItems.length / PAGE_SIZE));
   const currentPage = Math.min(page, pageCount);
@@ -518,6 +540,10 @@ export function TrainerFoodBankView({
             <OutlineButton onClick={() => setImportOpen(true)}>
               <Upload className="h-4 w-4" aria-hidden />
               Importer matvarer
+            </OutlineButton>
+            <OutlineButton onClick={() => setSourceStatsOpen(true)}>
+              <PieChart className="h-4 w-4" aria-hidden />
+              Kilde-rapport
             </OutlineButton>
           </div>
         ) : null}
@@ -893,6 +919,47 @@ export function TrainerFoodBankView({
             window.setTimeout(() => setMealPlanNotice(null), 5000);
           }}
         />
+      ) : null}
+
+      {sourceStatsOpen ? (
+        <div className="motus-foodbank-modal-backdrop" role="presentation" onClick={() => setSourceStatsOpen(false)}>
+          <div
+            className="motus-foodbank-modal"
+            role="dialog"
+            aria-labelledby="food-source-stats-title"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="motus-foodbank-modal-head">
+              <h2 id="food-source-stats-title">Kilde-rapport matvarebank</h2>
+              <button type="button" className="motus-foodbank-icon-btn" onClick={() => setSourceStatsOpen(false)} aria-label="Lukk">
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            <div className="motus-foodbank-modal-body space-y-2 text-sm">
+              <p className="text-slate-700">
+                Totalt: <strong>{sourceStats.total}</strong> matvarer
+              </p>
+              <p className="text-slate-700">
+                Norsk matvaretabell: <strong>{sourceStats.totals.matvaretabell}</strong>
+              </p>
+              <p className="text-slate-700">
+                USDA: <strong>{sourceStats.totals.usda}</strong>
+              </p>
+              <p className="text-slate-700">
+                Egen/custom: <strong>{sourceStats.totals.egen}</strong>
+              </p>
+              <p className="text-slate-700">
+                Markert som custom: <strong>{sourceStats.customCount}</strong>
+              </p>
+              <p className="text-slate-700">
+                Markert som redigert: <strong>{sourceStats.editedCount}</strong>
+              </p>
+            </div>
+            <div className="motus-foodbank-modal-actions">
+              <GradientButton onClick={() => setSourceStatsOpen(false)}>Lukk</GradientButton>
+            </div>
+          </div>
+        </div>
       ) : null}
 
       {formOpen ? (
