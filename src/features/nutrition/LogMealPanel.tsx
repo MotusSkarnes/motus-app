@@ -126,8 +126,10 @@ export function LogMealPanel({ memberId, mealPlanTargets, onRefreshFoodBank, has
   );
 
   const removeLog = useCallback(
-    (entryId: string) => {
-      const nextLogs = logsToday.filter((entry) => entry.id !== entryId);
+    (entry: MemberQuickFoodLogEntry) => {
+      const confirmRemove = window.confirm(`Vil du fjerne ${entry.name}?`);
+      if (!confirmRemove) return;
+      const nextLogs = logsToday.filter((row) => row.id !== entry.id);
       persistState({
         ...state,
         quickFoodLogs: { ...state.quickFoodLogs, [dateKey]: nextLogs },
@@ -207,7 +209,7 @@ export function LogMealPanel({ memberId, mealPlanTargets, onRefreshFoodBank, has
                         <button
                           type="button"
                           className="motus-log-meal-panel__remove"
-                          onClick={() => removeLog(entry.id)}
+                          onClick={() => removeLog(entry)}
                           aria-label={`Fjern ${entry.name}`}
                         >
                           <Trash2 className="h-4 w-4" aria-hidden />
@@ -238,7 +240,7 @@ export function LogMealPanel({ memberId, mealPlanTargets, onRefreshFoodBank, has
                       <button
                         type="button"
                         className="motus-log-meal-panel__remove"
-                        onClick={() => removeLog(entry.id)}
+                        onClick={() => removeLog(entry)}
                         aria-label={`Fjern ${entry.name}`}
                       >
                         <Trash2 className="h-4 w-4" aria-hidden />
