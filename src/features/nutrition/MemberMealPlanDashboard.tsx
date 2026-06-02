@@ -77,7 +77,7 @@ import { MotusFlameIcon } from "../MotusFlameIcon";
 import { MacroProgressBar } from "./MacroProgressBar";
 import { MacroProgressRing } from "./MacroProgressRing";
 import { draftToQuickLogEntry, type MealDraftItem } from "../../app/mealDraft";
-import { buildNutritionLookupByFoodName } from "../../app/memberNutritionRehydrate";
+import { buildNutritionLookupByFoodName, resolveNutritionFromLookup } from "../../app/memberNutritionRehydrate";
 import { MealDraftComposer } from "./MealDraftComposer";
 import { LogMealPanel } from "./LogMealPanel";
 import "../../foodbank.css";
@@ -439,13 +439,14 @@ export function MemberMealPlanDashboard({ plan, memberId, onOpenAvoidances, onRe
   const waterLiters = tracking.waterLiters[todayKey] ?? 0;
   const waterFromQuickLogsTodayLiters = useMemo(() => {
     const gramsFromQuickLogs = quickLogsToday.reduce((sum, entry) => {
-      const waterPer100g = entry.nutritionPer100g.water ?? 0;
+      const resolvedNutrition = resolveNutritionFromLookup(entry.name, entry.nutritionPer100g, nutritionLookup);
+      const waterPer100g = resolvedNutrition.water ?? 0;
       if (!Number.isFinite(waterPer100g) || waterPer100g <= 0) return sum;
       const scale = entry.grams > 0 ? entry.grams / 100 : 0;
       return sum + waterPer100g * scale;
     }, 0);
     return gramsFromQuickLogs / 1000;
-  }, [quickLogsToday]);
+  }, [quickLogsToday, nutritionLookup]);
   const waterFromLoggedPlanFoodTodayLiters = useMemo(
     () => sumLoggedWaterLitersFromFoodItems(todayDayResolved, loggedFoodToday, foodById),
     [todayDayResolved, loggedFoodToday, foodById],

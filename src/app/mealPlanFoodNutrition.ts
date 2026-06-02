@@ -61,6 +61,7 @@ export function resolveEntryNutritionForTotals(
     sugar: base.sugar || fromRecipe?.sugar || fromBank?.sugar || 0,
     saturatedFat: base.saturatedFat || fromRecipe?.saturatedFat || fromBank?.saturatedFat || 0,
     sodium: base.sodium || fromRecipe?.sodium || fromBank?.sodium || 0,
+    water: base.water || fromRecipe?.water || fromBank?.water || 0,
     micronutrients,
     fattyAcids,
   };
