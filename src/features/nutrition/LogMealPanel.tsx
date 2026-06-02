@@ -159,7 +159,7 @@ export function LogMealPanel({ memberId, mealPlanTargets, onRefreshFoodBank, has
 
   return (
     <div className="motus-log-meal-panel">
-      {hasLogs ? (
+      {hasLogs && !hasMealPlan ? (
         <DailyLoggedMacrosSummary macros={macrosToday} targets={mealPlanTargets} title="I dag totalt" />
       ) : null}
 
