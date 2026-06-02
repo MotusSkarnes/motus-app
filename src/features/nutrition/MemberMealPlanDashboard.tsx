@@ -77,6 +77,7 @@ import { MacroProgressBar } from "./MacroProgressBar";
 import { MacroProgressRing } from "./MacroProgressRing";
 import { draftToQuickLogEntry, type MealDraftItem } from "../../app/mealDraft";
 import { MealDraftComposer } from "./MealDraftComposer";
+import { LogMealPanel } from "./LogMealPanel";
 import "../../foodbank.css";
 
 const WATER_TARGET_L = 2.5;
@@ -1128,6 +1129,14 @@ export function MemberMealPlanDashboard({ plan, memberId, onOpenAvoidances, onRe
               </article>
             );
           })}
+        </div>
+        <div className="mt-4">
+          <LogMealPanel
+            memberId={memberId}
+            mealPlanTargets={plan.targets}
+            onRefreshFoodBank={onRefreshFoodBank}
+            hasMealPlan
+          />
         </div>
         {outsidePlanLogs.length > 0 ? (
           <div className="motus-matplan-orphan-logs">
