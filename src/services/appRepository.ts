@@ -23,6 +23,7 @@ import type {
   WorkoutCelebration,
   WorkoutExerciseResult,
   WorkoutLog,
+  WorkoutModeState,
   WorkoutReflection,
 } from "../app/types";
 import {
@@ -481,6 +482,46 @@ export function buildBaselineSetCountByProgramExerciseId(results: WorkoutExercis
   return counts;
 }
 
+/** Planlagt sett per øvelse fra programmet (ikke live antall rader). */
+export function buildBaselineSetCountFromProgramExercises(exercises: ProgramExercise[]): Record<string, number> {
+  const counts: Record<string, number> = {};
+  exercises.forEach((exercise) => {
+    if (exercise.blockId?.trim()) return;
+    const id = exercise.id.trim();
+    if (!id) return;
+    counts[id] = parseProgramSetCount(exercise.sets);
+  });
+  return counts;
+}
+
+export function resolveWorkoutBaselineSetCount(
+  programExerciseId: string,
+  rows: WorkoutExerciseResult[],
+  workoutMode: WorkoutModeState | null | undefined,
+  program: TrainingProgram | null | undefined,
+): number {
+  const pid = programExerciseId.trim();
+  const stored = workoutMode?.baselineSetCountByProgramExerciseId?.[pid];
+  if (typeof stored === "number" && stored >= 1) return stored;
+  const fromProgram = program?.exercises.find((exercise) => exercise.id === pid);
+  if (fromProgram) return parseProgramSetCount(fromProgram.sets);
+  return plannedWorkoutSetCountForGroup(rows);
+}
+
+export function ensureWorkoutModeBaseline(
+  workoutMode: WorkoutModeState,
+  program?: TrainingProgram | null,
+): WorkoutModeState {
+  const existing = workoutMode.baselineSetCountByProgramExerciseId;
+  if (existing && Object.keys(existing).length > 0) return workoutMode;
+  const fromProgram = program ? buildBaselineSetCountFromProgramExercises(program.exercises) : null;
+  const baseline =
+    fromProgram && Object.keys(fromProgram).length > 0
+      ? fromProgram
+      : buildBaselineSetCountByProgramExerciseId(workoutMode.results);
+  return { ...workoutMode, baselineSetCountByProgramExerciseId: baseline };
+}
+
 export function startWorkoutModeInState(state: AppState, programId: string, options?: StartWorkoutModeOptions): AppState {
   const program = state.programs.find((p) => p.id === programId);
   if (!program) return state;
@@ -498,7 +539,7 @@ export function startWorkoutModeInState(state: AppState, programId: string, opti
       programTitle: program.title,
       results: expandedResults,
       note: "",
-      baselineSetCountByProgramExerciseId: buildBaselineSetCountByProgramExerciseId(expandedResults),
+      baselineSetCountByProgramExerciseId: buildBaselineSetCountFromProgramExercises(program.exercises),
     },
   };
 }
@@ -573,6 +614,11 @@ export function appendWorkoutSetForProgramExerciseInState(state: AppState, progr
   const nextSetNum = maxExistingSet + 1;
   if (nextSetNum > MAX_SETS_PER_EXERCISE_IN_WORKOUT_MODE) return state;
 
+  const baselineMap = { ...(state.workoutMode.baselineSetCountByProgramExerciseId ?? {}) };
+  if (baselineMap[pid] == null) {
+    baselineMap[pid] = groupIndices.length;
+  }
+
   const newRow: WorkoutExerciseResult = {
     ...template,
     exerciseId: `${pid}-set-${nextSetNum}`,
@@ -591,6 +637,7 @@ export function appendWorkoutSetForProgramExerciseInState(state: AppState, progr
     ...state,
     workoutMode: {
       ...state.workoutMode,
+      baselineSetCountByProgramExerciseId: baselineMap,
       results: newResults,
     },
   };
@@ -606,7 +653,7 @@ export type CanRemoveLastExtraWorkoutSetOptions = {
   baselineSetCount?: number;
 };
 
-/** Kan siste sett fjernes — ekstra sett lagt til underveis (markert eller flere enn ved øktstart). */
+/** Kan siste sett fjernes — ekstra sett lagt til underveis (markert eller flere enn ved øktstart/program). */
 export function canRemoveLastExtraWorkoutSet(
   rows: WorkoutExerciseResult[],
   options?: CanRemoveLastExtraWorkoutSetOptions,
@@ -615,7 +662,7 @@ export function canRemoveLastExtraWorkoutSet(
   const last = rows[rows.length - 1];
   if (last?.addedDuringWorkout) return true;
   const baseline = options?.baselineSetCount ?? plannedWorkoutSetCountForGroup(rows);
-  return rows.length > baseline;
+  return rows.length > Math.max(1, baseline);
 }
 
 export function removeLastWorkoutSetForProgramExerciseInState(state: AppState, programExerciseId: string): AppState {
@@ -631,7 +678,8 @@ export function removeLastWorkoutSetForProgramExerciseInState(state: AppState, p
   if (!groupIndices.length) return state;
 
   const groupRows = groupIndices.map((i) => results[i]);
-  const baselineSetCount = state.workoutMode.baselineSetCountByProgramExerciseId?.[pid];
+  const program = state.programs.find((p) => p.id === state.workoutMode.programId);
+  const baselineSetCount = resolveWorkoutBaselineSetCount(pid, groupRows, state.workoutMode, program ?? null);
   if (!canRemoveLastExtraWorkoutSet(groupRows, { baselineSetCount })) return state;
 
   const removeIndex = groupIndices[groupIndices.length - 1];

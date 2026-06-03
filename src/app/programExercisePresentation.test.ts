@@ -71,6 +71,56 @@ describe("formatWorkoutGroupPlanLabel", () => {
     expect(label).toBe("3×10 reps · 60 kg · 90s");
   });
 
+  it("keeps program set count in øktmodus when extra rows exist (useLiveSetCount false)", () => {
+    const exercise = programExercise({ sets: "3" });
+    const program: TrainingProgram = {
+      id: "p1",
+      memberId: "m1",
+      title: "Test",
+      goal: "",
+      notes: "",
+      createdAt: "",
+      exercises: [exercise],
+    };
+    const rows = [
+      workoutRow({ setNumber: 1 }),
+      workoutRow({ setNumber: 2, exerciseId: "pex-set-2" }),
+      workoutRow({ setNumber: 3, exerciseId: "pex-set-3" }),
+      workoutRow({ setNumber: 4, exerciseId: "pex-set-4", addedDuringWorkout: true }),
+    ];
+    const label = formatWorkoutGroupPlanLabel(
+      {
+        groupId: exercise.id,
+        exerciseName: exercise.exerciseName,
+        exerciseNames: [exercise.exerciseName],
+        plannedReps: exercise.reps,
+        plannedWeight: exercise.weight,
+        rows,
+        segments: [],
+        rounds: [],
+      },
+      program,
+      library,
+      { useLiveSetCount: false },
+    );
+    expect(label).toBe("3×10 reps · 60 kg · 90s");
+    const liveLabel = formatWorkoutGroupPlanLabel(
+      {
+        groupId: exercise.id,
+        exerciseName: exercise.exerciseName,
+        exerciseNames: [exercise.exerciseName],
+        plannedReps: exercise.reps,
+        plannedWeight: exercise.weight,
+        rows,
+        segments: [],
+        rounds: [],
+      },
+      program,
+      library,
+    );
+    expect(liveLabel).toBe("4×10 reps · 60 kg · 90s");
+  });
+
   it("uses planned weight from workout rows when it differs from program", () => {
     const exercise = programExercise({ weight: "60" });
     const program: TrainingProgram = {

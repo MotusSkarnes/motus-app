@@ -4,6 +4,7 @@ import {
   appendWorkoutSetForProgramExerciseInState,
   canRemoveLastExtraWorkoutSet,
   removeLastWorkoutSetForProgramExerciseInState,
+  resolveWorkoutBaselineSetCount,
   deferWorkoutExerciseGroupInState,
   finishWorkoutModeInState,
   logCompletedPlanEntryInState,
@@ -180,6 +181,58 @@ describe("appRepository workout log guards", () => {
     expect(canRemoveLastExtraWorkoutSet(state.workoutMode!.results, { baselineSetCount: 2 })).toBe(false);
     const next = removeLastWorkoutSetForProgramExerciseInState(state, "pex-1");
     expect(next.workoutMode?.results).toHaveLength(2);
+  });
+
+  it("resolveWorkoutBaselineSetCount prefers program sets over row plannedSets", () => {
+    const rows = [
+      {
+        exerciseId: "pex-1-set-1",
+        programExerciseId: "pex-1",
+        setNumber: 1,
+        exerciseName: "Benk",
+        plannedSets: "4",
+        plannedReps: "10",
+        plannedWeight: "5",
+        performedWeight: "5",
+        performedReps: "10",
+        completed: false,
+      },
+      {
+        exerciseId: "pex-1-set-2",
+        programExerciseId: "pex-1",
+        setNumber: 2,
+        exerciseName: "Benk",
+        plannedSets: "4",
+        plannedReps: "10",
+        plannedWeight: "5",
+        addedDuringWorkout: true,
+        performedWeight: "",
+        performedReps: "",
+        completed: false,
+      },
+    ];
+    const program = {
+      id: "p1",
+      memberId: "m1",
+      title: "T",
+      goal: "",
+      notes: "",
+      createdAt: "",
+      exercises: [
+        {
+          id: "pex-1",
+          exerciseId: "ex-1",
+          exerciseName: "Benk",
+          sets: "3",
+          reps: "10",
+          weight: "5",
+          restSeconds: "90",
+          notes: "",
+        },
+      ],
+    };
+    expect(resolveWorkoutBaselineSetCount("pex-1", rows, null, program)).toBe(3);
+    expect(canRemoveLastExtraWorkoutSet(rows, { baselineSetCount: 3 })).toBe(true);
   });
 
   it("allows remove when last row is marked addedDuringWorkout even if plannedSets matches row count", () => {

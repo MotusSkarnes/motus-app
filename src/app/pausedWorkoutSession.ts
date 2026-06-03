@@ -1,3 +1,4 @@
+import { ensureWorkoutModeBaseline } from "../services/appRepository";
 import {
   getPausedWorkoutById,
   removePausedWorkout,
@@ -108,10 +109,13 @@ export function resumePausedWorkoutInState(state: AppState, draftId: string, mem
     nextPrograms = [buildTrainingProgramFromWorkoutMode(draft.workoutMode), ...nextPrograms];
   }
 
+  const programForBaseline =
+    draft.programSnapshot ?? nextPrograms.find((program) => program.id === draft.programId) ?? null;
+
   return {
     ...state,
     programs: nextPrograms,
-    workoutMode: draft.workoutMode,
+    workoutMode: ensureWorkoutModeBaseline(draft.workoutMode, programForBaseline),
   };
 }
 

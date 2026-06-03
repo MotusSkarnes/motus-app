@@ -13,16 +13,20 @@ import {
   formatWorkoutGroupPlanLabel,
   formatWorkoutSegmentPlanLabel,
   resolveWorkoutGroupExerciseName,
+  type WorkoutPlanLabelOptions,
 } from "../app/programExercisePresentation";
 import { GradientButton, OutlineButton, TextArea, TextInput } from "../app/ui";
 import type { Exercise, TrainingProgram, WorkoutModeState, WorkoutReflection } from "../app/types";
-import type { ReplaceWorkoutExerciseGroupInput } from "../services/appRepository";
 import { resolveDetailLastSessionLabel } from "../app/lastSessionSetDisplay";
 import { buildTrainingProgramFromWorkoutMode } from "../app/pausedWorkoutSession";
 import {
   canRemoveLastExtraWorkoutSet,
   MAX_SETS_PER_EXERCISE_IN_WORKOUT_MODE,
+  resolveWorkoutBaselineSetCount,
+  type ReplaceWorkoutExerciseGroupInput,
 } from "../services/appRepository";
+
+const WORKOUT_PLAN_LABEL_OPTIONS: WorkoutPlanLabelOptions = { useLiveSetCount: false };
 
 export type LiveWorkoutSessionVariant = "member" | "trainer";
 
@@ -395,6 +399,7 @@ export function LiveWorkoutSessionModal({
           segment.rows,
           resolvedProgram,
           exercises,
+          WORKOUT_PLAN_LABEL_OPTIONS,
         ),
         exercise,
         imageUrl,
@@ -468,19 +473,24 @@ export function LiveWorkoutSessionModal({
 
   const currentWorkoutPlanLabel = useMemo(() => {
     if (!currentWorkoutGroup) return "";
-    return formatWorkoutGroupPlanLabel(currentWorkoutGroup, resolvedProgram, exercises);
+    return formatWorkoutGroupPlanLabel(currentWorkoutGroup, resolvedProgram, exercises, WORKOUT_PLAN_LABEL_OPTIONS);
   }, [currentWorkoutGroup, resolvedProgram, exercises]);
 
   const nextWorkoutPlanLabel = useMemo(() => {
     if (!nextWorkoutGroup) return "";
-    return formatWorkoutGroupPlanLabel(nextWorkoutGroup, resolvedProgram, exercises);
+    return formatWorkoutGroupPlanLabel(nextWorkoutGroup, resolvedProgram, exercises, WORKOUT_PLAN_LABEL_OPTIONS);
   }, [nextWorkoutGroup, resolvedProgram, exercises]);
 
   const currentProgramExerciseId = currentWorkoutGroup?.segments[0]?.programExerciseId ?? "";
   const canRemoveCurrentExtraSet =
     Boolean(currentWorkoutGroup && !currentWorkoutGroup.blockType && currentProgramExerciseId) &&
     canRemoveLastExtraWorkoutSet(currentWorkoutGroup!.rows, {
-      baselineSetCount: workoutMode?.baselineSetCountByProgramExerciseId?.[currentProgramExerciseId],
+      baselineSetCount: resolveWorkoutBaselineSetCount(
+        currentProgramExerciseId,
+        currentWorkoutGroup!.rows,
+        workoutMode,
+        resolvedProgram,
+      ),
     });
 
   function handleReplaceCurrentWorkoutExercise(replacementExerciseId: string) {
@@ -889,6 +899,7 @@ export function LiveWorkoutSessionModal({
                                   [segment.row],
                                   resolvedProgram,
                                   exercises,
+                                  WORKOUT_PLAN_LABEL_OPTIONS,
                                 )}
                                 onUpdate={updateWorkoutExerciseResult}
                                 previousPersonalBests={previousPersonalBests}

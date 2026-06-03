@@ -5,9 +5,19 @@ import {
   resolvePrescriptionFieldLabel,
 } from "./exercisePrescriptionFields";
 import { CARDIO_COOLDOWN_STEP_NAME } from "./cardioEquipment";
-import { EXERCISE_BLOCK_LABELS, isLegacyIntervalCooldownDrag, type WorkoutResultGroup } from "./programBlocks";
+import {
+  EXERCISE_BLOCK_LABELS,
+  isLegacyIntervalCooldownDrag,
+  parseProgramSetCount,
+  type WorkoutResultGroup,
+} from "./programBlocks";
 import { resolveWorkoutLoadUnit, resolveWorkoutRepsUnit } from "./workoutResultUnits";
 import type { Exercise, ProgramExercise, TrainingProgram, WorkoutExerciseResult } from "./types";
+
+export type WorkoutPlanLabelOptions = {
+  /** Default true. False i øktmodus — plan fra program, ikke antall rader etter «Legg til sett». */
+  useLiveSetCount?: boolean;
+};
 
 export type ProgramExercisePrescriptionOptions = {
   includePauseLabel?: boolean;
@@ -121,14 +131,18 @@ function workoutRowsToProgramExercise(rows: WorkoutExerciseResult[]): ProgramExe
 function mergeProgramExerciseWithWorkoutRows(
   programExercise: ProgramExercise | undefined,
   rows: WorkoutExerciseResult[],
+  options?: WorkoutPlanLabelOptions,
 ): ProgramExercise | null {
   const fromRows = workoutRowsToProgramExercise(rows);
   if (!fromRows) return programExercise ?? null;
   if (!programExercise) return fromRows;
   const plannedSets = Number(String(programExercise.sets ?? "").trim()) || 0;
   const liveSetCount = rows.length;
+  const useLiveSetCount = options?.useLiveSetCount !== false;
   const sets =
-    liveSetCount > plannedSets ? String(liveSetCount) : String(programExercise.sets || fromRows.sets);
+    useLiveSetCount && liveSetCount > plannedSets
+      ? String(liveSetCount)
+      : String(programExercise.sets || fromRows.sets);
   return {
     ...programExercise,
     sets,
@@ -148,14 +162,23 @@ function formatPlanFromWorkoutRows(
   program: TrainingProgram | null | undefined,
   programExerciseId: string,
   exerciseLibrary: Exercise[],
+  options?: WorkoutPlanLabelOptions,
 ): string {
   if (!rows.length) return "";
   const programExercise = program?.exercises.find((exercise) => exercise.id === programExerciseId);
   const exerciseIndex = program?.exercises.findIndex((exercise) => exercise.id === programExerciseId) ?? -1;
-  const merged = mergeProgramExerciseWithWorkoutRows(programExercise, rows);
+  const merged = mergeProgramExerciseWithWorkoutRows(programExercise, rows, options);
   if (!merged) return "";
+  const useLiveSetCount = options?.useLiveSetCount !== false;
+  const liveSetCount = useLiveSetCount ? rows.length : undefined;
   if (program && exerciseIndex >= 0) {
-    return formatPrescriptionForProgramExercise(merged, exerciseIndex, program.exercises, exerciseLibrary, rows.length);
+    return formatPrescriptionForProgramExercise(
+      merged,
+      exerciseIndex,
+      program.exercises,
+      exerciseLibrary,
+      liveSetCount,
+    );
   }
   return formatProgramExercisePrescription(merged, 0, [merged], exerciseLibrary);
 }
@@ -167,7 +190,7 @@ function formatPrescriptionForProgramExercise(
   exerciseLibrary: Exercise[],
   liveSetCount?: number,
 ): string {
-  const plannedSets = Number(String(programExercise.sets ?? "").trim()) || 0;
+  const plannedSets = parseProgramSetCount(programExercise.sets);
   const adjusted =
     liveSetCount && liveSetCount > plannedSets ? { ...programExercise, sets: String(liveSetCount) } : programExercise;
   return formatProgramExercisePrescription(adjusted, exerciseIndex, programExercises, exerciseLibrary);
@@ -178,6 +201,7 @@ export function formatWorkoutGroupPlanLabel(
   group: Pick<WorkoutResultGroup, "groupId" | "blockType" | "blockRounds" | "exerciseNames" | "rows" | "rounds">,
   program: TrainingProgram | null | undefined,
   exerciseLibrary: Exercise[],
+  options?: WorkoutPlanLabelOptions,
 ): string {
   if (group.blockType) {
     const label = EXERCISE_BLOCK_LABELS[group.blockType];
@@ -188,7 +212,7 @@ export function formatWorkoutGroupPlanLabel(
       : `${label} · ${rounds} runde${rounds === 1 ? "" : "r"}`;
   }
 
-  return formatPlanFromWorkoutRows(group.rows, program, group.groupId, exerciseLibrary);
+  return formatPlanFromWorkoutRows(group.rows, program, group.groupId, exerciseLibrary, options);
 }
 
 /** Plan for ett segment i supersett/trisett/sirkel. */
@@ -197,8 +221,9 @@ export function formatWorkoutSegmentPlanLabel(
   segmentRows: WorkoutExerciseResult[],
   program: TrainingProgram | null | undefined,
   exerciseLibrary: Exercise[],
+  options?: WorkoutPlanLabelOptions,
 ): string {
-  return formatPlanFromWorkoutRows(segmentRows, program, programExerciseId, exerciseLibrary);
+  return formatPlanFromWorkoutRows(segmentRows, program, programExerciseId, exerciseLibrary, options);
 }
 
 export function resolveWorkoutGroupExerciseName(
