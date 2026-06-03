@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Check, Minus, Plus, Trophy } from "lucide-react";
+import { Check, Minus, Plus, Trash2, Trophy } from "lucide-react";
 import { motusHaptic } from "../app/haptics";
 import { isHoldBasedExerciseCategory } from "../app/exerciseCategories";
 import {
@@ -44,6 +44,9 @@ type WorkoutCompactSetTableProps = {
   onSetPersonalRecord?: (exerciseName: string) => void;
   /** Siste utførte sett per øvelse (lowercase navn) og settnummer. Brukes til å vise «siste gang»-verdier i grått. */
   lastSessionByExercise?: Map<string, Map<number, LastSessionEntry>>;
+  /** Vis søppelkasse på siste sett-rad (ekstra sett lagt til under økta). */
+  showRemoveLastSet?: boolean;
+  onRemoveLastSet?: () => void;
 };
 
 const PR_BADGE_VISIBLE_MS = 4500;
@@ -120,6 +123,8 @@ export function WorkoutCompactSetTable({
   previousPersonalBests,
   onSetPersonalRecord,
   lastSessionByExercise,
+  showRemoveLastSet = false,
+  onRemoveLastSet,
 }: WorkoutCompactSetTableProps) {
   function lookupLastSession(row: WorkoutSetRow): LastSessionEntry | null {
     if (!lastSessionByExercise) return null;
@@ -209,13 +214,14 @@ export function WorkoutCompactSetTable({
   const repsUnitLabel = resolveWorkoutRepsUnit(firstRow) === "min" ? "MIN" : "REPS";
   const loadUnitLabel = isStretch || isStrengthSeconds ? "SEK" : "KG";
   const col3Label = isCardio ? (isTreadmill ? "FART" : "MIN") : `VEKT (${loadUnitLabel})`;
+  const removeCol = showRemoveLastSet && onRemoveLastSet ? "2.25rem" : "";
   const gridCols = showExerciseColumn
     ? isCardio && isTreadmill
-      ? "minmax(0,1.2fr) 2.5rem 1fr 1fr 1fr 2.5rem"
-      : "minmax(0,1.2fr) 2.5rem 1fr 1fr 2.5rem"
+      ? `minmax(0,1.2fr) 2.5rem 1fr 1fr 1fr 2.5rem${removeCol ? ` ${removeCol}` : ""}`
+      : `minmax(0,1.2fr) 2.5rem 1fr 1fr 2.5rem${removeCol ? ` ${removeCol}` : ""}`
     : isCardio && isTreadmill
-      ? "2.5rem 1fr 1fr 1fr 2.5rem"
-      : "2.5rem 1fr 1fr 2.5rem";
+      ? `2.5rem 1fr 1fr 1fr 2.5rem${removeCol ? ` ${removeCol}` : ""}`
+      : `2.5rem 1fr 1fr 2.5rem${removeCol ? ` ${removeCol}` : ""}`;
 
   function handleInputChange(row: WorkoutSetRow, field: Exclude<UpdateField, "completed">, value: string) {
     onUpdate(row.exerciseId, field, value);
@@ -401,11 +407,14 @@ export function WorkoutCompactSetTable({
           {isCardio && isTreadmill ? <span className="text-center">Km/t</span> : null}
           <span className="text-center">{col3Label}</span>
           <span className="sr-only">Fullført</span>
+          {removeCol ? <span className="sr-only">Fjern</span> : null}
         </div>
         {rows.map((row, index) => {
           const isActive = index === activeIndex;
           const isFuture = activeIndex >= 0 && index > activeIndex;
           const isDone = row.completed;
+          const isLastRow = index === rows.length - 1;
+          const showRowRemove = Boolean(showRemoveLastSet && onRemoveLastSet && isLastRow);
           const isPr = Boolean(prRows[row.exerciseId]);
           const { isStrengthSeconds: rowStrengthSeconds, isStretch: rowStretch, isCardio: rowCardio } = resolveRowKind(
             row,
@@ -549,6 +558,19 @@ export function WorkoutCompactSetTable({
                   onUpdate(row.exerciseId, "completed", nextCompleted);
                 }}
               />
+              {showRowRemove ? (
+                <button
+                  type="button"
+                  onClick={onRemoveLastSet}
+                  className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-slate-500 transition hover:bg-rose-50 hover:text-rose-700"
+                  aria-label="Fjern siste ekstra sett"
+                  title="Fjern siste sett"
+                >
+                  <Trash2 className="h-4 w-4" aria-hidden />
+                </button>
+              ) : removeCol ? (
+                <span aria-hidden />
+              ) : null}
             </div>
           );
         })}

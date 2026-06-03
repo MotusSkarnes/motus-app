@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ArrowLeft, Check, ChevronRight, Minus, Plus, Repeat2, SkipForward, TimerReset, X } from "lucide-react";
+import { ArrowLeft, Check, ChevronRight, Minus, Plus, Repeat2, SkipForward, TimerReset, Trash2, X } from "lucide-react";
 import { motusHaptic } from "../app/haptics";
 import { remainingSecondsUntilDeadline } from "../app/intervalTimerDeadline";
 import { useScreenWakeLock } from "../app/useScreenWakeLock";
@@ -476,6 +476,13 @@ export function LiveWorkoutSessionModal({
     return formatWorkoutGroupPlanLabel(nextWorkoutGroup, resolvedProgram, exercises);
   }, [nextWorkoutGroup, resolvedProgram, exercises]);
 
+  const currentProgramExerciseId = currentWorkoutGroup?.segments[0]?.programExerciseId ?? "";
+  const canRemoveCurrentExtraSet =
+    Boolean(currentWorkoutGroup && !currentWorkoutGroup.blockType && currentProgramExerciseId) &&
+    canRemoveLastExtraWorkoutSet(currentWorkoutGroup!.rows, {
+      baselineSetCount: workoutMode?.baselineSetCountByProgramExerciseId?.[currentProgramExerciseId],
+    });
+
   function handleReplaceCurrentWorkoutExercise(replacementExerciseId: string) {
     if (!currentWorkoutGroup || !replacementExerciseId) return;
     const replacementExercise = exercises.find((exercise) => exercise.id === replacementExerciseId);
@@ -901,18 +908,22 @@ export function LiveWorkoutSessionModal({
                       previousPersonalBests={previousPersonalBests}
                       onSetPersonalRecord={onSetPersonalRecord}
                       lastSessionByExercise={lastSessionByExercise}
+                      showRemoveLastSet={canRemoveCurrentExtraSet}
+                      onRemoveLastSet={
+                        canRemoveCurrentExtraSet
+                          ? () => removeLastWorkoutSetForProgramExercise(currentProgramExerciseId)
+                          : undefined
+                      }
                     />
                   )}
               </div>
               {!currentWorkoutGroup.blockType && currentWorkoutGroup.segments[0] ? (
                 <div className="mt-2 border-t pt-2" style={{ borderColor: "rgba(15,23,42,0.06)" }}>
                   <div className="flex flex-wrap gap-2">
-                    {canRemoveLastExtraWorkoutSet(currentWorkoutGroup.rows) ? (
+                    {canRemoveCurrentExtraSet ? (
                       <button
                         type="button"
-                        onClick={() =>
-                          removeLastWorkoutSetForProgramExercise(currentWorkoutGroup.segments[0]!.programExerciseId)
-                        }
+                        onClick={() => removeLastWorkoutSetForProgramExercise(currentProgramExerciseId)}
                         className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-lg border bg-white px-3 py-2 text-xs font-semibold text-slate-700 transition hover:border-rose-300 hover:bg-rose-50/60 sm:flex-none"
                         style={{ borderColor: "rgba(148,163,184,0.55)" }}
                         aria-label="Fjern siste ekstra sett"
@@ -934,7 +945,7 @@ export function LiveWorkoutSessionModal({
                   </div>
                   {currentWorkoutGroup.rows.length >= MAX_SETS_PER_EXERCISE_IN_WORKOUT_MODE ? (
                     <p className="mt-1.5 text-[10px] text-slate-500">Maks {MAX_SETS_PER_EXERCISE_IN_WORKOUT_MODE} sett per øvelse.</p>
-                  ) : canRemoveLastExtraWorkoutSet(currentWorkoutGroup.rows) ? (
+                  ) : canRemoveCurrentExtraSet ? (
                     <p className="mt-1.5 text-[10px] text-slate-500">
                       Du kan fjerne ekstra sett du har lagt til under økta. Planlagte sett fra programmet kan ikke slettes her.
                     </p>

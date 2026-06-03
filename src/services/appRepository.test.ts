@@ -90,6 +90,7 @@ describe("appRepository workout log guards", () => {
     expect(appended?.setNumber).toBe(3);
     expect(appended?.exerciseId).toBe("pex-1-set-3");
     expect(appended?.completed).toBe(false);
+    expect(appended?.addedDuringWorkout).toBe(true);
   });
 
   it("removes last extra set beyond program plan", () => {
@@ -97,6 +98,7 @@ describe("appRepository workout log guards", () => {
     state.workoutMode = {
       programId: "program-1",
       note: "",
+      baselineSetCountByProgramExerciseId: { "pex-1": 2 },
       results: [
         {
           exerciseId: "pex-1-set-1",
@@ -130,13 +132,14 @@ describe("appRepository workout log guards", () => {
           plannedSets: "2",
           plannedReps: "8",
           plannedWeight: "50",
+          addedDuringWorkout: true,
           performedWeight: "",
           performedReps: "",
           completed: false,
         },
       ],
     };
-    expect(canRemoveLastExtraWorkoutSet(state.workoutMode!.results)).toBe(true);
+    expect(canRemoveLastExtraWorkoutSet(state.workoutMode!.results, { baselineSetCount: 2 })).toBe(true);
     const next = removeLastWorkoutSetForProgramExerciseInState(state, "pex-1");
     expect(next.workoutMode?.results).toHaveLength(2);
     expect(next.workoutMode?.results.every((r) => r.programExerciseId === "pex-1")).toBe(true);
@@ -174,9 +177,40 @@ describe("appRepository workout log guards", () => {
         },
       ],
     };
-    expect(canRemoveLastExtraWorkoutSet(state.workoutMode!.results)).toBe(false);
+    expect(canRemoveLastExtraWorkoutSet(state.workoutMode!.results, { baselineSetCount: 2 })).toBe(false);
     const next = removeLastWorkoutSetForProgramExerciseInState(state, "pex-1");
     expect(next.workoutMode?.results).toHaveLength(2);
+  });
+
+  it("allows remove when last row is marked addedDuringWorkout even if plannedSets matches row count", () => {
+    const rows = [
+      {
+        exerciseId: "pex-1-set-1",
+        programExerciseId: "pex-1",
+        setNumber: 1,
+        exerciseName: "Benk",
+        plannedSets: "2",
+        plannedReps: "8",
+        plannedWeight: "50",
+        performedWeight: "50",
+        performedReps: "8",
+        completed: false,
+      },
+      {
+        exerciseId: "pex-1-set-2",
+        programExerciseId: "pex-1",
+        setNumber: 2,
+        exerciseName: "Benk",
+        plannedSets: "2",
+        plannedReps: "8",
+        plannedWeight: "50",
+        addedDuringWorkout: true,
+        performedWeight: "",
+        performedReps: "",
+        completed: false,
+      },
+    ];
+    expect(canRemoveLastExtraWorkoutSet(rows, { baselineSetCount: 2 })).toBe(true);
   });
 
   it("defers current exercise to come right after the next one", () => {

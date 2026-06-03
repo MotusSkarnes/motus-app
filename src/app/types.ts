@@ -55,6 +55,8 @@ export type WorkoutExerciseResult = {
   completed: boolean;
   /** Valgfri kommentar til øvelsen (lagres på alle sett for samme programExerciseId). */
   exerciseNote?: string;
+  /** Satt til true når sett er lagt til med «Legg til sett» under pågående økt. */
+  addedDuringWorkout?: boolean;
 };
 
 export type WorkoutModeState = {
@@ -63,6 +65,8 @@ export type WorkoutModeState = {
   programTitle?: string;
   results: WorkoutExerciseResult[];
   note: string;
+  /** Antall sett per programExerciseId da økten startet (før ekstra sett underveis). */
+  baselineSetCountByProgramExerciseId?: Record<string, number>;
 };
 
 export type WorkoutCelebration = {

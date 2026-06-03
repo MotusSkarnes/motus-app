@@ -471,6 +471,16 @@ export function toggleChatMessageReaction(
   };
 }
 
+export function buildBaselineSetCountByProgramExerciseId(results: WorkoutExerciseResult[]): Record<string, number> {
+  const counts: Record<string, number> = {};
+  results.forEach((result) => {
+    const pid = result.programExerciseId?.trim();
+    if (!pid || result.blockId?.trim()) return;
+    counts[pid] = (counts[pid] ?? 0) + 1;
+  });
+  return counts;
+}
+
 export function startWorkoutModeInState(state: AppState, programId: string, options?: StartWorkoutModeOptions): AppState {
   const program = state.programs.find((p) => p.id === programId);
   if (!program) return state;
@@ -488,6 +498,7 @@ export function startWorkoutModeInState(state: AppState, programId: string, opti
       programTitle: program.title,
       results: expandedResults,
       note: "",
+      baselineSetCountByProgramExerciseId: buildBaselineSetCountByProgramExerciseId(expandedResults),
     },
   };
 }
@@ -567,6 +578,7 @@ export function appendWorkoutSetForProgramExerciseInState(state: AppState, progr
     exerciseId: `${pid}-set-${nextSetNum}`,
     setNumber: nextSetNum,
     completed: false,
+    addedDuringWorkout: true,
     performedWeight: template.plannedWeight,
     performedReps: template.plannedReps,
     performedDurationMinutes: template.plannedDurationMinutes ?? "",
@@ -590,9 +602,20 @@ export function plannedWorkoutSetCountForGroup(rows: WorkoutExerciseResult[]): n
   return parseProgramSetCount(rows[0]?.plannedSets);
 }
 
-/** Kan siste sett fjernes — kun ekstra sett lagt til underveis (flere enn plan). */
-export function canRemoveLastExtraWorkoutSet(rows: WorkoutExerciseResult[]): boolean {
-  return rows.length > plannedWorkoutSetCountForGroup(rows);
+export type CanRemoveLastExtraWorkoutSetOptions = {
+  baselineSetCount?: number;
+};
+
+/** Kan siste sett fjernes — ekstra sett lagt til underveis (markert eller flere enn ved øktstart). */
+export function canRemoveLastExtraWorkoutSet(
+  rows: WorkoutExerciseResult[],
+  options?: CanRemoveLastExtraWorkoutSetOptions,
+): boolean {
+  if (rows.length <= 1) return false;
+  const last = rows[rows.length - 1];
+  if (last?.addedDuringWorkout) return true;
+  const baseline = options?.baselineSetCount ?? plannedWorkoutSetCountForGroup(rows);
+  return rows.length > baseline;
 }
 
 export function removeLastWorkoutSetForProgramExerciseInState(state: AppState, programExerciseId: string): AppState {
@@ -608,7 +631,8 @@ export function removeLastWorkoutSetForProgramExerciseInState(state: AppState, p
   if (!groupIndices.length) return state;
 
   const groupRows = groupIndices.map((i) => results[i]);
-  if (!canRemoveLastExtraWorkoutSet(groupRows)) return state;
+  const baselineSetCount = state.workoutMode.baselineSetCountByProgramExerciseId?.[pid];
+  if (!canRemoveLastExtraWorkoutSet(groupRows, { baselineSetCount })) return state;
 
   const removeIndex = groupIndices[groupIndices.length - 1];
   const newResults = results.filter((_, i) => i !== removeIndex);
