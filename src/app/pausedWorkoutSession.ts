@@ -17,11 +17,12 @@ function resolvePausedWorkoutMemberId(state: AppState, memberIdHint?: string): s
 }
 
 export function persistPausedWorkoutFromState(state: AppState, memberIdHint?: string): void {
-  const workoutMode = state.workoutMode;
-  if (!workoutMode) return;
+  const rawWorkoutMode = state.workoutMode;
+  if (!rawWorkoutMode) return;
+  const program = state.programs.find((item) => item.id === rawWorkoutMode.programId);
+  const workoutMode = ensureWorkoutModeSessionMetadata(rawWorkoutMode, program ?? null, state.exercises);
   const memberId = resolvePausedWorkoutMemberId(state, memberIdHint);
   if (!memberId) return;
-  const program = state.programs.find((item) => item.id === workoutMode.programId);
   const hasProgress =
     workoutMode.results.some((result) => result.completed) ||
     workoutMode.note.trim().length > 0 ||

@@ -10,7 +10,10 @@ import {
   parseProgramSetCount,
   workoutResultGroupId,
 } from "../app/programBlocks";
-import { formatProgramExercisePrescription } from "../app/programExercisePresentation";
+import {
+  formatWorkoutPlanLabelFromProgramExercise,
+  lookupFrozenWorkoutPlanLabel,
+} from "../app/programExercisePresentation";
 import { uid } from "../app/storage";
 import { toggleReactionInState, type ChatReactionActor, type ChatReactionEmoji } from "../app/chatReactions";
 import type {
@@ -487,14 +490,29 @@ export function buildBaselineSetCountByProgramExerciseId(results: WorkoutExercis
 export function buildFrozenPlanLabelByProgramExerciseId(
   program: TrainingProgram,
   exerciseLibrary: Exercise[],
+  results?: WorkoutExerciseResult[],
 ): Record<string, string> {
   const labels: Record<string, string> = {};
   program.exercises.forEach((exercise, index) => {
     if (exercise.blockId?.trim()) return;
     const id = exercise.id.trim();
     if (!id) return;
-    labels[id] = formatProgramExercisePrescription(exercise, index, program.exercises, exerciseLibrary);
+    const baseline = parseProgramSetCount(exercise.sets);
+    labels[id] = formatWorkoutPlanLabelFromProgramExercise(
+      exercise,
+      index,
+      program.exercises,
+      exerciseLibrary,
+      baseline,
+    );
   });
+  if (results) {
+    results.forEach((result) => {
+      const pid = result.programExerciseId?.trim();
+      const gid = workoutResultGroupId(result);
+      if (pid && labels[pid]) labels[gid] = labels[pid]!;
+    });
+  }
   return labels;
 }
 
@@ -555,12 +573,17 @@ export function ensureWorkoutModeSessionMetadata(
         : buildBaselineSetCountByProgramExerciseId(workoutMode.results);
     next = { ...next, baselineSetCountByProgramExerciseId: baseline };
   }
-  const existingLabels = workoutMode.frozenPlanLabelByProgramExerciseId;
-  if ((!existingLabels || Object.keys(existingLabels).length === 0) && program) {
-    next = {
-      ...next,
-      frozenPlanLabelByProgramExerciseId: buildFrozenPlanLabelByProgramExerciseId(program, exerciseLibrary),
-    };
+  if (program) {
+    const built = buildFrozenPlanLabelByProgramExerciseId(program, exerciseLibrary, workoutMode.results);
+    const existing = next.frozenPlanLabelByProgramExerciseId ?? {};
+    const merged: Record<string, string> = { ...built };
+    for (const [key, value] of Object.entries(existing)) {
+      if (value?.trim()) merged[key] = value.trim();
+    }
+    for (const [key, value] of Object.entries(built)) {
+      if (!merged[key]?.trim()) merged[key] = value;
+    }
+    next = { ...next, frozenPlanLabelByProgramExerciseId: merged };
   }
   return next;
 }
@@ -591,7 +614,7 @@ export function startWorkoutModeInState(state: AppState, programId: string, opti
       results: expandedResults,
       note: "",
       baselineSetCountByProgramExerciseId: buildBaselineSetCountFromProgramExercises(program.exercises),
-      frozenPlanLabelByProgramExerciseId: buildFrozenPlanLabelByProgramExerciseId(program, state.exercises),
+      frozenPlanLabelByProgramExerciseId: buildFrozenPlanLabelByProgramExerciseId(program, state.exercises, expandedResults),
     },
   };
 }
@@ -671,6 +694,29 @@ export function appendWorkoutSetForProgramExerciseInState(state: AppState, progr
     baselineMap[pid] = groupIndices.length;
   }
 
+  const program = state.programs.find((p) => p.id === state.workoutMode!.programId);
+  let frozenPlanLabelByProgramExerciseId = { ...(state.workoutMode.frozenPlanLabelByProgramExerciseId ?? {}) };
+  if (program) {
+    const lookupKeys = [pid, workoutResultGroupId(template)];
+    if (!lookupFrozenWorkoutPlanLabel(frozenPlanLabelByProgramExerciseId, lookupKeys).trim()) {
+      const exerciseIndex = program.exercises.findIndex((exercise) => exercise.id === pid);
+      if (exerciseIndex >= 0) {
+        const label = formatWorkoutPlanLabelFromProgramExercise(
+          program.exercises[exerciseIndex]!,
+          exerciseIndex,
+          program.exercises,
+          state.exercises,
+          baselineMap[pid],
+        );
+        frozenPlanLabelByProgramExerciseId = {
+          ...frozenPlanLabelByProgramExerciseId,
+          [pid]: label,
+          [workoutResultGroupId(template)]: label,
+        };
+      }
+    }
+  }
+
   const newRow: WorkoutExerciseResult = {
     ...template,
     exerciseId: `${pid}-set-${nextSetNum}`,
@@ -690,6 +736,7 @@ export function appendWorkoutSetForProgramExerciseInState(state: AppState, progr
     workoutMode: {
       ...state.workoutMode,
       baselineSetCountByProgramExerciseId: baselineMap,
+      frozenPlanLabelByProgramExerciseId,
       results: newResults,
     },
   };

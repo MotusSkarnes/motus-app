@@ -10,9 +10,10 @@ import { EXERCISE_IMAGE_INSET_CLASS, EXERCISE_IMAGE_SMALL_CLASS } from "../app/e
 import { resolveExerciseImageSrc } from "../app/exerciseIllustrations";
 import { buildWorkoutResultGroups, EXERCISE_BLOCK_LABELS } from "../app/programBlocks";
 import {
-  formatProgramExercisePrescription,
   formatWorkoutGroupPlanLabel,
+  formatWorkoutPlanLabelFromProgramExercise,
   formatWorkoutSegmentPlanLabel,
+  lookupFrozenWorkoutPlanLabel,
   resolveWorkoutGroupExerciseName,
   type WorkoutPlanLabelOptions,
 } from "../app/programExercisePresentation";
@@ -21,7 +22,7 @@ import type { Exercise, TrainingProgram, WorkoutModeState, WorkoutReflection } f
 import { resolveDetailLastSessionLabel } from "../app/lastSessionSetDisplay";
 import { buildTrainingProgramFromWorkoutMode } from "../app/pausedWorkoutSession";
 import {
-  canRemoveLastExtraWorkoutSet,
+  countExtraWorkoutSets,
   MAX_SETS_PER_EXERCISE_IN_WORKOUT_MODE,
   resolveWorkoutBaselineSetCount,
   type ReplaceWorkoutExerciseGroupInput,
@@ -167,11 +168,6 @@ export function LiveWorkoutSessionModal({
   );
 
   const activeWorkoutModeProgramId = workoutMode?.programId ?? "";
-  const frozenPlanCacheRef = useRef<Record<string, string>>({});
-
-  useEffect(() => {
-    frozenPlanCacheRef.current = {};
-  }, [activeWorkoutModeProgramId]);
 
   useEffect(() => {
     if (!activeWorkoutModeProgramId) {
@@ -480,50 +476,51 @@ export function LiveWorkoutSessionModal({
   const currentProgramExerciseId =
     currentWorkoutGroup?.segments[0]?.programExerciseId?.trim() || currentWorkoutGroup?.groupId?.trim() || "";
 
-  /** Plan fryst ved øktstart — endres ikke når kunden legger til sett eller program synkes på nytt. */
+  const planLabelLookupKeys = useMemo(() => {
+    if (!currentWorkoutGroup) return [];
+    const keys = new Set<string>();
+    if (currentProgramExerciseId) keys.add(currentProgramExerciseId);
+    keys.add(currentWorkoutGroup.groupId);
+    currentWorkoutGroup.segments.forEach((segment) => {
+      const id = segment.programExerciseId?.trim();
+      if (id) keys.add(id);
+    });
+    currentWorkoutGroup.rows.forEach((row) => {
+      const id = row.programExerciseId?.trim();
+      if (id) keys.add(id);
+    });
+    return Array.from(keys);
+  }, [currentProgramExerciseId, currentWorkoutGroup?.groupId]);
+
+  /** Plan fryst ved øktstart — baseline-sett, ikke antall rader under økta. */
   const currentWorkoutPlanLabel = useMemo(() => {
-    if (!currentWorkoutGroup || currentWorkoutGroup.blockType || !currentProgramExerciseId) return "";
-    const fromWorkoutMode = workoutMode?.frozenPlanLabelByProgramExerciseId?.[currentProgramExerciseId]?.trim();
-    if (fromWorkoutMode) return fromWorkoutMode;
-    const cached = frozenPlanCacheRef.current[currentProgramExerciseId];
-    if (cached) return cached;
-    if (!resolvedProgram) {
-      const fallback = formatWorkoutGroupPlanLabel(
-        currentWorkoutGroup,
-        resolvedProgram,
-        exercises,
-        WORKOUT_PLAN_LABEL_OPTIONS,
-      );
-      frozenPlanCacheRef.current[currentProgramExerciseId] = fallback;
-      return fallback;
-    }
-    const exerciseIndex = resolvedProgram.exercises.findIndex((exercise) => exercise.id === currentProgramExerciseId);
-    if (exerciseIndex < 0) {
-      const fallback = formatWorkoutGroupPlanLabel(
-        currentWorkoutGroup,
-        resolvedProgram,
-        exercises,
-        WORKOUT_PLAN_LABEL_OPTIONS,
-      );
-      frozenPlanCacheRef.current[currentProgramExerciseId] = fallback;
-      return fallback;
-    }
-    const label = formatProgramExercisePrescription(
+    if (!currentWorkoutGroup || currentWorkoutGroup.blockType) return "";
+    const frozen = lookupFrozenWorkoutPlanLabel(workoutMode?.frozenPlanLabelByProgramExerciseId, planLabelLookupKeys);
+    if (frozen) return frozen;
+    if (!resolvedProgram) return "";
+    const lookupId = currentProgramExerciseId || currentWorkoutGroup.groupId;
+    const exerciseIndex = resolvedProgram.exercises.findIndex((exercise) => exercise.id === lookupId);
+    if (exerciseIndex < 0) return "";
+    const baseline = resolveWorkoutBaselineSetCount(
+      lookupId,
+      currentWorkoutGroup.rows,
+      workoutMode,
+      resolvedProgram,
+    );
+    return formatWorkoutPlanLabelFromProgramExercise(
       resolvedProgram.exercises[exerciseIndex]!,
       exerciseIndex,
       resolvedProgram.exercises,
       exercises,
+      baseline,
     );
-    frozenPlanCacheRef.current[currentProgramExerciseId] = label;
-    return label;
   }, [
-    currentWorkoutGroup?.groupId,
     currentWorkoutGroup?.blockType,
-    currentProgramExerciseId,
+    planLabelLookupKeys,
     workoutMode?.frozenPlanLabelByProgramExerciseId,
+    workoutMode?.baselineSetCountByProgramExerciseId,
     workoutMode?.programId,
     resolvedProgram?.id,
-    exercises,
   ]);
 
   const nextWorkoutPlanLabel = useMemo(() => {
@@ -533,14 +530,7 @@ export function LiveWorkoutSessionModal({
 
   const canRemoveCurrentExtraSet =
     Boolean(currentWorkoutGroup && !currentWorkoutGroup.blockType && currentProgramExerciseId) &&
-    canRemoveLastExtraWorkoutSet(currentWorkoutGroup!.rows, {
-      baselineSetCount: resolveWorkoutBaselineSetCount(
-        currentProgramExerciseId,
-        currentWorkoutGroup!.rows,
-        workoutMode,
-        resolvedProgram,
-      ),
-    });
+    countExtraWorkoutSets(currentProgramExerciseId, currentWorkoutGroup!.rows, workoutMode, resolvedProgram) > 0;
 
   function handleReplaceCurrentWorkoutExercise(replacementExerciseId: string) {
     if (!currentWorkoutGroup || !replacementExerciseId) return;

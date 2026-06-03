@@ -9,6 +9,7 @@ import {
   EXERCISE_BLOCK_LABELS,
   isLegacyIntervalCooldownDrag,
   parseProgramSetCount,
+  workoutResultGroupId,
   type WorkoutResultGroup,
 } from "./programBlocks";
 import { resolveWorkoutLoadUnit, resolveWorkoutRepsUnit } from "./workoutResultUnits";
@@ -101,6 +102,35 @@ export function formatProgramExercisePrescription(
   const weightUnit = exercise.weightUnit === "seconds" ? "sek" : "kg";
   const seatSuffix = exercise.seatSetting?.trim() ? ` · sete ${exercise.seatSetting.trim()}` : "";
   return `${exercise.sets || "-"}×${exercise.reps || "-"} ${repsUnit} · ${exercise.weight || "0"} ${weightUnit} · ${restSeconds}s${pauseLabel}${seatSuffix}${appendCustomPrescriptionParts(exercise, linkedExercise)}`;
+}
+
+/** Plan fra programøvelse med valgfri overstyring av antall sett (baseline ved øktstart). */
+export function formatWorkoutPlanLabelFromProgramExercise(
+  programExercise: ProgramExercise,
+  exerciseIndex: number,
+  programExercises: ProgramExercise[],
+  exerciseLibrary: Exercise[],
+  setCountOverride?: number,
+): string {
+  const exercise =
+    typeof setCountOverride === "number" && setCountOverride >= 1
+      ? { ...programExercise, sets: String(setCountOverride) }
+      : programExercise;
+  return formatProgramExercisePrescription(exercise, exerciseIndex, programExercises, exerciseLibrary);
+}
+
+export function lookupFrozenWorkoutPlanLabel(
+  frozen: Record<string, string> | undefined,
+  keys: string[],
+): string {
+  if (!frozen) return "";
+  for (const key of keys) {
+    const id = key.trim();
+    if (!id) continue;
+    const label = frozen[id]?.trim();
+    if (label) return label;
+  }
+  return "";
 }
 
 function workoutRowsToProgramExercise(rows: WorkoutExerciseResult[]): ProgramExercise | null {

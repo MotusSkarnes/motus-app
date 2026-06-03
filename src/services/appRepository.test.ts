@@ -3,6 +3,7 @@ import type { AppState } from "../app/types";
 import {
   appendWorkoutSetForProgramExerciseInState,
   canRemoveLastExtraWorkoutSet,
+  countExtraWorkoutSets,
   removeLastWorkoutSetForProgramExerciseInState,
   resolveWorkoutBaselineSetCount,
   deferWorkoutExerciseGroupInState,
@@ -92,6 +93,31 @@ describe("appRepository workout log guards", () => {
     expect(appended?.exerciseId).toBe("pex-1-set-3");
     expect(appended?.completed).toBe(false);
     expect(appended?.addedDuringWorkout).toBe(true);
+  });
+
+  it("freezes plan label at start and keeps set count after append", () => {
+    const state = createBaseState();
+    state.programs = [
+      {
+        id: "program-1",
+        memberId: "member-1",
+        title: "Styrke A",
+        goal: "",
+        notes: "",
+        createdAt: "24.04.2026",
+        exercises: [
+          { id: "pex-1", exerciseId: "ex-1", exerciseName: "Benk", sets: "3", reps: "10", weight: "5", restSeconds: "90", notes: "" },
+        ],
+      },
+    ];
+    const started = startWorkoutModeInState(state, "program-1");
+    expect(started.workoutMode?.results).toHaveLength(3);
+    const frozen = started.workoutMode?.frozenPlanLabelByProgramExerciseId?.["pex-1"] ?? "";
+    expect(frozen).toContain("3×10");
+    const appended = appendWorkoutSetForProgramExerciseInState(started, "pex-1");
+    expect(appended.workoutMode?.results).toHaveLength(4);
+    expect(appended.workoutMode?.frozenPlanLabelByProgramExerciseId?.["pex-1"]).toContain("3×10");
+    expect(countExtraWorkoutSets("pex-1", appended.workoutMode!.results, appended.workoutMode, state.programs[0])).toBe(1);
   });
 
   it("removes last extra set beyond program plan", () => {

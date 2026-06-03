@@ -4,6 +4,7 @@ import { STORAGE_KEY, demoUsers, getDefaultState } from "./data";
 import { loadState, saveState } from "./storage";
 import {
   createMember,
+  ensureWorkoutModeSessionMetadata,
   localAppRepository,
   type CreateMemberInput,
   type CreateMemberResult,
@@ -894,6 +895,22 @@ export function useAppState() {
   useEffect(() => {
     purgeExpiredPausedWorkouts();
   }, []);
+
+  /** Etter deploy: fyll inn fryst plan/baseline for pågående økt i localStorage uten å starte på nytt. */
+  useEffect(() => {
+    setAppState((prev) => {
+      const wm = prev.workoutMode;
+      if (!wm) return prev;
+      const frozen = wm.frozenPlanLabelByProgramExerciseId;
+      const baseline = wm.baselineSetCountByProgramExerciseId;
+      if (frozen && Object.keys(frozen).length > 0 && baseline && Object.keys(baseline).length > 0) {
+        return prev;
+      }
+      const program = prev.programs.find((item) => item.id === wm.programId);
+      if (!program) return prev;
+      return { ...prev, workoutMode: ensureWorkoutModeSessionMetadata(wm, program, prev.exercises) };
+    });
+  }, [appState.workoutMode?.programId]);
 
   useEffect(() => {
     if (appState.currentUser?.role !== "member") return;
