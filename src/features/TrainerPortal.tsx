@@ -1925,37 +1925,20 @@ function pickFirstName(value: unknown): string {
   }, [programsSubTab, trainerTab]);
 
   useEffect(() => {
-    if (!editingProgramId) {
-      stashedCustomerProgramBuilderRef.current = null;
-      return;
-    }
-    stashedCustomerProgramBuilderRef.current = {
-      programTitle,
-      programGoal,
-      programNotes,
-      programFormImageUrl,
-      programCoverCleared,
-      programExercisesDraft,
-      cardioIntervalIntensity,
-      cardioEquipmentId,
-    };
-  }, [
-    editingProgramId,
-    programTitle,
-    programGoal,
-    programNotes,
-    programFormImageUrl,
-    programCoverCleared,
-    programExercisesDraft,
-    cardioIntervalIntensity,
-    cardioEquipmentId,
-  ]);
-
-  useEffect(() => {
     const previousTab = prevTrainerTabRef.current;
     prevTrainerTabRef.current = trainerTab;
 
     if (trainerTab === "programs" && previousTab !== "programs" && editingProgramId && !editingTemplateProgramId) {
+      stashedCustomerProgramBuilderRef.current = {
+        programTitle,
+        programGoal,
+        programNotes,
+        programFormImageUrl,
+        programCoverCleared,
+        programExercisesDraft,
+        cardioIntervalIntensity,
+        cardioEquipmentId,
+      };
       setProgramExercisesDraft([]);
       setTemplateProgramTitle("Ny treningsmal");
       setProgramFormImageUrl("");
@@ -1975,7 +1958,19 @@ function pickFirstName(value: unknown): string {
       setCardioIntervalIntensity(stash.cardioIntervalIntensity);
       setCardioEquipmentId(stash.cardioEquipmentId);
     }
-  }, [trainerTab, editingProgramId, editingTemplateProgramId]);
+  }, [
+    trainerTab,
+    editingProgramId,
+    editingTemplateProgramId,
+    programTitle,
+    programGoal,
+    programNotes,
+    programFormImageUrl,
+    programCoverCleared,
+    programExercisesDraft,
+    cardioIntervalIntensity,
+    cardioEquipmentId,
+  ]);
 
   useEffect(() => {
     if (trainerTab !== "exerciseBank") return;
@@ -2386,6 +2381,7 @@ function pickFirstName(value: unknown): string {
 
   function resetProgramBuilder() {
     setEditingProgramId(null);
+    stashedCustomerProgramBuilderRef.current = null;
     setProgramTitle("Nytt treningsprogram");
     setProgramGoal("");
     setProgramNotes("");
