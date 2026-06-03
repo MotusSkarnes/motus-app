@@ -896,21 +896,25 @@ export function useAppState() {
     purgeExpiredPausedWorkouts();
   }, []);
 
-  /** Etter deploy: fyll inn fryst plan/baseline for pågående økt i localStorage uten å starte på nytt. */
+  /** Synk baseline/plan fra program — retter feil lagret i pauset økt (f.eks. 4×10 i stedet for 3×10). */
   useEffect(() => {
     setAppState((prev) => {
       const wm = prev.workoutMode;
       if (!wm) return prev;
-      const frozen = wm.frozenPlanLabelByProgramExerciseId;
-      const baseline = wm.baselineSetCountByProgramExerciseId;
-      if (frozen && Object.keys(frozen).length > 0 && baseline && Object.keys(baseline).length > 0) {
-        return prev;
-      }
       const program = prev.programs.find((item) => item.id === wm.programId);
       if (!program) return prev;
-      return { ...prev, workoutMode: ensureWorkoutModeSessionMetadata(wm, program, prev.exercises) };
+      const next = ensureWorkoutModeSessionMetadata(wm, program, prev.exercises);
+      if (
+        JSON.stringify(next.baselineSetCountByProgramExerciseId ?? {}) ===
+          JSON.stringify(wm.baselineSetCountByProgramExerciseId ?? {}) &&
+        JSON.stringify(next.frozenPlanLabelByProgramExerciseId ?? {}) ===
+          JSON.stringify(wm.frozenPlanLabelByProgramExerciseId ?? {})
+      ) {
+        return prev;
+      }
+      return { ...prev, workoutMode: next };
     });
-  }, [appState.workoutMode?.programId]);
+  }, [appState.workoutMode?.programId, appState.programs]);
 
   useEffect(() => {
     if (appState.currentUser?.role !== "member") return;

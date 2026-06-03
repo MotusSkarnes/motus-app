@@ -13,6 +13,7 @@ import {
   removeWorkoutLogResultInState,
   setWorkoutLogResultsInState,
   startCustomWorkoutInState,
+  ensureWorkoutModeSessionMetadata,
   startWorkoutModeInState,
 } from "./appRepository";
 
@@ -93,6 +94,84 @@ describe("appRepository workout log guards", () => {
     expect(appended?.exerciseId).toBe("pex-1-set-3");
     expect(appended?.completed).toBe(false);
     expect(appended?.addedDuringWorkout).toBe(true);
+  });
+
+  it("reconcile session metadata replaces stale frozen plan from program", () => {
+    const state = createBaseState();
+    state.programs = [
+      {
+        id: "program-1",
+        memberId: "member-1",
+        title: "Styrke A",
+        goal: "",
+        notes: "",
+        createdAt: "24.04.2026",
+        exercises: [
+          { id: "pex-1", exerciseId: "ex-1", exerciseName: "Benk", sets: "3", reps: "10", weight: "5", restSeconds: "90", notes: "" },
+        ],
+      },
+    ];
+    state.workoutMode = {
+      programId: "program-1",
+      note: "",
+      baselineSetCountByProgramExerciseId: { "pex-1": 4 },
+      frozenPlanLabelByProgramExerciseId: { "pex-1": "4×10 reps · 5 kg · 90s" },
+      results: [
+        {
+          exerciseId: "pex-1-set-1",
+          programExerciseId: "pex-1",
+          setNumber: 1,
+          exerciseName: "Benk",
+          plannedSets: "3",
+          plannedReps: "10",
+          plannedWeight: "5",
+          performedWeight: "5",
+          performedReps: "10",
+          completed: false,
+        },
+        {
+          exerciseId: "pex-1-set-2",
+          programExerciseId: "pex-1",
+          setNumber: 2,
+          exerciseName: "Benk",
+          plannedSets: "3",
+          plannedReps: "10",
+          plannedWeight: "5",
+          performedWeight: "5",
+          performedReps: "10",
+          completed: false,
+        },
+        {
+          exerciseId: "pex-1-set-3",
+          programExerciseId: "pex-1",
+          setNumber: 3,
+          exerciseName: "Benk",
+          plannedSets: "3",
+          plannedReps: "10",
+          plannedWeight: "5",
+          performedWeight: "5",
+          performedReps: "10",
+          completed: false,
+        },
+        {
+          exerciseId: "pex-1-set-4",
+          programExerciseId: "pex-1",
+          setNumber: 4,
+          exerciseName: "Benk",
+          plannedSets: "3",
+          plannedReps: "10",
+          plannedWeight: "5",
+          addedDuringWorkout: true,
+          performedWeight: "5",
+          performedReps: "10",
+          completed: false,
+        },
+      ],
+    };
+    const next = ensureWorkoutModeSessionMetadata(state.workoutMode!, state.programs[0]!, []);
+    expect(next.baselineSetCountByProgramExerciseId?.["pex-1"]).toBe(3);
+    expect(next.frozenPlanLabelByProgramExerciseId?.["pex-1"]).toContain("3×10");
+    expect(countExtraWorkoutSets("pex-1", next.results, next, state.programs[0])).toBe(1);
   });
 
   it("freezes plan label at start and keeps set count after append", () => {

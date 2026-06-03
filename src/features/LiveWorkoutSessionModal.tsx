@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { ArrowLeft, Check, ChevronRight, Minus, Plus, Repeat2, SkipForward, TimerReset, Trash2, X } from "lucide-react";
 import { motusHaptic } from "../app/haptics";
 import { remainingSecondsUntilDeadline } from "../app/intervalTimerDeadline";
@@ -8,7 +8,7 @@ import { WorkoutCompactSetTable } from "./LiveWorkoutCompactSets";
 import { MOTUS } from "../app/data";
 import { EXERCISE_IMAGE_INSET_CLASS, EXERCISE_IMAGE_SMALL_CLASS } from "../app/exerciseIllustrations/constants";
 import { resolveExerciseImageSrc } from "../app/exerciseIllustrations";
-import { buildWorkoutResultGroups, EXERCISE_BLOCK_LABELS } from "../app/programBlocks";
+import { buildWorkoutResultGroups, EXERCISE_BLOCK_LABELS, parseProgramSetCount } from "../app/programBlocks";
 import {
   formatWorkoutGroupPlanLabel,
   formatWorkoutPlanLabelFromProgramExercise,
@@ -168,6 +168,13 @@ export function LiveWorkoutSessionModal({
   );
 
   const activeWorkoutModeProgramId = workoutMode?.programId ?? "";
+  const lockedPlanLabelByExerciseRef = useRef<Record<string, string>>({});
+  const [planLabelRevision, setPlanLabelRevision] = useState(0);
+
+  useEffect(() => {
+    lockedPlanLabelByExerciseRef.current = {};
+    setPlanLabelRevision(0);
+  }, [activeWorkoutModeProgramId]);
 
   useEffect(() => {
     if (!activeWorkoutModeProgramId) {
@@ -473,8 +480,9 @@ export function LiveWorkoutSessionModal({
     return resolveWorkoutGroupExerciseName(currentWorkoutGroup, resolvedProgram);
   }, [currentWorkoutGroup, resolvedProgram]);
 
-  const currentProgramExerciseId =
+  const workoutExerciseGroupId =
     currentWorkoutGroup?.segments[0]?.programExerciseId?.trim() || currentWorkoutGroup?.groupId?.trim() || "";
+  const currentProgramExerciseId = workoutExerciseGroupId;
 
   const planLabelLookupKeys = useMemo(() => {
     if (!currentWorkoutGroup) return [];
@@ -492,35 +500,65 @@ export function LiveWorkoutSessionModal({
     return Array.from(keys);
   }, [currentProgramExerciseId, currentWorkoutGroup?.groupId]);
 
-  /** Plan fryst ved øktstart — baseline-sett, ikke antall rader under økta. */
-  const currentWorkoutPlanLabel = useMemo(() => {
-    if (!currentWorkoutGroup || currentWorkoutGroup.blockType) return "";
-    const frozen = lookupFrozenWorkoutPlanLabel(workoutMode?.frozenPlanLabelByProgramExerciseId, planLabelLookupKeys);
-    if (frozen) return frozen;
-    if (!resolvedProgram) return "";
+  useLayoutEffect(() => {
+    if (!currentWorkoutGroup || currentWorkoutGroup.blockType) return;
     const lookupId = currentProgramExerciseId || currentWorkoutGroup.groupId;
+    if (!lookupId) return;
+
+    const frozen = lookupFrozenWorkoutPlanLabel(workoutMode?.frozenPlanLabelByProgramExerciseId, planLabelLookupKeys);
+    if (frozen) {
+      if (lockedPlanLabelByExerciseRef.current[lookupId] !== frozen) {
+        lockedPlanLabelByExerciseRef.current[lookupId] = frozen;
+        setPlanLabelRevision((value) => value + 1);
+      }
+      return;
+    }
+
+    if (lockedPlanLabelByExerciseRef.current[lookupId]) return;
+    if (!resolvedProgram) return;
+
     const exerciseIndex = resolvedProgram.exercises.findIndex((exercise) => exercise.id === lookupId);
-    if (exerciseIndex < 0) return "";
-    const baseline = resolveWorkoutBaselineSetCount(
-      lookupId,
-      currentWorkoutGroup.rows,
-      workoutMode,
-      resolvedProgram,
-    );
-    return formatWorkoutPlanLabelFromProgramExercise(
+    if (exerciseIndex < 0) return;
+
+    const baseline =
+      workoutMode?.baselineSetCountByProgramExerciseId?.[lookupId] ??
+      parseProgramSetCount(resolvedProgram.exercises[exerciseIndex]!.sets);
+
+    lockedPlanLabelByExerciseRef.current[lookupId] = formatWorkoutPlanLabelFromProgramExercise(
       resolvedProgram.exercises[exerciseIndex]!,
       exerciseIndex,
       resolvedProgram.exercises,
       exercises,
       baseline,
     );
+    setPlanLabelRevision((value) => value + 1);
   }, [
     currentWorkoutGroup?.blockType,
+    currentProgramExerciseId,
+    currentWorkoutGroup?.groupId,
     planLabelLookupKeys,
     workoutMode?.frozenPlanLabelByProgramExerciseId,
     workoutMode?.baselineSetCountByProgramExerciseId,
     workoutMode?.programId,
     resolvedProgram?.id,
+    exercises,
+  ]);
+
+  const currentWorkoutPlanLabel = useMemo(() => {
+    void planLabelRevision;
+    if (!currentWorkoutGroup || currentWorkoutGroup.blockType) return "";
+    const lookupId = currentProgramExerciseId || currentWorkoutGroup.groupId;
+    return (
+      lockedPlanLabelByExerciseRef.current[lookupId] ??
+      lookupFrozenWorkoutPlanLabel(workoutMode?.frozenPlanLabelByProgramExerciseId, planLabelLookupKeys)
+    );
+  }, [
+    planLabelRevision,
+    currentWorkoutGroup?.blockType,
+    currentProgramExerciseId,
+    currentWorkoutGroup?.groupId,
+    planLabelLookupKeys,
+    workoutMode?.frozenPlanLabelByProgramExerciseId,
   ]);
 
   const nextWorkoutPlanLabel = useMemo(() => {
@@ -528,9 +566,21 @@ export function LiveWorkoutSessionModal({
     return formatWorkoutGroupPlanLabel(nextWorkoutGroup, resolvedProgram, exercises, WORKOUT_PLAN_LABEL_OPTIONS);
   }, [nextWorkoutGroup, resolvedProgram, exercises]);
 
-  const canRemoveCurrentExtraSet =
-    Boolean(currentWorkoutGroup && !currentWorkoutGroup.blockType && currentProgramExerciseId) &&
-    countExtraWorkoutSets(currentProgramExerciseId, currentWorkoutGroup!.rows, workoutMode, resolvedProgram) > 0;
+  const canRemoveCurrentExtraSet = useMemo(() => {
+    if (!currentWorkoutGroup || currentWorkoutGroup.blockType) return false;
+    const rows = currentWorkoutGroup.rows;
+    if (rows.length <= 1) return false;
+    if (rows.some((row) => row.addedDuringWorkout)) return true;
+    const lookupId = currentProgramExerciseId || currentWorkoutGroup.groupId;
+    if (!lookupId) return false;
+    return countExtraWorkoutSets(lookupId, rows, workoutMode, resolvedProgram) > 0;
+  }, [
+    currentWorkoutGroup,
+    currentProgramExerciseId,
+    workoutMode?.results,
+    workoutMode?.baselineSetCountByProgramExerciseId,
+    resolvedProgram?.id,
+  ]);
 
   function handleReplaceCurrentWorkoutExercise(replacementExerciseId: string) {
     if (!currentWorkoutGroup || !replacementExerciseId) return;
@@ -917,12 +967,12 @@ export function LiveWorkoutSessionModal({
                   </button>
                 </div>
               ) : null}
-              {!currentWorkoutGroup.blockType && currentProgramExerciseId ? (
+              {!currentWorkoutGroup.blockType && workoutExerciseGroupId ? (
                 <div className="mb-2 flex flex-wrap gap-2 sm:mb-3">
                   {canRemoveCurrentExtraSet ? (
                     <button
                       type="button"
-                      onClick={() => removeLastWorkoutSetForProgramExercise(currentProgramExerciseId)}
+                      onClick={() => removeLastWorkoutSetForProgramExercise(workoutExerciseGroupId)}
                       className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-lg border bg-white px-3 py-2 text-xs font-semibold text-slate-700 transition hover:border-rose-300 hover:bg-rose-50/60 sm:flex-none"
                       style={{ borderColor: "rgba(148,163,184,0.55)" }}
                       aria-label="Fjern siste ekstra sett"
@@ -933,7 +983,7 @@ export function LiveWorkoutSessionModal({
                   ) : null}
                   <button
                     type="button"
-                    onClick={() => appendWorkoutSetForProgramExercise(currentProgramExerciseId)}
+                    onClick={() => appendWorkoutSetForProgramExercise(workoutExerciseGroupId)}
                     disabled={currentWorkoutGroup.rows.length >= MAX_SETS_PER_EXERCISE_IN_WORKOUT_MODE}
                     className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-lg border border-dashed bg-white px-3 py-2 text-xs font-semibold text-slate-700 transition hover:border-teal-400 hover:bg-teal-50/50 disabled:cursor-not-allowed disabled:opacity-45 sm:flex-none"
                     style={{ borderColor: "rgba(148,163,184,0.55)" }}
@@ -987,13 +1037,13 @@ export function LiveWorkoutSessionModal({
                       showRemoveLastSet={canRemoveCurrentExtraSet}
                       onRemoveLastSet={
                         canRemoveCurrentExtraSet
-                          ? () => removeLastWorkoutSetForProgramExercise(currentProgramExerciseId)
+                          ? () => removeLastWorkoutSetForProgramExercise(workoutExerciseGroupId)
                           : undefined
                       }
                     />
                   )}
               </div>
-              {!currentWorkoutGroup.blockType && currentProgramExerciseId ? (
+              {!currentWorkoutGroup.blockType && workoutExerciseGroupId ? (
                 <p className="mt-1.5 text-[10px] text-slate-500">
                   {currentWorkoutGroup.rows.length >= MAX_SETS_PER_EXERCISE_IN_WORKOUT_MODE
                     ? `Maks ${MAX_SETS_PER_EXERCISE_IN_WORKOUT_MODE} sett per øvelse.`

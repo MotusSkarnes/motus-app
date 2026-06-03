@@ -527,6 +527,28 @@ export function buildBaselineSetCountFromProgramExercises(exercises: ProgramExer
   return counts;
 }
 
+export function workoutRowMatchesProgramExerciseGroup(row: WorkoutExerciseResult, programExerciseId: string): boolean {
+  const pid = programExerciseId.trim();
+  if (!pid) return false;
+  return row.programExerciseId?.trim() === pid || workoutResultGroupId(row) === pid;
+}
+
+function resolveStoredWorkoutBaselineSetCount(
+  programExerciseId: string,
+  rows: WorkoutExerciseResult[],
+  baselineMap: Record<string, number> | undefined,
+): number | undefined {
+  if (!baselineMap) return undefined;
+  const direct = baselineMap[programExerciseId.trim()];
+  if (typeof direct === "number" && direct >= 1) return direct;
+  for (const row of rows) {
+    const gid = workoutResultGroupId(row);
+    const fromGroup = baselineMap[gid];
+    if (typeof fromGroup === "number" && fromGroup >= 1) return fromGroup;
+  }
+  return undefined;
+}
+
 export function resolveWorkoutBaselineSetCount(
   programExerciseId: string,
   rows: WorkoutExerciseResult[],
@@ -535,8 +557,8 @@ export function resolveWorkoutBaselineSetCount(
 ): number {
   const pid = programExerciseId.trim();
   const candidates: number[] = [];
-  const stored = workoutMode?.baselineSetCountByProgramExerciseId?.[pid];
-  if (typeof stored === "number" && stored >= 1) candidates.push(stored);
+  const stored = resolveStoredWorkoutBaselineSetCount(pid, rows, workoutMode?.baselineSetCountByProgramExerciseId);
+  if (typeof stored === "number") candidates.push(stored);
   const fromProgram = program?.exercises.find((exercise) => exercise.id === pid);
   if (fromProgram) candidates.push(parseProgramSetCount(fromProgram.sets));
   const originalRows = rows.filter((row) => !row.addedDuringWorkout);
@@ -564,26 +586,21 @@ export function ensureWorkoutModeSessionMetadata(
   exerciseLibrary: Exercise[],
 ): WorkoutModeState {
   let next = workoutMode;
+  if (program) {
+    next = {
+      ...next,
+      baselineSetCountByProgramExerciseId: buildBaselineSetCountFromProgramExercises(program.exercises),
+      frozenPlanLabelByProgramExerciseId: buildFrozenPlanLabelByProgramExerciseId(
+        program,
+        exerciseLibrary,
+        workoutMode.results,
+      ),
+    };
+    return next;
+  }
   const existingBaseline = workoutMode.baselineSetCountByProgramExerciseId;
   if (!existingBaseline || Object.keys(existingBaseline).length === 0) {
-    const fromProgram = program ? buildBaselineSetCountFromProgramExercises(program.exercises) : null;
-    const baseline =
-      fromProgram && Object.keys(fromProgram).length > 0
-        ? fromProgram
-        : buildBaselineSetCountByProgramExerciseId(workoutMode.results);
-    next = { ...next, baselineSetCountByProgramExerciseId: baseline };
-  }
-  if (program) {
-    const built = buildFrozenPlanLabelByProgramExerciseId(program, exerciseLibrary, workoutMode.results);
-    const existing = next.frozenPlanLabelByProgramExerciseId ?? {};
-    const merged: Record<string, string> = { ...built };
-    for (const [key, value] of Object.entries(existing)) {
-      if (value?.trim()) merged[key] = value.trim();
-    }
-    for (const [key, value] of Object.entries(built)) {
-      if (!merged[key]?.trim()) merged[key] = value;
-    }
-    next = { ...next, frozenPlanLabelByProgramExerciseId: merged };
+    next = { ...next, baselineSetCountByProgramExerciseId: buildBaselineSetCountByProgramExerciseId(workoutMode.results) };
   }
   return next;
 }
@@ -679,40 +696,51 @@ export function appendWorkoutSetForProgramExerciseInState(state: AppState, progr
   const results = state.workoutMode.results;
   const groupIndices: number[] = [];
   results.forEach((r, i) => {
-    if (r.programExerciseId === pid) groupIndices.push(i);
+    if (workoutRowMatchesProgramExerciseGroup(r, pid)) groupIndices.push(i);
   });
   if (!groupIndices.length) return state;
 
   const insertAfterIndex = groupIndices[groupIndices.length - 1];
-  const template = results[insertAfterIndex];
+  const template = results[insertAfterIndex]!;
+  const groupKey = workoutResultGroupId(template);
   const maxExistingSet = Math.max(...groupIndices.map((i) => results[i].setNumber ?? 0));
   const nextSetNum = maxExistingSet + 1;
   if (nextSetNum > MAX_SETS_PER_EXERCISE_IN_WORKOUT_MODE) return state;
 
-  const baselineMap = { ...(state.workoutMode.baselineSetCountByProgramExerciseId ?? {}) };
-  if (baselineMap[pid] == null) {
-    baselineMap[pid] = groupIndices.length;
-  }
-
   const program = state.programs.find((p) => p.id === state.workoutMode!.programId);
+  const baselineMap = { ...(state.workoutMode.baselineSetCountByProgramExerciseId ?? {}) };
+  const programBaseline = program?.exercises.find((exercise) => exercise.id === pid);
+  const baselineFromProgram = programBaseline ? parseProgramSetCount(programBaseline.sets) : undefined;
+  const fallbackBaseline = groupIndices.length;
+  const resolvedBaseline = baselineFromProgram ?? baselineMap[pid] ?? baselineMap[groupKey] ?? fallbackBaseline;
+  baselineMap[pid] = resolvedBaseline;
+  baselineMap[groupKey] = resolvedBaseline;
   let frozenPlanLabelByProgramExerciseId = { ...(state.workoutMode.frozenPlanLabelByProgramExerciseId ?? {}) };
   if (program) {
-    const lookupKeys = [pid, workoutResultGroupId(template)];
+    const lookupKeys = [pid, groupKey];
     if (!lookupFrozenWorkoutPlanLabel(frozenPlanLabelByProgramExerciseId, lookupKeys).trim()) {
       const exerciseIndex = program.exercises.findIndex((exercise) => exercise.id === pid);
-      if (exerciseIndex >= 0) {
+      if (exerciseIndex < 0) {
+        const byGroup = program.exercises.findIndex((exercise) => exercise.id === groupKey);
+        if (byGroup >= 0) {
+          const label = formatWorkoutPlanLabelFromProgramExercise(
+            program.exercises[byGroup]!,
+            byGroup,
+            program.exercises,
+            state.exercises,
+            resolvedBaseline,
+          );
+          frozenPlanLabelByProgramExerciseId = { ...frozenPlanLabelByProgramExerciseId, [pid]: label, [groupKey]: label };
+        }
+      } else {
         const label = formatWorkoutPlanLabelFromProgramExercise(
           program.exercises[exerciseIndex]!,
           exerciseIndex,
           program.exercises,
           state.exercises,
-          baselineMap[pid],
+          resolvedBaseline,
         );
-        frozenPlanLabelByProgramExerciseId = {
-          ...frozenPlanLabelByProgramExerciseId,
-          [pid]: label,
-          [workoutResultGroupId(template)]: label,
-        };
+        frozenPlanLabelByProgramExerciseId = { ...frozenPlanLabelByProgramExerciseId, [pid]: label, [groupKey]: label };
       }
     }
   }
@@ -771,12 +799,12 @@ export function removeLastWorkoutSetForProgramExerciseInState(state: AppState, p
   const results = state.workoutMode.results;
   const groupIndices: number[] = [];
   results.forEach((r, i) => {
-    if (r.programExerciseId === pid) groupIndices.push(i);
+    if (workoutRowMatchesProgramExerciseGroup(r, pid)) groupIndices.push(i);
   });
   if (!groupIndices.length) return state;
 
-  const groupRows = groupIndices.map((i) => results[i]);
-  const program = state.programs.find((p) => p.id === state.workoutMode.programId);
+  const groupRows = groupIndices.map((i) => results[i]!);
+  const program = state.programs.find((p) => p.id === state.workoutMode!.programId);
   const baselineSetCount = resolveWorkoutBaselineSetCount(pid, groupRows, state.workoutMode, program ?? null);
   if (!canRemoveLastExtraWorkoutSet(groupRows, { baselineSetCount })) return state;
 
