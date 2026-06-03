@@ -2020,16 +2020,19 @@ function pickFirstName(value: unknown): string {
   }, [pendingInviteMemberEmail, findNewestPendingMemberByEmail, inviteMember, markMemberInvited, setSelectedMemberId, setTrainerTab]);
 
   useEffect(() => {
+    if (!openCustomerMessagesSignal) return;
     if (!selectedMemberId || selectedMemberId === "__template__") return;
     setCustomerSubTab("messages");
   }, [openCustomerMessagesSignal, selectedMemberId]);
 
   useEffect(() => {
+    if (!openCustomerOverviewSignal) return;
     if (!selectedMemberId || selectedMemberId === "__template__") return;
     setCustomerSubTab("overview");
   }, [openCustomerOverviewSignal, selectedMemberId]);
 
   useEffect(() => {
+    if (!openCustomerNutritionSignal) return;
     if (!selectedMemberId || selectedMemberId === "__template__") return;
     setCustomerSubTab("nutrition");
   }, [openCustomerNutritionSignal, selectedMemberId]);
@@ -2160,7 +2163,11 @@ function pickFirstName(value: unknown): string {
     if (!nextMemberId || nextMemberId === selectedMemberId) return;
     const applySelection = () => {
       setSelectedMemberId(nextMemberId);
-      afterSelect?.();
+      if (afterSelect) {
+        afterSelect();
+      } else {
+        setCustomerSubTab("overview");
+      }
     };
     if (!isEditingCustomerCard) {
       applySelection();
