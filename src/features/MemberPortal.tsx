@@ -37,7 +37,13 @@ import { formatDateDdMmYyyy, parseStoredLogDate, resolveWorkoutLogDateTime, stor
 import { memberBadgeImageSrc } from "../app/badgeAssets";
 import { resolveExerciseImageSrc } from "../app/exerciseIllustrations";
 import { imageObjectPositionFromSrc } from "../app/imageFocalPoint";
-import { programCoverUsesPhotoStyle, resolveGroupWorkoutCoverImage, resolveProgramImageSrc, resolveRestDayCoverImage } from "../app/programImage";
+import {
+  programCoverUsesPhotoStyle,
+  resolveGroupWorkoutCoverImage,
+  resolveNoPlanDayCoverImage,
+  resolveProgramImageSrc,
+  resolveRestDayCoverImage,
+} from "../app/programImage";
 import {
   memberLocalDateKey,
   readMemberHomeWorkoutSnapshot,
@@ -4550,22 +4556,26 @@ export function MemberPortal(props: MemberPortalProps) {
   }, [memberAssignedPrograms.length, memberProgramsInActiveLibrary.length, nextProgram]);
   const homeFirstName = firstNameFromDisplayName(memberShareDisplayName);
   const homeMomentumPct = memberProgressScores.momentum.pct;
+  const homeHasPlannedWorkoutToday = useMemo(() => {
+    if (homeWorkoutHydrationPending) return false;
+    if (todayPlanIsPassiveDay) return false;
+    if (todayPlanAction.kind === "start-program" || todayPlanAction.kind === "log-group") return true;
+    return Boolean(todayPlanEntry.trim());
+  }, [homeWorkoutHydrationPending, todayPlanIsPassiveDay, todayPlanAction, todayPlanEntry]);
   const homeWorkoutProgram = useMemo(() => {
-    if (homeWorkoutHydrationPending) return null;
+    if (homeWorkoutHydrationPending || !homeHasPlannedWorkoutToday) return null;
     if (todayPlanAction.kind === "start-program") return todayPlanAction.program;
     if (todayPlanEntry.trim()) {
       return findProgramForPeriodPlanEntry(todayPlanEntry, memberPrograms) ?? null;
     }
-    if (memberHasVisiblePeriodPlan) return null;
-    if (nextProgram) return nextProgram;
     return null;
-  }, [homeWorkoutHydrationPending, todayPlanAction, todayPlanEntry, memberPrograms, nextProgram, memberHasVisiblePeriodPlan]);
+  }, [homeWorkoutHydrationPending, homeHasPlannedWorkoutToday, todayPlanAction, todayPlanEntry, memberPrograms]);
   const homePrimaryFocus = useMemo(() => {
     if (todayPlanEntry && homeWorkoutProgram?.title && todayPlanEntry !== homeWorkoutProgram.title) {
       return `${homeWorkoutProgram.title} · ${todayPlanEntry}`;
     }
-    return todayPlanEntry || homeWorkoutProgram?.title || (memberHasVisiblePeriodPlan ? "Ingen plan i dag" : "Velg program når du er klar");
-  }, [todayPlanEntry, homeWorkoutProgram, memberHasVisiblePeriodPlan]);
+    return todayPlanEntry || homeWorkoutProgram?.title || "Ingen plan i dag";
+  }, [todayPlanEntry, homeWorkoutProgram]);
   const homeWorkoutDuration = useMemo(() => {
     if (!homeWorkoutProgram) return null;
     const minutes = Math.max(20, Math.round(estimateProgramMinutes(homeWorkoutProgram) / 5) * 5);
@@ -4575,17 +4585,29 @@ export function MemberPortal(props: MemberPortalProps) {
     if (todayPlanIsPassiveDay) {
       return resolveRestDayCoverImage();
     }
+    if (!homeHasPlannedWorkoutToday) {
+      return resolveNoPlanDayCoverImage();
+    }
     if (todayPlanAction.kind === "log-group") {
       return resolveGroupWorkoutCoverImage(todayPlanAction.className);
     }
-    if (!homeWorkoutProgram) return null;
+    if (!homeWorkoutProgram) {
+      return resolveNoPlanDayCoverImage();
+    }
     const coverExercise = homeWorkoutProgram.exercises
       .map((item) => exercises.find((exercise) => exercise.id === item.exerciseId))
       .find(Boolean);
     return resolveProgramImageSrc(homeWorkoutProgram, coverExercise ?? null, {
       subTab: getTrainingProgramSubTab(homeWorkoutProgram, exerciseCategoryById, exercises),
     });
-  }, [homeWorkoutProgram, todayPlanAction, todayPlanIsPassiveDay, exercises, exerciseCategoryById]);
+  }, [
+    homeHasPlannedWorkoutToday,
+    homeWorkoutProgram,
+    todayPlanAction,
+    todayPlanIsPassiveDay,
+    exercises,
+    exerciseCategoryById,
+  ]);
   const homeDisplayTitle = useMemo(() => {
     if (homeWorkoutHydrationPending) {
       return cachedHomeWorkout?.title ?? "";
@@ -4596,6 +4618,7 @@ export function MemberPortal(props: MemberPortalProps) {
   const homeDisplayCoverSrc = useMemo(() => {
     if (homeWorkoutHydrationPending) {
       if (cachedHomeWorkout?.isPassiveDay) return resolveRestDayCoverImage();
+      if (cachedHomeWorkout?.isNoPlanDay) return resolveNoPlanDayCoverImage();
       return cachedHomeWorkout?.imageSrc ?? null;
     }
     return homeWorkoutCoverSrc;
@@ -4789,8 +4812,16 @@ export function MemberPortal(props: MemberPortalProps) {
       title: homePrimaryFocus,
       imageSrc: homeWorkoutCoverSrc,
       isPassiveDay: todayPlanIsPassiveDay,
+      isNoPlanDay: !homeHasPlannedWorkoutToday && !todayPlanIsPassiveDay,
     });
-  }, [homeWorkoutHydrationPending, homePrimaryFocus, homeWorkoutCoverSrc, todayPlanIsPassiveDay, todayDateKey]);
+  }, [
+    homeWorkoutHydrationPending,
+    homePrimaryFocus,
+    homeWorkoutCoverSrc,
+    todayPlanIsPassiveDay,
+    homeHasPlannedWorkoutToday,
+    todayDateKey,
+  ]);
 
   const openHomeWorkoutDestination = useCallback(() => {
     setMemberTab("programs");
@@ -6125,12 +6156,7 @@ export function MemberPortal(props: MemberPortalProps) {
                     >
                       {todayPeriodPlanCompleted ? "Dagens økt er logget" : "Logg dagens økt"}
                     </GradientButton>
-                  ) : todayPlanIsPassiveDay ? null : homeWorkoutHydrationPending ? null : nextProgram ? (
-                    <MemberHomeStartWorkoutButton
-                      label="Start dagens økt"
-                      onClick={() => startMemberProgram(nextProgram)}
-                    />
-                  ) : (
+                  ) : todayPlanIsPassiveDay || homeWorkoutHydrationPending ? null : !homeHasPlannedWorkoutToday ? (
                     <GradientButton
                       type="button"
                       onClick={() => setMemberTab(nextBestAction.action === "progress" ? "progress" : "programs")}
@@ -6138,7 +6164,7 @@ export function MemberPortal(props: MemberPortalProps) {
                     >
                       {nextBestAction.cta}
                     </GradientButton>
-                  )
+                  ) : null
                 }
                 onboardingPrompt={
                   onOpenOnboarding && showOnboardingHomePrompt && !onboardingCompleteForHome ? (
@@ -6313,8 +6339,8 @@ export function MemberPortal(props: MemberPortalProps) {
               />
               {trainingSection === "today" ? (
                 <MemberTrainingOverview
-                  title={todayPlanEntry || homeWorkoutProgram?.title || (memberHasVisiblePeriodPlan ? "Ingen plan i dag" : nextProgram?.title || "Ingen plan i dag")}
-                  imageSrc={homeWorkoutCoverSrc}
+                  title={homePrimaryFocus}
+                  imageSrc={homeDisplayCoverSrc}
                   durationLabel={homeWorkoutDuration}
                   zoneLabel={homeWorkoutZoneLabel}
                   exerciseCountLabel={
@@ -6356,12 +6382,7 @@ export function MemberPortal(props: MemberPortalProps) {
                                 day: todayPeriodPlanMatch.day,
                               }),
                           }
-                        : !todayPlanEntry && nextProgram
-                          ? {
-                              label: "Start neste økt",
-                              onClick: () => startMemberProgram(nextProgram),
-                            }
-                          : undefined
+                        : undefined
                   }
                   completedHint={todayPeriodPlanCompleted ? "Dagens økt er logget" : null}
                   completedSessions={homeWeeklySummary.completedThisWeek}

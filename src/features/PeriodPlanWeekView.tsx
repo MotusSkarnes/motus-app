@@ -15,6 +15,7 @@ import {
   WEEKDAY_PLAN_ORDER,
   type PeriodPlanSwapsByPlan,
 } from "../app/periodPlanSwaps";
+import { resolveNoPlanDayCoverImage, resolveRestDayCoverImage } from "../app/programImage";
 import { GradientButton, OutlineButton } from "../app/ui";
 import type { Exercise, PeriodSchedulePlan, TrainingProgram, WeekdayPlanKey, WeeklySchedulePlan } from "../app/types";
 import { TrainingProgramPreviewModal } from "./TrainingProgramPreviewModal";
@@ -235,6 +236,16 @@ export function PeriodPlanWeekView({
                     className={`motus-period-plan-day-main ${canOpenPreview ? "motus-period-plan-day-main--clickable" : ""}`}
                     aria-label={canOpenPreview ? `Se økt for ${dayLabel}` : undefined}
                   >
+                    {status === "empty" || status === "rest" ? (
+                      <div className="motus-period-plan-day-cover motus-image-frame" aria-hidden>
+                        <img
+                          src={status === "rest" ? resolveRestDayCoverImage() : resolveNoPlanDayCoverImage()}
+                          alt=""
+                          className="motus-image-media"
+                          loading="lazy"
+                        />
+                      </div>
+                    ) : null}
                     <p className="motus-period-plan-day-title">{listLabel}</p>
                     <div className="motus-period-plan-day-meta">
                       <span className="motus-period-plan-day-date">

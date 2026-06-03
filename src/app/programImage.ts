@@ -14,6 +14,8 @@ export const YOGA_GROUP_COVER_IMAGE = "/program-covers/yoga-gruppetime.png";
 export const CIRCUIT_GROUP_COVER_IMAGE = "/program-covers/sirkeltrening.png";
 export const SENIORS_GROUP_COVER_IMAGE = "/program-covers/godt-voksen-gruppetime.png";
 export const REST_RECOVERY_COVER_IMAGE = "/program-covers/hvile-restitusjon.png";
+/** Forside når det ikke er planlagt økt denne dagen (tom dag i periodeplan eller ingen plan). */
+export const NO_PLAN_DAY_COVER_IMAGE = "/program-covers/ingen-plan-i-dag.png";
 export const STRENGTH_TRAINING_COVER_IMAGE = "/program-covers/styrketrening.png";
 export const CONDITIONING_TRAINING_COVER_IMAGE = "/program-covers/kondisjon.png";
 export const MOBILITY_TRAINING_COVER_IMAGE = "/program-covers/mobilitet.png";
@@ -75,6 +77,10 @@ export function resolveGroupWorkoutCoverImage(className: string): string | null 
 
 export function resolveRestDayCoverImage(): string {
   return REST_RECOVERY_COVER_IMAGE;
+}
+
+export function resolveNoPlanDayCoverImage(): string {
+  return NO_PLAN_DAY_COVER_IMAGE;
 }
 
 /** Behold forsidebilde fra enten kilde ved merge (f.eks. lokal opplasting vs. sky uten kolonne). */

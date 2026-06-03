@@ -10,6 +10,7 @@ export type MemberHomeWorkoutSnapshot = {
   title: string;
   imageSrc: string | null;
   isPassiveDay: boolean;
+  isNoPlanDay?: boolean;
 };
 
 export function memberLocalDateKey(date = new Date()): string {
