@@ -10,6 +10,7 @@ import {
   parseProgramSetCount,
   workoutResultGroupId,
 } from "../app/programBlocks";
+import { formatProgramExercisePrescription } from "../app/programExercisePresentation";
 import { uid } from "../app/storage";
 import { toggleReactionInState, type ChatReactionActor, type ChatReactionEmoji } from "../app/chatReactions";
 import type {
@@ -483,6 +484,20 @@ export function buildBaselineSetCountByProgramExerciseId(results: WorkoutExercis
 }
 
 /** Planlagt sett per øvelse fra programmet (ikke live antall rader). */
+export function buildFrozenPlanLabelByProgramExerciseId(
+  program: TrainingProgram,
+  exerciseLibrary: Exercise[],
+): Record<string, string> {
+  const labels: Record<string, string> = {};
+  program.exercises.forEach((exercise, index) => {
+    if (exercise.blockId?.trim()) return;
+    const id = exercise.id.trim();
+    if (!id) return;
+    labels[id] = formatProgramExercisePrescription(exercise, index, program.exercises, exerciseLibrary);
+  });
+  return labels;
+}
+
 export function buildBaselineSetCountFromProgramExercises(exercises: ProgramExercise[]): Record<string, number> {
   const counts: Record<string, number> = {};
   exercises.forEach((exercise) => {
@@ -506,23 +521,56 @@ export function resolveWorkoutBaselineSetCount(
   if (typeof stored === "number" && stored >= 1) candidates.push(stored);
   const fromProgram = program?.exercises.find((exercise) => exercise.id === pid);
   if (fromProgram) candidates.push(parseProgramSetCount(fromProgram.sets));
-  if (rows.length) candidates.push(plannedWorkoutSetCountForGroup(rows));
+  const originalRows = rows.filter((row) => !row.addedDuringWorkout);
+  if (!fromProgram && typeof stored !== "number" && originalRows.length) {
+    candidates.push(plannedWorkoutSetCountForGroup(originalRows));
+  }
   if (!candidates.length) return 1;
   return Math.min(...candidates);
 }
 
+export function countExtraWorkoutSets(
+  programExerciseId: string,
+  rows: WorkoutExerciseResult[],
+  workoutMode: WorkoutModeState | null | undefined,
+  program: TrainingProgram | null | undefined,
+): number {
+  if (!rows.length) return 0;
+  const baseline = resolveWorkoutBaselineSetCount(programExerciseId, rows, workoutMode, program);
+  return Math.max(0, rows.length - baseline);
+}
+
+export function ensureWorkoutModeSessionMetadata(
+  workoutMode: WorkoutModeState,
+  program: TrainingProgram | null | undefined,
+  exerciseLibrary: Exercise[],
+): WorkoutModeState {
+  let next = workoutMode;
+  const existingBaseline = workoutMode.baselineSetCountByProgramExerciseId;
+  if (!existingBaseline || Object.keys(existingBaseline).length === 0) {
+    const fromProgram = program ? buildBaselineSetCountFromProgramExercises(program.exercises) : null;
+    const baseline =
+      fromProgram && Object.keys(fromProgram).length > 0
+        ? fromProgram
+        : buildBaselineSetCountByProgramExerciseId(workoutMode.results);
+    next = { ...next, baselineSetCountByProgramExerciseId: baseline };
+  }
+  const existingLabels = workoutMode.frozenPlanLabelByProgramExerciseId;
+  if ((!existingLabels || Object.keys(existingLabels).length === 0) && program) {
+    next = {
+      ...next,
+      frozenPlanLabelByProgramExerciseId: buildFrozenPlanLabelByProgramExerciseId(program, exerciseLibrary),
+    };
+  }
+  return next;
+}
+
+/** @deprecated Bruk ensureWorkoutModeSessionMetadata */
 export function ensureWorkoutModeBaseline(
   workoutMode: WorkoutModeState,
   program?: TrainingProgram | null,
 ): WorkoutModeState {
-  const existing = workoutMode.baselineSetCountByProgramExerciseId;
-  if (existing && Object.keys(existing).length > 0) return workoutMode;
-  const fromProgram = program ? buildBaselineSetCountFromProgramExercises(program.exercises) : null;
-  const baseline =
-    fromProgram && Object.keys(fromProgram).length > 0
-      ? fromProgram
-      : buildBaselineSetCountByProgramExerciseId(workoutMode.results);
-  return { ...workoutMode, baselineSetCountByProgramExerciseId: baseline };
+  return ensureWorkoutModeSessionMetadata(workoutMode, program ?? null, []);
 }
 
 export function startWorkoutModeInState(state: AppState, programId: string, options?: StartWorkoutModeOptions): AppState {
@@ -543,6 +591,7 @@ export function startWorkoutModeInState(state: AppState, programId: string, opti
       results: expandedResults,
       note: "",
       baselineSetCountByProgramExerciseId: buildBaselineSetCountFromProgramExercises(program.exercises),
+      frozenPlanLabelByProgramExerciseId: buildFrozenPlanLabelByProgramExerciseId(program, state.exercises),
     },
   };
 }
@@ -662,9 +711,8 @@ export function canRemoveLastExtraWorkoutSet(
   options?: CanRemoveLastExtraWorkoutSetOptions,
 ): boolean {
   if (rows.length <= 1) return false;
-  const last = rows[rows.length - 1];
-  if (last?.addedDuringWorkout) return true;
-  const baseline = options?.baselineSetCount ?? plannedWorkoutSetCountForGroup(rows);
+  if (rows.some((row) => row.addedDuringWorkout)) return true;
+  const baseline = options?.baselineSetCount ?? 1;
   return rows.length > Math.max(1, baseline);
 }
 
@@ -685,7 +733,16 @@ export function removeLastWorkoutSetForProgramExerciseInState(state: AppState, p
   const baselineSetCount = resolveWorkoutBaselineSetCount(pid, groupRows, state.workoutMode, program ?? null);
   if (!canRemoveLastExtraWorkoutSet(groupRows, { baselineSetCount })) return state;
 
-  const removeIndex = groupIndices[groupIndices.length - 1];
+  let removeIndex = -1;
+  for (let i = groupIndices.length - 1; i >= 0; i -= 1) {
+    if (results[groupIndices[i]!]?.addedDuringWorkout) {
+      removeIndex = groupIndices[i]!;
+      break;
+    }
+  }
+  if (removeIndex < 0) {
+    removeIndex = groupIndices[groupIndices.length - 1]!;
+  }
   const newResults = results.filter((_, i) => i !== removeIndex);
   return {
     ...state,

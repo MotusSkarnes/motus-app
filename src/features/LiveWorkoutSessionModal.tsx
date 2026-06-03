@@ -167,6 +167,11 @@ export function LiveWorkoutSessionModal({
   );
 
   const activeWorkoutModeProgramId = workoutMode?.programId ?? "";
+  const frozenPlanCacheRef = useRef<Record<string, string>>({});
+
+  useEffect(() => {
+    frozenPlanCacheRef.current = {};
+  }, [activeWorkoutModeProgramId]);
 
   useEffect(() => {
     if (!activeWorkoutModeProgramId) {
@@ -472,42 +477,60 @@ export function LiveWorkoutSessionModal({
     return resolveWorkoutGroupExerciseName(currentWorkoutGroup, resolvedProgram);
   }, [currentWorkoutGroup, resolvedProgram]);
 
-  /** Plan fra programmet — avhenger ikke av antall sett-rader (ekstra sett under økta). */
+  const currentProgramExerciseId =
+    currentWorkoutGroup?.segments[0]?.programExerciseId?.trim() || currentWorkoutGroup?.groupId?.trim() || "";
+
+  /** Plan fryst ved øktstart — endres ikke når kunden legger til sett eller program synkes på nytt. */
   const currentWorkoutPlanLabel = useMemo(() => {
-    if (!currentWorkoutGroup || currentWorkoutGroup.blockType) return "";
-    const programExerciseId =
-      currentWorkoutGroup.segments[0]?.programExerciseId?.trim() || currentWorkoutGroup.groupId;
+    if (!currentWorkoutGroup || currentWorkoutGroup.blockType || !currentProgramExerciseId) return "";
+    const fromWorkoutMode = workoutMode?.frozenPlanLabelByProgramExerciseId?.[currentProgramExerciseId]?.trim();
+    if (fromWorkoutMode) return fromWorkoutMode;
+    const cached = frozenPlanCacheRef.current[currentProgramExerciseId];
+    if (cached) return cached;
     if (!resolvedProgram) {
-      return formatWorkoutGroupPlanLabel(
+      const fallback = formatWorkoutGroupPlanLabel(
         currentWorkoutGroup,
         resolvedProgram,
         exercises,
         WORKOUT_PLAN_LABEL_OPTIONS,
       );
+      frozenPlanCacheRef.current[currentProgramExerciseId] = fallback;
+      return fallback;
     }
-    const exerciseIndex = resolvedProgram.exercises.findIndex((exercise) => exercise.id === programExerciseId);
+    const exerciseIndex = resolvedProgram.exercises.findIndex((exercise) => exercise.id === currentProgramExerciseId);
     if (exerciseIndex < 0) {
-      return formatWorkoutGroupPlanLabel(
+      const fallback = formatWorkoutGroupPlanLabel(
         currentWorkoutGroup,
         resolvedProgram,
         exercises,
         WORKOUT_PLAN_LABEL_OPTIONS,
       );
+      frozenPlanCacheRef.current[currentProgramExerciseId] = fallback;
+      return fallback;
     }
-    return formatProgramExercisePrescription(
+    const label = formatProgramExercisePrescription(
       resolvedProgram.exercises[exerciseIndex]!,
       exerciseIndex,
       resolvedProgram.exercises,
       exercises,
     );
-  }, [currentWorkoutGroup?.groupId, currentWorkoutGroup?.blockType, resolvedProgram, exercises]);
+    frozenPlanCacheRef.current[currentProgramExerciseId] = label;
+    return label;
+  }, [
+    currentWorkoutGroup?.groupId,
+    currentWorkoutGroup?.blockType,
+    currentProgramExerciseId,
+    workoutMode?.frozenPlanLabelByProgramExerciseId,
+    workoutMode?.programId,
+    resolvedProgram?.id,
+    exercises,
+  ]);
 
   const nextWorkoutPlanLabel = useMemo(() => {
     if (!nextWorkoutGroup) return "";
     return formatWorkoutGroupPlanLabel(nextWorkoutGroup, resolvedProgram, exercises, WORKOUT_PLAN_LABEL_OPTIONS);
   }, [nextWorkoutGroup, resolvedProgram, exercises]);
 
-  const currentProgramExerciseId = currentWorkoutGroup?.segments[0]?.programExerciseId ?? "";
   const canRemoveCurrentExtraSet =
     Boolean(currentWorkoutGroup && !currentWorkoutGroup.blockType && currentProgramExerciseId) &&
     canRemoveLastExtraWorkoutSet(currentWorkoutGroup!.rows, {
@@ -904,6 +927,32 @@ export function LiveWorkoutSessionModal({
                   </button>
                 </div>
               ) : null}
+              {!currentWorkoutGroup.blockType && currentProgramExerciseId ? (
+                <div className="mb-2 flex flex-wrap gap-2 sm:mb-3">
+                  {canRemoveCurrentExtraSet ? (
+                    <button
+                      type="button"
+                      onClick={() => removeLastWorkoutSetForProgramExercise(currentProgramExerciseId)}
+                      className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-lg border bg-white px-3 py-2 text-xs font-semibold text-slate-700 transition hover:border-rose-300 hover:bg-rose-50/60 sm:flex-none"
+                      style={{ borderColor: "rgba(148,163,184,0.55)" }}
+                      aria-label="Fjern siste ekstra sett"
+                    >
+                      <Minus className="h-3.5 w-3.5 shrink-0" aria-hidden />
+                      Fjern siste sett
+                    </button>
+                  ) : null}
+                  <button
+                    type="button"
+                    onClick={() => appendWorkoutSetForProgramExercise(currentProgramExerciseId)}
+                    disabled={currentWorkoutGroup.rows.length >= MAX_SETS_PER_EXERCISE_IN_WORKOUT_MODE}
+                    className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-lg border border-dashed bg-white px-3 py-2 text-xs font-semibold text-slate-700 transition hover:border-teal-400 hover:bg-teal-50/50 disabled:cursor-not-allowed disabled:opacity-45 sm:flex-none"
+                    style={{ borderColor: "rgba(148,163,184,0.55)" }}
+                  >
+                    <Plus className="h-3.5 w-3.5 shrink-0" aria-hidden />
+                    Legg til sett
+                  </button>
+                </div>
+              ) : null}
               <div className="mt-2 space-y-2 sm:mt-3 sm:space-y-3">
                 {currentWorkoutGroup.blockType && currentWorkoutGroup.rounds.length > 0
                   ? currentWorkoutGroup.rounds.map((round) => (
@@ -954,42 +1003,14 @@ export function LiveWorkoutSessionModal({
                     />
                   )}
               </div>
-              {!currentWorkoutGroup.blockType && currentWorkoutGroup.segments[0] ? (
-                <div className="mt-2 border-t pt-2" style={{ borderColor: "rgba(15,23,42,0.06)" }}>
-                  <div className="flex flex-wrap gap-2">
-                    {canRemoveCurrentExtraSet ? (
-                      <button
-                        type="button"
-                        onClick={() => removeLastWorkoutSetForProgramExercise(currentProgramExerciseId)}
-                        className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-lg border bg-white px-3 py-2 text-xs font-semibold text-slate-700 transition hover:border-rose-300 hover:bg-rose-50/60 sm:flex-none"
-                        style={{ borderColor: "rgba(148,163,184,0.55)" }}
-                        aria-label="Fjern siste ekstra sett"
-                      >
-                        <Minus className="h-3.5 w-3.5 shrink-0" aria-hidden />
-                        Fjern siste sett
-                      </button>
-                    ) : null}
-                    <button
-                      type="button"
-                      onClick={() => appendWorkoutSetForProgramExercise(currentWorkoutGroup.segments[0]!.programExerciseId)}
-                      disabled={currentWorkoutGroup.rows.length >= MAX_SETS_PER_EXERCISE_IN_WORKOUT_MODE}
-                      className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-lg border border-dashed bg-white px-3 py-2 text-xs font-semibold text-slate-700 transition hover:border-teal-400 hover:bg-teal-50/50 disabled:cursor-not-allowed disabled:opacity-45 sm:flex-none"
-                      style={{ borderColor: "rgba(148,163,184,0.55)" }}
-                    >
-                      <Plus className="h-3.5 w-3.5 shrink-0" aria-hidden />
-                      Legg til sett
-                    </button>
-                  </div>
-                  {currentWorkoutGroup.rows.length >= MAX_SETS_PER_EXERCISE_IN_WORKOUT_MODE ? (
-                    <p className="mt-1.5 text-[10px] text-slate-500">Maks {MAX_SETS_PER_EXERCISE_IN_WORKOUT_MODE} sett per øvelse.</p>
-                  ) : canRemoveCurrentExtraSet ? (
-                    <p className="mt-1.5 text-[10px] text-slate-500">
-                      Du kan fjerne ekstra sett du har lagt til under økta. Planlagte sett fra programmet kan ikke slettes her.
-                    </p>
-                  ) : (
-                    <p className="mt-1.5 text-[10px] text-slate-500">Legger til et ekstra sett under økta — også om du gjør flere enn planlagt.</p>
-                  )}
-                </div>
+              {!currentWorkoutGroup.blockType && currentProgramExerciseId ? (
+                <p className="mt-1.5 text-[10px] text-slate-500">
+                  {currentWorkoutGroup.rows.length >= MAX_SETS_PER_EXERCISE_IN_WORKOUT_MODE
+                    ? `Maks ${MAX_SETS_PER_EXERCISE_IN_WORKOUT_MODE} sett per øvelse.`
+                    : canRemoveCurrentExtraSet
+                      ? "Du kan fjerne ekstra sett du har lagt til under økta. Plan over endres ikke."
+                      : "Legg til ekstra sett under økta. Plan fra programmet står uendret over."}
+                </p>
               ) : currentWorkoutGroup.blockType ? (
                 <p className="mt-2 text-[10px] text-slate-500">
                   Kjør øvelsene i rekkefølge per runde{currentWorkoutGroup.blockType === "circuit" ? " — full sirkel før neste runde" : ""}.

@@ -1,4 +1,4 @@
-import { ensureWorkoutModeBaseline } from "../services/appRepository";
+import { ensureWorkoutModeSessionMetadata } from "../services/appRepository";
 import {
   getPausedWorkoutById,
   removePausedWorkout,
@@ -115,7 +115,7 @@ export function resumePausedWorkoutInState(state: AppState, draftId: string, mem
   return {
     ...state,
     programs: nextPrograms,
-    workoutMode: ensureWorkoutModeBaseline(draft.workoutMode, programForBaseline),
+    workoutMode: ensureWorkoutModeSessionMetadata(draft.workoutMode, programForBaseline, state.exercises),
   };
 }
 

@@ -67,6 +67,8 @@ export type WorkoutModeState = {
   note: string;
   /** Antall sett per programExerciseId da økten startet (før ekstra sett underveis). */
   baselineSetCountByProgramExerciseId?: Record<string, number>;
+  /** Plan-tekst per programExerciseId, fryst ved øktstart (endres ikke ved «Legg til sett»). */
+  frozenPlanLabelByProgramExerciseId?: Record<string, string>;
 };
 
 export type WorkoutCelebration = {
