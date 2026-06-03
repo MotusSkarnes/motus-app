@@ -43,13 +43,17 @@ export function lastNDaysDateKeys(dateKeys: string[], anchorDateKey: string, day
 export function buildMemberFoodLogNutritionPeriodReport(
   quickFoodLogs: Record<string, MemberQuickFoodLogEntry[] | undefined>,
   dateKeys: string[],
+  trackedWaterLiters: Record<string, number> = {},
 ): MemberFoodLogNutritionPeriodReport {
-  const keys = dateKeys.filter((key) => (quickFoodLogs[key]?.length ?? 0) > 0);
+  const keys = [...dateKeys]
+    .filter((key) => (quickFoodLogs[key]?.length ?? 0) > 0 || (trackedWaterLiters[key] ?? 0) > 0)
+    .sort((a, b) => a.localeCompare(b));
   let periodSum = { ...EMPTY_FOOD_LOG_NUTRITION };
   const dailyTotals: MemberFoodLogNutritionPeriodReport["dailyTotals"] = [];
 
   for (const dateKey of keys) {
     const totals = sumQuickFoodLogNutrition(quickFoodLogs[dateKey]);
+    totals.drinkWaterLiters = Math.max(0, Number(trackedWaterLiters[dateKey] ?? 0) || 0);
     dailyTotals.push({ dateKey, totals });
     periodSum = addFoodLogNutritionTotals(periodSum, totals);
   }

@@ -40,6 +40,7 @@ type MemberFoodLogNutritionReportModalProps = {
   memberGender?: string;
   selectedDateKey: string;
   quickFoodLogs: Record<string, MemberQuickFoodLogEntry[] | undefined>;
+  trackedWaterLiters?: Record<string, number>;
   mealPlanTargets?: MealPlanTargets | null;
 };
 
@@ -51,6 +52,7 @@ export function MemberFoodLogNutritionReportModal({
   memberGender = "",
   selectedDateKey,
   quickFoodLogs,
+  trackedWaterLiters = {},
   mealPlanTargets,
 }: MemberFoodLogNutritionReportModalProps) {
   const displayName = memberName.trim() || "Kunden";
@@ -76,7 +78,7 @@ export function MemberFoodLogNutritionReportModal({
   }, [open, selectedDateKey]);
 
   const periodDateKeys = useMemo(() => {
-    if (periodPreset === "selected") return filterDateKeysInRange(loggedDateKeys, selectedDateKey, selectedDateKey);
+    if (periodPreset === "selected") return [selectedDateKey];
     if (periodPreset === "7") return lastNDaysDateKeys(loggedDateKeys, selectedDateKey, 7);
     if (periodPreset === "14") return lastNDaysDateKeys(loggedDateKeys, selectedDateKey, 14);
     if (periodPreset === "30") return lastNDaysDateKeys(loggedDateKeys, selectedDateKey, 30);
@@ -84,8 +86,8 @@ export function MemberFoodLogNutritionReportModal({
   }, [customFrom, customTo, loggedDateKeys, periodPreset, selectedDateKey]);
 
   const report = useMemo(
-    () => buildMemberFoodLogNutritionPeriodReport(quickFoodLogs, periodDateKeys),
-    [periodDateKeys, quickFoodLogs],
+    () => buildMemberFoodLogNutritionPeriodReport(quickFoodLogs, periodDateKeys, trackedWaterLiters),
+    [periodDateKeys, quickFoodLogs, trackedWaterLiters],
   );
 
   const displayTotals = useMemo(() => {

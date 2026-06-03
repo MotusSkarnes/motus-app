@@ -38,6 +38,22 @@ describe("memberFoodLogNutritionReport", () => {
     expect(Math.round(report.periodSum.kcal)).toBe(600);
   });
 
+  it("includes drink water in period totals", () => {
+    const quickFoodLogs = {
+      "2026-05-27": [log(200)],
+    };
+    const report = buildMemberFoodLogNutritionPeriodReport(quickFoodLogs, ["2026-05-27"], {
+      "2026-05-27": 1.2,
+    });
+    expect(report.periodSum.drinkWaterLiters).toBe(1.2);
+  });
+
+  it("includes days with only drink water", () => {
+    const report = buildMemberFoodLogNutritionPeriodReport({}, ["2026-06-02"], { "2026-06-02": 0.8 });
+    expect(report.daysWithLogs).toBe(1);
+    expect(report.periodSum.drinkWaterLiters).toBe(0.8);
+  });
+
   it("filters date keys in range", () => {
     const keys = ["2026-05-25", "2026-05-27", "2026-05-29"];
     expect(filterDateKeysInRange(keys, "2026-05-26", "2026-05-28")).toEqual(["2026-05-27"]);

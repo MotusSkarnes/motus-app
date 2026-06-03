@@ -23,6 +23,8 @@ export type FoodLogNutritionTotals = MacroTotals & {
   sodium: number;
   /** Vann fra matvarer (liter), beregnet fra vann g/100 g × gram. */
   waterLiters: number;
+  /** Manuelt logget drikkevann (liter), fra +/- under Vann i dag. */
+  drinkWaterLiters: number;
   fattyAcids: FoodFattyAcids;
   micronutrients: FoodMicronutrients;
 };
@@ -34,6 +36,7 @@ export const EMPTY_FOOD_LOG_NUTRITION: FoodLogNutritionTotals = {
   saturatedFat: 0,
   sodium: 0,
   waterLiters: 0,
+  drinkWaterLiters: 0,
   fattyAcids: { ...EMPTY_FATTY_ACIDS },
   micronutrients: { ...EMPTY_MICRONUTRIENTS },
 };
@@ -114,6 +117,7 @@ export function addFoodLogNutritionTotals(a: FoodLogNutritionTotals, b: FoodLogN
     saturatedFat: a.saturatedFat + b.saturatedFat,
     sodium: a.sodium + b.sodium,
     waterLiters: a.waterLiters + b.waterLiters,
+    drinkWaterLiters: a.drinkWaterLiters + b.drinkWaterLiters,
     fattyAcids: (Object.keys(a.fattyAcids) as Array<keyof FoodFattyAcids>).reduce(
       (acc, key) => {
         acc[key] = a.fattyAcids[key] + b.fattyAcids[key];
@@ -141,6 +145,7 @@ export function divideFoodLogNutritionTotals(totals: FoodLogNutritionTotals, div
     saturatedFat: totals.saturatedFat / safe,
     sodium: totals.sodium / safe,
     waterLiters: totals.waterLiters / safe,
+    drinkWaterLiters: totals.drinkWaterLiters / safe,
     fattyAcids: (Object.keys(totals.fattyAcids) as Array<keyof FoodFattyAcids>).reduce(
       (acc, key) => {
         acc[key] = totals.fattyAcids[key] / safe;

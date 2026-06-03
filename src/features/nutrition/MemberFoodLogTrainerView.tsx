@@ -242,6 +242,7 @@ export function MemberFoodLogTrainerView({
         memberGender={memberGender}
         selectedDateKey={selectedDateKey}
         quickFoodLogs={state.quickFoodLogs}
+        trackedWaterLiters={state.waterLiters}
         mealPlanTargets={mealPlanTargets}
       />
     </>
