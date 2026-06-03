@@ -221,6 +221,7 @@ export function mergeCheckInIntoPersonalGoals(
     ...(String(existing.onboardingCompletedAt ?? "").trim()
       ? { onboardingCompletedAt: String(existing.onboardingCompletedAt) }
       : {}),
+    ...(Array.isArray(existing.bodyMetrics) ? { bodyMetrics: existing.bodyMetrics } : {}),
     monthlyCheckIns: [checkIn, ...withoutMonth].slice(0, 24),
   };
   return `${PROFILE_METRICS_PREFIX}${JSON.stringify(payload)}`;

@@ -40,6 +40,9 @@ export function readProfileExtensions(personalGoals: string | undefined): Record
   if (Array.isArray(payload.monthlyCheckIns)) {
     extensions.monthlyCheckIns = payload.monthlyCheckIns;
   }
+  if (Array.isArray(payload.bodyMetrics)) {
+    extensions.bodyMetrics = payload.bodyMetrics;
+  }
   if (payload.homeVisibility && typeof payload.homeVisibility === "object") {
     extensions.homeVisibility = payload.homeVisibility;
   }

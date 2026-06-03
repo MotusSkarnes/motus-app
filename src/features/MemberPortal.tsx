@@ -191,6 +191,8 @@ import { MemberHomeBelowWorkout } from "./MemberHomeBelowWorkout";
 import { MemberHomeWeeklyProgress } from "./MemberHomeWeeklyProgress";
 import { MemberHomeNextPlanCard, MemberHomeStatusGradientCard } from "./MemberHomeNextPlanCard";
 import { MemberProgressScoresCard } from "./MemberProgressScoresCard";
+import { MemberBodyMetricsSection } from "./MemberBodyMetricsSection";
+import { createMemberBodyMetricEntry, mergeBodyMetricIntoPersonalGoals } from "../app/memberBodyMetrics";
 import { buildShareProgramChatMessage } from "../app/chatFormat";
 import { computeWeekProgressPct } from "../app/memberHomeWeekInsights";
 import type { ChatReactionActor, ChatReactionEmoji } from "../app/chatReactions";
@@ -461,6 +463,7 @@ function encodeMemberProfileMetrics(
     ...(Array.isArray(profileExtensions.monthlyCheckIns)
       ? { monthlyCheckIns: profileExtensions.monthlyCheckIns }
       : {}),
+    ...(Array.isArray(profileExtensions.bodyMetrics) ? { bodyMetrics: profileExtensions.bodyMetrics } : {}),
     ...(profileExtensions.notificationPreferences && typeof profileExtensions.notificationPreferences === "object"
       ? { notificationPreferences: profileExtensions.notificationPreferences }
       : {}),
@@ -1154,6 +1157,7 @@ export function MemberPortal(props: MemberPortalProps) {
   const [profileMetricsHydrated, setProfileMetricsHydrated] = useState(false);
   const [pausedWorkoutsTick, setPausedWorkoutsTick] = useState(0);
   const [profileSaveInfo, setProfileSaveInfo] = useState<string | null>(null);
+  const [isSavingBodyMetric, setIsSavingBodyMetric] = useState(false);
   const [memberNameDraft, setMemberNameDraft] = useState("");
   const [memberEmailDraft, setMemberEmailDraft] = useState("");
   const [memberPhoneDraft, setMemberPhoneDraft] = useState("");
@@ -2176,6 +2180,63 @@ export function MemberPortal(props: MemberPortalProps) {
       };
     }
   }, []);
+
+  const persistBodyMetric = useCallback(
+    async (input: { weightKg?: number; bodyFatPct?: number }) => {
+      if (!editableMember) return;
+      const entry = createMemberBodyMetricEntry(input);
+      if (!entry) return;
+      setIsSavingBodyMetric(true);
+      try {
+        const personalGoals = mergeBodyMetricIntoPersonalGoals(
+          resolveMemberPersonalGoals(editableMember, members),
+          entry,
+        );
+        const targetIds = Array.from(new Set([editableMember.id, ...relatedMemberIds].filter(Boolean)));
+        targetIds.forEach((memberId) => {
+          updateMember({
+            memberId,
+            changes: { personalGoals },
+          });
+        });
+        if (supabaseClient) {
+          await syncProfileToPtBackend({
+            email: normalizedCurrentUserEmail || editableMember.email.trim().toLowerCase(),
+            emails: Array.from(
+              new Set(
+                [normalizedCurrentUserEmail, editableMember.email.trim().toLowerCase()]
+                  .map((value) => value.trim().toLowerCase())
+                  .filter((value) => value && value.includes("@")),
+              ),
+            ),
+            memberId: editableMember.id,
+            memberIds: targetIds,
+            targetName: editableMember.name,
+            expectedMinUpdated: 1,
+            changes: {
+              name: editableMember.name,
+              phone: editableMember.phone,
+              birthDate: editableMember.birthDate,
+              goal: editableMember.goal,
+              focus: editableMember.focus,
+              injuries: editableMember.injuries,
+              personalGoals,
+            },
+          });
+        }
+      } finally {
+        setIsSavingBodyMetric(false);
+      }
+    },
+    [
+      editableMember,
+      members,
+      relatedMemberIds,
+      updateMember,
+      normalizedCurrentUserEmail,
+      syncProfileToPtBackend,
+    ],
+  );
 
   const completedLogs = useMemo(() => memberLogs.filter((log) => log.status === "Fullført"), [memberLogs]);
   const recentCompletedLogs = useMemo(
@@ -7228,6 +7289,12 @@ export function MemberPortal(props: MemberPortalProps) {
               <MemberConsistencyWeekCard
                 completedLogs={completedLogs}
                 nowTimestamp={nowTimestamp}
+              />
+              <MemberBodyMetricsSection
+                personalGoals={editableMember?.personalGoals}
+                targetWeight={profileTargetWeight}
+                onLog={persistBodyMetric}
+                isSaving={isSavingBodyMetric}
               />
               <MemberProgressHighlightRow
                 streakWeeks={streakWeeks}
