@@ -235,6 +235,63 @@ describe("appRepository workout log guards", () => {
     expect(canRemoveLastExtraWorkoutSet(rows, { baselineSetCount: 3 })).toBe(true);
   });
 
+  it("resolveWorkoutBaselineSetCount uses minimum of stored, program, and row plannedSets", () => {
+    const rows = [
+      {
+        exerciseId: "pex-1-set-1",
+        programExerciseId: "pex-1",
+        setNumber: 1,
+        exerciseName: "Benk",
+        plannedSets: "4",
+        plannedReps: "10",
+        plannedWeight: "5",
+        performedWeight: "5",
+        performedReps: "10",
+        completed: false,
+      },
+      {
+        exerciseId: "pex-1-set-2",
+        programExerciseId: "pex-1",
+        setNumber: 2,
+        exerciseName: "Benk",
+        plannedSets: "4",
+        plannedReps: "10",
+        plannedWeight: "5",
+        addedDuringWorkout: true,
+        performedWeight: "",
+        performedReps: "",
+        completed: false,
+      },
+    ];
+    const program = {
+      id: "p1",
+      memberId: "m1",
+      title: "T",
+      goal: "",
+      notes: "",
+      createdAt: "",
+      exercises: [
+        {
+          id: "pex-1",
+          exerciseId: "ex-1",
+          exerciseName: "Benk",
+          sets: "3",
+          reps: "10",
+          weight: "5",
+          restSeconds: "90",
+          notes: "",
+        },
+      ],
+    };
+    const workoutMode = {
+      programId: "p1",
+      note: "",
+      baselineSetCountByProgramExerciseId: { "pex-1": 4 },
+      results: rows,
+    };
+    expect(resolveWorkoutBaselineSetCount("pex-1", rows, workoutMode, program)).toBe(3);
+  });
+
   it("allows remove when last row is marked addedDuringWorkout even if plannedSets matches row count", () => {
     const rows = [
       {

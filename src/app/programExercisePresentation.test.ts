@@ -117,6 +117,7 @@ describe("formatWorkoutGroupPlanLabel", () => {
       },
       program,
       library,
+      { useLiveSetCount: true },
     );
     expect(liveLabel).toBe("4×10 reps · 60 kg · 90s");
   });

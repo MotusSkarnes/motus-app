@@ -113,7 +113,7 @@ function workoutRowsToProgramExercise(rows: WorkoutExerciseResult[]): ProgramExe
     id: row.programExerciseId ?? row.exerciseId,
     exerciseId: row.exerciseId,
     exerciseName: row.exerciseName,
-    sets: String(rows.length || row.plannedSets || ""),
+    sets: String(row.plannedSets?.trim() || "1"),
     reps: row.plannedReps,
     repsUnit: row.plannedRepsUnit,
     weight: isHold ? "" : row.plannedWeight,
@@ -138,7 +138,7 @@ function mergeProgramExerciseWithWorkoutRows(
   if (!programExercise) return fromRows;
   const plannedSets = Number(String(programExercise.sets ?? "").trim()) || 0;
   const liveSetCount = rows.length;
-  const useLiveSetCount = options?.useLiveSetCount !== false;
+  const useLiveSetCount = options?.useLiveSetCount === true;
   const sets =
     useLiveSetCount && liveSetCount > plannedSets
       ? String(liveSetCount)
@@ -169,7 +169,7 @@ function formatPlanFromWorkoutRows(
   const exerciseIndex = program?.exercises.findIndex((exercise) => exercise.id === programExerciseId) ?? -1;
   const merged = mergeProgramExerciseWithWorkoutRows(programExercise, rows, options);
   if (!merged) return "";
-  const useLiveSetCount = options?.useLiveSetCount !== false;
+  const useLiveSetCount = options?.useLiveSetCount === true;
   const liveSetCount = useLiveSetCount ? rows.length : undefined;
   if (program && exerciseIndex >= 0) {
     return formatPrescriptionForProgramExercise(

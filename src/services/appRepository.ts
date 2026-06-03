@@ -501,11 +501,14 @@ export function resolveWorkoutBaselineSetCount(
   program: TrainingProgram | null | undefined,
 ): number {
   const pid = programExerciseId.trim();
+  const candidates: number[] = [];
   const stored = workoutMode?.baselineSetCountByProgramExerciseId?.[pid];
-  if (typeof stored === "number" && stored >= 1) return stored;
+  if (typeof stored === "number" && stored >= 1) candidates.push(stored);
   const fromProgram = program?.exercises.find((exercise) => exercise.id === pid);
-  if (fromProgram) return parseProgramSetCount(fromProgram.sets);
-  return plannedWorkoutSetCountForGroup(rows);
+  if (fromProgram) candidates.push(parseProgramSetCount(fromProgram.sets));
+  if (rows.length) candidates.push(plannedWorkoutSetCountForGroup(rows));
+  if (!candidates.length) return 1;
+  return Math.min(...candidates);
 }
 
 export function ensureWorkoutModeBaseline(

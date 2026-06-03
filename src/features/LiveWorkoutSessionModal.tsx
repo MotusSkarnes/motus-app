@@ -10,6 +10,7 @@ import { EXERCISE_IMAGE_INSET_CLASS, EXERCISE_IMAGE_SMALL_CLASS } from "../app/e
 import { resolveExerciseImageSrc } from "../app/exerciseIllustrations";
 import { buildWorkoutResultGroups, EXERCISE_BLOCK_LABELS } from "../app/programBlocks";
 import {
+  formatProgramExercisePrescription,
   formatWorkoutGroupPlanLabel,
   formatWorkoutSegmentPlanLabel,
   resolveWorkoutGroupExerciseName,
@@ -471,10 +472,35 @@ export function LiveWorkoutSessionModal({
     return resolveWorkoutGroupExerciseName(currentWorkoutGroup, resolvedProgram);
   }, [currentWorkoutGroup, resolvedProgram]);
 
+  /** Plan fra programmet — avhenger ikke av antall sett-rader (ekstra sett under økta). */
   const currentWorkoutPlanLabel = useMemo(() => {
-    if (!currentWorkoutGroup) return "";
-    return formatWorkoutGroupPlanLabel(currentWorkoutGroup, resolvedProgram, exercises, WORKOUT_PLAN_LABEL_OPTIONS);
-  }, [currentWorkoutGroup, resolvedProgram, exercises]);
+    if (!currentWorkoutGroup || currentWorkoutGroup.blockType) return "";
+    const programExerciseId =
+      currentWorkoutGroup.segments[0]?.programExerciseId?.trim() || currentWorkoutGroup.groupId;
+    if (!resolvedProgram) {
+      return formatWorkoutGroupPlanLabel(
+        currentWorkoutGroup,
+        resolvedProgram,
+        exercises,
+        WORKOUT_PLAN_LABEL_OPTIONS,
+      );
+    }
+    const exerciseIndex = resolvedProgram.exercises.findIndex((exercise) => exercise.id === programExerciseId);
+    if (exerciseIndex < 0) {
+      return formatWorkoutGroupPlanLabel(
+        currentWorkoutGroup,
+        resolvedProgram,
+        exercises,
+        WORKOUT_PLAN_LABEL_OPTIONS,
+      );
+    }
+    return formatProgramExercisePrescription(
+      resolvedProgram.exercises[exerciseIndex]!,
+      exerciseIndex,
+      resolvedProgram.exercises,
+      exercises,
+    );
+  }, [currentWorkoutGroup?.groupId, currentWorkoutGroup?.blockType, resolvedProgram, exercises]);
 
   const nextWorkoutPlanLabel = useMemo(() => {
     if (!nextWorkoutGroup) return "";
