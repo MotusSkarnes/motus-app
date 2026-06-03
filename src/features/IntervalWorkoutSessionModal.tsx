@@ -195,7 +195,7 @@ function buildIntervalProgramSteps(program: TrainingProgram, exercises: Exercise
 
     const hasNextStep = index < program.exercises.length - 1;
     const nextExerciseName = program.exercises[index + 1]?.exerciseName ?? "";
-    const nextIsCooldown = isIntervalCooldownName(nextExerciseName) || isLegacyIntervalCooldownDrag(program.exercises, index + 1);
+    const nextIsCooldown = isCardioCooldownStepName(nextExerciseName) || isLegacyIntervalCooldownDrag(program.exercises, index + 1);
     const restAfterRow = normalizedRestSeconds > 0 && (!isDragSlot || repeatCount <= 1) && hasNextStep && !nextIsCooldown;
     if (restAfterRow) {
       const afterLabel = lastWorkHeadline || exercise.exerciseName.trim() || `Steg ${index + 1}`;
