@@ -9,7 +9,7 @@
   type ReactNode,
   type SetStateAction,
 } from "react";
-import { Apple, CalendarRange, ChevronDown, ChevronUp, ClipboardList, Dumbbell, Eye, EyeOff, Mail, MessageSquare, MoreHorizontal, Pencil, Play, Share2, ShieldCheck, Star, Trash2, UserCheck, UserCircle2, Users } from "lucide-react";
+import { Apple, CalendarRange, ChevronDown, ChevronUp, ClipboardList, Copy, Dumbbell, Eye, EyeOff, Mail, MessageSquare, MoreHorizontal, Pencil, Play, Share2, ShieldCheck, Star, Trash2, UserCheck, UserCircle2, Users } from "lucide-react";
 import { MOTUS } from "../app/data";
 import { formatDateDdMmYyyy, getDefaultPeriodPlanStartMondayISO, periodPlanStartDateForDateInput } from "../app/dateFormat";
 import {
@@ -2863,6 +2863,31 @@ function pickFirstName(value: unknown): string {
     },
     [members, selectedMemberId],
   );
+
+  function copyCustomerProgramToTemplate(program: TrainingProgram) {
+    if (!program.exercises.length) {
+      setProgramSaveStatus("Programmet har ingen øvelser å kopiere til mal.");
+      return;
+    }
+    const title = program.title.trim() || "Treningsmal";
+    setConfirmDialog({
+      title: "Lagre som treningsmal",
+      message: `Kopiere «${title}» til treningsmaler? Programmet på kunden påvirkes ikke — du finner malen under Treningsmaler.`,
+      confirmLabel: "Lagre som mal",
+      onConfirm: () => {
+        saveProgramForMember({
+          title,
+          goal: program.goal,
+          notes: program.notes,
+          memberId: "__template__",
+          exercises: program.exercises.map((exercise) => ({ ...exercise, id: uid("template-ex") })),
+          imageUrl: program.imageUrl,
+        });
+        setProgramSaveStatus(`«${title}» er lagret som treningsmal. Finn den under Treningsmaler.`);
+        setTemplateAssignStatus(`«${title}» er lagret som treningsmal.`);
+      },
+    });
+  }
 
   function handleDeleteProgram(programId: string) {
     const target = selectedPrograms.find((program) => program.id === programId);
@@ -5984,6 +6009,15 @@ function pickFirstName(value: unknown): string {
                                   Live økt
                                 </OutlineButton>
                                 <OutlineButton onClick={() => startEditProgram(program)} className="px-2 py-1 text-[11px]">Rediger</OutlineButton>
+                                <OutlineButton
+                                  type="button"
+                                  onClick={() => copyCustomerProgramToTemplate(program)}
+                                  className="inline-flex items-center gap-1 px-2 py-1 text-[11px]"
+                                  title="Kopier til treningsmaler (bruk på andre kunder senere)"
+                                >
+                                  <Copy className="h-3 w-3 shrink-0" aria-hidden />
+                                  Lagre som mal
+                                </OutlineButton>
                                 <OutlineButton onClick={() => handlePrintProgram(program)} className="px-2 py-1 text-[11px]">PDF</OutlineButton>
                                 <OutlineButton onClick={() => handleDeleteProgram(program.id)} className="px-2 py-1 text-[11px]">Slett</OutlineButton>
                               </div>
