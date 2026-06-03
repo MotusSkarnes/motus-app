@@ -7,6 +7,7 @@ import {
   expandProgramExercisesToWorkoutResults,
   normalizeLegacyIntervalCooldownExerciseNames,
   normalizeMemberLibraryStatus,
+  parseProgramSetCount,
   workoutResultGroupId,
 } from "../app/programBlocks";
 import { uid } from "../app/storage";
@@ -218,6 +219,7 @@ export interface AppRepository {
   updateWorkoutResult(state: AppState, input: UpdateWorkoutResultInput): AppState;
   replaceWorkoutExerciseGroup(state: AppState, input: ReplaceWorkoutExerciseGroupInput): AppState;
   appendWorkoutSetForProgramExercise(state: AppState, programExerciseId: string): AppState;
+  removeLastWorkoutSetForProgramExercise(state: AppState, programExerciseId: string): AppState;
   deferWorkoutExerciseGroup(state: AppState, programExerciseId: string): AppState;
   removeWorkoutLogResult(state: AppState, input: RemoveWorkoutLogResultInput): AppState;
   removeGroupWorkoutLog(state: AppState, input: RemoveGroupWorkoutLogInput): AppState;
@@ -573,6 +575,43 @@ export function appendWorkoutSetForProgramExerciseInState(state: AppState, progr
   };
 
   const newResults = [...results.slice(0, insertAfterIndex + 1), newRow, ...results.slice(insertAfterIndex + 1)];
+  return {
+    ...state,
+    workoutMode: {
+      ...state.workoutMode,
+      results: newResults,
+    },
+  };
+}
+
+/** Antall sett programmet hadde ved start av økt (fra plannedSets på første rad i gruppen). */
+export function plannedWorkoutSetCountForGroup(rows: WorkoutExerciseResult[]): number {
+  if (!rows.length) return 1;
+  return parseProgramSetCount(rows[0]?.plannedSets);
+}
+
+/** Kan siste sett fjernes — kun ekstra sett lagt til underveis (flere enn plan). */
+export function canRemoveLastExtraWorkoutSet(rows: WorkoutExerciseResult[]): boolean {
+  return rows.length > plannedWorkoutSetCountForGroup(rows);
+}
+
+export function removeLastWorkoutSetForProgramExerciseInState(state: AppState, programExerciseId: string): AppState {
+  if (!state.workoutMode) return state;
+  const pid = programExerciseId.trim();
+  if (!pid) return state;
+
+  const results = state.workoutMode.results;
+  const groupIndices: number[] = [];
+  results.forEach((r, i) => {
+    if (r.programExerciseId === pid) groupIndices.push(i);
+  });
+  if (!groupIndices.length) return state;
+
+  const groupRows = groupIndices.map((i) => results[i]);
+  if (!canRemoveLastExtraWorkoutSet(groupRows)) return state;
+
+  const removeIndex = groupIndices[groupIndices.length - 1];
+  const newResults = results.filter((_, i) => i !== removeIndex);
   return {
     ...state,
     workoutMode: {
@@ -1080,6 +1119,8 @@ export const localAppRepository: AppRepository = {
   replaceWorkoutExerciseGroup: (state, input) => replaceWorkoutExerciseGroupInState(state, input),
   appendWorkoutSetForProgramExercise: (state, programExerciseId) =>
     appendWorkoutSetForProgramExerciseInState(state, programExerciseId),
+  removeLastWorkoutSetForProgramExercise: (state, programExerciseId) =>
+    removeLastWorkoutSetForProgramExerciseInState(state, programExerciseId),
   deferWorkoutExerciseGroup: (state, programExerciseId) => deferWorkoutExerciseGroupInState(state, programExerciseId),
   removeWorkoutLogResult: (state, input) => removeWorkoutLogResultInState(state, input),
   removeGroupWorkoutLog: (state, input) => removeGroupWorkoutLogInState(state, input),

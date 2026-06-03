@@ -2248,6 +2248,11 @@ export function useAppState() {
     setAppState((prev) => repository.appendWorkoutSetForProgramExercise(prev, programExerciseId));
   }
 
+  function removeLastWorkoutSetForProgramExercise(programExerciseId: string) {
+    if (!programExerciseId.trim()) return;
+    setAppState((prev) => repository.removeLastWorkoutSetForProgramExercise(prev, programExerciseId));
+  }
+
   function replaceWorkoutExerciseGroup(input: ReplaceWorkoutExerciseGroupInput) {
     setAppState((prev) => repository.replaceWorkoutExerciseGroup(prev, input));
   }
@@ -2766,6 +2771,7 @@ export function useAppState() {
     updateWorkoutExerciseResult,
     replaceWorkoutExerciseGroup,
     appendWorkoutSetForProgramExercise,
+    removeLastWorkoutSetForProgramExercise,
     deferWorkoutExerciseGroup,
     removeWorkoutLogResult,
     setWorkoutLogResults,

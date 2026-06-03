@@ -390,6 +390,7 @@ type TrainerPortalProps = {
   ) => void;
   replaceWorkoutExerciseGroup?: (input: ReplaceWorkoutExerciseGroupInput) => void;
   appendWorkoutSetForProgramExercise?: (programExerciseId: string) => void;
+  removeLastWorkoutSetForProgramExercise?: (programExerciseId: string) => void;
   deferWorkoutExerciseGroup?: (programExerciseId: string) => void;
   updateWorkoutModeNote?: (note: string) => void;
   updateWorkoutExerciseNote?: (programExerciseId: string, note: string) => void;
@@ -757,6 +758,7 @@ function pickFirstName(value: unknown): string {
     updateWorkoutExerciseResult = () => {},
     replaceWorkoutExerciseGroup = () => {},
     appendWorkoutSetForProgramExercise = () => {},
+    removeLastWorkoutSetForProgramExercise = () => {},
     deferWorkoutExerciseGroup = () => {},
     updateWorkoutModeNote = () => {},
     updateWorkoutExerciseNote = () => {},
@@ -7379,6 +7381,7 @@ function pickFirstName(value: unknown): string {
       updateWorkoutExerciseResult={updateWorkoutExerciseResult}
       replaceWorkoutExerciseGroup={replaceWorkoutExerciseGroup}
       appendWorkoutSetForProgramExercise={appendWorkoutSetForProgramExercise}
+      removeLastWorkoutSetForProgramExercise={removeLastWorkoutSetForProgramExercise}
       deferWorkoutExerciseGroup={deferWorkoutExerciseGroup}
       updateWorkoutModeNote={updateWorkoutModeNote}
       updateWorkoutExerciseNote={updateWorkoutExerciseNote}
