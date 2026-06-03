@@ -1,7 +1,8 @@
-import { ArrowLeft, Check } from "lucide-react";
+import { ArrowLeft, Check, Maximize2, Minimize2 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { MOTUS } from "../app/data";
+import { useIntervalTimerFocusLayout } from "../app/useIntervalTimerFocusLayout";
 import { useDeadlineIntervalTimer } from "../app/useDeadlineIntervalTimer";
 import { useScreenWakeLock } from "../app/useScreenWakeLock";
 import { expandProgramExercisesToWorkoutResults, isLegacyIntervalCooldownDrag, parseProgramSetCount } from "../app/programBlocks";
@@ -274,6 +275,7 @@ export function IntervalWorkoutSessionModal({
   const [motivationLevel, setMotivationLevel] = useState<1 | 2 | 3 | 4 | 5>(3);
   const [reflectionNote, setReflectionNote] = useState("");
   const [isSaving, setIsSaving] = useState(false);
+  const [manualTimerFocus, setManualTimerFocus] = useState(false);
   const completeSectionRef = useRef<HTMLDivElement>(null);
   const hasStartedRef = useRef(false);
 
@@ -327,9 +329,14 @@ export function IntervalWorkoutSessionModal({
     setIsRunning(false);
     setIsPaused(false);
     hasStartedRef.current = false;
+    setManualTimerFocus(false);
     resetToStep(0);
     resetDraft();
   }
+
+  useEffect(() => {
+    if (!open) setManualTimerFocus(false);
+  }, [open]);
 
   useEffect(() => {
     if (!open) return;
@@ -454,14 +461,24 @@ export function IntervalWorkoutSessionModal({
     });
   }
 
+  const timerFinished = useMemo(() => {
+    if (!program) return false;
+    return (
+      showComplete ||
+      (intervalProgramSteps.length > 0 && stepIndex >= intervalProgramSteps.length) ||
+      (hasStartedRef.current &&
+        !isRunning &&
+        intervalProgramSteps.length > 0 &&
+        remainingSeconds <= 0 &&
+        stepIndex >= intervalProgramSteps.length - 1)
+    );
+  }, [program, showComplete, intervalProgramSteps.length, stepIndex, isRunning, remainingSeconds]);
+  const timerFocusActive = useIntervalTimerFocusLayout(Boolean(open && program && !timerFinished), manualTimerFocus);
+
   if (!open || !program) return null;
 
   const currentOverride = stepOverrides[stepIndex] ?? { speed: "", incline: "" };
   const canEditSpeedIncline = intervalStepAllowsSpeedInclineEdit(currentStep);
-  const timerFinished =
-    showComplete ||
-    (intervalProgramSteps.length > 0 && stepIndex >= intervalProgramSteps.length) ||
-    (hasStartedRef.current && !isRunning && intervalProgramSteps.length > 0 && remainingSeconds <= 0 && stepIndex >= intervalProgramSteps.length - 1);
 
   const progressDegrees = (progressPercent / 100) * 360;
   const nextStep = intervalProgramSteps[stepIndex + 1] ?? null;
@@ -474,7 +491,11 @@ export function IntervalWorkoutSessionModal({
   }
 
   const modal = (
-    <div className="motus-workout-focus motus-interval-session motus-modal-insets fixed inset-0 z-[10030] overscroll-contain bg-black">
+    <div
+      className={`motus-workout-focus motus-interval-session motus-modal-insets fixed inset-0 z-[10030] overscroll-contain bg-black${
+        timerFocusActive ? " motus-interval-session--timer-focus" : ""
+      }`}
+    >
       <div
         className={`motus-workout-focus-panel motus-interval-session-panel mx-auto flex h-full w-full max-w-3xl flex-col overflow-hidden bg-slate-950 text-white shadow-2xl sm:rounded-3xl${
           timerFinished ? " motus-interval-session--complete" : ""
@@ -496,6 +517,16 @@ export function IntervalWorkoutSessionModal({
               {isRunning ? (isPaused ? " · Pause" : " · Pågår") : ""}
             </div>
           </div>
+          <button
+            type="button"
+            onClick={() => setManualTimerFocus((previous) => !previous)}
+            className="inline-flex h-8 shrink-0 items-center gap-1 rounded-full bg-white/10 px-2 py-1 text-[10px] font-bold text-white transition hover:bg-white/15"
+            aria-pressed={timerFocusActive}
+            aria-label={timerFocusActive ? "Normal visning" : "Stor timervisning"}
+          >
+            {timerFocusActive ? <Minimize2 className="h-3.5 w-3.5" aria-hidden /> : <Maximize2 className="h-3.5 w-3.5" aria-hidden />}
+            <span>{timerFocusActive ? "Normal" : "Stor timer"}</span>
+          </button>
           <button
             type="button"
             onClick={handleLeave}
@@ -526,6 +557,16 @@ export function IntervalWorkoutSessionModal({
                 {program.goal || "Nedtelling per intervallsteg"}
               </div>
             </div>
+            <button
+              type="button"
+              onClick={() => setManualTimerFocus((previous) => !previous)}
+              className="inline-flex h-9 shrink-0 items-center gap-1 rounded-full bg-white/10 px-2.5 py-1.5 text-[11px] font-bold text-white transition hover:bg-white/15 sm:h-10 sm:px-3 sm:text-xs"
+              aria-pressed={timerFocusActive}
+              aria-label={timerFocusActive ? "Normal visning" : "Stor timervisning"}
+            >
+              {timerFocusActive ? <Minimize2 className="h-4 w-4" aria-hidden /> : <Maximize2 className="h-4 w-4" aria-hidden />}
+              <span className="hidden sm:inline">{timerFocusActive ? "Normal" : "Stor timer"}</span>
+            </button>
             <button
               type="button"
               onClick={handleLeave}

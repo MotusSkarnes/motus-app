@@ -6104,9 +6104,20 @@ html:has(.motus-trainer-app) {
     0 0 0 1px rgba(255, 255, 255, 0.04);
 }
 
-/* Kondisjonsintervall: liggende mobil — nedtelling i fokus, kompakte knapper */
+/* Kondisjonsintervall: timerfokus — nedtelling synlig (mobil + liggende) */
+.motus-interval-session.motus-modal-insets {
+  padding: 0;
+}
+
 .motus-interval-header-compact {
   display: none;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgb(15 23 42);
+  padding: 0.35rem 0.75rem;
+  padding-top: max(0.35rem, env(safe-area-inset-top));
 }
 
 .motus-interval-landscape-hints {
@@ -6117,97 +6128,42 @@ html:has(.motus-trainer-app) {
   display: none;
 }
 
-@media (orientation: landscape) and (max-height: 520px) {
-  .motus-interval-session-panel {
-    max-width: none !important;
-    border-radius: 0 !important;
-  }
+/* Under aktiv økt: lås layout slik at nedtelling ikke scroller bort */
+.motus-interval-session:not(.motus-interval-session--complete) .motus-interval-session-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
 
+.motus-interval-session:not(.motus-interval-session--complete) .motus-interval-timer-card {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.motus-interval-session:not(.motus-interval-session--complete) .motus-interval-countdown-value {
+  font-size: clamp(3rem, 18vw, 4.5rem);
+  line-height: 1;
+}
+
+/* Mobil stående: kompakt header, timer i fokus */
+@media (max-width: 639px) {
   .motus-interval-session:not(.motus-interval-session--complete) .motus-interval-header-full {
     display: none !important;
   }
 
   .motus-interval-session:not(.motus-interval-session--complete) .motus-interval-header-compact {
     display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 0.5rem;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-    background: rgb(15 23 42);
-    padding: 0.35rem 0.75rem;
-    padding-top: max(0.35rem, env(safe-area-inset-top));
   }
 
-  .motus-interval-session:not(.motus-interval-session--complete) .motus-interval-session-scroll {
-    overflow: hidden;
-    flex: 1;
-    min-height: 0;
-    display: flex;
-    align-items: stretch;
-    justify-content: center;
-    padding: 0.25rem 0.5rem;
-  }
-
-  .motus-interval-session:not(.motus-interval-session--complete) .motus-interval-timer-card {
-    display: flex;
-    flex: 1;
-    flex-direction: column;
-    justify-content: center;
-    align-self: stretch;
-    width: 100%;
-    max-width: none;
-    padding: 0.5rem 0.75rem !important;
-    border-radius: 1rem !important;
-  }
-
-  .motus-interval-session:not(.motus-interval-session--complete) .motus-interval-timer-card-top {
-    display: none;
-  }
-
-  .motus-interval-session:not(.motus-interval-session--complete) .motus-interval-timer-card-body {
-    display: grid;
-    flex: 1;
-    min-height: 0;
-    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
-    align-items: center;
-    gap: 0.5rem 0.75rem;
-  }
-
-  .motus-interval-session:not(.motus-interval-session--complete) .motus-interval-timer-meta {
-    min-width: 0;
-    text-align: left;
-  }
-
-  .motus-interval-session:not(.motus-interval-session--complete) .motus-interval-timer-meta h2 {
-    font-size: 1.125rem !important;
-    line-height: 1.2 !important;
-    margin-top: 0.25rem !important;
-  }
-
-  .motus-interval-session:not(.motus-interval-session--complete) .motus-interval-timer-countdown {
-    padding: 0 !important;
-  }
-
-  .motus-interval-session:not(.motus-interval-session--complete) .motus-interval-countdown-value {
-    font-size: clamp(3.5rem, 28vh, 6.5rem) !important;
-    line-height: 1 !important;
-  }
-
-  .motus-interval-session:not(.motus-interval-session--complete) .motus-interval-timer-side {
-    display: block;
-    min-width: 0;
-    text-align: right;
-    font-size: 0.6875rem;
-  }
-
-  .motus-interval-session:not(.motus-interval-session--complete) .motus-interval-timer-side .motus-interval-timer-next-block {
-    margin-top: 0.35rem !important;
-    padding-top: 0 !important;
-    border-top: none !important;
-  }
-
-  .motus-interval-session:not(.motus-interval-session--complete) .motus-interval-timer-next-portrait {
-    display: none !important;
+  .motus-interval-session-panel {
+    max-width: none !important;
+    border-radius: 0 !important;
   }
 
   .motus-interval-session:not(.motus-interval-session--complete) .motus-interval-timer-edit-panel {
@@ -6228,11 +6184,6 @@ html:has(.motus-trainer-app) {
     gap: 0.35rem;
   }
 
-  .motus-interval-session:not(.motus-interval-session--complete) .motus-interval-session-footer {
-    padding: 0.35rem 0.5rem;
-    padding-bottom: max(0.35rem, env(safe-area-inset-bottom));
-  }
-
   .motus-interval-session:not(.motus-interval-session--complete) .motus-interval-session-footer .motus-interval-footer-btn {
     min-height: 2rem !important;
     height: 2rem !important;
@@ -6241,9 +6192,119 @@ html:has(.motus-trainer-app) {
   }
 }
 
-@media (orientation: landscape) and (max-height: 520px) {
-  .motus-interval-session--complete .motus-interval-session-scroll {
-    overflow: auto;
+/* Timerfokus (liggende auto / «Stor timer»-knapp) */
+.motus-interval-session--timer-focus:not(.motus-interval-session--complete) .motus-interval-header-full {
+  display: none !important;
+}
+
+.motus-interval-session--timer-focus:not(.motus-interval-session--complete) .motus-interval-header-compact {
+  display: flex;
+}
+
+.motus-interval-session--timer-focus .motus-interval-session-panel {
+  max-width: none !important;
+  border-radius: 0 !important;
+}
+
+.motus-interval-session--timer-focus:not(.motus-interval-session--complete) .motus-interval-session-scroll {
+  align-items: stretch;
+  justify-content: center;
+  padding: 0.25rem 0.5rem;
+}
+
+.motus-interval-session--timer-focus:not(.motus-interval-session--complete) .motus-interval-timer-card {
+  align-self: stretch;
+  width: 100%;
+  max-width: none;
+  padding: 0.5rem 0.75rem !important;
+  border-radius: 1rem !important;
+}
+
+.motus-interval-session--timer-focus:not(.motus-interval-session--complete) .motus-interval-timer-card-top {
+  display: none;
+}
+
+.motus-interval-session--timer-focus:not(.motus-interval-session--complete) .motus-interval-timer-card-body {
+  display: grid;
+  flex: 1;
+  min-height: 0;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
+  gap: 0.5rem 0.75rem;
+}
+
+.motus-interval-session--timer-focus:not(.motus-interval-session--complete) .motus-interval-timer-meta {
+  min-width: 0;
+  text-align: left;
+}
+
+.motus-interval-session--timer-focus:not(.motus-interval-session--complete) .motus-interval-timer-meta h2 {
+  font-size: 1.125rem !important;
+  line-height: 1.2 !important;
+  margin-top: 0.25rem !important;
+}
+
+.motus-interval-session--timer-focus:not(.motus-interval-session--complete) .motus-interval-timer-countdown {
+  padding: 0 !important;
+}
+
+.motus-interval-session--timer-focus:not(.motus-interval-session--complete) .motus-interval-countdown-value {
+  font-size: clamp(3.5rem, 28vh, 6.5rem) !important;
+}
+
+.motus-interval-session--timer-focus:not(.motus-interval-session--complete) .motus-interval-timer-side {
+  display: block;
+  min-width: 0;
+  text-align: right;
+  font-size: 0.6875rem;
+}
+
+.motus-interval-session--timer-focus:not(.motus-interval-session--complete) .motus-interval-timer-next-portrait {
+  display: none !important;
+}
+
+.motus-interval-session--timer-focus:not(.motus-interval-session--complete) .motus-interval-timer-edit-panel {
+  display: none !important;
+}
+
+.motus-interval-session--timer-focus:not(.motus-interval-session--complete) .motus-interval-landscape-hints {
+  display: block;
+  margin-top: 0.35rem;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  color: rgb(71 85 105);
+  line-height: 1.35;
+}
+
+.motus-interval-session--timer-focus:not(.motus-interval-session--complete) .motus-interval-session-footer .motus-interval-footer-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.35rem;
+}
+
+.motus-interval-session--timer-focus:not(.motus-interval-session--complete) .motus-interval-session-footer {
+  padding: 0.35rem 0.5rem;
+  padding-bottom: max(0.35rem, env(safe-area-inset-bottom));
+}
+
+.motus-interval-session--timer-focus:not(.motus-interval-session--complete) .motus-interval-session-footer .motus-interval-footer-btn {
+  min-height: 2rem !important;
+  height: 2rem !important;
+  font-size: 0.625rem !important;
+  padding: 0.25rem 0.35rem !important;
+}
+
+.motus-interval-session--timer-focus.motus-interval-session--complete .motus-interval-session-scroll,
+.motus-interval-session--complete .motus-interval-session-scroll {
+  overflow: auto;
+}
+
+@media (orientation: landscape) and (max-height: 720px) {
+  .motus-interval-session:not(.motus-interval-session--complete) .motus-interval-header-full {
+    display: none !important;
+  }
+
+  .motus-interval-session:not(.motus-interval-session--complete) .motus-interval-header-compact {
+    display: flex;
   }
 }
 
