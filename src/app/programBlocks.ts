@@ -111,7 +111,13 @@ export function dedupeTrainingPrograms(programs: TrainingProgram[]): TrainingPro
 }
 
 export function parseProgramSetCount(value: string | undefined): number {
-  const parsed = Number(String(value ?? "").trim());
+  const trimmed = String(value ?? "").trim();
+  const leadingDigits = trimmed.match(/^(\d{1,2})/);
+  if (leadingDigits) {
+    const parsed = Number(leadingDigits[1]);
+    if (Number.isFinite(parsed) && parsed >= 1) return Math.min(18, Math.round(parsed));
+  }
+  const parsed = Number(trimmed);
   if (!Number.isFinite(parsed) || parsed < 1) return 1;
   return Math.min(18, Math.round(parsed));
 }

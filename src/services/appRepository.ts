@@ -487,6 +487,58 @@ export function buildBaselineSetCountByProgramExerciseId(results: WorkoutExercis
 }
 
 /** Planlagt sett per øvelse fra programmet (ikke live antall rader). */
+export function buildWorkoutPlanDisplayMaps(
+  program: TrainingProgram,
+  exerciseLibrary: Exercise[],
+  results: WorkoutExerciseResult[],
+): { planDisplayByGroupId: Record<string, string>; plannedSetCountAtStartByGroupId: Record<string, number> } {
+  const planDisplayByGroupId = buildFrozenPlanLabelByProgramExerciseId(program, exerciseLibrary, results);
+  const plannedSetCountAtStartByGroupId: Record<string, number> = {};
+  program.exercises.forEach((exercise) => {
+    if (exercise.blockId?.trim()) return;
+    const id = exercise.id.trim();
+    if (!id) return;
+    plannedSetCountAtStartByGroupId[id] = parseProgramSetCount(exercise.sets);
+  });
+  results.forEach((result) => {
+    const pid = result.programExerciseId?.trim();
+    const gid = workoutResultGroupId(result);
+    if (pid && typeof plannedSetCountAtStartByGroupId[pid] === "number") {
+      plannedSetCountAtStartByGroupId[gid] = plannedSetCountAtStartByGroupId[pid]!;
+    }
+    if (pid && planDisplayByGroupId[pid]) planDisplayByGroupId[gid] = planDisplayByGroupId[pid]!;
+  });
+  return { planDisplayByGroupId, plannedSetCountAtStartByGroupId };
+}
+
+export function resolvePlannedSetCountAtWorkoutStart(
+  groupId: string,
+  rows: WorkoutExerciseResult[],
+  workoutMode: WorkoutModeState | null | undefined,
+): number {
+  const gid = groupId.trim();
+  const fromStart = workoutMode?.plannedSetCountAtStartByGroupId?.[gid];
+  if (typeof fromStart === "number" && fromStart >= 1) return fromStart;
+  for (const row of rows) {
+    const pid = row.programExerciseId?.trim();
+    if (!pid) continue;
+    const fromPid = workoutMode?.plannedSetCountAtStartByGroupId?.[pid];
+    if (typeof fromPid === "number" && fromPid >= 1) return fromPid;
+  }
+  if (rows.length) return plannedWorkoutSetCountForGroup(rows.filter((row) => !row.addedDuringWorkout));
+  return 1;
+}
+
+export function resolveWorkoutPlanDisplayLabel(
+  groupId: string,
+  workoutMode: WorkoutModeState | null | undefined,
+  lookupKeys: string[],
+): string {
+  const map = workoutMode?.planDisplayByGroupId;
+  if (map?.[groupId.trim()]) return map[groupId.trim()]!.trim();
+  return lookupFrozenWorkoutPlanLabel(map, lookupKeys) || lookupFrozenWorkoutPlanLabel(workoutMode?.frozenPlanLabelByProgramExerciseId, lookupKeys);
+}
+
 export function buildFrozenPlanLabelByProgramExerciseId(
   program: TrainingProgram,
   exerciseLibrary: Exercise[],
@@ -576,8 +628,12 @@ export function countExtraWorkoutSets(
   program: TrainingProgram | null | undefined,
 ): number {
   if (!rows.length) return 0;
+  const plannedAtStart = resolvePlannedSetCountAtWorkoutStart(programExerciseId, rows, workoutMode);
+  if (rows.some((row) => row.addedDuringWorkout)) {
+    return Math.max(0, rows.length - plannedAtStart);
+  }
   const baseline = resolveWorkoutBaselineSetCount(programExerciseId, rows, workoutMode, program);
-  return Math.max(0, rows.length - baseline);
+  return Math.max(0, rows.length - Math.max(plannedAtStart, baseline));
 }
 
 export function ensureWorkoutModeSessionMetadata(
@@ -587,14 +643,13 @@ export function ensureWorkoutModeSessionMetadata(
 ): WorkoutModeState {
   let next = workoutMode;
   if (program) {
+    const displayMaps = buildWorkoutPlanDisplayMaps(program, exerciseLibrary, workoutMode.results);
     next = {
       ...next,
       baselineSetCountByProgramExerciseId: buildBaselineSetCountFromProgramExercises(program.exercises),
-      frozenPlanLabelByProgramExerciseId: buildFrozenPlanLabelByProgramExerciseId(
-        program,
-        exerciseLibrary,
-        workoutMode.results,
-      ),
+      frozenPlanLabelByProgramExerciseId: displayMaps.planDisplayByGroupId,
+      planDisplayByGroupId: displayMaps.planDisplayByGroupId,
+      plannedSetCountAtStartByGroupId: displayMaps.plannedSetCountAtStartByGroupId,
     };
     return next;
   }
@@ -622,6 +677,7 @@ export function startWorkoutModeInState(state: AppState, programId: string, opti
   });
 
   const memberId = options?.memberId?.trim() || program.memberId;
+  const displayMaps = buildWorkoutPlanDisplayMaps(program, state.exercises, expandedResults);
   return {
     ...state,
     workoutMode: {
@@ -631,7 +687,9 @@ export function startWorkoutModeInState(state: AppState, programId: string, opti
       results: expandedResults,
       note: "",
       baselineSetCountByProgramExerciseId: buildBaselineSetCountFromProgramExercises(program.exercises),
-      frozenPlanLabelByProgramExerciseId: buildFrozenPlanLabelByProgramExerciseId(program, state.exercises, expandedResults),
+      frozenPlanLabelByProgramExerciseId: displayMaps.planDisplayByGroupId,
+      planDisplayByGroupId: displayMaps.planDisplayByGroupId,
+      plannedSetCountAtStartByGroupId: displayMaps.plannedSetCountAtStartByGroupId,
     },
   };
 }
@@ -765,6 +823,8 @@ export function appendWorkoutSetForProgramExerciseInState(state: AppState, progr
       ...state.workoutMode,
       baselineSetCountByProgramExerciseId: baselineMap,
       frozenPlanLabelByProgramExerciseId,
+      planDisplayByGroupId: state.workoutMode.planDisplayByGroupId,
+      plannedSetCountAtStartByGroupId: state.workoutMode.plannedSetCountAtStartByGroupId,
       results: newResults,
     },
   };
@@ -823,6 +883,8 @@ export function removeLastWorkoutSetForProgramExerciseInState(state: AppState, p
     ...state,
     workoutMode: {
       ...state.workoutMode,
+      planDisplayByGroupId: state.workoutMode.planDisplayByGroupId,
+      plannedSetCountAtStartByGroupId: state.workoutMode.plannedSetCountAtStartByGroupId,
       results: newResults,
     },
   };

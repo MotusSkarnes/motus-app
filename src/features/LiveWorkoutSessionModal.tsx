@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { ArrowLeft, Check, ChevronRight, Minus, Plus, Repeat2, SkipForward, TimerReset, Trash2, X } from "lucide-react";
 import { motusHaptic } from "../app/haptics";
 import { remainingSecondsUntilDeadline } from "../app/intervalTimerDeadline";
@@ -8,12 +8,10 @@ import { WorkoutCompactSetTable } from "./LiveWorkoutCompactSets";
 import { MOTUS } from "../app/data";
 import { EXERCISE_IMAGE_INSET_CLASS, EXERCISE_IMAGE_SMALL_CLASS } from "../app/exerciseIllustrations/constants";
 import { resolveExerciseImageSrc } from "../app/exerciseIllustrations";
-import { buildWorkoutResultGroups, EXERCISE_BLOCK_LABELS, parseProgramSetCount } from "../app/programBlocks";
+import { buildWorkoutResultGroups, EXERCISE_BLOCK_LABELS } from "../app/programBlocks";
 import {
   formatWorkoutGroupPlanLabel,
-  formatWorkoutPlanLabelFromProgramExercise,
   formatWorkoutSegmentPlanLabel,
-  lookupFrozenWorkoutPlanLabel,
   resolveWorkoutGroupExerciseName,
   type WorkoutPlanLabelOptions,
 } from "../app/programExercisePresentation";
@@ -24,7 +22,7 @@ import { buildTrainingProgramFromWorkoutMode } from "../app/pausedWorkoutSession
 import {
   countExtraWorkoutSets,
   MAX_SETS_PER_EXERCISE_IN_WORKOUT_MODE,
-  resolveWorkoutBaselineSetCount,
+  resolveWorkoutPlanDisplayLabel,
   type ReplaceWorkoutExerciseGroupInput,
 } from "../services/appRepository";
 
@@ -168,13 +166,6 @@ export function LiveWorkoutSessionModal({
   );
 
   const activeWorkoutModeProgramId = workoutMode?.programId ?? "";
-  const lockedPlanLabelByExerciseRef = useRef<Record<string, string>>({});
-  const [planLabelRevision, setPlanLabelRevision] = useState(0);
-
-  useEffect(() => {
-    lockedPlanLabelByExerciseRef.current = {};
-    setPlanLabelRevision(0);
-  }, [activeWorkoutModeProgramId]);
 
   useEffect(() => {
     if (!activeWorkoutModeProgramId) {
@@ -500,64 +491,17 @@ export function LiveWorkoutSessionModal({
     return Array.from(keys);
   }, [currentProgramExerciseId, currentWorkoutGroup?.groupId]);
 
-  useLayoutEffect(() => {
-    if (!currentWorkoutGroup || currentWorkoutGroup.blockType) return;
-    const lookupId = currentProgramExerciseId || currentWorkoutGroup.groupId;
-    if (!lookupId) return;
-
-    const frozen = lookupFrozenWorkoutPlanLabel(workoutMode?.frozenPlanLabelByProgramExerciseId, planLabelLookupKeys);
-    if (frozen) {
-      if (lockedPlanLabelByExerciseRef.current[lookupId] !== frozen) {
-        lockedPlanLabelByExerciseRef.current[lookupId] = frozen;
-        setPlanLabelRevision((value) => value + 1);
-      }
-      return;
-    }
-
-    if (lockedPlanLabelByExerciseRef.current[lookupId]) return;
-    if (!resolvedProgram) return;
-
-    const exerciseIndex = resolvedProgram.exercises.findIndex((exercise) => exercise.id === lookupId);
-    if (exerciseIndex < 0) return;
-
-    const baseline =
-      workoutMode?.baselineSetCountByProgramExerciseId?.[lookupId] ??
-      parseProgramSetCount(resolvedProgram.exercises[exerciseIndex]!.sets);
-
-    lockedPlanLabelByExerciseRef.current[lookupId] = formatWorkoutPlanLabelFromProgramExercise(
-      resolvedProgram.exercises[exerciseIndex]!,
-      exerciseIndex,
-      resolvedProgram.exercises,
-      exercises,
-      baseline,
-    );
-    setPlanLabelRevision((value) => value + 1);
-  }, [
-    currentWorkoutGroup?.blockType,
-    currentProgramExerciseId,
-    currentWorkoutGroup?.groupId,
-    planLabelLookupKeys,
-    workoutMode?.frozenPlanLabelByProgramExerciseId,
-    workoutMode?.baselineSetCountByProgramExerciseId,
-    workoutMode?.programId,
-    resolvedProgram?.id,
-    exercises,
-  ]);
-
+  /** Plan fra planDisplayByGroupId — satt ved øktstart, endres ikke når rader legges til. */
   const currentWorkoutPlanLabel = useMemo(() => {
-    void planLabelRevision;
     if (!currentWorkoutGroup || currentWorkoutGroup.blockType) return "";
-    const lookupId = currentProgramExerciseId || currentWorkoutGroup.groupId;
-    return (
-      lockedPlanLabelByExerciseRef.current[lookupId] ??
-      lookupFrozenWorkoutPlanLabel(workoutMode?.frozenPlanLabelByProgramExerciseId, planLabelLookupKeys)
-    );
+    const lookupId = workoutExerciseGroupId || currentWorkoutGroup.groupId;
+    return resolveWorkoutPlanDisplayLabel(lookupId, workoutMode, planLabelLookupKeys);
   }, [
-    planLabelRevision,
     currentWorkoutGroup?.blockType,
-    currentProgramExerciseId,
+    workoutExerciseGroupId,
     currentWorkoutGroup?.groupId,
     planLabelLookupKeys,
+    workoutMode?.planDisplayByGroupId,
     workoutMode?.frozenPlanLabelByProgramExerciseId,
   ]);
 

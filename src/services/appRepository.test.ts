@@ -195,7 +195,10 @@ describe("appRepository workout log guards", () => {
     expect(frozen).toContain("3×10");
     const appended = appendWorkoutSetForProgramExerciseInState(started, "pex-1");
     expect(appended.workoutMode?.results).toHaveLength(4);
-    expect(appended.workoutMode?.frozenPlanLabelByProgramExerciseId?.["pex-1"]).toContain("3×10");
+    expect(appended.workoutMode?.planDisplayByGroupId?.["pex-1"]).toContain("3×10");
+    expect(appended.workoutMode?.planDisplayByGroupId?.["pex-1"]).toBe(
+      started.workoutMode?.planDisplayByGroupId?.["pex-1"],
+    );
     expect(countExtraWorkoutSets("pex-1", appended.workoutMode!.results, appended.workoutMode, state.programs[0])).toBe(1);
   });
 

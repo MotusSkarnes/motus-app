@@ -908,13 +908,16 @@ export function useAppState() {
         JSON.stringify(next.baselineSetCountByProgramExerciseId ?? {}) ===
           JSON.stringify(wm.baselineSetCountByProgramExerciseId ?? {}) &&
         JSON.stringify(next.frozenPlanLabelByProgramExerciseId ?? {}) ===
-          JSON.stringify(wm.frozenPlanLabelByProgramExerciseId ?? {})
+          JSON.stringify(wm.frozenPlanLabelByProgramExerciseId ?? {}) &&
+        JSON.stringify(next.planDisplayByGroupId ?? {}) === JSON.stringify(wm.planDisplayByGroupId ?? {}) &&
+        JSON.stringify(next.plannedSetCountAtStartByGroupId ?? {}) ===
+          JSON.stringify(wm.plannedSetCountAtStartByGroupId ?? {})
       ) {
         return prev;
       }
       return { ...prev, workoutMode: next };
     });
-  }, [appState.workoutMode?.programId, appState.programs]);
+  }, [appState.workoutMode?.programId]);
 
   useEffect(() => {
     if (appState.currentUser?.role !== "member") return;
