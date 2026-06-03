@@ -11,6 +11,7 @@ import {
 } from "./foodBankStorage";
 import { applyKnownPortionDefaults } from "./foodPortionDefaults";
 import { fetchApprovedFoodItemsForMember, fetchApprovedFoodItemsForTrainer } from "./memberFoodSubmissionsCloud";
+import { dedupeFoodBankItems, remapFoodIdList } from "./foodBankDedup";
 import { mergeNutritionWithBank } from "./memberNutritionRehydrate";
 import { enrichFoodItem } from "./foodBankMicronutrientEnrichment";
 import { normalizeMicronutrients } from "./foodBankMicronutrients";
@@ -86,10 +87,22 @@ function notifyFoodBankChangedIfNeeded(previousItems: FoodItem[], nextItems: Foo
   notifyFoodBankChanged();
 }
 
+function dedupeTrainerFoodBankSnapshot(snapshot: TrainerFoodBankSnapshot): TrainerFoodBankSnapshot {
+  const { items, idRemap, removedCount } = dedupeFoodBankItems(snapshot.items);
+  if (removedCount <= 0) return snapshot;
+  return {
+    ...snapshot,
+    items,
+    favoriteIds: remapFoodIdList(snapshot.favoriteIds, idRemap),
+    recentIds: remapFoodIdList(snapshot.recentIds, idRemap),
+  };
+}
+
 function cacheTrainerFoodBankSnapshot(snapshot: TrainerFoodBankSnapshot): void {
-  persistFoodBankItems(snapshot.items);
-  persistFavoriteFoodIds(snapshot.favoriteIds);
-  persistRecentFoodIds(snapshot.recentIds);
+  const deduped = dedupeTrainerFoodBankSnapshot(snapshot);
+  persistFoodBankItems(deduped.items);
+  persistFavoriteFoodIds(deduped.favoriteIds);
+  persistRecentFoodIds(deduped.recentIds);
 }
 
 function mergeFoodItems(preferred: FoodItem[], fallback: FoodItem[]): FoodItem[] {
@@ -112,7 +125,7 @@ function mergeFoodItems(preferred: FoodItem[], fallback: FoodItem[]): FoodItem[]
       nutritionPer100g: mergeNutritionWithBank(existing.nutritionPer100g, item.nutritionPer100g),
     });
   }
-  return Array.from(byId.values());
+  return dedupeFoodBankItems(Array.from(byId.values())).items;
 }
 
 async function fetchSharedFoodItemsFromSupabase(): Promise<FoodItem[]> {
@@ -175,13 +188,19 @@ export async function saveTrainerFoodBankToSupabase(
   snapshot: Pick<TrainerFoodBankSnapshot, "items" | "favoriteIds" | "recentIds">,
 ): Promise<boolean> {
   if (!supabaseClient || !ownerUserId.trim()) return false;
+  const deduped = dedupeTrainerFoodBankSnapshot({
+    ...snapshot,
+    favoriteIds: snapshot.favoriteIds,
+    recentIds: snapshot.recentIds,
+    updatedAt: Date.now(),
+  });
   // Upsert shared items best-effort; ignore failure so per-PT save still works.
-  void upsertSharedFoodItemsToSupabase(snapshot.items);
+  void upsertSharedFoodItemsToSupabase(deduped.items);
   const { error } = await supabaseClient.from("trainer_food_bank").upsert({
     owner_user_id: ownerUserId,
-    items: snapshot.items,
-    favorite_ids: parseStringIds(snapshot.favoriteIds),
-    recent_ids: parseStringIds(snapshot.recentIds),
+    items: deduped.items,
+    favorite_ids: parseStringIds(deduped.favoriteIds),
+    recent_ids: parseStringIds(deduped.recentIds),
     updated_at: new Date().toISOString(),
   });
   if (error) {
@@ -417,8 +436,9 @@ export async function persistTrainerFoodBankToCloud(
 
 /** Skriver lokalt og planlegger debounced sky-lagring. */
 export function persistTrainerFoodBankBundle(ownerUserId: string | undefined, snapshot: TrainerFoodBankSnapshot): void {
-  cacheTrainerFoodBankSnapshot(snapshot);
+  const deduped = dedupeTrainerFoodBankSnapshot(snapshot);
+  cacheTrainerFoodBankSnapshot(deduped);
   if (ownerUserId?.trim()) {
-    scheduleTrainerFoodBankCloudSave(ownerUserId, snapshot);
+    scheduleTrainerFoodBankCloudSave(ownerUserId, deduped);
   }
 }

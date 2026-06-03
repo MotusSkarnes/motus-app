@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { filterFoodBankItems, sortFoodBankItems } from "../app/foodBankFilter";
 import { defaultPortionGramsForFood } from "../app/foodPortionDefaults";
+import { dedupeFoodBankItems, remapFoodIdList } from "../app/foodBankDedup";
 import {
   persistTrainerFoodBankBundle,
   scheduleTrainerFoodBankCloudSave,
@@ -254,6 +255,7 @@ export function TrainerFoodBankView({
   const [importOpen, setImportOpen] = useState(false);
   const [memberDataHydrating, setMemberDataHydrating] = useState(false);
   const [sourceStatsOpen, setSourceStatsOpen] = useState(false);
+  const [dedupeStatus, setDedupeStatus] = useState<string | null>(null);
 
   const reload = useCallback(() => {
     setItems(loadFoodBankItems());
@@ -272,6 +274,24 @@ export function TrainerFoodBankView({
     },
     [trainerOwnerUserId, favoriteIds, recentIds],
   );
+
+  function runFoodBankDedupeCleanup() {
+    const { items: nextItems, idRemap, removedCount } = dedupeFoodBankItems(items);
+    if (removedCount <= 0) {
+      setDedupeStatus("Ingen helt identiske duplikater funnet.");
+      window.setTimeout(() => setDedupeStatus(null), 5000);
+      return;
+    }
+    const nextFavoriteIds = remapFoodIdList(favoriteIds, idRemap);
+    const nextRecentIds = remapFoodIdList(recentIds, idRemap);
+    setItems(nextItems);
+    setFavoriteIds(nextFavoriteIds);
+    setRecentIds(nextRecentIds);
+    if (selectedId && idRemap[selectedId]) setSelectedId(idRemap[selectedId]);
+    persistBundle(nextItems, nextFavoriteIds, nextRecentIds);
+    setDedupeStatus(`Fjernet ${removedCount} duplikat${removedCount === 1 ? "" : "er"} (samme navn eller identisk næring).`);
+    window.setTimeout(() => setDedupeStatus(null), 8000);
+  }
 
   useEffect(() => {
     reload();
@@ -595,6 +615,9 @@ export function TrainerFoodBankView({
               <Upload className="h-4 w-4" aria-hidden />
               Importer matvarer
             </OutlineButton>
+            <OutlineButton type="button" onClick={runFoodBankDedupeCleanup}>
+              Rydd duplikater
+            </OutlineButton>
             <OutlineButton onClick={() => void updateMemberNutritionData()} disabled={memberDataHydrating || !nutritionMembers.length}>
               {memberDataHydrating ? "Oppdaterer kundedata…" : "Oppdater kundedata (alle variabler)"}
             </OutlineButton>
@@ -636,6 +659,7 @@ export function TrainerFoodBankView({
       {section !== "foods" ? null : (
         <>
       {mealPlanNotice ? <div className="motus-foodbank-notice">{mealPlanNotice}</div> : null}
+      {dedupeStatus ? <div className="motus-foodbank-notice">{dedupeStatus}</div> : null}
 
       <div className="motus-foodbank-toolbar">
         <label className="motus-foodbank-search">

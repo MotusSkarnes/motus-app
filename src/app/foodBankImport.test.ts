@@ -70,7 +70,39 @@ describe("foodBankImport", () => {
   });
 
   it("builds stable match keys", () => {
-    expect(foodMatchKey({ name: "  Egg ", source: "egen" })).toBe("egen::egg");
+    expect(foodMatchKey({ name: "  Egg ", category: "proteinkilder" })).toBe("proteinkilder::egg");
+    expect(foodMatchKey({ name: "Rugbrød", category: "karbohydrater" })).toBe(
+      foodMatchKey({ name: "rugbrød", category: "karbohydrater" }),
+    );
+  });
+
+  it("merger duplikat med ulik kilde men samme navn", () => {
+    const existing: FoodItem[] = [
+      {
+        id: "food-seed-rug",
+        name: "Rugbrød",
+        portionLabel: "1 skive",
+        portionGrams: 40,
+        category: "karbohydrater",
+        origin: "Bakst",
+        source: "matvaretabell",
+        createdBy: "PT",
+        createdAt: "2024-01-01",
+        nutritionPer100g: { kcal: 220, protein: 8, carbs: 42, fat: 2, fiber: 6, sugar: 3, saturatedFat: 0.4, sodium: 430 },
+      },
+    ];
+    const imported: FoodItem[] = [
+      {
+        ...existing[0],
+        id: "food-egen-rug",
+        source: "egen",
+        nutritionPer100g: { ...existing[0].nutritionPer100g, kcal: 225 },
+      },
+    ];
+    const merged = mergeFoodImports(existing, imported, "update");
+    expect(merged.items).toHaveLength(1);
+    expect(merged.items[0]?.id).toBe("food-seed-rug");
+    expect(merged.items[0]?.nutritionPer100g.kcal).toBe(225);
   });
 
   it("backfills seed broccoli from Matvaretabellen variant name", () => {

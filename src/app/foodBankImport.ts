@@ -4,6 +4,7 @@ import {
   micronutrientsFromCsvRow,
   micronutrientsFromMatvaretabellen,
 } from "./foodBankMicronutrients";
+import { normalizeFoodBankNameKey } from "./foodBankNameKey";
 import { cloneNutritionSnapshot } from "./memberNutritionRehydrate";
 import { foodCategoryMeta, type FoodCategoryId, type FoodItem, type FoodNutrition, type FoodSource } from "./foodBankTypes";
 import { uid } from "./storage";
@@ -83,17 +84,13 @@ const VALID_CATEGORIES = new Set<FoodCategoryId>([
 
 const VALID_SOURCES = new Set<FoodSource>(["matvaretabell", "usda", "egen"]);
 
-export function foodMatchKey(item: Pick<FoodItem, "name" | "source">): string {
-  return `${item.source}::${item.name.trim().toLowerCase()}`;
+export function foodMatchKey(item: Pick<FoodItem, "name" | "category">): string {
+  return `${item.category}::${normalizeFoodBankNameKey(item.name)}`;
 }
 
+/** @deprecated Bruk normalizeFoodBankNameKey */
 export function normalizeFoodImportNameKey(name: string): string {
-  return name
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/\p{M}/gu, "")
-    .replace(/[^a-z0-9æøå]+/g, "")
-    .trim();
+  return normalizeFoodBankNameKey(name);
 }
 
 function nutritionRichnessScore(nutrition: FoodNutrition): number {
@@ -545,6 +542,8 @@ export function mergeFoodImports(
 
   return { items: next, added, updated, skipped };
 }
+
+export { normalizeFoodBankNameKey };
 
 export async function fetchMatvaretabellenFoods(signal?: AbortSignal): Promise<MatvaretabellenFood[]> {
   const response = await fetch(MATVARETABELLEN_FOODS_URL, { signal });
