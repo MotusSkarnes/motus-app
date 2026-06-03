@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
   buildMemberFoodLogNutritionPeriodReport,
+  calendarDayKeysInRange,
   filterDateKeysInRange,
+  lastNCalendarDayKeys,
   lastNDaysDateKeys,
 } from "./memberFoodLogNutritionReport";
 import type { MemberQuickFoodLogEntry } from "./memberMealPlanState";
@@ -52,6 +54,11 @@ describe("memberFoodLogNutritionReport", () => {
     const report = buildMemberFoodLogNutritionPeriodReport({}, ["2026-06-02"], { "2026-06-02": 0.8 });
     expect(report.daysWithLogs).toBe(1);
     expect(report.periodSum.drinkWaterLiters).toBe(0.8);
+  });
+
+  it("calendar day keys cover full date range", () => {
+    expect(lastNCalendarDayKeys("2026-06-05", 3)).toEqual(["2026-06-03", "2026-06-04", "2026-06-05"]);
+    expect(calendarDayKeysInRange("2026-06-01", "2026-06-03")).toEqual(["2026-06-01", "2026-06-02", "2026-06-03"]);
   });
 
   it("filters date keys in range", () => {

@@ -5,9 +5,11 @@ import { openNutritionReportPrintWindow } from "../../app/memberFoodLogNutrition
 import {
   buildMemberFoodLogNutritionPeriodReport,
   dateKeysWithLogs,
+  calendarDayKeysInRange,
   filterDateKeysInRange,
   formatPeriodLabel,
   formatShortDateKey,
+  lastNCalendarDayKeys,
   lastNDaysDateKeys,
 } from "../../app/memberFoodLogNutritionReport";
 import type { MemberQuickFoodLogEntry } from "../../app/memberMealPlanState";
@@ -17,7 +19,7 @@ import {
   EPA_DHA_DAILY_TARGET_G,
   OMEGA3_DAILY_TARGET_G,
 } from "../../app/nutritionReportFattyAcids";
-import { buildMacroDisplayRows, DEFAULT_DAILY_KCAL_TARGET } from "../../app/nutritionReportDisplay";
+import { buildMacroDisplayRows, buildWaterReportRows, DEFAULT_DAILY_KCAL_TARGET } from "../../app/nutritionReportDisplay";
 import {
   nutritionReferenceFootnote,
   nutritionReferenceWarningMessage,
@@ -26,7 +28,7 @@ import {
 import { filterMicronutrientReportRows, micronutrientRowsForReport } from "../../app/quickFoodLogNutrition";
 import type { MealPlanTargets } from "../../app/mealPlanTypes";
 import { GradientButton, OutlineButton } from "../../app/ui";
-import { MacroReportTable, MicroReportFilter, MicroReportLegend, MicroReportTable, OmegaOverviewTable } from "./NutritionReportTables";
+import { MacroReportTable, MicroReportFilter, MicroReportLegend, MicroReportTable, OmegaOverviewTable, WaterReportSection } from "./NutritionReportTables";
 
 type PeriodPreset = "selected" | "7" | "14" | "30" | "custom";
 type ReportTab = "macro" | "micro";
@@ -79,11 +81,11 @@ export function MemberFoodLogNutritionReportModal({
 
   const periodDateKeys = useMemo(() => {
     if (periodPreset === "selected") return [selectedDateKey];
-    if (periodPreset === "7") return lastNDaysDateKeys(loggedDateKeys, selectedDateKey, 7);
-    if (periodPreset === "14") return lastNDaysDateKeys(loggedDateKeys, selectedDateKey, 14);
-    if (periodPreset === "30") return lastNDaysDateKeys(loggedDateKeys, selectedDateKey, 30);
-    return filterDateKeysInRange(loggedDateKeys, customFrom, customTo);
-  }, [customFrom, customTo, loggedDateKeys, periodPreset, selectedDateKey]);
+    if (periodPreset === "7") return lastNCalendarDayKeys(selectedDateKey, 7);
+    if (periodPreset === "14") return lastNCalendarDayKeys(selectedDateKey, 14);
+    if (periodPreset === "30") return lastNCalendarDayKeys(selectedDateKey, 30);
+    return calendarDayKeysInRange(customFrom, customTo);
+  }, [customFrom, customTo, periodPreset, selectedDateKey]);
 
   const report = useMemo(
     () => buildMemberFoodLogNutritionPeriodReport(quickFoodLogs, periodDateKeys, trackedWaterLiters),
@@ -104,6 +106,11 @@ export function MemberFoodLogNutritionReportModal({
     [referenceContext.missingFields],
   );
   const referenceFootnote = useMemo(() => nutritionReferenceFootnote(referenceContext), [referenceContext]);
+
+  const waterRows = useMemo(
+    () => (displayTotals ? buildWaterReportRows(displayTotals) : []),
+    [displayTotals],
+  );
 
   const macroRows = useMemo(
     () => [
@@ -265,6 +272,7 @@ export function MemberFoodLogNutritionReportModal({
             <p className="text-sm text-slate-600">Ingen matlogg i valgt periode.</p>
           ) : tab === "macro" ? (
             <section aria-label="Makronæringsstoffer">
+              <WaterReportSection rows={waterRows} />
               <MacroReportTable rows={macroRows} />
               <p className="motus-nutrition-report-modal__footnote">
                 Kalorier og makro: daglige mål fra matplan der satt, ellers {DEFAULT_DAILY_KCAL_TARGET} kcal. Fiber, mettet fett

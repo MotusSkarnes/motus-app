@@ -19,7 +19,7 @@ describe("buildNutritionReportPrintHtml", () => {
     expect(html).toContain("Omega-fettsyrer");
     expect(html).toContain("Vitamin D");
     expect(html).toContain("2000");
-    expect(html).toContain("Vann (fra mat)");
+    expect(html).toContain("Vanninntak");
     expect(html).toContain("Vann (drikke)");
     expect(html).toContain("Vann (totalt)");
   });

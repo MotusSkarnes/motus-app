@@ -116,8 +116,8 @@ export function addFoodLogNutritionTotals(a: FoodLogNutritionTotals, b: FoodLogN
     sugar: a.sugar + b.sugar,
     saturatedFat: a.saturatedFat + b.saturatedFat,
     sodium: a.sodium + b.sodium,
-    waterLiters: a.waterLiters + b.waterLiters,
-    drinkWaterLiters: a.drinkWaterLiters + b.drinkWaterLiters,
+    waterLiters: a.waterLiters + (b.waterLiters ?? 0),
+    drinkWaterLiters: a.drinkWaterLiters + (b.drinkWaterLiters ?? 0),
     fattyAcids: (Object.keys(a.fattyAcids) as Array<keyof FoodFattyAcids>).reduce(
       (acc, key) => {
         acc[key] = a.fattyAcids[key] + b.fattyAcids[key];
@@ -144,8 +144,8 @@ export function divideFoodLogNutritionTotals(totals: FoodLogNutritionTotals, div
     sugar: totals.sugar / safe,
     saturatedFat: totals.saturatedFat / safe,
     sodium: totals.sodium / safe,
-    waterLiters: totals.waterLiters / safe,
-    drinkWaterLiters: totals.drinkWaterLiters / safe,
+    waterLiters: (totals.waterLiters ?? 0) / safe,
+    drinkWaterLiters: (totals.drinkWaterLiters ?? 0) / safe,
     fattyAcids: (Object.keys(totals.fattyAcids) as Array<keyof FoodFattyAcids>).reduce(
       (acc, key) => {
         acc[key] = totals.fattyAcids[key] / safe;

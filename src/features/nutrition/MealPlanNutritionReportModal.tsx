@@ -12,6 +12,7 @@ import {
 } from "../../app/nutritionReportFattyAcids";
 import {
   buildMacroDisplayRows,
+  buildWaterReportRows,
   DEFAULT_DAILY_KCAL_TARGET,
 } from "../../app/nutritionReportDisplay";
 import {
@@ -21,7 +22,7 @@ import {
 } from "../../app/personalizedNutritionReferences";
 import { filterMicronutrientReportRows, micronutrientRowsForReport } from "../../app/quickFoodLogNutrition";
 import { GradientButton, OutlineButton } from "../../app/ui";
-import { MacroReportTable, MicroReportFilter, MicroReportLegend, MicroReportTable, OmegaOverviewTable } from "./NutritionReportTables";
+import { MacroReportTable, MicroReportFilter, MicroReportLegend, MicroReportTable, OmegaOverviewTable, WaterReportSection } from "./NutritionReportTables";
 
 type ViewMode = "activeDay" | "average";
 
@@ -104,6 +105,11 @@ export function MealPlanNutritionReportModal({
     [referenceContext.missingFields],
   );
   const referenceFootnote = useMemo(() => nutritionReferenceFootnote(referenceContext), [referenceContext]);
+
+  const waterRows = useMemo(() => {
+    if (!displayTotals) return [];
+    return buildWaterReportRows(displayTotals);
+  }, [displayTotals]);
 
   const macroRows = useMemo(() => {
     if (!displayTotals) return [];
@@ -239,6 +245,7 @@ export function MealPlanNutritionReportModal({
             <p className="text-sm text-slate-600">Legg til matvarer i ukeplanen for å se næringsinnhold.</p>
           ) : tab === "macro" ? (
             <section aria-label="Makronæringsstoffer">
+              <WaterReportSection rows={waterRows} />
               <MacroReportTable rows={macroRows} />
               <p className="motus-nutrition-report-modal__footnote">
                 Kalorier og makro: daglige mål fra matplan der satt, ellers {DEFAULT_DAILY_KCAL_TARGET} kcal. Fiber, mettet fett

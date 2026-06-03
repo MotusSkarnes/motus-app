@@ -6,6 +6,7 @@ import {
 } from "./nutritionReportFattyAcids";
 import {
   buildMacroDisplayRows,
+  buildWaterReportRows,
   formatMacroDisplayValue,
   macroCoveragePct,
   type MacroDisplayRow,
@@ -109,6 +110,7 @@ export function buildNutritionReportPrintHtml(payload: NutritionReportPrintPaylo
     ...buildMacroDisplayRows(payload.totals, payload.mealPlanTargets, payload.referenceContext),
     ...buildExtraFatDisplayRows(payload.totals),
   ];
+  const waterRows = buildWaterReportRows(payload.totals);
   const generated = payload.generatedAt ?? new Date().toLocaleString("nb-NO");
   const referenceNote = payload.referenceContext
     ? nutritionReferenceFootnote(payload.referenceContext)
@@ -178,6 +180,10 @@ export function buildNutritionReportPrintHtml(payload: NutritionReportPrintPaylo
 
   <h2>Makronæringsstoffer</h2>
   ${macroTableHtml(macroRows)}
+
+  <h2>Vanninntak</h2>
+  <p class="muted">Drikke = manuelt logget. Fra mat = vanninnhold i matvarer.</p>
+  ${macroTableHtml(waterRows)}
 
   <h2>Mikronæringsstoffer</h2>
   <p class="muted">${escapeHtml(referenceNote)}</p>

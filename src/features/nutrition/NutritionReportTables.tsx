@@ -7,9 +7,9 @@ import {
 import { macroCoveragePct, type MacroDisplayRow } from "../../app/nutritionReportDisplay";
 import type { MicronutrientDailyRow } from "../../app/quickFoodLogNutrition";
 
-export function MacroReportTable({ rows }: { rows: MacroDisplayRow[] }) {
+function MacroReportCards({ rows }: { rows: MacroDisplayRow[] }) {
   return (
-    <div className="motus-nutrition-report__macro-grid">
+    <>
       {rows.map((row) => {
         const hasTarget = row.target > 0;
         const pct = hasTarget ? macroCoveragePct(row.value, row.target, row.lowerIsBetter) : 0;
@@ -38,7 +38,29 @@ export function MacroReportTable({ rows }: { rows: MacroDisplayRow[] }) {
           </div>
         );
       })}
+    </>
+  );
+}
+
+export function MacroReportTable({ rows }: { rows: MacroDisplayRow[] }) {
+  return (
+    <div className="motus-nutrition-report__macro-grid">
+      <MacroReportCards rows={rows} />
     </div>
+  );
+}
+
+export function WaterReportSection({ rows }: { rows: MacroDisplayRow[] }) {
+  return (
+    <section className="motus-nutrition-report__water-section" aria-label="Vanninntak">
+      <h3 className="motus-nutrition-report-modal__subheading">Vanninntak</h3>
+      <div className="motus-nutrition-report__water-grid">
+        <MacroReportCards rows={rows} />
+      </div>
+      <p className="motus-nutrition-report-modal__footnote">
+        Drikke = manuelt logget vann. Fra mat = vanninnhold i matvarer. Totalt sammenlignes med ca. 2,5 L per dag.
+      </p>
+    </section>
   );
 }
 

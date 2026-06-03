@@ -4596,6 +4596,22 @@
   }
 }
 
+.motus-nutrition-report__water-section {
+  margin-bottom: 1rem;
+}
+
+.motus-nutrition-report__water-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.5rem;
+}
+
+@media (min-width: 480px) {
+  .motus-nutrition-report__water-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
 .motus-nutrition-report__macro-card {
   padding: 0.55rem 0.6rem;
   border-radius: 0.65rem;
