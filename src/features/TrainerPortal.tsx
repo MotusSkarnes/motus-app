@@ -838,6 +838,17 @@ function pickFirstName(value: unknown): string {
     }
   });
   const [editingProgramId, setEditingProgramId] = useState<string | null>(null);
+  const stashedCustomerProgramBuilderRef = useRef<{
+    programTitle: string;
+    programGoal: string;
+    programNotes: string;
+    programFormImageUrl: string;
+    programCoverCleared: boolean;
+    programExercisesDraft: ProgramExercise[];
+    cardioIntervalIntensity: CardioIntensityLevel;
+    cardioEquipmentId: CardioEquipmentId;
+  } | null>(null);
+  const prevTrainerTabRef = useRef<TrainerTab>(trainerTab);
   const [programSaveStatus, setProgramSaveStatus] = useState<string | null>(null);
   const [isSavingProgram, setIsSavingProgram] = useState(false);
   const [newMemberName, setNewMemberName] = useState("");
@@ -1912,6 +1923,59 @@ function pickFirstName(value: unknown): string {
     if (trainerTab !== "programs") return;
     setProgramExerciseCategoryFilter(categoryForSubTab(programsSubTab));
   }, [programsSubTab, trainerTab]);
+
+  useEffect(() => {
+    if (!editingProgramId) {
+      stashedCustomerProgramBuilderRef.current = null;
+      return;
+    }
+    stashedCustomerProgramBuilderRef.current = {
+      programTitle,
+      programGoal,
+      programNotes,
+      programFormImageUrl,
+      programCoverCleared,
+      programExercisesDraft,
+      cardioIntervalIntensity,
+      cardioEquipmentId,
+    };
+  }, [
+    editingProgramId,
+    programTitle,
+    programGoal,
+    programNotes,
+    programFormImageUrl,
+    programCoverCleared,
+    programExercisesDraft,
+    cardioIntervalIntensity,
+    cardioEquipmentId,
+  ]);
+
+  useEffect(() => {
+    const previousTab = prevTrainerTabRef.current;
+    prevTrainerTabRef.current = trainerTab;
+
+    if (trainerTab === "programs" && previousTab !== "programs" && editingProgramId && !editingTemplateProgramId) {
+      setProgramExercisesDraft([]);
+      setTemplateProgramTitle("Ny treningsmal");
+      setProgramFormImageUrl("");
+      setProgramCoverCleared(false);
+      setCardioIntervalIntensity("medium");
+      setCardioEquipmentId(defaultCardioEquipmentId());
+    }
+
+    if (trainerTab === "customers" && previousTab !== "customers" && editingProgramId && stashedCustomerProgramBuilderRef.current) {
+      const stash = stashedCustomerProgramBuilderRef.current;
+      setProgramTitle(stash.programTitle);
+      setProgramGoal(stash.programGoal);
+      setProgramNotes(stash.programNotes);
+      setProgramFormImageUrl(stash.programFormImageUrl);
+      setProgramCoverCleared(stash.programCoverCleared);
+      setProgramExercisesDraft(stash.programExercisesDraft);
+      setCardioIntervalIntensity(stash.cardioIntervalIntensity);
+      setCardioEquipmentId(stash.cardioEquipmentId);
+    }
+  }, [trainerTab, editingProgramId, editingTemplateProgramId]);
 
   useEffect(() => {
     if (trainerTab !== "exerciseBank") return;
