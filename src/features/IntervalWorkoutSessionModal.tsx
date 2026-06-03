@@ -474,9 +474,38 @@ export function IntervalWorkoutSessionModal({
   }
 
   const modal = (
-    <div className="motus-workout-focus motus-modal-insets fixed inset-0 z-[10030] overscroll-contain bg-black">
-      <div className="motus-workout-focus-panel mx-auto flex h-full w-full max-w-3xl flex-col overflow-hidden bg-slate-950 text-white shadow-2xl sm:rounded-3xl">
-        <div className="relative overflow-hidden border-b border-white/10 bg-slate-900 px-3 pb-2 pt-[max(0.5rem,env(safe-area-inset-top))] sm:px-5 sm:pb-4 sm:pt-5">
+    <div className="motus-workout-focus motus-interval-session motus-modal-insets fixed inset-0 z-[10030] overscroll-contain bg-black">
+      <div
+        className={`motus-workout-focus-panel motus-interval-session-panel mx-auto flex h-full w-full max-w-3xl flex-col overflow-hidden bg-slate-950 text-white shadow-2xl sm:rounded-3xl${
+          timerFinished ? " motus-interval-session--complete" : ""
+        }`}
+      >
+        <div className="motus-interval-header-compact">
+          <button
+            type="button"
+            onClick={handleLeave}
+            className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white/10 text-white transition hover:bg-white/15"
+            aria-label="Lukk intervalløkt"
+          >
+            <ArrowLeft className="h-4 w-4" aria-hidden />
+          </button>
+          <div className="min-w-0 flex-1 text-center">
+            <div className="truncate text-xs font-bold text-white">{currentStep?.headline ?? program.title}</div>
+            <div className="truncate text-[10px] text-white/60">
+              Steg {Math.min(stepIndex + 1, intervalProgramSteps.length || 1)} av {intervalProgramSteps.length || 0}
+              {isRunning ? (isPaused ? " · Pause" : " · Pågår") : ""}
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={handleLeave}
+            className="shrink-0 rounded-full bg-white/10 px-2 py-1 text-[10px] font-bold text-white transition hover:bg-white/15"
+          >
+            Avslutt
+          </button>
+        </div>
+
+        <div className="motus-interval-header-full relative overflow-hidden border-b border-white/10 bg-slate-900 px-3 pb-2 pt-[max(0.5rem,env(safe-area-inset-top))] sm:px-5 sm:pb-4 sm:pt-5">
           <div className="flex items-center justify-between gap-2 sm:gap-3">
             <button
               type="button"
@@ -572,7 +601,7 @@ export function IntervalWorkoutSessionModal({
           ) : null}
         </div>
 
-        <div className="motus-scroll-touch flex-1 space-y-2 overflow-auto bg-slate-950 p-2 sm:space-y-3 sm:p-4">
+        <div className="motus-interval-session-scroll motus-scroll-touch flex-1 space-y-2 overflow-auto bg-slate-950 p-2 sm:space-y-3 sm:p-4">
           {timerFinished ? (
             <div
               ref={completeSectionRef}
@@ -630,8 +659,8 @@ export function IntervalWorkoutSessionModal({
               </label>
             </div>
           ) : currentStep ? (
-            <div className="w-full rounded-xl border border-white/10 bg-white p-2.5 text-left text-slate-900 shadow-xl shadow-black/20 sm:rounded-2xl sm:p-4">
-              <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="motus-interval-timer-card w-full rounded-xl border border-white/10 bg-white p-2.5 text-left text-slate-900 shadow-xl shadow-black/20 sm:rounded-2xl sm:p-4">
+              <div className="motus-interval-timer-card-top flex flex-wrap items-center justify-between gap-2">
                 <div
                   className={`inline-flex rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wide sm:text-[11px] ${intervalTimerBadgeToneClass(
                     currentStep.tone,
@@ -643,21 +672,49 @@ export function IntervalWorkoutSessionModal({
                   Steg {Math.min(stepIndex + 1, intervalProgramSteps.length || 1)} av {intervalProgramSteps.length || 0}
                 </p>
               </div>
-              <h2 className="mt-1.5 text-lg font-bold leading-tight text-slate-900 sm:text-xl">{currentStep.headline}</h2>
-              {currentStep.tone === "rest" && currentStep.afterExerciseName ? (
-                <p className="mt-0.5 text-xs text-slate-600 sm:text-sm">Etter {currentStep.afterExerciseName}</p>
-              ) : null}
-              <div className="flex justify-center py-2 sm:py-3">
-                <div className="text-center">
-                  <div className="text-[10px] font-semibold uppercase tracking-wide text-slate-500 sm:text-xs">Gjenstår</div>
-                  <div className="text-6xl font-black tabular-nums tracking-tight text-slate-900 sm:text-7xl">
-                    {formatSeconds(remainingSeconds)}
+              <div className="motus-interval-timer-card-body">
+                <div className="motus-interval-timer-meta">
+                  <h2 className="mt-1.5 text-lg font-bold leading-tight text-slate-900 sm:text-xl">{currentStep.headline}</h2>
+                  {currentStep.tone === "rest" && currentStep.afterExerciseName ? (
+                    <p className="mt-0.5 text-xs text-slate-600 sm:text-sm">Etter {currentStep.afterExerciseName}</p>
+                  ) : null}
+                  <div className="motus-interval-landscape-hints">
+                    {canEditSpeedIncline && currentOverride.speed.trim()
+                      ? `${intervalEditLabels.primary}: ${currentOverride.speed.trim()}`
+                      : currentStep.speedHint !== "-"
+                        ? currentStep.speedHint
+                        : null}
+                    {canEditSpeedIncline && (currentOverride.incline.trim() || currentStep.inclineHint !== "-")
+                      ? ` · ${intervalEditLabels.secondary}: ${currentOverride.incline.trim() || currentStep.inclineHint}`
+                      : null}
+                    {currentStep.hrHint ? ` · ${currentStep.hrHint}` : null}
                   </div>
+                </div>
+                <div className="motus-interval-timer-countdown flex justify-center py-2 sm:py-3">
+                  <div className="text-center">
+                    <div className="text-[10px] font-semibold uppercase tracking-wide text-slate-500 sm:text-xs">Gjenstår</div>
+                    <div className="motus-interval-countdown-value text-6xl font-black tabular-nums tracking-tight text-slate-900 sm:text-7xl">
+                      {formatSeconds(remainingSeconds)}
+                    </div>
+                  </div>
+                </div>
+                <div className="motus-interval-timer-side">
+                  {nextStep ? (
+                    <div className="motus-interval-timer-next-block">
+                      <div className="text-[10px] font-bold uppercase tracking-wide text-slate-500">Neste</div>
+                      <div className="mt-0.5 truncate text-sm font-semibold text-slate-900">{nextStep.headline}</div>
+                      <div className="mt-0.5 text-xs tabular-nums text-slate-600">
+                        {nextStep.phaseBadge} · {formatSeconds(nextStep.durationSeconds)}
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="text-xs text-slate-500">Siste steg</div>
+                  )}
                 </div>
               </div>
 
               {canEditSpeedIncline || currentStep.hrHint ? (
-                <div className="mt-3 rounded-xl border bg-slate-50 p-3" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+                <div className="motus-interval-timer-edit-panel mt-3 rounded-xl border bg-slate-50 p-3" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
                   {canEditSpeedIncline ? (
                     <div className="grid gap-3 sm:grid-cols-2">
                       <label className="space-y-1">
@@ -700,7 +757,7 @@ export function IntervalWorkoutSessionModal({
               ) : null}
 
               {nextStep ? (
-                <div className="mt-3 border-t border-slate-200 pt-2.5">
+                <div className="motus-interval-timer-next-portrait mt-3 border-t border-slate-200 pt-2.5">
                   <div className="text-[10px] font-bold uppercase tracking-wide text-slate-500">Neste</div>
                   <div className="mt-1 flex items-baseline justify-between gap-2">
                     <div className="min-w-0 truncate text-sm font-semibold text-slate-900">{nextStep.headline}</div>
@@ -710,7 +767,7 @@ export function IntervalWorkoutSessionModal({
                   </div>
                 </div>
               ) : !timerFinished && currentStep ? (
-                <div className="mt-3 border-t border-slate-200 pt-2.5 text-center text-xs text-slate-500">Siste steg i økta</div>
+                <div className="motus-interval-timer-next-portrait mt-3 border-t border-slate-200 pt-2.5 text-center text-xs text-slate-500">Siste steg i økta</div>
               ) : null}
             </div>
           ) : (
@@ -727,11 +784,11 @@ export function IntervalWorkoutSessionModal({
           ) : null}
         </div>
 
-        <div className="sticky bottom-0 shrink-0 border-t border-white/10 bg-slate-950 p-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] shadow-lg">
-          <div className="grid grid-cols-2 gap-1.5">
+        <div className="motus-interval-session-footer sticky bottom-0 shrink-0 border-t border-white/10 bg-slate-950 p-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] shadow-lg">
+          <div className="motus-interval-footer-grid grid grid-cols-2 gap-1.5">
             {timerFinished ? (
               <>
-                <GradientButton type="button" className={intervalFooterBtn} onClick={handleSave} disabled={isSaving}>
+                <GradientButton type="button" className={`motus-interval-footer-btn ${intervalFooterBtn}`} onClick={handleSave} disabled={isSaving}>
                   <span className="inline-flex items-center justify-center gap-1">
                     <Check className="h-3.5 w-3.5 shrink-0" strokeWidth={2.5} aria-hidden />
                     {isSaving ? "Lagrer..." : "Lagre økt"}
@@ -739,7 +796,7 @@ export function IntervalWorkoutSessionModal({
                 </GradientButton>
                 <OutlineButton
                   type="button"
-                  className={intervalFooterBtn}
+                  className={`motus-interval-footer-btn ${intervalFooterBtn}`}
                   onClick={() => {
                     if (intervalProgramSteps.length > 0) {
                       setShowComplete(false);
@@ -760,7 +817,7 @@ export function IntervalWorkoutSessionModal({
                     disabled
                     aria-pressed="true"
                     aria-label="Økten er startet"
-                    className={`${intervalFooterBtn} !cursor-default !motus-brand-surface !border-[var(--motus-brand-border-strong)] !opacity-100`}
+                    className={`motus-interval-footer-btn ${intervalFooterBtn} !cursor-default !motus-brand-surface !border-[var(--motus-brand-border-strong)] !opacity-100`}
                   >
                     <span className="inline-flex items-center justify-center gap-1">
                       <Check className="h-3 w-3 shrink-0" strokeWidth={2.5} aria-hidden />
@@ -772,7 +829,7 @@ export function IntervalWorkoutSessionModal({
                     type="button"
                     onClick={handleStart}
                     disabled={!intervalProgramSteps.length}
-                    className={intervalFooterBtn}
+                    className={`motus-interval-footer-btn ${intervalFooterBtn}`}
                   >
                     Start økt
                   </GradientButton>
@@ -781,7 +838,7 @@ export function IntervalWorkoutSessionModal({
                   type="button"
                   onClick={() => setIsPaused((previous) => !previous)}
                   disabled={!isRunning}
-                  className={intervalFooterBtn}
+                  className={`motus-interval-footer-btn ${intervalFooterBtn}`}
                 >
                   {isPaused ? "Fortsett" : "Pause"}
                 </OutlineButton>
@@ -789,7 +846,7 @@ export function IntervalWorkoutSessionModal({
                   type="button"
                   onClick={handleSkip}
                   disabled={!intervalProgramSteps.length}
-                  className={intervalFooterBtn}
+                  className={`motus-interval-footer-btn ${intervalFooterBtn}`}
                 >
                   Hopp over
                 </OutlineButton>
@@ -797,7 +854,7 @@ export function IntervalWorkoutSessionModal({
                   type="button"
                   onClick={openComplete}
                   disabled={!intervalProgramSteps.length}
-                  className={intervalFooterBtn}
+                  className={`motus-interval-footer-btn ${intervalFooterBtn}`}
                 >
                   <span className="inline-flex items-center justify-center gap-1">
                     <Check className="h-3 w-3 shrink-0" strokeWidth={2.5} aria-hidden />
