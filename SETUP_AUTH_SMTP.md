@@ -17,9 +17,11 @@ For medlems-invitasjon via Edge Function: sett også Supabase secret **`PUBLIC_A
 I Supabase (`Authentication -> URL Configuration`):
 
 - `Site URL`: produksjons-URL (f.eks. Vercel main domain)
-- `Redirect URLs`: inkluder minst:
-  - `https://<app>.vercel.app/*`
-  - eventuell custom domain (`https://<din-domain>/*`)
+- `Redirect URLs`: inkluder minst (wildcard + eksplisitt `/aktiver`):
+  - `https://motus-pt-app.vercel.app/**`
+  - `https://motus-pt-app.vercel.app/aktiver`
+  - `https://motuspt.no/**` og `https://motuspt.no/aktiver` (hvis eget domene)
+- Appen er SPA: `vercel.json` i repo må være deployet, ellers gir invitasjonslenken `404: NOT_FOUND` på `/aktiver`.
 
 ## 3) Supabase users
 
