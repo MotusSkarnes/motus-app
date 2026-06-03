@@ -24,6 +24,52 @@ export function pickLastSetFromLastSession(
   return entry ? { setNumber: maxSetNum, entry } : null;
 }
 
+export type LastSessionByExerciseMap = Map<string, Map<number, LastSessionSetEntry>>;
+
+export type DetailLastSessionBlockInfo = {
+  exercise?: Exercise | null;
+  exerciseName: string;
+};
+
+/** «Sist sett»-tekst i øvelsesdetalj under live økt. */
+export function resolveDetailLastSessionLabel(input: {
+  lastSessionByExercise?: LastSessionByExerciseMap;
+  detailExercise: Exercise | null;
+  blockDetailExercise: Exercise | null;
+  currentWorkoutExerciseName?: string;
+  currentWorkoutBlockType?: string;
+  blockExerciseInfos: DetailLastSessionBlockInfo[];
+  exercises: Exercise[];
+}): string {
+  const {
+    lastSessionByExercise,
+    detailExercise,
+    blockDetailExercise,
+    currentWorkoutExerciseName,
+    currentWorkoutBlockType,
+    blockExerciseInfos,
+    exercises,
+  } = input;
+  if (!lastSessionByExercise) return "";
+  let lookupName = detailExercise?.name ?? "";
+  if (blockDetailExercise && currentWorkoutBlockType) {
+    const match = blockExerciseInfos.find(
+      (info) =>
+        info.exercise?.id === blockDetailExercise.id ||
+        info.exerciseName.trim().toLowerCase() === blockDetailExercise.name.trim().toLowerCase(),
+    );
+    if (match?.exerciseName.trim()) lookupName = match.exerciseName;
+  } else if (currentWorkoutExerciseName?.trim()) {
+    lookupName = currentWorkoutExerciseName;
+  }
+  if (!lookupName.trim()) return "";
+  const setMap = lastSessionByExercise.get(lookupName.trim().toLowerCase());
+  if (!setMap?.size) return "";
+  const picked = pickLastSetFromLastSession(setMap);
+  if (!picked) return "";
+  return formatLastSessionSetLabel(lookupName, picked.entry, exercises, picked.setNumber);
+}
+
 export function formatLastSessionSetLabel(
   exerciseName: string,
   entry: LastSessionSetEntry,

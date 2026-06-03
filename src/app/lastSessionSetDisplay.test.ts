@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { formatLastSessionSetLabel, pickLastSetFromLastSession } from "./lastSessionSetDisplay";
+import {
+  formatLastSessionSetLabel,
+  pickLastSetFromLastSession,
+  resolveDetailLastSessionLabel,
+} from "./lastSessionSetDisplay";
 
 const library = [
   {
@@ -25,6 +29,35 @@ describe("pickLastSetFromLastSession", () => {
       setNumber: 3,
       entry: { weight: "80", reps: "6" },
     });
+  });
+});
+
+describe("resolveDetailLastSessionLabel", () => {
+  it("returns empty when no last session map", () => {
+    expect(
+      resolveDetailLastSessionLabel({
+        detailExercise: library[0],
+        blockDetailExercise: null,
+        blockExerciseInfos: [],
+        exercises: library,
+      }),
+    ).toBe("");
+  });
+
+  it("resolves label from workout exercise name", () => {
+    const lastSessionByExercise = new Map([
+      ["benkpress", new Map([[2, { weight: "70", reps: "8" }]])],
+    ]);
+    expect(
+      resolveDetailLastSessionLabel({
+        lastSessionByExercise,
+        detailExercise: library[0],
+        blockDetailExercise: null,
+        currentWorkoutExerciseName: "Benkpress",
+        blockExerciseInfos: [],
+        exercises: library,
+      }),
+    ).toBe("Sett 2 · 8 reps · 70 kg");
   });
 });
 

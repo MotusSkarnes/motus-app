@@ -17,7 +17,7 @@ import {
 import { GradientButton, OutlineButton, TextArea, TextInput } from "../app/ui";
 import type { Exercise, TrainingProgram, WorkoutModeState, WorkoutReflection } from "../app/types";
 import type { ReplaceWorkoutExerciseGroupInput } from "../services/appRepository";
-import { formatLastSessionSetLabel, pickLastSetFromLastSession } from "../app/lastSessionSetDisplay";
+import { resolveDetailLastSessionLabel } from "../app/lastSessionSetDisplay";
 import { buildTrainingProgramFromWorkoutMode } from "../app/pausedWorkoutSession";
 import { MAX_SETS_PER_EXERCISE_IN_WORKOUT_MODE } from "../services/appRepository";
 
@@ -418,34 +418,6 @@ export function LiveWorkoutSessionModal({
   const detailExercise = blockDetailExercise ?? currentWorkoutExercise;
   const detailExerciseImageUrl = detailExercise ? resolveExerciseImageSrc(detailExercise) : "";
 
-  const detailLastSessionLabel = useMemo(() => {
-    if (!lastSessionByExercise) return "";
-    let lookupName = detailExercise?.name ?? "";
-    if (blockDetailExercise && currentWorkoutGroup?.blockType) {
-      const match = blockExerciseInfos.find(
-        (info) =>
-          info.exercise?.id === blockDetailExercise.id ||
-          info.exerciseName.trim().toLowerCase() === blockDetailExercise.name.trim().toLowerCase(),
-      );
-      if (match?.exerciseName.trim()) lookupName = match.exerciseName;
-    } else if (currentWorkoutGroup?.exerciseName.trim()) {
-      lookupName = currentWorkoutGroup.exerciseName;
-    }
-    if (!lookupName.trim()) return "";
-    const setMap = lastSessionByExercise.get(lookupName.trim().toLowerCase());
-    if (!setMap?.size) return "";
-    const picked = pickLastSetFromLastSession(setMap);
-    if (!picked) return "";
-    return formatLastSessionSetLabel(lookupName, picked.entry, exercises, picked.setNumber);
-  }, [
-    lastSessionByExercise,
-    detailExercise,
-    blockDetailExercise,
-    currentWorkoutGroup,
-    blockExerciseInfos,
-    exercises,
-  ]);
-
   function closeExerciseDetail() {
     setShowExerciseDetail(false);
     setBlockDetailExercise(null);
@@ -608,6 +580,16 @@ export function LiveWorkoutSessionModal({
   }
 
   if (!workoutMode || !resolvedProgram) return null;
+
+  const detailLastSessionLabel = resolveDetailLastSessionLabel({
+    lastSessionByExercise,
+    detailExercise,
+    blockDetailExercise,
+    currentWorkoutExerciseName: currentWorkoutGroup?.exerciseName,
+    currentWorkoutBlockType: currentWorkoutGroup?.blockType,
+    blockExerciseInfos,
+    exercises,
+  });
 
   const headerTitle = variant === "trainer" ? "Live PT-økt" : "Øktmodus";
 
