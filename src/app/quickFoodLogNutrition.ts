@@ -21,6 +21,8 @@ export type FoodLogNutritionTotals = MacroTotals & {
   sugar: number;
   saturatedFat: number;
   sodium: number;
+  /** Vann fra matvarer (liter), beregnet fra vann g/100 g × gram. */
+  waterLiters: number;
   fattyAcids: FoodFattyAcids;
   micronutrients: FoodMicronutrients;
 };
@@ -31,9 +33,16 @@ export const EMPTY_FOOD_LOG_NUTRITION: FoodLogNutritionTotals = {
   sugar: 0,
   saturatedFat: 0,
   sodium: 0,
+  waterLiters: 0,
   fattyAcids: { ...EMPTY_FATTY_ACIDS },
   micronutrients: { ...EMPTY_MICRONUTRIENTS },
 };
+
+export function waterLitersFromFoodGrams(waterPer100g: number | undefined, grams: number): number {
+  const water = Number(waterPer100g ?? 0);
+  if (!Number.isFinite(water) || water <= 0 || !Number.isFinite(grams) || grams <= 0) return 0;
+  return (water * grams) / 100 / 1000;
+}
 
 export type MicronutrientDailyRow = {
   key: FoodMicronutrientKey;
@@ -79,6 +88,7 @@ export function sumQuickFoodLogNutrition(logs: MemberQuickFoodLogEntry[] | undef
       sugar: acc.sugar + n.sugar * scale,
       saturatedFat: acc.saturatedFat + n.saturatedFat * scale,
       sodium: acc.sodium + n.sodium * scale,
+      waterLiters: acc.waterLiters + waterLitersFromFoodGrams(n.water, entry.grams),
       fattyAcids: nextFa,
       micronutrients: nextMicros,
     };
@@ -103,6 +113,7 @@ export function addFoodLogNutritionTotals(a: FoodLogNutritionTotals, b: FoodLogN
     sugar: a.sugar + b.sugar,
     saturatedFat: a.saturatedFat + b.saturatedFat,
     sodium: a.sodium + b.sodium,
+    waterLiters: a.waterLiters + b.waterLiters,
     fattyAcids: (Object.keys(a.fattyAcids) as Array<keyof FoodFattyAcids>).reduce(
       (acc, key) => {
         acc[key] = a.fattyAcids[key] + b.fattyAcids[key];
@@ -129,6 +140,7 @@ export function divideFoodLogNutritionTotals(totals: FoodLogNutritionTotals, div
     sugar: totals.sugar / safe,
     saturatedFat: totals.saturatedFat / safe,
     sodium: totals.sodium / safe,
+    waterLiters: totals.waterLiters / safe,
     fattyAcids: (Object.keys(totals.fattyAcids) as Array<keyof FoodFattyAcids>).reduce(
       (acc, key) => {
         acc[key] = totals.fattyAcids[key] / safe;

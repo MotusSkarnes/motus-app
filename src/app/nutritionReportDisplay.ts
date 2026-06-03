@@ -5,6 +5,8 @@ import type { NutritionReferenceContext } from "./personalizedNutritionReference
 import type { FoodLogNutritionTotals } from "./quickFoodLogNutrition";
 
 export const DEFAULT_DAILY_KCAL_TARGET = 1900;
+/** Anbefalt daglig væske (liter) — referanse for vann fra mat i rapport. */
+export const DEFAULT_DAILY_WATER_L = 2.5;
 
 export type MacroDisplayRow = {
   label: string;
@@ -43,6 +45,13 @@ export function buildMacroDisplayRows(
       target: otherDaily.sodium,
       decimals: 0,
       lowerIsBetter: true,
+    },
+    {
+      label: "Vann (fra mat)",
+      value: totals.waterLiters,
+      unit: "L",
+      target: DEFAULT_DAILY_WATER_L,
+      decimals: 1,
     },
   ];
 }

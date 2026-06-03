@@ -473,8 +473,8 @@ export function TrainerMealPlanEditor({
     [recipeItems, foodItemsForMacros],
   );
   const nutritionContext = useMemo(
-    () => ({ foodById, recipeNutritionById }),
-    [foodById, recipeNutritionById],
+    () => ({ foodById, foodItems: foodItemsForMacros, recipeNutritionById }),
+    [foodById, foodItemsForMacros, recipeNutritionById],
   );
   const nutritionReferenceContext = useMemo(
     () => resolveNutritionReferenceContext(memberBirthDate, memberGender),

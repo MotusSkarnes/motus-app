@@ -51,4 +51,29 @@ describe("sumQuickFoodLogNutrition", () => {
     expect(Math.round(totals.micronutrients.calcium)).toBe(300);
     expect(Math.round(totals.sodium)).toBe(60);
   });
+
+  it("sums water from food logs in liters", () => {
+    const logs: MemberQuickFoodLogEntry[] = [
+      {
+        id: "w1",
+        name: "Agurk",
+        grams: 200,
+        source: "food",
+        loggedAt: new Date().toISOString(),
+        nutritionPer100g: {
+          kcal: 15,
+          protein: 0.7,
+          carbs: 2,
+          fat: 0.1,
+          fiber: 0.5,
+          sugar: 1,
+          saturatedFat: 0,
+          sodium: 2,
+          water: 95,
+        },
+      },
+    ];
+    const totals = sumQuickFoodLogNutrition(logs);
+    expect(totals.waterLiters).toBeCloseTo(0.19, 2);
+  });
 });

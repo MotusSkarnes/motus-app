@@ -31,6 +31,18 @@ describe("mealPlanNutritionTotals", () => {
     expect(dayTotals.protein).toBe(20);
   });
 
+  it("sums water for plan entries", () => {
+    const plan = createDefaultMealPlan("m1");
+    plan.days[0]!.meals[0]!.items = [
+      {
+        ...entry(200),
+        nutritionPer100g: { ...entry(200).nutritionPer100g, water: 95 },
+      },
+    ];
+    const dayTotals = sumMealPlanDayNutrition(plan.days[0]!);
+    expect(dayTotals.waterLiters).toBeCloseTo(0.19, 2);
+  });
+
   it("builds report with daily average across days with food", () => {
     const plan = createDefaultMealPlan("m1");
     plan.days[0]!.meals[0]!.items = [entry(100)];

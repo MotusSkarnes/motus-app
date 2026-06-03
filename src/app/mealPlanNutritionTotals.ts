@@ -7,6 +7,7 @@ import {
   addFoodLogNutritionTotals,
   divideFoodLogNutritionTotals,
   EMPTY_FOOD_LOG_NUTRITION,
+  waterLitersFromFoodGrams,
   type FoodLogNutritionTotals,
 } from "./quickFoodLogNutrition";
 
@@ -49,6 +50,7 @@ export function sumMealPlanFoodEntriesNutrition(
       sugar: acc.sugar + n.sugar * scale,
       saturatedFat: acc.saturatedFat + n.saturatedFat * scale,
       sodium: acc.sodium + n.sodium * scale,
+      waterLiters: acc.waterLiters + waterLitersFromFoodGrams(n.water, grams),
       fattyAcids: nextFa,
       micronutrients: nextMicros,
     };
