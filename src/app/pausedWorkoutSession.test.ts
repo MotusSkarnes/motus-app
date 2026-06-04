@@ -60,6 +60,22 @@ describe("pausedWorkoutSession", () => {
     expect(listPausedWorkouts("m1")[0]?.programTitle).toBe("Styrke A");
   });
 
+  it("dismiss saves trainer live workout draft for the workout member", () => {
+    window.localStorage.removeItem(PAUSED_WORKOUTS_STORAGE_KEY);
+    const state = {
+      ...baseState(),
+      role: "trainer" as const,
+      currentUser: { id: "trainer-1", role: "trainer" as const, name: "PT", email: "pt@t.no" },
+      memberViewId: "",
+      selectedMemberId: "m1",
+      workoutMode,
+    };
+    const next = dismissWorkoutModeInState(state);
+
+    expect(next.workoutMode).toBeNull();
+    expect(listPausedWorkouts("m1")[0]?.workoutMode.results[0]?.completed).toBe(true);
+  });
+
   it("resume restores workout mode from draft", () => {
     window.localStorage.removeItem(PAUSED_WORKOUTS_STORAGE_KEY);
     const draft = upsertPausedWorkout({

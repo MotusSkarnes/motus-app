@@ -67,8 +67,10 @@ export function buildTrainerLayoutProps(input: {
   removeLastWorkoutSetForProgramExercise: TrainerLayoutProps["removeLastWorkoutSetForProgramExercise"];
   deferWorkoutExerciseGroup: TrainerLayoutProps["deferWorkoutExerciseGroup"];
   updateWorkoutModeNote: TrainerLayoutProps["updateWorkoutModeNote"];
+  updateWorkoutExerciseNote: TrainerLayoutProps["updateWorkoutExerciseNote"];
   finishWorkoutMode: TrainerLayoutProps["finishWorkoutMode"];
   cancelWorkoutMode: TrainerLayoutProps["cancelWorkoutMode"];
+  dismissWorkoutMode: TrainerLayoutProps["dismissWorkoutMode"];
 }): TrainerLayoutProps {
   return input;
 }

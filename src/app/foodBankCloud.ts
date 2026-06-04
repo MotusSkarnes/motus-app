@@ -128,6 +128,48 @@ function mergeFoodItems(preferred: FoodItem[], fallback: FoodItem[]): FoodItem[]
   return dedupeFoodBankItems(Array.from(byId.values())).items;
 }
 
+function shouldPreserveLocalItemDuringRemoteSync(item: FoodItem, remoteOrSharedIds: Set<string>): boolean {
+  const id = item.id?.trim() ?? "";
+  if (!id || remoteOrSharedIds.has(id)) return false;
+  if (item.isCustom === true || item.isEdited === true || item.source === "egen") return true;
+  return !id.startsWith("food-seed-");
+}
+
+function mergeFoodIdLists(remoteIds: string[], localIds: string[], itemIds: Set<string>): string[] {
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const id of [...remoteIds, ...localIds]) {
+    const trimmed = id.trim();
+    if (!trimmed || seen.has(trimmed) || !itemIds.has(trimmed)) continue;
+    seen.add(trimmed);
+    out.push(trimmed);
+  }
+  return out;
+}
+
+export function mergeTrainerFoodBankSnapshotFromRemote(
+  remote: TrainerFoodBankSnapshot,
+  sharedItems: FoodItem[],
+  localItems: FoodItem[],
+  localFavoriteIds: string[] = [],
+  localRecentIds: string[] = [],
+): TrainerFoodBankSnapshot {
+  const remoteOrSharedIds = new Set(
+    [...remote.items, ...sharedItems].map((item) => item.id?.trim() ?? "").filter(Boolean),
+  );
+  const localItemsToPreserve = localItems.filter((item) =>
+    shouldPreserveLocalItemDuringRemoteSync(item, remoteOrSharedIds),
+  );
+  const items = mergeFoodItems(remote.items, mergeFoodItems(localItemsToPreserve, sharedItems));
+  const itemIds = new Set(items.map((item) => item.id));
+  return {
+    ...remote,
+    items,
+    favoriteIds: mergeFoodIdLists(remote.favoriteIds, localFavoriteIds, itemIds),
+    recentIds: mergeFoodIdLists(remote.recentIds, localRecentIds, itemIds),
+  };
+}
+
 async function fetchSharedFoodItemsFromSupabase(): Promise<FoodItem[]> {
   if (!supabaseClient) return [];
   const { data, error } = await supabaseClient.from(SHARED_FOOD_BANK_TABLE).select("id, item, updated_at").order("updated_at", { ascending: false });
@@ -255,8 +297,14 @@ export async function pullTrainerFoodBankFromRemote(ownerUserId: string): Promis
     fetchTrainerFoodBankFromSupabase(ownerUserId),
   ]);
   if (!snapshot) return null;
-  const merged = { ...snapshot, items: mergeFoodItems(snapshot.items, sharedItems) };
   const previousItems = loadFoodBankItems();
+  const merged = mergeTrainerFoodBankSnapshotFromRemote(
+    snapshot,
+    sharedItems,
+    previousItems,
+    loadFavoriteFoodIds(),
+    loadRecentFoodIds(),
+  );
   cacheTrainerFoodBankSnapshot(merged);
   notifyFoodBankChangedIfNeeded(previousItems, merged.items);
   return merged;
@@ -278,7 +326,13 @@ export async function syncTrainerFoodBankFromRemote(
 
   if (remote.items.length > 0) {
     const previousItems = loadFoodBankItems();
-    const merged = { ...remote, items: mergeFoodItems(remote.items, sharedItems) };
+    const merged = mergeTrainerFoodBankSnapshotFromRemote(
+      remote,
+      sharedItems,
+      previousItems,
+      loadFavoriteFoodIds(),
+      loadRecentFoodIds(),
+    );
     cacheTrainerFoodBankSnapshot(merged);
     notifyFoodBankChangedIfNeeded(previousItems, merged.items);
     return { ok: true, source: "remote" };

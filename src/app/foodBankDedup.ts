@@ -35,6 +35,10 @@ function hasMeaningfulNutrition(n: FoodNutrition): boolean {
   return macroSum >= 5;
 }
 
+function canMergeByNutrition(item: FoodItem): boolean {
+  return item.source !== "egen" && item.isCustom !== true && item.isEdited !== true;
+}
+
 function canonicalScore(item: FoodItem): number {
   let score = 0;
   if (item.isEdited) score += 10_000;
@@ -52,8 +56,8 @@ function pickCanonical(group: FoodItem[]): FoodItem {
 }
 
 /**
- * Slår sammen matvarer med identisk navn (normalisert) eller identisk næring per 100 g.
- * Egne / redigerte varer beholdes alltid som kanonisk innen gruppen.
+ * Slår sammen matvarer med identisk navn (normalisert) eller importerte varer med identisk næring per 100 g.
+ * Egne / redigerte varer kan ha like makroer uten å være samme vare, så de slås kun sammen ved navn.
  */
 export function dedupeFoodBankItems(items: FoodItem[]): FoodBankDedupResult {
   if (items.length <= 1) {
@@ -84,7 +88,7 @@ export function dedupeFoodBankItems(items: FoodItem[]): FoodBankDedupResult {
   // 2) Identisk næring (men ulikt navn)
   const byNutrition = new Map<string, FoodItem[]>();
   for (const item of afterName.values()) {
-    if (!hasMeaningfulNutrition(item.nutritionPer100g)) {
+    if (!hasMeaningfulNutrition(item.nutritionPer100g) || !canMergeByNutrition(item)) {
       byNutrition.set(`solo:${item.id}`, [item]);
       continue;
     }

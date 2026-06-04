@@ -78,6 +78,31 @@ describe("foodBankDedup", () => {
     expect(result.idRemap["food-b"]).toBeTruthy();
   });
 
+  it("beholder egendefinerte varer med ulikt navn selv om næringen er identisk", () => {
+    const n: FoodNutrition = {
+      kcal: 390,
+      protein: 80,
+      carbs: 6,
+      fat: 4,
+      fiber: 0,
+      sugar: 2,
+      saturatedFat: 1,
+      sodium: 120,
+    };
+    const result = dedupeFoodBankItems([
+      item({ id: "food-custom-a", name: "Proteinpulver vanilje", source: "egen", isCustom: true, nutritionPer100g: n }),
+      item({
+        id: "food-custom-b",
+        name: "Proteinpulver jordbær",
+        source: "egen",
+        isCustom: true,
+        nutritionPer100g: { ...n },
+      }),
+    ]);
+    expect(result.items).toHaveLength(2);
+    expect(result.removedCount).toBe(0);
+  });
+
   it("beholder ulike varer med ulik næring (rugbrød vs grovt brød)", () => {
     const result = dedupeFoodBankItems([
       item({

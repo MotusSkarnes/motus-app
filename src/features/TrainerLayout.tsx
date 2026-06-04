@@ -40,6 +40,7 @@ type TrainerWorkoutBridge = Pick<
   | "updateWorkoutExerciseNote"
   | "finishWorkoutMode"
   | "cancelWorkoutMode"
+  | "dismissWorkoutMode"
 >;
 
 type TrainerNavAction = "messages" | "calendar";
@@ -187,6 +188,7 @@ export function TrainerLayout({
   updateWorkoutExerciseNote,
   finishWorkoutMode,
   cancelWorkoutMode,
+  dismissWorkoutMode,
 }: TrainerLayoutProps) {
   const [moreMenuOpen, setMoreMenuOpen] = useState(false);
   const canAccessAdminTools = true;
@@ -296,6 +298,7 @@ export function TrainerLayout({
     updateWorkoutExerciseNote,
     finishWorkoutMode,
     cancelWorkoutMode,
+    dismissWorkoutMode,
   };
 
   return (
