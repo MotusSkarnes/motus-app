@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { Bookmark, BookmarkPlus, Trash2 } from "lucide-react";
 import { formatMacro } from "../../app/foodBankTypes";
-import { memberMealSlotLabel } from "../../app/memberMealSlots";
+import { canonicalMemberMealSlotId, memberMealSlotLabel } from "../../app/memberMealSlots";
 import {
   createMealDraftItem,
   createSavedMealFromDraft,
@@ -78,7 +78,9 @@ export function MealDraftComposer({
   function handleSaveTemplate() {
     const name = saveName.trim();
     if (!name || !draftItems.length) return;
-    onSaveTemplate(createSavedMealFromDraft(draftItems, name, mealSlotId));
+    onSaveTemplate(
+      createSavedMealFromDraft(draftItems, name, canonicalMemberMealSlotId(mealSlotId, slotLabel) ?? mealSlotId),
+    );
     setSaveOpen(false);
     setSaveName("");
   }

@@ -43,6 +43,14 @@ describe("memberSavedMeals", () => {
     expect(forFrokost.map((m) => m.name).sort()).toEqual(["Frokost", "Snack"].sort());
   });
 
+  it("matches PT matplan meal ids when logging under member-lunsj", () => {
+    const fromPlan = createSavedMealFromQuickLogs([entry("meal-0-lunsj")], "Min lunsj", "meal-0-lunsj");
+    const fromLog = createSavedMealFromQuickLogs([entry("member-lunsj")], "Lunsj 2", "member-lunsj");
+    const forLunsj = savedMealsForSlot([fromPlan, fromLog], "member-lunsj");
+    expect(forLunsj.map((m) => m.name).sort()).toEqual(["Lunsj 2", "Min lunsj"].sort());
+    expect(forLunsj.every((m) => m.mealSlotId === "member-lunsj")).toBe(true);
+  });
+
   it("creates quick log entries for apply", () => {
     const saved = createSavedMealFromQuickLogs([entry("member-frokost")], "Min frokost", "member-frokost");
     const logs = quickLogEntriesFromSavedMeal(saved, "member-frokost");

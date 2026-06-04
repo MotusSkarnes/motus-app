@@ -1,3 +1,4 @@
+import { canonicalMemberMealSlotId, memberMealSlotsMatch } from "./memberMealSlots";
 import type { MemberQuickFoodLogEntry } from "./memberMealPlanState";
 
 export type MemberSavedMealItem = {
@@ -55,7 +56,10 @@ export function parseMemberSavedMeals(value: unknown): MemberSavedMeal[] {
       });
     }
     if (!items.length) continue;
-    const mealSlotId = String(r.mealSlotId ?? r.meal_slot_id ?? "").trim() || undefined;
+    const mealSlotIdRaw = String(r.mealSlotId ?? r.meal_slot_id ?? "").trim();
+    const mealSlotId = mealSlotIdRaw
+      ? (canonicalMemberMealSlotId(mealSlotIdRaw, name) ?? mealSlotIdRaw)
+      : undefined;
     const createdAt = String(r.createdAt ?? r.created_at ?? "").trim() || new Date().toISOString();
     const updatedAt = String(r.updatedAt ?? r.updated_at ?? "").trim() || createdAt;
     meals.push({ id, name, mealSlotId, items, createdAt, updatedAt });
@@ -75,8 +79,7 @@ export function mergeMemberSavedMeals(a: MemberSavedMeal[], b: MemberSavedMeal[]
 }
 
 export function savedMealsForSlot(savedMeals: MemberSavedMeal[], mealSlotId: string): MemberSavedMeal[] {
-  const slot = mealSlotId.trim();
-  return savedMeals.filter((meal) => !meal.mealSlotId || meal.mealSlotId === slot);
+  return savedMeals.filter((meal) => memberMealSlotsMatch(meal.mealSlotId, meal.name, mealSlotId));
 }
 
 export function createSavedMealFromQuickLogs(
@@ -88,7 +91,9 @@ export function createSavedMealFromQuickLogs(
   return {
     id: `saved-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`,
     name: name.trim(),
-    mealSlotId: mealSlotId?.trim() || undefined,
+    mealSlotId: mealSlotId?.trim()
+      ? (canonicalMemberMealSlotId(mealSlotId, name) ?? mealSlotId.trim())
+      : undefined,
     items: entries.map((entry) => ({
       name: entry.name,
       grams: entry.grams,
