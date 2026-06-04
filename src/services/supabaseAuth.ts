@@ -49,7 +49,8 @@ function getCanonicalSiteOrigin(): string {
 
 function emailRedirectBase(): string | undefined {
   const origin = getCanonicalSiteOrigin();
-  return origin ? `${origin}/` : undefined;
+  if (!origin) return undefined;
+  return `${origin}/aktiver?type=recovery&recovery=1`;
 }
 
 /** Redirect for medlemsinvitasjon — query-flagg appen leser ved innlogging (støtter også /aktiver). */
@@ -516,8 +517,7 @@ export async function requestPasswordRecovery(email: string): Promise<{ ok: bool
     return { ok: false, message: "Skriv inn en gyldig e-postadresse." };
   }
 
-  const origin = getCanonicalSiteOrigin();
-  const redirectTo = origin ? `${origin}/?type=recovery&recovery=1` : undefined;
+  const redirectTo = emailRedirectBase();
   const { error } = await supabaseClient.auth.resetPasswordForEmail(normalizedEmail, {
     redirectTo,
   });
@@ -782,8 +782,8 @@ function buildRecoveryRedirectForReinvite(): string | undefined {
     url.searchParams.delete("invite");
     return url.toString();
   } catch {
-    const base = inviteRedirect.split("?")[0]?.replace(/\/+$/, "") || inviteRedirect;
-    return `${base}/?type=recovery&recovery=1`;
+    const origin = getCanonicalSiteOrigin();
+    return origin ? emailRedirectBase() : undefined;
   }
 }
 

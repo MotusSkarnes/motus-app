@@ -4307,8 +4307,7 @@ export const supabaseAppRepository: AppRepository = {
   },
   appendWorkoutSetForProgramExercise(state: AppState, programExerciseId: string): AppState {
     return localAppRepository.appendWorkoutSetForProgramExercise(state, programExerciseId);
-  }
-
+  },
   removeLastWorkoutSetForProgramExercise(state: AppState, programExerciseId: string): AppState {
     return localAppRepository.removeLastWorkoutSetForProgramExercise(state, programExerciseId);
   },
