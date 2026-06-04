@@ -20,6 +20,7 @@ import { GradientButton } from "../../app/ui";
 import { sumQuickFoodLogMacros } from "../../app/quickFoodLogMacros";
 import { DailyLoggedMacrosSummary } from "./DailyLoggedMacrosSummary";
 import { MealDraftComposer } from "./MealDraftComposer";
+import { MemberWaterIntakeSection } from "./MemberWaterIntakeSection";
 import "../../foodbank.css";
 
 type LogMealPanelProps = {
@@ -27,6 +28,8 @@ type LogMealPanelProps = {
   mealPlanTargets?: MealPlanTargets | null;
   onRefreshFoodBank?: () => void;
   hasMealPlan?: boolean;
+  /** Vann vises i matplan-dashboard; skjul her for å unngå duplikat. */
+  showWaterSection?: boolean;
 };
 
 function todayKey(): string {
@@ -38,7 +41,13 @@ function entryMacros(entry: MemberQuickFoodLogEntry): string {
   return `${formatMacro(entry.nutritionPer100g.kcal * scale, 0)} kcal · P ${formatMacro(entry.nutritionPer100g.protein * scale, 1)} g`;
 }
 
-export function LogMealPanel({ memberId, mealPlanTargets, onRefreshFoodBank, hasMealPlan = false }: LogMealPanelProps) {
+export function LogMealPanel({
+  memberId,
+  mealPlanTargets,
+  onRefreshFoodBank,
+  hasMealPlan = false,
+  showWaterSection = true,
+}: LogMealPanelProps) {
   const foodItems = useFoodBankItems();
   const [open, setOpen] = useState(false);
   const [mealSlotId, setMealSlotId] = useState(MEMBER_MEAL_SLOTS[0]!.id);
@@ -146,20 +155,21 @@ export function LogMealPanel({ memberId, mealPlanTargets, onRefreshFoodBank, has
 
   if (!open && !hasLogs) {
     return (
-      <div className="motus-log-meal-hero">
-        <div className="motus-log-meal-hero__icon" aria-hidden>
-          <UtensilsCrossed className="h-7 w-7" />
+      <div className="motus-log-meal-panel motus-log-meal-panel--intro">
+        <div className="motus-log-meal-hero">
+          <div className="motus-log-meal-hero__icon" aria-hidden>
+            <UtensilsCrossed className="h-7 w-7" />
+          </div>
+          <h2 className="motus-log-meal-hero__title">Logg det du spiser</h2>
+          <p className="motus-log-meal-hero__lead">
+            Bygg måltidet med matvarer du legger til — se listen underveis. Logg eller lagre favoritten når du er ferdig.
+          </p>
+          <GradientButton type="button" className="motus-log-meal-cta" onClick={() => setOpen(true)}>
+            <Plus className="h-4 w-4" aria-hidden />
+            Logg et måltid
+          </GradientButton>
         </div>
-        <h2 className="motus-log-meal-hero__title">Logg det du spiser</h2>
-        <p className="motus-log-meal-hero__lead">
-          {hasMealPlan
-            ? "Bygg måltidet med matvarer du legger til — se listen underveis. Logg eller lagre favoritten når du er ferdig."
-            : "Bygg måltidet med matvarer du legger til — se listen underveis. Logg eller lagre favoritten når du er ferdig."}
-        </p>
-        <GradientButton type="button" className="motus-log-meal-cta" onClick={() => setOpen(true)}>
-          <Plus className="h-4 w-4" aria-hidden />
-          Logg et måltid
-        </GradientButton>
+        {showWaterSection ? <MemberWaterIntakeSection memberId={memberId} foodItems={foodItems} className="motus-log-meal-panel__water" /> : null}
       </div>
     );
   }
@@ -302,6 +312,8 @@ export function LogMealPanel({ memberId, mealPlanTargets, onRefreshFoodBank, has
           />
         </div>
       ) : null}
+
+      {showWaterSection ? <MemberWaterIntakeSection memberId={memberId} foodItems={foodItems} className="motus-log-meal-panel__water" /> : null}
 
       {status ? <p className="motus-log-meal-panel__status">{status}</p> : null}
     </div>

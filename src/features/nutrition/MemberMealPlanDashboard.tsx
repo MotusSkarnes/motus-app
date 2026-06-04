@@ -55,7 +55,6 @@ import {
   loadMealPlanTracking,
   prepareMealPlanTracking,
   removeFoodLogged,
-  setWaterLiters,
   toggleFoodLogged,
   toggleMealLogged,
   setRecipePortionMultiplier,
@@ -80,10 +79,9 @@ import { draftToQuickLogEntry, type MealDraftItem } from "../../app/mealDraft";
 import { resolveNutritionFromFoodItems } from "../../app/memberNutritionRehydrate";
 import { MealDraftComposer } from "./MealDraftComposer";
 import { LogMealPanel } from "./LogMealPanel";
+import { MemberWaterIntakeSection } from "./MemberWaterIntakeSection";
 import "../../foodbank.css";
 
-const WATER_TARGET_L = 2.5;
-const WATER_STEP_L = 0.2;
 const RECIPE_PORTION_GRAMS = 100;
 
 function hasMacroValues(nutrition: FoodItem["nutritionPer100g"] | undefined): boolean {
@@ -659,13 +657,6 @@ export function MemberMealPlanDashboard({ plan, memberId, onOpenAvoidances, onRe
     [memberId],
   );
 
-  const handleWaterAdjust = useCallback(
-    (delta: number) => {
-      const next = Math.min(WATER_TARGET_L * 1.5, Math.max(0, waterLiters + delta));
-      setTracking((prev) => setWaterLiters(memberId, prev, todayKey, Math.round(next * 10) / 10));
-    },
-    [memberId, todayKey, waterLiters],
-  );
 
   const resolveMealImage = (meal: MealPlanMeal): string | null => {
     for (const item of meal.items) {
@@ -794,6 +785,12 @@ export function MemberMealPlanDashboard({ plan, memberId, onOpenAvoidances, onRe
           <Droplets className="h-3.5 w-3.5" aria-hidden />
           Vann totalt {totalWaterTodayLiters.toFixed(1)} L
         </div>
+        <MemberWaterIntakeSection
+          memberId={memberId}
+          foodItems={foodItems}
+          planFoodWaterLiters={waterFromLoggedPlanFoodTodayLiters}
+          className="motus-matplan-progress-card__water"
+        />
       </section>
 
       <section className="motus-matplan-section" aria-label="Måltider" ref={mealSectionRef}>
@@ -1142,37 +1139,9 @@ export function MemberMealPlanDashboard({ plan, memberId, onOpenAvoidances, onRe
             mealPlanTargets={plan.targets}
             onRefreshFoodBank={onRefreshFoodBank}
             hasMealPlan
+            showWaterSection={false}
           />
         </div>
-        <section className="motus-matplan-water-controls" aria-label="Vanninntak i dag">
-          <div>
-            <h3 className="motus-matplan-water-controls__title">Vann i dag</h3>
-            <p className="motus-matplan-water-controls__hint">
-              Drikke: {waterLiters.toFixed(1)} L · Fra mat: {waterFromFoodTodayLiters.toFixed(1)} L
-            </p>
-            <p className="motus-matplan-water-controls__hint">
-              Totalt: {totalWaterTodayLiters.toFixed(1)} / {WATER_TARGET_L} L
-            </p>
-          </div>
-          <div className="motus-matplan-water-controls__actions">
-            <button
-              type="button"
-              className="motus-matplan-water-controls__btn motus-pressable"
-              onClick={() => handleWaterAdjust(-WATER_STEP_L)}
-              aria-label="Trekk fra vann"
-            >
-              −
-            </button>
-            <button
-              type="button"
-              className="motus-matplan-water-controls__btn motus-matplan-water-controls__btn--add motus-pressable"
-              onClick={() => handleWaterAdjust(WATER_STEP_L)}
-              aria-label="Legg til vann"
-            >
-              +
-            </button>
-          </div>
-        </section>
       </section>
 
       <div className="motus-matplan-footer">

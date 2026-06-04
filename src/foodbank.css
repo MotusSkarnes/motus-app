@@ -2357,6 +2357,11 @@
   color: #0f766e;
 }
 
+.motus-matplan-progress-card__water,
+.motus-log-meal-panel__water {
+  margin-top: 0.75rem;
+}
+
 .motus-matplan-water-controls {
   margin-top: 0.8rem;
   padding: 0.7rem 0.8rem;
