@@ -21,6 +21,8 @@ export const CONDITIONING_TRAINING_COVER_IMAGE = "/program-covers/kondisjon.png"
 export const MOBILITY_TRAINING_COVER_IMAGE = "/program-covers/mobilitet.png";
 export const ALLOWED_PROGRAM_IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
 export const MAX_PROGRAM_IMAGE_BYTES = 5 * 1024 * 1024;
+/** Bredt bannerformat som programkort bruker (ca. 3:1). */
+export const PROGRAM_COVER_DISPLAY_ASPECT = "3 / 1";
 
 const GROUP_WORKOUT_COVER_IMAGES: Record<string, string> = {
   smilepuls: SMILEPULS_COVER_IMAGE,
@@ -127,13 +129,20 @@ export function resolveFirstProgramCoverExercise(
   return null;
 }
 
+/** Eldre opplastinger lagret portrait-variant — vis hero som matcher programkort. */
+export function resolveProgramCoverDisplayUrl(imageUrl: string): string {
+  const trimmed = imageUrl.trim();
+  if (!trimmed) return trimmed;
+  return trimmed.replace(/-portrait\.(jpe?g|png|webp)(\?|$)/i, "-hero.$1$2");
+}
+
 export function resolveProgramImageSrc(
   program: Pick<TrainingProgram, "imageUrl" | "title">,
   coverExercise?: Pick<Exercise, "id" | "imageUrl" | "category" | "group" | "name"> | null,
   options?: { subTab?: TrainingSubTab },
 ): string | null {
   const custom = program.imageUrl?.trim();
-  if (custom) return custom;
+  if (custom) return resolveProgramCoverDisplayUrl(custom);
   const byTitle = program.title ? resolveProgramCoverImageByTitle(program.title) : null;
   if (byTitle) return byTitle;
   if (coverExercise) return resolveExerciseImageSrc(coverExercise);

@@ -16,8 +16,11 @@ type ProgramImageVariant = {
   height: number;
 };
 
+/** Format programkort bruker (bredt banner). */
+export const PRIMARY_PROGRAM_COVER_VARIANT = "hero" as const;
+
 const PROGRAM_IMAGE_VARIANTS: ProgramImageVariant[] = [
-  { key: "hero", width: 1600, height: 1000 },
+  { key: "hero", width: 1600, height: 550 },
   { key: "portrait", width: 900, height: 1200 },
   { key: "square", width: 1000, height: 1000 },
 ];
@@ -99,7 +102,7 @@ async function createCroppedImageFile(
   const focalX = sourceWidth * focalPoint.focalX;
   const focalY = sourceHeight * focalPoint.focalY;
   const cropX = Math.min(sourceWidth - cropWidth, Math.max(0, focalX - cropWidth / 2));
-  const cropY = Math.min(sourceHeight - cropHeight, Math.max(0, focalY - cropHeight * 0.32));
+  const cropY = Math.min(sourceHeight - cropHeight, Math.max(0, focalY - cropHeight / 2));
   const canvas = document.createElement("canvas");
   canvas.width = variant.width;
   canvas.height = variant.height;
@@ -134,22 +137,22 @@ export async function uploadProgramCoverImage(
   try {
     const source = await loadImageBitmap(file);
     const focalPoint = await detectFocalPoint(source);
-    let portraitPublicUrl: string | null = null;
+    let primaryPublicUrl: string | null = null;
 
     for (const variant of PROGRAM_IMAGE_VARIANTS) {
       const variantFile = await createCroppedImageFile(source, variant, focalPoint);
       const variantPath = `${PROGRAM_IMAGE_PREFIX}/${imageId}-${variant.key}.jpg`;
       const { error: uploadError } = await upload(variantPath, variantFile, { cacheControl: "31536000", upsert: false });
       if (uploadError) return { ok: false, message: uploadError.message };
-      if (variant.key === "portrait") {
-        portraitPublicUrl = getPublicUrl(variantPath);
+      if (variant.key === PRIMARY_PROGRAM_COVER_VARIANT) {
+        primaryPublicUrl = getPublicUrl(variantPath);
       }
     }
 
-    if (!portraitPublicUrl) {
+    if (!primaryPublicUrl) {
       return { ok: false, message: "Mangler offentlig URL for opplastet bilde." };
     }
-    return { ok: true, publicUrl: appendFocalPointToUrl(portraitPublicUrl, focalPoint) };
+    return { ok: true, publicUrl: appendFocalPointToUrl(primaryPublicUrl, focalPoint) };
   } catch {
     const extension = file.name.split(".").pop()?.toLowerCase() || "jpg";
     const imagePath = `${PROGRAM_IMAGE_PREFIX}/${imageId}.${extension}`;

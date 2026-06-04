@@ -1,3 +1,6 @@
+import { PROGRAM_COVER_DISPLAY_ASPECT } from "../app/programImage";
+import { imageObjectPositionFromSrc } from "../app/imageFocalPoint";
+
 type ProgramCoverImageFieldProps = {
   imageUrl: string;
   onImageUrlChange: (url: string) => void;
@@ -16,7 +19,10 @@ export function ProgramCoverImageField({
   return (
     <div className="space-y-2 rounded-xl border bg-slate-50/70 p-3" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
       <div className="text-xs font-semibold text-slate-700">Programbilde (valgfritt)</div>
-      <p className="text-[11px] leading-relaxed text-slate-500">Vises på programkortet. Uten bilde brukes første øvelses illustrasjon.</p>
+      <p className="text-[11px] leading-relaxed text-slate-500">
+        Beskjæres til bredt banner (ca. 3:1) som på programkort. Plasser hovedmotivet midt i bildet. Uten bilde brukes første
+        øvelse.
+      </p>
       <div className="flex flex-wrap items-center gap-2">
         <label className="inline-flex">
           <input
@@ -52,12 +58,17 @@ export function ProgramCoverImageField({
         <div className="text-xs text-slate-500">JPG/PNG/WEBP, maks 5 MB.</div>
       </div>
       {imageUrl.trim() ? (
-        <img
-          src={imageUrl}
-          alt="Forhåndsvisning av programbilde"
-          className="h-28 w-full max-w-[12rem] rounded-xl border bg-white object-cover"
-          style={{ borderColor: "rgba(15,23,42,0.08)" }}
-        />
+        <div
+          className="w-full max-w-md overflow-hidden rounded-xl border bg-slate-900"
+          style={{ borderColor: "rgba(15,23,42,0.08)", aspectRatio: PROGRAM_COVER_DISPLAY_ASPECT }}
+        >
+          <img
+            src={imageUrl}
+            alt="Forhåndsvisning av programbilde"
+            className="h-full w-full object-cover"
+            style={{ objectPosition: imageObjectPositionFromSrc(imageUrl) }}
+          />
+        </div>
       ) : null}
     </div>
   );

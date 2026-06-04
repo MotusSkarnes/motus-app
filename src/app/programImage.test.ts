@@ -10,6 +10,7 @@ import {
   programCoverUsesPhotoStyle,
   resolveFirstProgramCoverExercise,
   resolveGroupWorkoutCoverImage,
+  resolveProgramCoverDisplayUrl,
   resolveProgramImageSrc,
 } from "./programImage";
 import { RUNNER_STRENGTH_COVER_IMAGE, RUNNER_MOBILITY_COVER_IMAGE, SUB60_PROGRAM_TITLES } from "./inspirationRunningPlans";
@@ -75,11 +76,23 @@ describe("resolveFirstProgramCoverExercise", () => {
   });
 });
 
+describe("resolveProgramCoverDisplayUrl", () => {
+  it("maps portrait file to hero for display", () => {
+    expect(resolveProgramCoverDisplayUrl("https://cdn/uid-portrait.jpg")).toBe("https://cdn/uid-hero.jpg");
+  });
+});
+
 describe("resolveProgramImageSrc", () => {
   it("prefers custom program cover", () => {
     expect(
       resolveProgramImageSrc(program("/program-covers/custom.png"), strengthExercise, { subTab: "strength" }),
     ).toBe("/program-covers/custom.png");
+  });
+
+  it("rewrites portrait custom cover to hero", () => {
+    expect(resolveProgramImageSrc(program("https://cdn/p1-portrait.jpg"), strengthExercise)).toBe(
+      "https://cdn/p1-hero.jpg",
+    );
   });
 
   it("uses first exercise cover for styrkeprogrammer uten eget forsidebilde", () => {
