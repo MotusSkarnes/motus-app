@@ -27,13 +27,8 @@ export const MEMBER_PROGRAM_THUMB_HEIGHT_PX = 118;
 /** Bredde/høyde på kundens programkort-thumb — brukes ved opplasting. */
 export const MEMBER_PROGRAM_THUMB_ASPECT =
   MEMBER_PROGRAM_THUMB_PREVIEW_WIDTH_PX / MEMBER_PROGRAM_THUMB_HEIGHT_PX;
-/** Hero lagres høyere enn kortet — mer innhold å panere uten å zoome inn midtstillt motiv. */
-export const PROGRAM_COVER_HERO_FOCAL_BLEED = 1.62;
-/** Visning: ingen zoom i midten; mer zoom kun når glidebryter dras mot kant. */
-export const PROGRAM_COVER_DISPLAY_ZOOM_MIN = 1;
-export const PROGRAM_COVER_DISPLAY_ZOOM_MAX = 1.36;
-/** Under dette brukes object-position (hele motivet synlig ved typisk justering). */
-export const PROGRAM_COVER_DISPLAY_ZOOM_SOFT = 1.07;
+/** Hero lagres høyere enn kortet — pan med object-position uten zoom i visningen. */
+export const PROGRAM_COVER_HERO_FOCAL_BLEED = 1.78;
 
 const GROUP_WORKOUT_COVER_IMAGES: Record<string, string> = {
   smilepuls: SMILEPULS_COVER_IMAGE,

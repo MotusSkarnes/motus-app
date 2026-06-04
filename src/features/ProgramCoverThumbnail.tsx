@@ -76,8 +76,7 @@ export function ProgramCoverThumbnail({ src, alt = "", className = "", onFocalPo
             />
           </label>
           <p className="text-[10px] leading-relaxed text-slate-500">
-            Midtstilt visning uten innzoom. Mot kant zoomes det litt for å nå ytterkant. Lagre programmet etter justering.
-            Last opp på nytt for mest panerom.
+            Flytter utsnitt uten zoom. Lagre programmet etter justering. Last opp bildet på nytt hvis glidebryterne har lite effekt.
           </p>
         </div>
       ) : (
