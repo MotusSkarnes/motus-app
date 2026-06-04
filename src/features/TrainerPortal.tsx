@@ -862,6 +862,7 @@ function pickFirstName(value: unknown): string {
     cardioEquipmentId: CardioEquipmentId;
   } | null>(null);
   const prevTrainerTabRef = useRef<TrainerTab>(trainerTab);
+  const prevOpenCustomerMessagesSignalRef = useRef(openCustomerMessagesSignal);
   const [programSaveStatus, setProgramSaveStatus] = useState<string | null>(null);
   const [isSavingProgram, setIsSavingProgram] = useState(false);
   const [newMemberName, setNewMemberName] = useState("");
@@ -2063,7 +2064,9 @@ function pickFirstName(value: unknown): string {
   }, [pendingInviteMemberEmail, findNewestPendingMemberByEmail, inviteMember, markMemberInvited, setSelectedMemberId, setTrainerTab]);
 
   useEffect(() => {
-    if (!openCustomerMessagesSignal) return;
+    const signal = openCustomerMessagesSignal;
+    if (signal <= prevOpenCustomerMessagesSignalRef.current) return;
+    prevOpenCustomerMessagesSignalRef.current = signal;
     setTrainerTab("customers");
     setCustomerSubTab("messages");
     if (memberFilter === "unreadMessages") setMemberFilter("all");
@@ -2078,7 +2081,7 @@ function pickFirstName(value: unknown): string {
     if (firstWithUnread) {
       setSelectedMemberId(firstWithUnread.id);
     }
-  }, [openCustomerMessagesSignal, visibleMembers, unreadMessagesByIdentityKey, memberFilter]);
+  }, [openCustomerMessagesSignal]);
 
   useEffect(() => {
     if (!openCustomerOverviewSignal) return;
