@@ -1,12 +1,15 @@
-import { PROGRAM_COVER_DISPLAY_ZOOM } from "./programImage";
+import {
+  PROGRAM_COVER_DISPLAY_ZOOM_MAX,
+  PROGRAM_COVER_DISPLAY_ZOOM_MIN,
+  PROGRAM_COVER_DISPLAY_ZOOM_SOFT,
+} from "./programImage";
 
 export type ImageFocalPoint = {
   focalX: number;
   focalY: number;
 };
 
-/** Litt over midten — mindre tom luft over motivet som standard. */
-export const DEFAULT_IMAGE_FOCAL_POINT: ImageFocalPoint = { focalX: 0.5, focalY: 0.4 };
+export const DEFAULT_IMAGE_FOCAL_POINT: ImageFocalPoint = { focalX: 0.5, focalY: 0.5 };
 
 function clampFocal01(value: number, fallback: number): number {
   if (!Number.isFinite(value)) return fallback;
@@ -56,17 +59,28 @@ export function imageObjectPositionFromSrc(src?: string | null): string {
 
 export type ProgramCustomCoverImageStyle = {
   objectFit: "cover";
+  objectPosition?: string;
   transform: string;
   transformOrigin: string;
 };
+
+/** 0 i midten, 1 ved fx/fy 0 eller 1 — styrer hvor mye zoom som trengs for kant-pan. */
+export function programCoverPanEdgeFactor(focalX: number, focalY: number): number {
+  return Math.min(1, Math.max(0, Math.max(Math.abs(focalX - 0.5), Math.abs(focalY - 0.5)) * 2));
+}
+
+export function programCoverPanScale(focalX: number, focalY: number): number {
+  const edge = programCoverPanEdgeFactor(focalX, focalY);
+  return PROGRAM_COVER_DISPLAY_ZOOM_MIN + edge * (PROGRAM_COVER_DISPLAY_ZOOM_MAX - PROGRAM_COVER_DISPLAY_ZOOM_MIN);
+}
 
 /** Prosent-translasjon ved fx/fy=0 eller 1 (ytterkant). */
 export function programCoverPanTranslatePercent(
   focalX: number,
   focalY: number,
-  zoom: number = PROGRAM_COVER_DISPLAY_ZOOM,
+  zoom?: number,
 ): { x: number; y: number } {
-  const scale = Number.isFinite(zoom) && zoom > 1 ? zoom : PROGRAM_COVER_DISPLAY_ZOOM;
+  const scale = Number.isFinite(zoom) && zoom && zoom > 1 ? zoom : programCoverPanScale(focalX, focalY);
   const range = ((scale - 1) / 2) * 100;
   return {
     x: (0.5 - focalX) * 2 * range,
@@ -74,19 +88,30 @@ export function programCoverPanTranslatePercent(
   };
 }
 
+function programCustomCoverObjectPosition(focalX: number, focalY: number): string {
+  return `${(focalX * 100).toFixed(1)}% ${(focalY * 100).toFixed(1)}%`;
+}
+
 /**
- * Panering via scale + translate (full rekkevidde til ytterkant; object-position alene holder ikke på hero).
+ * Midtstilt: hele motivet (ingen zoom). Mot kant: gradvis zoom + pan for å nå ytterkant.
  */
-export function programCustomCoverImageStyle(
-  src?: string | null,
-  zoom: number = PROGRAM_COVER_DISPLAY_ZOOM,
-): ProgramCustomCoverImageStyle {
+export function programCustomCoverImageStyle(src?: string | null): ProgramCustomCoverImageStyle {
   const { focalX, focalY } = parseImageFocalPointFromSrc(src);
-  const scale = Number.isFinite(zoom) && zoom > 1 ? zoom : PROGRAM_COVER_DISPLAY_ZOOM;
+  const scale = programCoverPanScale(focalX, focalY);
+
+  if (scale < PROGRAM_COVER_DISPLAY_ZOOM_SOFT) {
+    return {
+      objectFit: "cover",
+      objectPosition: programCustomCoverObjectPosition(focalX, focalY),
+      transform: "none",
+      transformOrigin: "50% 50%",
+    };
+  }
+
   const { x, y } = programCoverPanTranslatePercent(focalX, focalY, scale);
   return {
     objectFit: "cover",
-    transform: `scale(${scale}) translate(${x.toFixed(2)}%, ${y.toFixed(2)}%)`,
+    transform: `scale(${scale.toFixed(3)}) translate(${x.toFixed(2)}%, ${y.toFixed(2)}%)`,
     transformOrigin: "50% 50%",
   };
 }

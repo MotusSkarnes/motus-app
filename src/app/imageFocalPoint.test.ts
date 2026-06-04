@@ -5,7 +5,6 @@ import {
   parseImageFocalPointFromSrc,
   programCustomCoverImageStyle,
 } from "./imageFocalPoint";
-import { PROGRAM_COVER_DISPLAY_ZOOM } from "./programImage";
 
 describe("imageFocalPoint", () => {
   it("parses fx/fy from program cover URL", () => {
@@ -29,15 +28,24 @@ describe("imageFocalPoint", () => {
     expect(imageObjectPositionFromSrc("https://x/hero.jpg?fx=0.5&fy=0.32")).toBe("50.0% 32.0%");
   });
 
-  it("uses scale + translate for custom program cover pan", () => {
+  it("shows full frame at center without zoom", () => {
+    expect(programCustomCoverImageStyle("https://x/hero.jpg?fx=0.5&fy=0.5")).toEqual({
+      objectFit: "cover",
+      objectPosition: "50.0% 50.0%",
+      transform: "none",
+      transformOrigin: "50% 50%",
+    });
+  });
+
+  it("zooms and translates toward edges for corner pan", () => {
     expect(programCustomCoverImageStyle("https://x/hero.jpg?fx=0&fy=0")).toEqual({
       objectFit: "cover",
-      transform: `scale(${PROGRAM_COVER_DISPLAY_ZOOM}) translate(41.00%, -41.00%)`,
+      transform: "scale(1.360) translate(18.00%, -18.00%)",
       transformOrigin: "50% 50%",
     });
     expect(programCustomCoverImageStyle("https://x/hero.jpg?fx=1&fy=1")).toEqual({
       objectFit: "cover",
-      transform: `scale(${PROGRAM_COVER_DISPLAY_ZOOM}) translate(-41.00%, 41.00%)`,
+      transform: "scale(1.360) translate(-18.00%, 18.00%)",
       transformOrigin: "50% 50%",
     });
   });

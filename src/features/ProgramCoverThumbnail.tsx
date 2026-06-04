@@ -62,7 +62,7 @@ export function ProgramCoverThumbnail({ src, alt = "", className = "", onFocalPo
           </label>
           <label className="block space-y-1" htmlFor={`${controlId}-fy`}>
             <span className="flex justify-between text-[10px] text-slate-500">
-              <span>Opp (0 %) – ned (100 %)</span>
+              <span>Opp – ned</span>
               <span>{Math.round(focal.focalY * 100)}%</span>
             </span>
             <input
@@ -76,7 +76,8 @@ export function ProgramCoverThumbnail({ src, alt = "", className = "", onFocalPo
             />
           </label>
           <p className="text-[10px] leading-relaxed text-slate-500">
-            Samme utsnitt brukes på kundens programkort. Husk å lagre programmet etter justering.
+            Midtstilt visning uten innzoom. Mot kant zoomes det litt for å nå ytterkant. Lagre programmet etter justering.
+            Last opp på nytt for mest panerom.
           </p>
         </div>
       ) : (
