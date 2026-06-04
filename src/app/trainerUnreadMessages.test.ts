@@ -1,6 +1,12 @@
 import { describe, expect, it } from "vitest";
 import type { Member } from "./types";
-import { buildUnreadMessagesByIdentityKey, memberIdentityKey, unreadCountForMember } from "./trainerUnreadMessages";
+import {
+  buildUnreadMessagesByIdentityKey,
+  chatMessageMemberIdMatchesRoster,
+  memberIdentityKey,
+  rosterMemberChatMemberIds,
+  unreadCountForMember,
+} from "./trainerUnreadMessages";
 
 const member: Member = {
   id: "member-uuid",
@@ -31,5 +37,10 @@ describe("trainerUnreadMessages", () => {
   it("maps unread counts when alert memberId is email", () => {
     const map = buildUnreadMessagesByIdentityKey([member], { "kari@example.com": 1 });
     expect(unreadCountForMember(member, map)).toBe(1);
+  });
+
+  it("matches chat rows stored with email when roster id is used", () => {
+    const keys = rosterMemberChatMemberIds([member], "member-uuid");
+    expect(chatMessageMemberIdMatchesRoster(keys, "kari@example.com")).toBe(true);
   });
 });

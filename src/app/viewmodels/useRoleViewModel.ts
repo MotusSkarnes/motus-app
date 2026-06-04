@@ -71,6 +71,7 @@ export function useRoleViewModel(state: AppStateHookResult): RoleViewModel {
     handleTrainerBellToggle,
     handleMemberBellToggle,
     markMemberMessagesAsRead,
+    markTrainerMessagesReadForMember,
     markAllTrainerAlertsAsRead,
     markAllMemberAlertsAsRead,
     openTrainerAlert,
@@ -201,6 +202,16 @@ export function useRoleViewModel(state: AppStateHookResult): RoleViewModel {
     showTrainerNotifications: layoutRole === "trainer",
   });
 
+  const sendTrainerMessage = useCallback(
+    (memberId: string, text: string) => {
+      state.sendTrainerMessage(memberId, text);
+      if (text.trim()) {
+        markTrainerMessagesReadForMember(memberId);
+      }
+    },
+    [markTrainerMessagesReadForMember, state.sendTrainerMessage],
+  );
+
   const trainerUnreadMessagesByMemberId = useMemo(() => {
     const counts: Record<string, number> = {};
     trainerVisibleAlerts.forEach((alert) => {
@@ -233,7 +244,7 @@ export function useRoleViewModel(state: AppStateHookResult): RoleViewModel {
     restoreOriginalExerciseBank: state.restoreOriginalExerciseBank,
     saveProgramForMember: state.saveProgramForMember,
     deleteProgramById: state.deleteProgramById,
-    sendTrainerMessage: state.sendTrainerMessage,
+    sendTrainerMessage,
     toggleChatMessageReaction: state.toggleChatMessageReaction,
     markChatConversationRead: state.markChatConversationRead,
     updateWorkoutLogTrainerComment: state.updateWorkoutLogTrainerComment,

@@ -11,6 +11,7 @@ import {
 } from "./inspirationStorage";
 import { trainerInactiveDaysForFollowUp } from "./memberActivity";
 import { memberIdentityKey, rosterMembersMissingInvite } from "./memberInviteStatus";
+import { chatMessageMemberIdMatchesRoster, rosterMemberChatMemberIds } from "./trainerUnreadMessages";
 import { buildMemberFormTrainerAlerts } from "./memberFormTrainerAlerts";
 import {
   buildCheckInNotificationCopy,
@@ -915,6 +916,24 @@ export function useNotifications({
     setMemberAlertsSeenAt((prev) => Math.max(prev, latestTimestamp));
   }, [memberTrainerMessages]);
 
+  const markTrainerMessagesReadForMember = useCallback(
+    (rosterMemberId: string) => {
+      const memberKeys = rosterMemberChatMemberIds(members, rosterMemberId);
+      if (!memberKeys.size) return;
+      const timestamps = messages
+        .filter(
+          (message) =>
+            message.sender === "member" &&
+            message.text.trim().length > 0 &&
+            chatMessageMemberIdMatchesRoster(memberKeys, message.memberId),
+        )
+        .map((message, index) => parseTimestamp(message.createdAt, index + 1));
+      if (!timestamps.length) return;
+      setTrainerAlertsSeenAt((prev) => Math.max(prev, ...timestamps));
+    },
+    [members, messages],
+  );
+
   const markAllTrainerAlertsAsRead = useCallback(() => {
     if (!trainerUnreadAlerts.length) return;
 
@@ -1275,6 +1294,7 @@ export function useNotifications({
     handleTrainerBellToggle,
     handleMemberBellToggle,
     markMemberMessagesAsRead,
+    markTrainerMessagesReadForMember,
     markAllTrainerAlertsAsRead,
     markAllMemberAlertsAsRead,
     openTrainerAlert,

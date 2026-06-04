@@ -226,6 +226,57 @@ describe("useNotifications workout comment alerts", () => {
     expect(result.current.trainerVisibleAlerts[0]?.isUnread).toBe(false);
   });
 
+  it("clears unread trainer message badge for a member after markTrainerMessagesReadForMember", async () => {
+    const members = [
+      { id: "member-1", name: "Kari", email: "kari@example.com", invitedAt: "2026-01-01" } as never,
+    ];
+    const messages = [
+      {
+        id: "msg-1",
+        memberId: "member-1",
+        sender: "member" as const,
+        text: "Hei trener",
+        createdAt: "2026-05-15T12:00:00.000Z",
+      },
+    ];
+
+    const { result, rerender } = renderHook((props) => useNotifications(props), {
+      initialProps: {
+        messages: [],
+        programs: [],
+        logs: [],
+        members,
+        memberViewId: "member-1",
+        setMemberTab: () => {},
+        currentUserRole: "trainer" as const,
+      },
+    });
+
+    await waitFor(() => {
+      expect(window.localStorage.getItem("motus.notifications.trainerBaselineAt")).toBeTruthy();
+    });
+
+    rerender({
+      messages,
+      programs: [],
+      logs: [],
+      members,
+      memberViewId: "member-1",
+      currentUserRole: "trainer",
+      setMemberTab: () => {},
+    });
+
+    await waitFor(() => {
+      expect(result.current.trainerUnreadMessageCount).toBe(1);
+    });
+
+    act(() => {
+      result.current.markTrainerMessagesReadForMember("member-1");
+    });
+
+    expect(result.current.trainerUnreadMessageCount).toBe(0);
+  });
+
   it("keeps operational alerts read after opening even when roster changes", () => {
     window.localStorage.setItem("motus.notifications.trainerBaselineAt", "1");
     const members = [

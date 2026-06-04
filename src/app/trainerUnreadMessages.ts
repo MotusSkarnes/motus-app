@@ -37,3 +37,27 @@ export function unreadCountForMember(
 ): number {
   return unreadByIdentityKey.get(memberIdentityKey(member)) ?? 0;
 }
+
+/** memberId-verdier på chat-rader som hører til denne klienten i listen. */
+export function rosterMemberChatMemberIds(members: Member[], rosterMemberId: string): Set<string> {
+  const trimmed = rosterMemberId.trim();
+  if (!trimmed) return new Set();
+  const keys = new Set<string>([trimmed]);
+  const lower = trimmed.toLowerCase();
+  for (const member of members) {
+    const id = member.id.trim();
+    const email = member.email.trim().toLowerCase();
+    if (id === trimmed || email === lower || email === trimmed) {
+      if (id) keys.add(id);
+      if (email) keys.add(email);
+    }
+  }
+  return keys;
+}
+
+export function chatMessageMemberIdMatchesRoster(keys: Set<string>, messageMemberId: string): boolean {
+  const normalized = messageMemberId.trim();
+  if (!normalized) return false;
+  if (keys.has(normalized)) return true;
+  return keys.has(normalized.toLowerCase());
+}
