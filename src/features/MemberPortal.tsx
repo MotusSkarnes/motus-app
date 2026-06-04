@@ -6962,7 +6962,7 @@ export function MemberPortal(props: MemberPortalProps) {
                     <p className="motus-training-hero-label">Gruppetrening</p>
                     <h2 className="motus-training-hero-title">Logg gruppetrening</h2>
                     <p className="motus-training-hero-meta">
-                      Registrer gruppetimer slik at PT ser all aktivitet. Velg annen dato hvis du glemte å logge.
+                      Logg timer for PT. Du kan også velge en annen dato hvis du glemte å logge.
                     </p>
                     <div className="motus-training-hero-cta">
                       <TrainingStartButton
