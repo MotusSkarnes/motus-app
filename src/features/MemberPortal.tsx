@@ -36,8 +36,9 @@ import motusSkrytekortLogo from "../assets/motus-skrytekort-logo.png";
 import { formatDateDdMmYyyy, parseStoredLogDate, resolveWorkoutLogDateTime, storedLogDatesMatch } from "../app/dateFormat";
 import { memberBadgeImageSrc } from "../app/badgeAssets";
 import { resolveExerciseImageSrc } from "../app/exerciseIllustrations";
-import { imageObjectPositionFromSrc } from "../app/imageFocalPoint";
+import { imageObjectPositionFromSrc, programCustomCoverImageStyle } from "../app/imageFocalPoint";
 import {
+  PROGRAM_COVER_DISPLAY_VERTICAL_ZOOM,
   programCoverUsesPhotoStyle,
   resolveGroupWorkoutCoverImage,
   resolveNoPlanDayCoverImage,
@@ -6624,15 +6625,30 @@ export function MemberPortal(props: MemberPortalProps) {
 	                        className="motus-member-program-card motus-card overflow-hidden"
 	                      >
 	                        <div className="motus-member-program-layout">
-	                        <div className="motus-member-program-thumb motus-image-frame">
+	                        <div
+	                          className="motus-member-program-thumb motus-image-frame"
+	                          style={
+	                            programUsesCustomCover
+	                              ? ({ ["--motus-program-cover-vzoom"]: String(PROGRAM_COVER_DISPLAY_VERTICAL_ZOOM) } as React.CSSProperties)
+	                              : undefined
+	                          }
+	                        >
 	                          {programCoverSrc ? (
 	                            <img
 	                              src={programCoverSrc}
 	                              alt=""
-	                              className={`motus-member-program-cover motus-image-media${programUsesCustomCover ? "" : " motus-member-program-cover--exercise"}`}
+	                              className={`motus-member-program-cover motus-image-media${
+	                                programUsesCustomCover
+	                                  ? " motus-member-program-cover--custom"
+	                                  : " motus-member-program-cover--exercise"
+	                              }`}
 	                              loading="lazy"
 	                              decoding="async"
-	                              style={{ objectPosition: imageObjectPositionFromSrc(programCoverSrc) }}
+	                              style={
+	                                programUsesCustomCover
+	                                  ? programCustomCoverImageStyle(program.imageUrl ?? programCoverSrc)
+	                                  : { objectPosition: imageObjectPositionFromSrc(programCoverSrc) }
+	                              }
 	                            />
 	                          ) : (
 	                            <div className="motus-member-program-thumb-fallback" aria-hidden />

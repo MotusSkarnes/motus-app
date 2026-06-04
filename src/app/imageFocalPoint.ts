@@ -50,3 +50,8 @@ export function imageObjectPositionFromSrc(src?: string | null): string {
   const y = focalY * 100;
   return `${x.toFixed(1)}% ${y.toFixed(1)}%`;
 }
+
+/** Inline-stil for egendefinert programforside (fy-glidebryter + vertikal zoom i CSS-klasse). */
+export function programCustomCoverImageStyle(src?: string | null): { objectPosition: string } {
+  return { objectPosition: imageObjectPositionFromSrc(src) };
+}

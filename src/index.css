@@ -3930,6 +3930,17 @@ button.motus-progress-status-banner {
   height: 100%;
 }
 
+/* Egendefinert forside: høyere bildeelement → object-position (fy) kan flytte utsnitt opp/ned. */
+.motus-member-program-thumb .motus-member-program-cover--custom.motus-image-media {
+  top: 0;
+  right: 0;
+  bottom: auto;
+  left: 0;
+  width: 100%;
+  height: calc(100% * var(--motus-program-cover-vzoom, 1.34));
+  max-height: none;
+}
+
 .motus-member-program-cover--exercise {
   object-position: center top;
 }

@@ -1,11 +1,12 @@
-import { useId, useMemo } from "react";
+import { useId, useMemo, type CSSProperties } from "react";
 import { resolveProgramCoverDisplayUrl } from "../app/programImage";
 import {
   applyImageFocalPointToSrc,
-  imageObjectPositionFromSrc,
   parseImageFocalPointFromSrc,
+  programCustomCoverImageStyle,
   type ImageFocalPoint,
 } from "../app/imageFocalPoint";
+import { PROGRAM_COVER_DISPLAY_VERTICAL_ZOOM } from "../app/programImage";
 
 type ProgramCoverThumbnailProps = {
   src: string;
@@ -34,12 +35,19 @@ export function ProgramCoverThumbnail({ src, alt = "", className = "", onFocalPo
 
   return (
     <div className={`motus-program-cover-trainer-preview ${className}`.trim()}>
-      <div className="motus-member-program-thumb motus-image-frame">
+      <div
+        className="motus-member-program-thumb motus-image-frame"
+        style={
+          {
+            ["--motus-program-cover-vzoom"]: String(PROGRAM_COVER_DISPLAY_VERTICAL_ZOOM),
+          } as CSSProperties
+        }
+      >
         <img
           src={displaySrc}
           alt={alt}
-          className="motus-member-program-cover motus-image-media"
-          style={{ objectPosition: imageObjectPositionFromSrc(src) }}
+          className="motus-member-program-cover motus-member-program-cover--custom motus-image-media"
+          style={programCustomCoverImageStyle(src)}
         />
       </div>
       {onFocalPointChange ? (
@@ -76,8 +84,8 @@ export function ProgramCoverThumbnail({ src, alt = "", className = "", onFocalPo
             />
           </label>
           <p className="text-[10px] leading-relaxed text-slate-500">
-            Samme utsnitt brukes på kundens programkort. Husk å lagre programmet etter justering. Eldre bilder kan ha mindre
-            spillerom — last opp på nytt for mest fleksibilitet.
+            Samme utsnitt brukes på kundens programkort. Husk å lagre programmet etter justering. Last opp bildet på nytt hvis
+            opp–ned har lite effekt.
           </p>
         </div>
       ) : (
