@@ -1,9 +1,11 @@
 import { uid } from "./storage";
+import { applyImageFocalPointToSrc, DEFAULT_IMAGE_FOCAL_POINT } from "./imageFocalPoint";
 import {
   ALLOWED_PROGRAM_IMAGE_TYPES,
   MAX_PROGRAM_IMAGE_BYTES,
   MEMBER_PROGRAM_THUMB_ASPECT,
   MEMBER_PROGRAM_THUMB_PREVIEW_WIDTH_PX,
+  PROGRAM_COVER_HERO_FOCAL_BLEED,
   PROGRAM_IMAGE_BUCKET,
   PROGRAM_IMAGE_PREFIX,
 } from "./programImage";
@@ -22,7 +24,9 @@ type ProgramImageVariant = {
 export const PRIMARY_PROGRAM_COVER_VARIANT = "hero" as const;
 
 const HERO_COVER_WIDTH = 1580;
-const HERO_COVER_HEIGHT = Math.round(HERO_COVER_WIDTH / MEMBER_PROGRAM_THUMB_ASPECT);
+const HERO_COVER_HEIGHT = Math.round(
+  (HERO_COVER_WIDTH / MEMBER_PROGRAM_THUMB_ASPECT) * PROGRAM_COVER_HERO_FOCAL_BLEED,
+);
 
 const PROGRAM_IMAGE_VARIANTS: ProgramImageVariant[] = [
   { key: "hero", width: HERO_COVER_WIDTH, height: HERO_COVER_HEIGHT },
@@ -121,11 +125,6 @@ async function createCroppedImageFile(
   return new File([blob], `motus-${variant.key}.jpg`, { type: "image/jpeg" });
 }
 
-function appendFocalPointToUrl(url: string, focalPoint: FocalPoint): string {
-  const separator = url.includes("?") ? "&" : "?";
-  return `${url}${separator}fx=${focalPoint.focalX.toFixed(3)}&fy=${focalPoint.focalY.toFixed(3)}`;
-}
-
 export async function uploadProgramCoverImage(
   file: File,
   upload: (path: string, file: File, options: { cacheControl: string; upsert: boolean }) => Promise<{ error: { message: string } | null }>,
@@ -157,7 +156,7 @@ export async function uploadProgramCoverImage(
     if (!primaryPublicUrl) {
       return { ok: false, message: "Mangler offentlig URL for opplastet bilde." };
     }
-    return { ok: true, publicUrl: appendFocalPointToUrl(primaryPublicUrl, focalPoint) };
+    return { ok: true, publicUrl: applyImageFocalPointToSrc(primaryPublicUrl, focalPoint) };
   } catch {
     const extension = file.name.split(".").pop()?.toLowerCase() || "jpg";
     const imagePath = `${PROGRAM_IMAGE_PREFIX}/${imageId}.${extension}`;
@@ -169,7 +168,7 @@ export async function uploadProgramCoverImage(
     if (!publicUrl) {
       return { ok: false, message: "Mangler offentlig URL for opplastet bilde." };
     }
-    return { ok: true, publicUrl: appendFocalPointToUrl(publicUrl, { focalX: 0.5, focalY: 0.32 }) };
+    return { ok: true, publicUrl: applyImageFocalPointToSrc(publicUrl, DEFAULT_IMAGE_FOCAL_POINT) };
   }
 }
 
