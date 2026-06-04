@@ -53,11 +53,14 @@ export function FoodLogFormFields({ onSubmit, submitLabel = "Logg", compact = fa
   );
 
   useEffect(() => {
-    if (!selectedFood) return;
-    const mode = defaultMeasureModeForFood(selectedFood);
+    if (!selectedFoodId) return;
+    const food = foodItems.find((item) => item.id === selectedFoodId);
+    if (!food) return;
+    const mode = defaultMeasureModeForFood(food);
     setMeasureMode(mode);
-    setQuantityInput(mode === "portion" ? "1" : String(defaultPortionGramsForFood(selectedFood)));
-  }, [selectedFood]);
+    setQuantityInput(mode === "portion" ? "1" : String(defaultPortionGramsForFood(food)));
+    // Kun ved ny matvare — ikke når matvarebanken synkes (nytt objekt, samme id).
+  }, [selectedFoodId]);
 
   const previewGrams = useMemo(() => {
     if (!selectedFood) return 0;
