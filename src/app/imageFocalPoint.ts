@@ -5,7 +5,8 @@ export type ImageFocalPoint = {
   focalY: number;
 };
 
-export const DEFAULT_IMAGE_FOCAL_POINT: ImageFocalPoint = { focalX: 0.5, focalY: 0.32 };
+/** Litt over midten — mindre tom luft over motivet som standard. */
+export const DEFAULT_IMAGE_FOCAL_POINT: ImageFocalPoint = { focalX: 0.5, focalY: 0.4 };
 
 function clampFocal01(value: number, fallback: number): number {
   if (!Number.isFinite(value)) return fallback;
@@ -59,8 +60,22 @@ export type ProgramCustomCoverImageStyle = {
   transformOrigin: string;
 };
 
+/** Prosent-translasjon ved fx/fy=0 eller 1 (ytterkant). */
+export function programCoverPanTranslatePercent(
+  focalX: number,
+  focalY: number,
+  zoom: number = PROGRAM_COVER_DISPLAY_ZOOM,
+): { x: number; y: number } {
+  const scale = Number.isFinite(zoom) && zoom > 1 ? zoom : PROGRAM_COVER_DISPLAY_ZOOM;
+  const range = ((scale - 1) / 2) * 100;
+  return {
+    x: (0.5 - focalX) * 2 * range,
+    y: (focalY - 0.5) * 2 * range,
+  };
+}
+
 /**
- * Panering via scale + transform-origin (object-position alene virker ikke på brede hero-bannere).
+ * Panering via scale + translate (full rekkevidde til ytterkant; object-position alene holder ikke på hero).
  */
 export function programCustomCoverImageStyle(
   src?: string | null,
@@ -68,9 +83,10 @@ export function programCustomCoverImageStyle(
 ): ProgramCustomCoverImageStyle {
   const { focalX, focalY } = parseImageFocalPointFromSrc(src);
   const scale = Number.isFinite(zoom) && zoom > 1 ? zoom : PROGRAM_COVER_DISPLAY_ZOOM;
+  const { x, y } = programCoverPanTranslatePercent(focalX, focalY, scale);
   return {
     objectFit: "cover",
-    transform: scale > 1 ? `scale(${scale})` : "none",
-    transformOrigin: `${(focalX * 100).toFixed(1)}% ${(focalY * 100).toFixed(1)}%`,
+    transform: `scale(${scale}) translate(${x.toFixed(2)}%, ${y.toFixed(2)}%)`,
+    transformOrigin: "50% 50%",
   };
 }

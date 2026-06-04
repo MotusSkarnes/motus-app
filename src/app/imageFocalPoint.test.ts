@@ -29,11 +29,16 @@ describe("imageFocalPoint", () => {
     expect(imageObjectPositionFromSrc("https://x/hero.jpg?fx=0.5&fy=0.32")).toBe("50.0% 32.0%");
   });
 
-  it("uses scale + transform-origin for custom program cover pan", () => {
-    expect(programCustomCoverImageStyle("https://x/hero.jpg?fx=0.2&fy=0.1")).toEqual({
+  it("uses scale + translate for custom program cover pan", () => {
+    expect(programCustomCoverImageStyle("https://x/hero.jpg?fx=0&fy=0")).toEqual({
       objectFit: "cover",
-      transform: `scale(${PROGRAM_COVER_DISPLAY_ZOOM})`,
-      transformOrigin: "20.0% 10.0%",
+      transform: `scale(${PROGRAM_COVER_DISPLAY_ZOOM}) translate(41.00%, -41.00%)`,
+      transformOrigin: "50% 50%",
+    });
+    expect(programCustomCoverImageStyle("https://x/hero.jpg?fx=1&fy=1")).toEqual({
+      objectFit: "cover",
+      transform: `scale(${PROGRAM_COVER_DISPLAY_ZOOM}) translate(-41.00%, 41.00%)`,
+      transformOrigin: "50% 50%",
     });
   });
 });

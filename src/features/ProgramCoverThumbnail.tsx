@@ -62,7 +62,7 @@ export function ProgramCoverThumbnail({ src, alt = "", className = "", onFocalPo
           </label>
           <label className="block space-y-1" htmlFor={`${controlId}-fy`}>
             <span className="flex justify-between text-[10px] text-slate-500">
-              <span>Opp – ned</span>
+              <span>Opp (0 %) – ned (100 %)</span>
               <span>{Math.round(focal.focalY * 100)}%</span>
             </span>
             <input

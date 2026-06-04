@@ -29,8 +29,8 @@ export const MEMBER_PROGRAM_THUMB_ASPECT =
   MEMBER_PROGRAM_THUMB_PREVIEW_WIDTH_PX / MEMBER_PROGRAM_THUMB_HEIGHT_PX;
 /** Hero lagres høyere enn kortets breddeformat — gir rom for opp/ned (fy) ved visning. */
 export const PROGRAM_COVER_HERO_FOCAL_BLEED = 1.38;
-/** Visning: zoom rundt fx/fy-punkt — gir panering opp/ned og venstre/høyre i klippet rute. */
-export const PROGRAM_COVER_DISPLAY_ZOOM = 1.4;
+/** Visning: zoom + pan — 0/100 på glidebrytere skal kunne nå ytterkant av bildet. */
+export const PROGRAM_COVER_DISPLAY_ZOOM = 1.82;
 
 const GROUP_WORKOUT_COVER_IMAGES: Record<string, string> = {
   smilepuls: SMILEPULS_COVER_IMAGE,

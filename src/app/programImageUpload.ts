@@ -65,7 +65,7 @@ async function loadImageBitmap(file: File): Promise<ImageBitmap | HTMLImageEleme
 }
 
 async function detectFocalPoint(image: ImageBitmap | HTMLImageElement): Promise<FocalPoint> {
-  const fallback = { focalX: 0.5, focalY: 0.32 };
+  const fallback = { focalX: 0.5, focalY: 0.5 };
   const maybeWindow = window as typeof window & {
     FaceDetector?: new (options?: { fastMode?: boolean; maxDetectedFaces?: number }) => {
       detect: (source: ImageBitmap | HTMLImageElement) => Promise<Array<{ boundingBox: DOMRectReadOnly }>>;
@@ -83,7 +83,7 @@ async function detectFocalPoint(image: ImageBitmap | HTMLImageElement): Promise<
     const height = "height" in image ? image.height : fallback.focalY;
     return {
       focalX: clamp01((face.x + face.width / 2) / width),
-      focalY: clamp01((face.y + face.height * 0.42) / height),
+      focalY: clamp01((face.y + face.height * 0.55) / height),
     };
   } catch {
     return fallback;
