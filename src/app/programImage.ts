@@ -27,11 +27,13 @@ export const MEMBER_PROGRAM_THUMB_HEIGHT_PX = 118;
 /** Bredde/høyde på kundens programkort-thumb — brukes ved opplasting. */
 export const MEMBER_PROGRAM_THUMB_ASPECT =
   MEMBER_PROGRAM_THUMB_PREVIEW_WIDTH_PX / MEMBER_PROGRAM_THUMB_HEIGHT_PX;
-/** Hero-lærred (hele bildet får plass — trener beskjærer med zoom/pan). */
+/** Hero-lærred: samme breddeformat som programkort (unngår ekstra beskjæring ved visning). */
 export const PROGRAM_COVER_HERO_CANVAS_WIDTH_PX = 1580;
 export const PROGRAM_COVER_HERO_CANVAS_HEIGHT_PX = Math.round(
-  (PROGRAM_COVER_HERO_CANVAS_WIDTH_PX / MEMBER_PROGRAM_THUMB_ASPECT) * 1.5,
+  PROGRAM_COVER_HERO_CANVAS_WIDTH_PX / MEMBER_PROGRAM_THUMB_ASPECT,
 );
+/** Tegn bilde litt mindre enn maks — hele motivet synlig + rom til pan ved 100 % zoom. */
+export const PROGRAM_COVER_HERO_CONTAIN_SCALE = 0.92;
 /** Zoom-glidebryter: 1 = hele opplastet bilde, høyere = innzoom. */
 export const PROGRAM_COVER_ZOOM_MIN = 1;
 export const PROGRAM_COVER_ZOOM_DEFAULT = 1;

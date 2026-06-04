@@ -5,6 +5,7 @@ import {
   MAX_PROGRAM_IMAGE_BYTES,
   PROGRAM_COVER_HERO_CANVAS_HEIGHT_PX,
   PROGRAM_COVER_HERO_CANVAS_WIDTH_PX,
+  PROGRAM_COVER_HERO_CONTAIN_SCALE,
   PROGRAM_IMAGE_BUCKET,
   PROGRAM_IMAGE_PREFIX,
 } from "./programImage";
@@ -91,7 +92,8 @@ async function createContainedHeroFile(
 ): Promise<File> {
   const sourceWidth = source.width;
   const sourceHeight = source.height;
-  const scale = Math.min(variant.width / sourceWidth, variant.height / sourceHeight);
+  const scale =
+    Math.min(variant.width / sourceWidth, variant.height / sourceHeight) * PROGRAM_COVER_HERO_CONTAIN_SCALE;
   const drawWidth = Math.round(sourceWidth * scale);
   const drawHeight = Math.round(sourceHeight * scale);
   const offsetX = Math.round((variant.width - drawWidth) / 2);
