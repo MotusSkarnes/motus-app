@@ -781,10 +781,6 @@ export function MemberMealPlanDashboard({ plan, memberId, onOpenAvoidances, onRe
             />
           </div>
         </div>
-        <div className="motus-matplan-water-chip" aria-label={`Vann totalt ${totalWaterTodayLiters.toFixed(1)} liter i dag`}>
-          <Droplets className="h-3.5 w-3.5" aria-hidden />
-          Vann totalt {totalWaterTodayLiters.toFixed(1)} L
-        </div>
         <MemberWaterIntakeSection
           memberId={memberId}
           foodItems={foodItems}

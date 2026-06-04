@@ -20,7 +20,7 @@ import { GradientButton } from "../../app/ui";
 import { sumQuickFoodLogMacros } from "../../app/quickFoodLogMacros";
 import { DailyLoggedMacrosSummary } from "./DailyLoggedMacrosSummary";
 import { MealDraftComposer } from "./MealDraftComposer";
-import { MemberWaterIntakeSection } from "./MemberWaterIntakeSection";
+import { computeTotalWaterLiters, MemberWaterIntakeSection } from "./MemberWaterIntakeSection";
 import "../../foodbank.css";
 
 type LogMealPanelProps = {
@@ -82,6 +82,10 @@ export function LogMealPanel({
   }, [memberId]);
 
   const macrosToday = useMemo(() => sumQuickFoodLogMacros(logsToday), [logsToday]);
+  const totalWaterTodayLiters = useMemo(
+    () => computeTotalWaterLiters(state, dateKey, foodItems),
+    [dateKey, foodItems, state],
+  );
   const logsBySlot = useMemo(() => {
     const grouped = new Map<string, MemberQuickFoodLogEntry[]>();
     for (const slot of MEMBER_MEAL_SLOTS) {
@@ -177,7 +181,12 @@ export function LogMealPanel({
   return (
     <div className="motus-log-meal-panel">
       {hasLogs && !hasMealPlan ? (
-        <DailyLoggedMacrosSummary macros={macrosToday} targets={mealPlanTargets} title="I dag totalt" />
+        <DailyLoggedMacrosSummary
+          macros={macrosToday}
+          targets={mealPlanTargets}
+          title="I dag totalt"
+          totalWaterLiters={totalWaterTodayLiters}
+        />
       ) : null}
 
       {hasLogs && !open ? (

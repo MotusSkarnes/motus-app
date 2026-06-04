@@ -2362,38 +2362,65 @@
   margin-top: 0.75rem;
 }
 
-.motus-matplan-water-controls {
-  margin-top: 0.8rem;
-  padding: 0.7rem 0.8rem;
-  border-radius: 0.85rem;
-  border: 1px solid #cbd5e1;
-  background: #f8fafc;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.6rem;
+.motus-water-intake {
+  padding: 0.9rem 1rem;
+  border-radius: 1rem;
+  border: 1px solid #99f6e4;
+  background: linear-gradient(135deg, #f0fdfa 0%, #ffffff 55%, #ecfeff 100%);
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
 }
 
-.motus-matplan-water-controls__title {
+.motus-water-intake__head {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+}
+
+.motus-water-intake__icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 0.65rem;
+  background: rgba(48, 227, 190, 0.15);
+  color: #0f766e;
+  flex-shrink: 0;
+}
+
+.motus-water-intake__title {
   margin: 0;
-  font-size: 0.78rem;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  color: #0f766e;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.motus-water-intake__total {
+  margin: 0.1rem 0 0;
+  font-size: 0.8125rem;
   font-weight: 700;
   color: #0f172a;
 }
 
-.motus-matplan-water-controls__hint {
-  margin: 0.15rem 0 0;
-  font-size: 0.7rem;
+.motus-water-intake__meta {
+  margin: 0.45rem 0 0;
+  padding-top: 0.45rem;
+  border-top: 1px solid rgba(153, 246, 228, 0.45);
+  font-size: 0.625rem;
   color: #64748b;
 }
 
-.motus-matplan-water-controls__actions {
+.motus-water-intake__actions {
+  margin-left: auto;
   display: inline-flex;
   align-items: center;
   gap: 0.35rem;
+  flex-shrink: 0;
 }
 
-.motus-matplan-water-controls__btn {
+.motus-water-intake__btn {
   width: 1.85rem;
   height: 1.85rem;
   border-radius: 999px;
@@ -2403,9 +2430,10 @@
   font-size: 1rem;
   font-weight: 700;
   line-height: 1;
+  cursor: pointer;
 }
 
-.motus-matplan-water-controls__btn--add {
+.motus-water-intake__btn--add {
   border-color: #99f6e4;
   background: #ccfbf1;
   color: #0f766e;
@@ -3511,6 +3539,24 @@
   font-size: 0.8125rem;
   font-weight: 700;
   color: #0f172a;
+}
+
+.motus-log-meal-macros__water {
+  margin: 0.55rem 0 0;
+  padding-top: 0.55rem;
+  border-top: 1px solid rgba(153, 246, 228, 0.5);
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #0f766e;
+}
+
+.motus-log-meal-macros__water-icon {
+  width: 0.875rem;
+  height: 0.875rem;
+  flex-shrink: 0;
 }
 
 .motus-log-meal-panel {

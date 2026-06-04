@@ -1,8 +1,9 @@
-import { Droplets, Dumbbell, Wheat } from "lucide-react";
+import { Droplets, Dumbbell, GlassWater, Wheat } from "lucide-react";
 import { formatMacro } from "../../app/foodBankTypes";
 import type { MacroTotals } from "../../app/mealPlanMacros";
 import type { MealPlanTargets } from "../../app/mealPlanTypes";
 import { DEFAULT_DAILY_KCAL_TARGET } from "../../app/nutritionReportDisplay";
+import { WATER_TARGET_L } from "./MemberWaterIntakeSection";
 import { MacroProgressRing } from "./MacroProgressRing";
 
 export { DEFAULT_DAILY_KCAL_TARGET } from "../../app/nutritionReportDisplay";
@@ -11,12 +12,16 @@ type DailyLoggedMacrosSummaryProps = {
   macros: MacroTotals;
   targets?: MealPlanTargets | null;
   title?: string;
+  totalWaterLiters?: number | null;
+  waterTargetLiters?: number;
 };
 
 export function DailyLoggedMacrosSummary({
   macros,
   targets,
   title = "I dag totalt",
+  totalWaterLiters = null,
+  waterTargetLiters = WATER_TARGET_L,
 }: DailyLoggedMacrosSummaryProps) {
   const kcal = Math.round(macros.kcal);
   const protein = Math.round(macros.protein);
@@ -61,6 +66,12 @@ export function DailyLoggedMacrosSummary({
           </li>
         </ul>
       </div>
+      {totalWaterLiters != null ? (
+        <p className="motus-log-meal-macros__water" aria-label={`Vann totalt ${totalWaterLiters.toFixed(1)} liter`}>
+          <GlassWater className="motus-log-meal-macros__water-icon" aria-hidden />
+          Vann {totalWaterLiters.toFixed(1)} / {waterTargetLiters} L
+        </p>
+      ) : null}
     </section>
   );
 }
