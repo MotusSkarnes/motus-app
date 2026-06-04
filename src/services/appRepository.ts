@@ -6,6 +6,7 @@ import {
   parseActivityNameFromLogTitle,
   parseGroupClassNameFromLogTitle,
 } from "../app/activityWorkoutLog";
+import { markWorkoutLogDeletedLocally } from "../app/workoutLogRemoteSeen";
 import { filterProgramExercisesAfterBankDelete } from "../app/exerciseBankUsage";
 import { isHoldBasedExerciseCategory } from "../app/exerciseCategories";
 import { prescriptionFieldsForExerciseSave } from "../app/exercisePrescriptionFields";
@@ -1264,6 +1265,7 @@ export function updateGroupWorkoutLogInState(state: AppState, input: UpdateGroup
 export function deleteWorkoutLogInState(state: AppState, input: DeleteWorkoutLogInput): AppState {
   const logId = input.logId.trim();
   if (!logId) return state;
+  markWorkoutLogDeletedLocally(logId);
   return {
     ...state,
     logs: state.logs.filter((log) => log.id !== logId),

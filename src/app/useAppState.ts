@@ -65,6 +65,10 @@ import {
   unregisterDeletedProgram,
 } from "./deletedProgramTombstones";
 import {
+  markWorkoutLogsSeenInRemote,
+  wasWorkoutLogSeenInRemote,
+} from "./workoutLogRemoteSeen";
+import {
   enrichMemberWithBestProfile,
   mergePersonalGoalsFromCandidates,
   pickBestMemberDisplayName,
@@ -480,11 +484,13 @@ function mergeRemoteWorkoutLogsWithLocalOptimistic(
     const id = log.id.trim();
     if (id) byId.set(id, log);
   }
+  markWorkoutLogsSeenInRemote(remoteLogs.map((log) => log.id));
 
   for (const localLog of localLogs) {
     const id = localLog.id.trim();
     if (!id || byId.has(id)) continue;
     if (!visibleMemberIds.has(localLog.memberId.trim())) continue;
+    if (wasWorkoutLogSeenInRemote(id)) continue;
     const dateMs = workoutLogDateMs(localLog);
     if (!dateMs) continue;
     const ageMs = nowMs - dateMs;

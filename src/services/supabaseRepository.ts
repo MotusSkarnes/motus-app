@@ -54,6 +54,11 @@ import {
   programIsInMemberArchive,
 } from "../app/programBlocks";
 import { isContaminatedDemoMemberProfile } from "../app/memberLocalCatalog";
+import {
+  markWorkoutLogSeenInRemote,
+  markWorkoutLogsSeenInRemote,
+  wasWorkoutLogSeenInRemote,
+} from "../app/workoutLogRemoteSeen";
 import { mealPlanFromRow } from "../app/mealPlanCloud";
 import { parseMemberMealPlanState, type MemberMealPlanState } from "../app/memberMealPlanState";
 import type { MealPlan } from "../app/mealPlanTypes";
@@ -1307,7 +1312,24 @@ export async function syncMemberLocalCatalogToSupabase(state: AppState): Promise
   }
 
   const localLogs = state.logs.filter((log) => memberIds.has(log.memberId.trim()));
+  const remoteLogIds = new Set<string>();
+  if (supabaseClient && memberIds.size > 0) {
+    const { data: remoteRows } = await supabaseClient
+      .from("workout_logs")
+      .select("id")
+      .in("member_id", Array.from(memberIds));
+    for (const row of remoteRows ?? []) {
+      const id = String((row as { id?: string }).id ?? "").trim();
+      if (id) remoteLogIds.add(id);
+    }
+    markWorkoutLogsSeenInRemote(remoteLogIds);
+  }
+
   for (const log of localLogs) {
+    const logId = log.id.trim();
+    if (wasWorkoutLogSeenInRemote(logId) && !remoteLogIds.has(logId)) {
+      continue;
+    }
     const persisted = await persistWorkoutLog(
       { ...log, memberId: canonicalMemberId },
       { targetEmail: sessionEmail },
@@ -2719,11 +2741,13 @@ async function persistWorkoutLogInner(log: WorkoutLog, hints?: PersistWorkoutLog
 }
 
 async function persistWorkoutLog(log: WorkoutLog, hints?: PersistWorkoutLogHints): Promise<PersistResult> {
-  return promiseWithTimeout(
+  const result = await promiseWithTimeout(
     persistWorkoutLogInner(log, hints),
     WORKOUT_LOG_TOTAL_TIMEOUT_MS,
     { ok: false, message: "Lagring tok for lang tid. Trekk ned for å oppdatere appen og prøv igjen." },
   );
+  if (result.ok) markWorkoutLogSeenInRemote(log.id);
+  return result;
 }
 
 async function deleteLogsForProgram(memberId: string, programTitle: string) {
