@@ -35,20 +35,13 @@ describe("memberSavedMeals", () => {
     expect(parsed[0]?.items).toHaveLength(1);
   });
 
-  it("filters by slot including generic meals", () => {
-    const generic = createSavedMealFromQuickLogs([entry("member-frokost")], "Snack", undefined);
+  it("returns all saved meals regardless of active slot", () => {
     const frokost = createSavedMealFromQuickLogs([entry("member-frokost")], "Frokost", "member-frokost");
     const lunsj = createSavedMealFromQuickLogs([entry("member-lunsj")], "Lunsj", "member-lunsj");
-    const forFrokost = savedMealsForSlot([generic, frokost, lunsj], "member-frokost");
-    expect(forFrokost.map((m) => m.name).sort()).toEqual(["Frokost", "Snack"].sort());
-  });
-
-  it("matches PT matplan meal ids when logging under member-lunsj", () => {
-    const fromPlan = createSavedMealFromQuickLogs([entry("meal-0-lunsj")], "Min lunsj", "meal-0-lunsj");
-    const fromLog = createSavedMealFromQuickLogs([entry("member-lunsj")], "Lunsj 2", "member-lunsj");
-    const forLunsj = savedMealsForSlot([fromPlan, fromLog], "member-lunsj");
-    expect(forLunsj.map((m) => m.name).sort()).toEqual(["Lunsj 2", "Min lunsj"].sort());
-    expect(forLunsj.every((m) => m.mealSlotId === "member-lunsj")).toBe(true);
+    const forLunsj = savedMealsForSlot([frokost, lunsj], "member-lunsj");
+    const forFrokost = savedMealsForSlot([frokost, lunsj], "member-frokost");
+    expect(forLunsj.map((m) => m.name).sort()).toEqual(["Frokost", "Lunsj"].sort());
+    expect(forFrokost.map((m) => m.name).sort()).toEqual(forLunsj.map((m) => m.name).sort());
   });
 
   it("creates quick log entries for apply", () => {

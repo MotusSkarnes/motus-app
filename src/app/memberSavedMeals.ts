@@ -1,4 +1,4 @@
-import { canonicalMemberMealSlotId, memberMealSlotsMatch } from "./memberMealSlots";
+import { canonicalMemberMealSlotId } from "./memberMealSlots";
 import type { MemberQuickFoodLogEntry } from "./memberMealPlanState";
 
 export type MemberSavedMealItem = {
@@ -78,8 +78,9 @@ export function mergeMemberSavedMeals(a: MemberSavedMeal[], b: MemberSavedMeal[]
   return [...byId.values()].sort((x, y) => Date.parse(y.updatedAt) - Date.parse(x.updatedAt));
 }
 
-export function savedMealsForSlot(savedMeals: MemberSavedMeal[], mealSlotId: string): MemberSavedMeal[] {
-  return savedMeals.filter((meal) => memberMealSlotsMatch(meal.mealSlotId, meal.name, mealSlotId));
+/** Alle lagrede måltider — samme mat kan hentes inn uansett valgt måltid (frokost/lunsj osv.). */
+export function savedMealsForSlot(savedMeals: MemberSavedMeal[], _mealSlotId?: string): MemberSavedMeal[] {
+  return [...savedMeals].sort((a, b) => Date.parse(b.updatedAt) - Date.parse(a.updatedAt));
 }
 
 export function createSavedMealFromQuickLogs(

@@ -93,6 +93,9 @@ export function MealDraftComposer({
             <Bookmark className="h-4 w-4" aria-hidden />
             Lagrede måltider
           </h3>
+          <p className="motus-saved-meals__lead text-[10px] text-slate-500">
+            Alle dine lagrede måltider — logges til {slotLabel.toLowerCase()} når du trykker «Hent inn» eller «Logg måltid».
+          </p>
           <ul className="motus-saved-meals__list">
             {slotSavedMeals.map((meal) => {
               const macros = sumQuickFoodLogMacros(
@@ -111,6 +114,7 @@ export function MealDraftComposer({
                     <p className="motus-saved-meals__item-name">{meal.name}</p>
                     <p className="motus-saved-meals__item-meta">
                       {meal.items.length} {meal.items.length === 1 ? "vare" : "varer"} · {formatMacro(macros.kcal, 0)} kcal
+                      {meal.mealSlotId ? ` · ${memberMealSlotLabel(meal.mealSlotId)}` : ""}
                     </p>
                   </div>
                   <div className="motus-saved-meals__item-actions">
