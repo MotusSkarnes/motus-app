@@ -5,12 +5,15 @@ import {
   SENIORS_GROUP_COVER_IMAGE,
   STRENGTH_TRAINING_COVER_IMAGE,
   mergeProgramImageUrl,
+  pickProgramImageUrlAfterServerSync,
+  pickProgramImageUrlFromDuplicateMerge,
   programCoverUsesPhotoStyle,
+  resolveFirstProgramCoverExercise,
   resolveGroupWorkoutCoverImage,
   resolveProgramImageSrc,
 } from "./programImage";
 import { RUNNER_STRENGTH_COVER_IMAGE, RUNNER_MOBILITY_COVER_IMAGE, SUB60_PROGRAM_TITLES } from "./inspirationRunningPlans";
-import type { Exercise, TrainingProgram } from "./types";
+import type { Exercise, ProgramExercise, TrainingProgram } from "./types";
 
 const strengthExercise: Pick<Exercise, "id" | "imageUrl" | "category" | "group" | "name"> = {
   id: "e1",
@@ -43,6 +46,35 @@ describe("mergeProgramImageUrl", () => {
   });
 });
 
+describe("program image sync merge", () => {
+  it("does not resurrect deleted cover from local cache", () => {
+    const remote = { imageUrl: undefined } satisfies Pick<TrainingProgram, "imageUrl">;
+    const local = { imageUrl: "https://cdn.example/old.png" };
+    expect(pickProgramImageUrlAfterServerSync(remote)).toBeUndefined();
+    expect(mergeProgramImageUrl(local.imageUrl, remote.imageUrl)).toBe("https://cdn.example/old.png");
+  });
+
+  it("keeps only newer duplicate program cover", () => {
+    const newer = { imageUrl: undefined } satisfies Pick<TrainingProgram, "imageUrl">;
+    const older = { imageUrl: "https://cdn.example/old.png" };
+    expect(pickProgramImageUrlFromDuplicateMerge(newer)).toBeUndefined();
+    expect(pickProgramImageUrlFromDuplicateMerge(older)).toBe("https://cdn.example/old.png");
+  });
+});
+
+describe("resolveFirstProgramCoverExercise", () => {
+  it("uses first program exercise in order", () => {
+    const program: Pick<TrainingProgram, "exercises"> = {
+      exercises: [
+        { exerciseId: "missing" } as ProgramExercise,
+        { exerciseId: "e2" } as ProgramExercise,
+      ],
+    };
+    const exercises = [strengthExercise, cardioExercise];
+    expect(resolveFirstProgramCoverExercise(program, exercises)?.id).toBe("e2");
+  });
+});
+
 describe("resolveProgramImageSrc", () => {
   it("prefers custom program cover", () => {
     expect(
@@ -50,10 +82,14 @@ describe("resolveProgramImageSrc", () => {
     ).toBe("/program-covers/custom.png");
   });
 
-  it("uses strength default cover for styrkeprogrammer", () => {
+  it("uses first exercise cover for styrkeprogrammer uten eget forsidebilde", () => {
     expect(resolveProgramImageSrc(program(), strengthExercise, { subTab: "strength" })).toBe(
-      STRENGTH_TRAINING_COVER_IMAGE,
+      "/exercises/bench.png",
     );
+  });
+
+  it("uses strength default cover when program has no exercises", () => {
+    expect(resolveProgramImageSrc(program(), null, { subTab: "strength" })).toBe(STRENGTH_TRAINING_COVER_IMAGE);
   });
 
   it("uses runner strength cover for styrke løper-programmer", () => {
@@ -72,14 +108,20 @@ describe("resolveProgramImageSrc", () => {
     ).toBe(RUNNER_MOBILITY_COVER_IMAGE);
   });
 
-  it("uses conditioning default cover for kondisjonsprogrammer", () => {
+  it("uses first exercise cover for kondisjonsprogrammer uten eget forsidebilde", () => {
     expect(resolveProgramImageSrc(program(), cardioExercise, { subTab: "conditioning" })).toBe(
+      "/exercises/treadmill.png",
+    );
+  });
+
+  it("uses conditioning default cover when program has no exercises", () => {
+    expect(resolveProgramImageSrc(program(), null, { subTab: "conditioning" })).toBe(
       CONDITIONING_TRAINING_COVER_IMAGE,
     );
   });
 
-  it("uses mobility default cover for mobilitetsprogrammer", () => {
-    expect(resolveProgramImageSrc(program(), strengthExercise, { subTab: "mobility" })).toBe(
+  it("uses mobility default cover when program has no exercises", () => {
+    expect(resolveProgramImageSrc(program(), null, { subTab: "mobility" })).toBe(
       MOBILITY_TRAINING_COVER_IMAGE,
     );
   });

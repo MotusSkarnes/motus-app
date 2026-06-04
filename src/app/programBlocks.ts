@@ -1,6 +1,6 @@
 import { isHoldBasedExerciseCategory, programExerciseHoldSeconds } from "./exerciseCategories";
 import { mergeProgramAuthorFields } from "./programAuthor";
-import { mergeProgramImageUrl } from "./programImage";
+import { pickProgramImageUrlFromDuplicateMerge } from "./programImage";
 import { CARDIO_COOLDOWN_STEP_NAME, isCardioCooldownStepName } from "./cardioEquipment";
 import type {
   Exercise,
@@ -83,7 +83,7 @@ export function mergeTrainingProgramDuplicates(existing: TrainingProgram, incomi
   return {
     ...newer,
     ...mergeProgramAuthorFields(newer, older),
-    imageUrl: mergeProgramImageUrl(newer.imageUrl, older.imageUrl),
+    imageUrl: pickProgramImageUrlFromDuplicateMerge(newer),
     memberLibraryStatus: pickRestrictiveMemberLibraryStatus(newer.memberLibraryStatus, older.memberLibraryStatus),
   };
 }

@@ -25,7 +25,11 @@ import {
   topLoggedExercises,
   type HistoryPeriodWeeks,
 } from "../app/memberTrainingHistory";
-import { resolveProgramImageSrc, STRENGTH_TRAINING_COVER_IMAGE } from "../app/programImage";
+import {
+  resolveFirstProgramCoverExercise,
+  resolveProgramImageSrc,
+  STRENGTH_TRAINING_COVER_IMAGE,
+} from "../app/programImage";
 import { resolveProgressExerciseDisplayName, resolveProgressPersonalRecordImage } from "../app/progressImagery";
 import type { Exercise, TrainingProgram, WorkoutLog } from "../app/types";
 import { EmptyState, GradientButton } from "../app/ui";
@@ -82,9 +86,11 @@ function resolveRecordImage(name: string, exercises: Exercise[]): string {
 function resolveLogCoverImage(log: WorkoutLog, programs: TrainingProgram[], exercises: Exercise[]): string {
   const program =
     programs.find((item) => item.title.trim().toLowerCase() === log.programTitle.trim().toLowerCase()) ?? null;
-  const coverExercise = exercises.find((exercise) =>
-    (log.results ?? []).some((result) => result.exerciseName.trim().toLowerCase() === exercise.name.trim().toLowerCase()),
-  );
+  const coverExercise = program
+    ? resolveFirstProgramCoverExercise(program, exercises)
+    : exercises.find((exercise) =>
+        (log.results ?? []).some((result) => result.exerciseName.trim().toLowerCase() === exercise.name.trim().toLowerCase()),
+      );
   if (program) {
     return resolveProgramImageSrc(program, coverExercise ?? null);
   }

@@ -95,6 +95,38 @@ export function mergeProgramImageUrl(
   return undefined;
 }
 
+/** Etter sky-synk: server-rad vinner; manglende imageUrl = slettet forside. */
+export function pickProgramImageUrlAfterServerSync(
+  remote: Pick<TrainingProgram, "imageUrl">,
+): string | undefined {
+  return remote.imageUrl?.trim() || undefined;
+}
+
+/** Ved duplikat-rader: kun nyeste programs forside (ikke gjenopprett eldre URL etter sletting). */
+export function pickProgramImageUrlFromDuplicateMerge(newer: Pick<TrainingProgram, "imageUrl">): string | undefined {
+  return newer.imageUrl?.trim() || undefined;
+}
+
+/** Direkte tabell-rad over hydrate-liste (unngå utdatert image_url i cache). */
+export function pickProgramImageUrlFromSnapshotMerge(
+  direct: Pick<TrainingProgram, "imageUrl">,
+): string | undefined {
+  return direct.imageUrl?.trim() || undefined;
+}
+
+/** Første øvelse i programrekkefølge som finnes i øvelsesbanken. */
+export function resolveFirstProgramCoverExercise(
+  program: Pick<TrainingProgram, "exercises">,
+  exercises: Array<Pick<Exercise, "id" | "imageUrl" | "category" | "group" | "name">>,
+): Pick<Exercise, "id" | "imageUrl" | "category" | "group" | "name"> | null {
+  const byId = new Map(exercises.map((exercise) => [exercise.id, exercise]));
+  for (const row of program.exercises) {
+    const exercise = byId.get(row.exerciseId);
+    if (exercise) return exercise;
+  }
+  return null;
+}
+
 export function resolveProgramImageSrc(
   program: Pick<TrainingProgram, "imageUrl" | "title">,
   coverExercise?: Pick<Exercise, "id" | "imageUrl" | "category" | "group" | "name"> | null,
@@ -104,10 +136,10 @@ export function resolveProgramImageSrc(
   if (custom) return custom;
   const byTitle = program.title ? resolveProgramCoverImageByTitle(program.title) : null;
   if (byTitle) return byTitle;
+  if (coverExercise) return resolveExerciseImageSrc(coverExercise);
   if (options?.subTab === "strength") return STRENGTH_TRAINING_COVER_IMAGE;
   if (options?.subTab === "conditioning") return CONDITIONING_TRAINING_COVER_IMAGE;
   if (options?.subTab === "mobility" || options?.subTab === "rehab") return MOBILITY_TRAINING_COVER_IMAGE;
-  if (coverExercise) return resolveExerciseImageSrc(coverExercise);
   return null;
 }
 

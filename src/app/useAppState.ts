@@ -86,7 +86,10 @@ import {
   syncMissingRosterMembersToCloud,
 } from "./trainerRosterBackup";
 import { memberMayDeleteProgram, mergeProgramAuthorFields } from "./programAuthor";
-import { mergeProgramImageUrl } from "./programImage";
+import {
+  pickProgramImageUrlAfterServerSync,
+  pickProgramImageUrlFromSnapshotMerge,
+} from "./programImage";
 import { isSupabaseConfigured, supabaseClient } from "../services/supabaseClient";
 import {
   checkMemberAccessBlocked,
@@ -325,7 +328,7 @@ function mergeTrainingProgramSnapshots(primary: TrainingProgram, secondary: Trai
     ...primary,
     ...secondary,
     ...mergeProgramAuthorFields(primary, secondary),
-    imageUrl: mergeProgramImageUrl(primary.imageUrl, secondary.imageUrl),
+    imageUrl: pickProgramImageUrlFromSnapshotMerge(secondary),
     memberLibraryStatus: mergeMemberLibraryStatus(secondary.memberLibraryStatus, primary.memberLibraryStatus),
   };
 }
@@ -409,7 +412,7 @@ function mergeMemberProgramsWithLocalEphemeral(
     if (remote) {
       merged.set(local.id, {
         ...remote,
-        imageUrl: mergeProgramImageUrl(local.imageUrl, remote.imageUrl),
+        imageUrl: pickProgramImageUrlAfterServerSync(remote),
         memberLibraryStatus: pickRestrictiveMemberLibraryStatus(
           local.memberLibraryStatus,
           remote.memberLibraryStatus,

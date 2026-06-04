@@ -41,6 +41,7 @@ import {
   programCoverUsesPhotoStyle,
   resolveGroupWorkoutCoverImage,
   resolveNoPlanDayCoverImage,
+  resolveFirstProgramCoverExercise,
   resolveProgramImageSrc,
   resolveRestDayCoverImage,
 } from "../app/programImage";
@@ -4616,9 +4617,7 @@ export function MemberPortal(props: MemberPortalProps) {
     if (!homeWorkoutProgram) {
       return resolveNoPlanDayCoverImage();
     }
-    const coverExercise = homeWorkoutProgram.exercises
-      .map((item) => exercises.find((exercise) => exercise.id === item.exerciseId))
-      .find(Boolean);
+    const coverExercise = resolveFirstProgramCoverExercise(homeWorkoutProgram, exercises);
     return resolveProgramImageSrc(homeWorkoutProgram, coverExercise ?? null, {
       subTab: getTrainingProgramSubTab(homeWorkoutProgram, exerciseCategoryById, exercises),
     });
@@ -4689,9 +4688,7 @@ export function MemberPortal(props: MemberPortalProps) {
           memberPrograms.find((item) => item.id === draft.programId) ??
           memberPrograms.find((item) => item.title.trim().toLowerCase() === draft.programTitle.trim().toLowerCase()) ??
           null;
-        const coverExercise = program?.exercises
-          .map((item) => exercises.find((exercise) => exercise.id === item.exerciseId))
-          .find(Boolean);
+        const coverExercise = program ? resolveFirstProgramCoverExercise(program, exercises) : null;
         const imageSrc = program
           ? resolveProgramImageSrc(program, coverExercise ?? null, {
               subTab: getTrainingProgramSubTab(program, exerciseCategoryById, exercises),
@@ -4713,9 +4710,7 @@ export function MemberPortal(props: MemberPortalProps) {
   const trainingProgramPreviews = useMemo(
     () =>
       memberProgramsInActiveLibrary.slice(0, 8).map((program) => {
-        const coverExercise = program.exercises
-          .map((item) => exercises.find((exercise) => exercise.id === item.exerciseId))
-          .find(Boolean);
+        const coverExercise = resolveFirstProgramCoverExercise(program, exercises);
         const programSubTab = getTrainingProgramSubTab(program, exerciseCategoryById, exercises);
         const imageSrc = resolveProgramImageSrc(program, coverExercise ?? null, { subTab: programSubTab });
         const completedProgramLogs = completedLogs.filter(
@@ -6606,9 +6601,7 @@ export function MemberPortal(props: MemberPortalProps) {
 	                  {filteredMemberProgramsInActiveLibrary.map((program) => {
 	                    const isExpanded = expandedProgramId === program.id;
 	                    const isLibraryMenuOpen = programLibraryMenuId === program.id;
-	                    const coverExercise = program.exercises
-	                      .map((item) => exercises.find((exercise) => exercise.id === item.exerciseId))
-	                      .find(Boolean);
+	                    const coverExercise = resolveFirstProgramCoverExercise(program, exercises);
 	                    const programMinutes = Math.max(20, Math.round(estimateProgramMinutes(program) / 5) * 5);
 	                    const programCategory = trainingProgramCategoryLabel(program, exerciseCategoryById, exercises);
 	                    const programSubTab = getTrainingProgramSubTab(program, exerciseCategoryById, exercises);
