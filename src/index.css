@@ -3909,6 +3909,15 @@ button.motus-progress-status-banner {
   border-radius: 0;
 }
 
+.motus-program-cover-trainer-preview {
+  width: min(100%, 390px);
+}
+
+.motus-program-cover-trainer-preview .motus-member-program-thumb {
+  border-radius: 12px;
+  overflow: hidden;
+}
+
 .motus-member-program-thumb::after {
   z-index: 1;
   background: linear-gradient(180deg, transparent 0%, rgba(0, 0, 0, 0.35) 100%);

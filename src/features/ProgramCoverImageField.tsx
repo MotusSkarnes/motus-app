@@ -1,5 +1,4 @@
-import { PROGRAM_COVER_DISPLAY_ASPECT } from "../app/programImage";
-import { imageObjectPositionFromSrc } from "../app/imageFocalPoint";
+import { ProgramCoverThumbnail } from "./ProgramCoverThumbnail";
 
 type ProgramCoverImageFieldProps = {
   imageUrl: string;
@@ -20,8 +19,8 @@ export function ProgramCoverImageField({
     <div className="space-y-2 rounded-xl border bg-slate-50/70 p-3" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
       <div className="text-xs font-semibold text-slate-700">Programbilde (valgfritt)</div>
       <p className="text-[11px] leading-relaxed text-slate-500">
-        Beskjæres til bredt banner (ca. 3:1) som på programkort. Plasser hovedmotivet midt i bildet. Uten bilde brukes første
-        øvelse.
+        Beskjæres til samme breddeformat som på kundens programkort. Plasser hovedmotivet midt i bildet. Uten bilde brukes
+        første øvelse.
       </p>
       <div className="flex flex-wrap items-center gap-2">
         <label className="inline-flex">
@@ -57,19 +56,7 @@ export function ProgramCoverImageField({
         ) : null}
         <div className="text-xs text-slate-500">JPG/PNG/WEBP, maks 5 MB.</div>
       </div>
-      {imageUrl.trim() ? (
-        <div
-          className="w-full max-w-md overflow-hidden rounded-xl border bg-slate-900"
-          style={{ borderColor: "rgba(15,23,42,0.08)", aspectRatio: PROGRAM_COVER_DISPLAY_ASPECT }}
-        >
-          <img
-            src={imageUrl}
-            alt="Forhåndsvisning av programbilde"
-            className="h-full w-full object-cover"
-            style={{ objectPosition: imageObjectPositionFromSrc(imageUrl) }}
-          />
-        </div>
-      ) : null}
+      {imageUrl.trim() ? <ProgramCoverThumbnail src={imageUrl} alt="Forhåndsvisning av programbilde" /> : null}
     </div>
   );
 }

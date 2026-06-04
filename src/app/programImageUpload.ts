@@ -2,6 +2,8 @@ import { uid } from "./storage";
 import {
   ALLOWED_PROGRAM_IMAGE_TYPES,
   MAX_PROGRAM_IMAGE_BYTES,
+  MEMBER_PROGRAM_THUMB_ASPECT,
+  MEMBER_PROGRAM_THUMB_PREVIEW_WIDTH_PX,
   PROGRAM_IMAGE_BUCKET,
   PROGRAM_IMAGE_PREFIX,
 } from "./programImage";
@@ -19,8 +21,11 @@ type ProgramImageVariant = {
 /** Format programkort bruker (bredt banner). */
 export const PRIMARY_PROGRAM_COVER_VARIANT = "hero" as const;
 
+const HERO_COVER_WIDTH = 1580;
+const HERO_COVER_HEIGHT = Math.round(HERO_COVER_WIDTH / MEMBER_PROGRAM_THUMB_ASPECT);
+
 const PROGRAM_IMAGE_VARIANTS: ProgramImageVariant[] = [
-  { key: "hero", width: 1600, height: 550 },
+  { key: "hero", width: HERO_COVER_WIDTH, height: HERO_COVER_HEIGHT },
   { key: "portrait", width: 900, height: 1200 },
   { key: "square", width: 1000, height: 1000 },
 ];

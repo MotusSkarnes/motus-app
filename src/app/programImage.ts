@@ -21,8 +21,12 @@ export const CONDITIONING_TRAINING_COVER_IMAGE = "/program-covers/kondisjon.png"
 export const MOBILITY_TRAINING_COVER_IMAGE = "/program-covers/mobilitet.png";
 export const ALLOWED_PROGRAM_IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
 export const MAX_PROGRAM_IMAGE_BYTES = 5 * 1024 * 1024;
-/** Bredt bannerformat som programkort bruker (ca. 3:1). */
-export const PROGRAM_COVER_DISPLAY_ASPECT = "3 / 1";
+/** Typisk innholdsbredde på kundens mobil (programkort). */
+export const MEMBER_PROGRAM_THUMB_PREVIEW_WIDTH_PX = 390;
+export const MEMBER_PROGRAM_THUMB_HEIGHT_PX = 118;
+/** Bredde/høyde på kundens programkort-thumb — brukes ved opplasting. */
+export const MEMBER_PROGRAM_THUMB_ASPECT =
+  MEMBER_PROGRAM_THUMB_PREVIEW_WIDTH_PX / MEMBER_PROGRAM_THUMB_HEIGHT_PX;
 
 const GROUP_WORKOUT_COVER_IMAGES: Record<string, string> = {
   smilepuls: SMILEPULS_COVER_IMAGE,
