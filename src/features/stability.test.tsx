@@ -110,6 +110,7 @@ describe("Stability regressions", () => {
         updateWorkoutModeNote={vi.fn()}
         finishWorkoutMode={vi.fn()}
         logGroupWorkout={vi.fn()}
+        logActivityWorkout={vi.fn()}
         logCompletedPlanEntry={vi.fn()}
         removeGroupWorkoutLog={vi.fn()}
         removeCompletedPlanEntryLog={vi.fn()}

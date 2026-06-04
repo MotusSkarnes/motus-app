@@ -11,6 +11,7 @@ import {
   type DeleteProgramContext,
   type FinishWorkoutInput,
   type LogCompletedPlanEntryInput,
+  type LogActivityWorkoutInput,
   type LogGroupWorkoutInput,
   type LogIntervalWorkoutInput,
   type RemoveCompletedPlanEntryLogInput,
@@ -2388,6 +2389,13 @@ export function useAppState() {
     }
   }
 
+  function logActivityWorkout(input: LogActivityWorkoutInput) {
+    setAppState((prev) => repository.logActivityWorkout(prev, input));
+    if (input.keepCurrentTab !== true) {
+      setMemberTab("progress");
+    }
+  }
+
   function logIntervalWorkout(input: LogIntervalWorkoutInput) {
     const onPersisted = input.onPersisted;
     let persistJob: ReturnType<typeof prepareIntervalWorkoutLogState>["job"] = null;
@@ -2804,6 +2812,7 @@ export function useAppState() {
     updateWorkoutExerciseNote,
     finishWorkoutMode,
     logGroupWorkout,
+    logActivityWorkout,
     logIntervalWorkout,
     logCompletedPlanEntry,
     removeGroupWorkoutLog,

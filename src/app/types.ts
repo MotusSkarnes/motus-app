@@ -225,6 +225,10 @@ export type WorkoutLog = {
   status: "Planlagt" | "Fullført";
   note: string;
   reflection?: WorkoutReflection;
+  /** Varighet i minutter (egen aktivitet / annen trening). */
+  activityDurationMinutes?: string;
+  /** Valgfritt bilde (URL eller komprimert data-URL). */
+  activityPhotoUrl?: string;
   trainerComment?: string;
   trainerCommentUpdatedAt?: string;
   trainerCommentAuthorName?: string;

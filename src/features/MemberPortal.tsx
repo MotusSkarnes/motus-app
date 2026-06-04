@@ -101,6 +101,7 @@ import { useToastStatus } from "../app/toast";
 import { uid } from "../app/storage";
 import type {
   LogCompletedPlanEntryInput,
+  LogActivityWorkoutInput,
   LogGroupWorkoutInput,
   LogIntervalWorkoutInput,
   ReplaceWorkoutExerciseGroupInput,
@@ -226,6 +227,7 @@ import { buildWeekDayModels, MemberTrainingCalendar } from "./MemberTrainingCale
 import { getMondayStart, toCalendarDateKey, type TrainingCalendarDayStatus } from "../app/memberTrainingCalendar";
 import { MuscleSplitCard } from "./MuscleSplitCard";
 import { IntervalWorkoutSessionModal } from "./IntervalWorkoutSessionModal";
+import { MemberActivityLoggerCard } from "./MemberActivityLoggerCard";
 import { LiveWorkoutSessionModal } from "./LiveWorkoutSessionModal";
 import { PersonalRecordProgressModal } from "./PersonalRecordProgressModal";
 import { PeriodPlanActiveView } from "./PeriodPlanActiveView";
@@ -326,6 +328,7 @@ type MemberPortalProps = {
   updateWorkoutExerciseNote: (programExerciseId: string, note: string) => void;
   finishWorkoutMode: (input?: { reflection?: WorkoutReflection }) => void;
   logGroupWorkout: (input: LogGroupWorkoutInput) => void;
+  logActivityWorkout: (input: LogActivityWorkoutInput) => void;
   logIntervalWorkout: (input: LogIntervalWorkoutInput) => void;
   logCompletedPlanEntry: (input: LogCompletedPlanEntryInput) => void;
   removeGroupWorkoutLog: (input: { memberId: string; className: string; date?: string }) => void;
@@ -1095,6 +1098,7 @@ export function MemberPortal(props: MemberPortalProps) {
     updateWorkoutExerciseNote,
     finishWorkoutMode,
     logGroupWorkout,
+    logActivityWorkout,
     logIntervalWorkout,
     logCompletedPlanEntry,
     removeGroupWorkoutLog,
@@ -7001,6 +7005,11 @@ export function MemberPortal(props: MemberPortalProps) {
                   </div>
                 ) : null}
               </div>
+              {activeMemberId ? (
+                <div className="mt-6">
+                  <MemberActivityLoggerCard memberId={activeMemberId} onLog={logActivityWorkout} />
+                </div>
+              ) : null}
               </>
               ) : null}
               {!isMemberLimited ? (

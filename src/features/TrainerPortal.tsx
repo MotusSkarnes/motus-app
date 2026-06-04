@@ -10,6 +10,7 @@
   type SetStateAction,
 } from "react";
 import { Apple, CalendarRange, ChevronDown, ChevronUp, ClipboardList, Copy, Dumbbell, Eye, EyeOff, Mail, MessageSquare, MoreHorizontal, Pencil, Play, Share2, ShieldCheck, Star, Trash2, UserCheck, UserCircle2, Users } from "lucide-react";
+import { formatActivityDurationLabel, isActivityWorkoutLog } from "../app/activityWorkoutLog";
 import { MOTUS } from "../app/data";
 import { formatDateDdMmYyyy, getDefaultPeriodPlanStartMondayISO, periodPlanStartDateForDateInput } from "../app/dateFormat";
 import {
@@ -269,12 +270,15 @@ const WORKOUT_LIST_RECENT_MS = 7 * 24 * 60 * 60 * 1000;
 
 function workoutLogMatchesTypeAndSearch(
   log: WorkoutLog,
-  workoutTypeFilter: "all" | "program" | "group",
+  workoutTypeFilter: "all" | "program" | "group" | "activity",
   query: string,
 ): boolean {
-  const isGroupWorkout = log.programTitle.trim().toLowerCase().startsWith("gruppetime:");
+  const titleLower = log.programTitle.trim().toLowerCase();
+  const isGroupWorkout = titleLower.startsWith("gruppetime:");
+  const isActivityWorkout = titleLower.startsWith("aktivitet:");
   if (workoutTypeFilter === "group" && !isGroupWorkout) return false;
-  if (workoutTypeFilter === "program" && isGroupWorkout) return false;
+  if (workoutTypeFilter === "activity" && !isActivityWorkout) return false;
+  if (workoutTypeFilter === "program" && (isGroupWorkout || isActivityWorkout)) return false;
   if (query) {
     const haystack = `${log.programTitle} ${log.note ?? ""} ${log.reflection?.note ?? ""}`.toLowerCase();
     if (!haystack.includes(query)) return false;
@@ -1001,7 +1005,7 @@ function pickFirstName(value: unknown): string {
   const editLockedMemberIdRef = useRef<string | null>(null);
   const editLockedIdentityRef = useRef<{ email: string } | null>(null);
   const [workoutDateRangeFilter, setWorkoutDateRangeFilter] = useState<"7d" | "30d" | "all">("7d");
-  const [workoutTypeFilter, setWorkoutTypeFilter] = useState<"all" | "program" | "group">("all");
+  const [workoutTypeFilter, setWorkoutTypeFilter] = useState<"all" | "program" | "group" | "activity">("all");
   const [workoutSearchQuery, setWorkoutSearchQuery] = useState("");
   const [workoutSortOrder, setWorkoutSortOrder] = useState<"newest" | "oldest">("newest");
   const [trainerWorkoutCommentDraft, setTrainerWorkoutCommentDraft] = useState("");
@@ -6628,11 +6632,12 @@ function pickFirstName(value: unknown): string {
                         />
                         <SelectBox
                           value={workoutTypeFilter}
-                          onChange={(value) => setWorkoutTypeFilter(value as "all" | "program" | "group")}
+                          onChange={(value) => setWorkoutTypeFilter(value as "all" | "program" | "group" | "activity")}
                           options={[
                             { value: "all", label: "Type: Alle" },
                             { value: "program", label: "Type: Programøkt" },
                             { value: "group", label: "Type: Gruppetime" },
+                            { value: "activity", label: "Type: Aktivitet" },
                           ]}
                         />
                         <TextInput
@@ -6719,8 +6724,21 @@ function pickFirstName(value: unknown): string {
                             <div className="mt-2 text-xs text-slate-700">
                               Følelse: {reflectionEmoji(filteredSelectedWorkoutLog.reflection?.energyLevel)} · Belastning: {reflectionEmoji(filteredSelectedWorkoutLog.reflection?.difficultyLevel)} · Motivasjon: {reflectionEmoji(filteredSelectedWorkoutLog.reflection?.motivationLevel)}
                             </div>
+                            {isActivityWorkoutLog(filteredSelectedWorkoutLog) &&
+                            formatActivityDurationLabel(filteredSelectedWorkoutLog.activityDurationMinutes) ? (
+                              <div className="mt-2 text-xs text-slate-600">
+                                Varighet: {formatActivityDurationLabel(filteredSelectedWorkoutLog.activityDurationMinutes)}
+                              </div>
+                            ) : null}
                             {filteredSelectedWorkoutLog.note ? <div className="mt-2 text-xs text-slate-600">Øktnotat: {filteredSelectedWorkoutLog.note}</div> : null}
                             {filteredSelectedWorkoutLog.reflection?.note ? <div className="mt-1 text-xs text-slate-600">Til PT: {filteredSelectedWorkoutLog.reflection.note}</div> : null}
+                            {filteredSelectedWorkoutLog.activityPhotoUrl ? (
+                              <img
+                                src={filteredSelectedWorkoutLog.activityPhotoUrl}
+                                alt="Aktivitet"
+                                className="mt-3 max-h-48 w-full rounded-xl object-cover"
+                              />
+                            ) : null}
                           </div>
                           <div className="rounded-2xl border bg-white p-3 text-sm" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
                             <div className="flex items-center justify-between gap-3">

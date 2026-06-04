@@ -1,3 +1,4 @@
+import { activityWorkoutLogTitle } from "../app/activityWorkoutLog";
 import { filterProgramExercisesAfterBankDelete } from "../app/exerciseBankUsage";
 import { isHoldBasedExerciseCategory } from "../app/exerciseCategories";
 import { prescriptionFieldsForExerciseSave } from "../app/exercisePrescriptionFields";
@@ -107,6 +108,17 @@ export type LogGroupWorkoutInput = {
   className: string;
   note?: string;
   reflection: WorkoutReflection;
+  keepCurrentTab?: boolean;
+  date?: string;
+};
+
+export type LogActivityWorkoutInput = {
+  memberId: string;
+  activityName: string;
+  durationMinutes: string;
+  note?: string;
+  reflection: WorkoutReflection;
+  photoUrl?: string;
   keepCurrentTab?: boolean;
   date?: string;
 };
@@ -234,6 +246,7 @@ export interface AppRepository {
   cancelWorkoutMode(state: AppState): AppState;
   finishWorkoutMode(state: AppState, input?: FinishWorkoutInput): AppState;
   logGroupWorkout(state: AppState, input: LogGroupWorkoutInput): AppState;
+  logActivityWorkout(state: AppState, input: LogActivityWorkoutInput): AppState;
   logIntervalWorkout(state: AppState, input: LogIntervalWorkoutInput): AppState;
   logCompletedPlanEntry(state: AppState, input: LogCompletedPlanEntryInput): AppState;
   removeCompletedPlanEntryLog(state: AppState, input: RemoveCompletedPlanEntryLogInput): AppState;
@@ -1114,6 +1127,45 @@ export function logGroupWorkoutInState(state: AppState, input: LogGroupWorkoutIn
   };
 }
 
+export function logActivityWorkoutInState(state: AppState, input: LogActivityWorkoutInput): AppState {
+  const memberId = input.memberId.trim();
+  const activityName = input.activityName.trim();
+  const durationRaw = input.durationMinutes.trim().replace(",", ".");
+  const durationMinutes = Number(durationRaw);
+  const date = resolveWorkoutLogDateTime(input.date);
+  if (!memberId || !activityName || !Number.isFinite(durationMinutes) || durationMinutes <= 0) return state;
+
+  const normalizedTitle = activityWorkoutLogTitle(activityName);
+  const duplicateExists = state.logs.some(
+    (log) =>
+      log.memberId === memberId &&
+      log.programTitle.trim().toLowerCase() === normalizedTitle.trim().toLowerCase() &&
+      storedLogDatesMatch(log.date, date) &&
+      log.status === "Fullført"
+  );
+  if (duplicateExists) return state;
+
+  const photoUrl = String(input.photoUrl ?? "").trim();
+  return {
+    ...state,
+    logs: [
+      {
+        id: uid("log"),
+        memberId,
+        programTitle: normalizedTitle,
+        date,
+        status: "Fullført",
+        note: input.note?.trim() ?? "",
+        reflection: input.reflection,
+        activityDurationMinutes: String(Math.round(durationMinutes)),
+        activityPhotoUrl: photoUrl || undefined,
+        results: [],
+      },
+      ...state.logs,
+    ],
+  };
+}
+
 export function removeGroupWorkoutLogInState(state: AppState, input: RemoveGroupWorkoutLogInput): AppState {
   const memberId = input.memberId.trim();
   const className = input.className.trim();
@@ -1400,6 +1452,7 @@ export const localAppRepository: AppRepository = {
   cancelWorkoutMode: cancelWorkoutModeInState,
   finishWorkoutMode: finishWorkoutModeInState,
   logGroupWorkout: logGroupWorkoutInState,
+  logActivityWorkout: logActivityWorkoutInState,
   logIntervalWorkout: logIntervalWorkoutInState,
   logCompletedPlanEntry: logCompletedPlanEntryInState,
   removeCompletedPlanEntryLog: removeCompletedPlanEntryLogInState,

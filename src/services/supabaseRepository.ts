@@ -27,6 +27,7 @@ import {
   type CreateMemberResult,
   type DeleteProgramContext,
   type FinishWorkoutInput,
+  type LogActivityWorkoutInput,
   type LogGroupWorkoutInput,
   type LogIntervalWorkoutInput,
   type LogCompletedPlanEntryInput,
@@ -2787,13 +2788,32 @@ function mapIsoToProgramDate(iso: string): string {
 const WORKOUT_REFLECTION_PREFIX = "__MOTUS_REFLECTION__";
 
 function serializeWorkoutNote(
-  log: Pick<WorkoutLog, "note" | "reflection" | "trainerComment" | "trainerCommentUpdatedAt" | "trainerCommentAuthorName">,
+  log: Pick<
+    WorkoutLog,
+    | "note"
+    | "reflection"
+    | "trainerComment"
+    | "trainerCommentUpdatedAt"
+    | "trainerCommentAuthorName"
+    | "activityDurationMinutes"
+    | "activityPhotoUrl"
+  >,
 ): string {
   const cleanNote = log.note.trim();
   const cleanTrainerComment = String(log.trainerComment ?? "").trim();
-  if (!log.reflection && !cleanTrainerComment) return cleanNote;
+  const activityDuration = String(log.activityDurationMinutes ?? "").trim();
+  const activityPhoto = String(log.activityPhotoUrl ?? "").trim();
+  if (!log.reflection && !cleanTrainerComment && !activityDuration && !activityPhoto) return cleanNote;
   const payload = JSON.stringify({
     ...(log.reflection ? { reflection: log.reflection } : {}),
+    ...(activityDuration || activityPhoto
+      ? {
+          activityMeta: {
+            ...(activityDuration ? { durationMinutes: activityDuration } : {}),
+            ...(activityPhoto ? { photoUrl: activityPhoto } : {}),
+          },
+        }
+      : {}),
     ...(cleanTrainerComment
       ? {
           trainerComment: cleanTrainerComment,
@@ -2815,9 +2835,32 @@ function isWorkoutReflectionPayload(value: unknown): value is NonNullable<Workou
   );
 }
 
+function parseActivityMetaFromEnvelope(
+  envelope: Record<string, unknown>,
+): Pick<WorkoutLog, "activityDurationMinutes" | "activityPhotoUrl"> {
+  const raw = envelope.activityMeta;
+  if (!raw || typeof raw !== "object") return {};
+  const meta = raw as Record<string, unknown>;
+  const durationMinutes = String(meta.durationMinutes ?? "").trim();
+  const photoUrl = String(meta.photoUrl ?? "").trim();
+  return {
+    ...(durationMinutes ? { activityDurationMinutes: durationMinutes } : {}),
+    ...(photoUrl ? { activityPhotoUrl: photoUrl } : {}),
+  };
+}
+
 function parseWorkoutNote(
   rawNote: unknown,
-): Pick<WorkoutLog, "note" | "reflection" | "trainerComment" | "trainerCommentUpdatedAt" | "trainerCommentAuthorName"> {
+): Pick<
+  WorkoutLog,
+  | "note"
+  | "reflection"
+  | "trainerComment"
+  | "trainerCommentUpdatedAt"
+  | "trainerCommentAuthorName"
+  | "activityDurationMinutes"
+  | "activityPhotoUrl"
+> {
   const note = String(rawNote ?? "");
   if (!note.startsWith(WORKOUT_REFLECTION_PREFIX)) return { note };
   const newlineIndex = note.indexOf("\n");
@@ -2837,6 +2880,7 @@ function parseWorkoutNote(
     return {
       note: plainNote,
       reflection,
+      ...parseActivityMetaFromEnvelope(envelope),
       trainerComment: trainerComment || undefined,
       trainerCommentUpdatedAt: trainerCommentUpdatedAt || undefined,
       trainerCommentAuthorName: trainerCommentAuthorName || undefined,
@@ -3036,6 +3080,8 @@ function mapHydrateMemberPayload(payload: Record<string, unknown>): HydratedMemb
         status: log.status === "Planlagt" ? "Planlagt" : "Fullført",
         note: parsedNote.note,
         reflection: parsedNote.reflection,
+        activityDurationMinutes: parsedNote.activityDurationMinutes,
+        activityPhotoUrl: parsedNote.activityPhotoUrl,
         trainerComment: parsedNote.trainerComment,
         trainerCommentUpdatedAt: parsedNote.trainerCommentUpdatedAt,
         trainerCommentAuthorName: parsedNote.trainerCommentAuthorName,
@@ -3226,6 +3272,8 @@ export async function fetchHydratedTrainerData(ownerUserId: string): Promise<Hyd
         status: log.status === "Planlagt" ? "Planlagt" : "Fullført",
         note: parsedNote.note,
         reflection: parsedNote.reflection,
+        activityDurationMinutes: parsedNote.activityDurationMinutes,
+        activityPhotoUrl: parsedNote.activityPhotoUrl,
         trainerComment: parsedNote.trainerComment,
         trainerCommentUpdatedAt: parsedNote.trainerCommentUpdatedAt,
         trainerCommentAuthorName: parsedNote.trainerCommentAuthorName,
@@ -3377,10 +3425,12 @@ export async function fetchLogsFromSupabase(): Promise<WorkoutLog[] | null> {
     status: row.status === "Planlagt" ? "Planlagt" : "Fullført",
       note: parsedNote.note,
       reflection: parsedNote.reflection,
+      activityDurationMinutes: parsedNote.activityDurationMinutes,
+      activityPhotoUrl: parsedNote.activityPhotoUrl,
       trainerComment: parsedNote.trainerComment,
       trainerCommentUpdatedAt: parsedNote.trainerCommentUpdatedAt,
       trainerCommentAuthorName: parsedNote.trainerCommentAuthorName,
-    results: Array.isArray(row.results) ? (row.results as WorkoutExerciseResult[]) : undefined,
+      results: Array.isArray(row.results) ? (row.results as WorkoutExerciseResult[]) : undefined,
     };
   });
 }
@@ -4392,6 +4442,17 @@ export const supabaseAppRepository: AppRepository = {
   },
   logGroupWorkout(state: AppState, input: LogGroupWorkoutInput): AppState {
     const nextState = localAppRepository.logGroupWorkout(state, input);
+    const latestLog = nextState.logs[0];
+    if (latestLog) {
+      void persistWorkoutLog(
+        latestLog,
+        buildMemberPersistenceHints(state, latestLog.memberId, { programTitle: latestLog.programTitle }),
+      );
+    }
+    return nextState;
+  },
+  logActivityWorkout(state: AppState, input: LogActivityWorkoutInput): AppState {
+    const nextState = localAppRepository.logActivityWorkout(state, input);
     const latestLog = nextState.logs[0];
     if (latestLog) {
       void persistWorkoutLog(
