@@ -1371,12 +1371,15 @@ function pickFirstName(value: unknown): string {
   }, [memberSearch, memberSearchRecovery, currentTrainerOwnerUserId]);
 
   const sortedMembers = useMemo(() => {
+    const prioritizeUnread = customerSubTab === "messages";
     return [...filteredMembers].sort((a, b) => {
-      const aUnread = unreadCountForMember(a, unreadMessagesByIdentityKey);
-      const bUnread = unreadCountForMember(b, unreadMessagesByIdentityKey);
-      if (aUnread > 0 && bUnread === 0) return -1;
-      if (bUnread > 0 && aUnread === 0) return 1;
-      if (aUnread !== bUnread) return bUnread - aUnread;
+      if (prioritizeUnread) {
+        const aUnread = unreadCountForMember(a, unreadMessagesByIdentityKey);
+        const bUnread = unreadCountForMember(b, unreadMessagesByIdentityKey);
+        if (aUnread > 0 && bUnread === 0) return -1;
+        if (bUnread > 0 && aUnread === 0) return 1;
+        if (aUnread !== bUnread) return bUnread - aUnread;
+      }
       if (memberSort === "nameAsc") return a.name.localeCompare(b.name, "no");
       if (memberSort === "nameDesc") return b.name.localeCompare(a.name, "no");
       const aDays = trainerActivitySortKey(a, members, logs);
@@ -1384,7 +1387,7 @@ function pickFirstName(value: unknown): string {
       if (aDays !== bDays) return aDays - bDays;
       return a.name.localeCompare(b.name, "no");
     });
-  }, [filteredMembers, memberSort, members, logs, unreadMessagesByIdentityKey]);
+  }, [filteredMembers, memberSort, members, logs, unreadMessagesByIdentityKey, customerSubTab]);
   const findNewestPendingMemberByEmail = useCallback((email: string): Member | null => {
     const normalizedEmail = email.trim().toLowerCase();
     const matches = members.filter((member) => member.email.trim().toLowerCase() === normalizedEmail);
@@ -2061,16 +2064,21 @@ function pickFirstName(value: unknown): string {
 
   useEffect(() => {
     if (!openCustomerMessagesSignal) return;
-    const firstWithUnread = sortedMembers.find(
-      (member) => unreadCountForMember(member, unreadMessagesByIdentityKey) > 0,
-    );
+    setTrainerTab("customers");
+    setCustomerSubTab("messages");
+    if (memberFilter === "unreadMessages") setMemberFilter("all");
+    setShowCustomerToolsMobile(true);
+    const firstWithUnread = [...visibleMembers]
+      .filter((member) => unreadCountForMember(member, unreadMessagesByIdentityKey) > 0)
+      .sort(
+        (a, b) =>
+          unreadCountForMember(b, unreadMessagesByIdentityKey) -
+          unreadCountForMember(a, unreadMessagesByIdentityKey),
+      )[0];
     if (firstWithUnread) {
       setSelectedMemberId(firstWithUnread.id);
-      setMemberFilter("unreadMessages");
-      setShowCustomerToolsMobile(true);
     }
-    setCustomerSubTab("messages");
-  }, [openCustomerMessagesSignal, sortedMembers, unreadMessagesByIdentityKey]);
+  }, [openCustomerMessagesSignal, visibleMembers, unreadMessagesByIdentityKey, memberFilter]);
 
   useEffect(() => {
     if (!openCustomerOverviewSignal) return;
