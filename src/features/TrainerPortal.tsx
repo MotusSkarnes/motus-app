@@ -11,6 +11,7 @@
 } from "react";
 import { Apple, CalendarRange, ChevronDown, ChevronUp, ClipboardList, Copy, Dumbbell, Eye, EyeOff, Mail, MessageSquare, MoreHorizontal, Pencil, Play, Share2, ShieldCheck, Star, Trash2, UserCheck, UserCircle2, Users } from "lucide-react";
 import { formatActivityDurationLabel, isActivityWorkoutLog } from "../app/activityWorkoutLog";
+import { buildUnreadMessagesByIdentityKey, unreadCountForMember } from "../app/trainerUnreadMessages";
 import { MOTUS } from "../app/data";
 import { formatDateDdMmYyyy, getDefaultPeriodPlanStartMondayISO, periodPlanStartDateForDateInput } from "../app/dateFormat";
 import {
@@ -892,7 +893,9 @@ function pickFirstName(value: unknown): string {
   );
   const [isLookingUpEmail, setIsLookingUpEmail] = useState(false);
   const [memberSearch, setMemberSearch] = useState("");
-  const [memberFilter, setMemberFilter] = useState<"all" | "followUp" | "invited" | "notInvited" | "noProgram">("all");
+  const [memberFilter, setMemberFilter] = useState<
+    "all" | "followUp" | "invited" | "notInvited" | "noProgram" | "unreadMessages"
+  >("all");
   const [customerTypeFilter, setCustomerTypeFilter] = useState<"all" | "PT-kunde" | "Premium-kunde" | "Medlem">("all");
   const [memberSort, setMemberSort] = useState<"activityRecent" | "nameAsc" | "nameDesc">("activityRecent");
   const [inviteStatus, setInviteStatus] = useState<string | null>(null);
@@ -1281,16 +1284,22 @@ function pickFirstName(value: unknown): string {
     currentTrainerOwnerUserId,
     trainerProgramMemberIds,
   ]);
-  const unreadMessagesByIdentityKey = useMemo(() => {
-    const counts = new Map<string, number>();
-    Object.entries(unreadMessagesByMemberId).forEach(([memberId, count]) => {
-      const member = members.find((m) => m.id === memberId);
-      if (!member) return;
-      const key = getMemberIdentityKey(member);
-      counts.set(key, (counts.get(key) ?? 0) + Math.max(0, Number(count) || 0));
+  const unreadMessagesByIdentityKey = useMemo(
+    () => buildUnreadMessagesByIdentityKey(members, unreadMessagesByMemberId),
+    [unreadMessagesByMemberId, members],
+  );
+  const totalUnreadMessageCount = useMemo(() => {
+    let total = 0;
+    unreadMessagesByIdentityKey.forEach((count) => {
+      total += count;
     });
-    return counts;
-  }, [unreadMessagesByMemberId, members]);
+    return total;
+  }, [unreadMessagesByIdentityKey]);
+  const selectedMemberUnreadMessageCount = useMemo(() => {
+    const member = members.find((item) => item.id === selectedMemberId) ?? null;
+    if (!member) return 0;
+    return unreadCountForMember(member, unreadMessagesByIdentityKey);
+  }, [members, selectedMemberId, unreadMessagesByIdentityKey]);
   const filteredMembers = useMemo(() => {
     const query = memberSearch.trim().toLowerCase();
     return visibleMembers
@@ -1308,10 +1317,24 @@ function pickFirstName(value: unknown): string {
         if (memberFilter === "invited") return memberEffectivelyInvited(member, members, { messages, logs });
         if (memberFilter === "notInvited") return !memberEffectivelyInvited(member, members, { messages, logs });
         if (memberFilter === "noProgram") return !programs.some((program) => program.memberId === member.id);
+        if (memberFilter === "unreadMessages") {
+          return unreadCountForMember(member, unreadMessagesByIdentityKey) > 0;
+        }
         if (priorityFilter !== "all" && memberPriorityTone(member, members, logs) !== priorityFilter) return false;
         return true;
       });
-  }, [visibleMembers, memberSearch, memberFilter, customerTypeFilter, priorityFilter, members, messages, logs, programs]);
+  }, [
+    visibleMembers,
+    memberSearch,
+    memberFilter,
+    customerTypeFilter,
+    priorityFilter,
+    members,
+    messages,
+    logs,
+    programs,
+    unreadMessagesByIdentityKey,
+  ]);
   const memberSearchRecovery = useMemo(() => {
     const query = memberSearch.trim().toLowerCase();
     if (!query || query.length < 3) return null;
@@ -1349,6 +1372,11 @@ function pickFirstName(value: unknown): string {
 
   const sortedMembers = useMemo(() => {
     return [...filteredMembers].sort((a, b) => {
+      const aUnread = unreadCountForMember(a, unreadMessagesByIdentityKey);
+      const bUnread = unreadCountForMember(b, unreadMessagesByIdentityKey);
+      if (aUnread > 0 && bUnread === 0) return -1;
+      if (bUnread > 0 && aUnread === 0) return 1;
+      if (aUnread !== bUnread) return bUnread - aUnread;
       if (memberSort === "nameAsc") return a.name.localeCompare(b.name, "no");
       if (memberSort === "nameDesc") return b.name.localeCompare(a.name, "no");
       const aDays = trainerActivitySortKey(a, members, logs);
@@ -1356,7 +1384,7 @@ function pickFirstName(value: unknown): string {
       if (aDays !== bDays) return aDays - bDays;
       return a.name.localeCompare(b.name, "no");
     });
-  }, [filteredMembers, memberSort, members, logs]);
+  }, [filteredMembers, memberSort, members, logs, unreadMessagesByIdentityKey]);
   const findNewestPendingMemberByEmail = useCallback((email: string): Member | null => {
     const normalizedEmail = email.trim().toLowerCase();
     const matches = members.filter((member) => member.email.trim().toLowerCase() === normalizedEmail);
@@ -2033,9 +2061,16 @@ function pickFirstName(value: unknown): string {
 
   useEffect(() => {
     if (!openCustomerMessagesSignal) return;
-    if (!selectedMemberId || selectedMemberId === "__template__") return;
+    const firstWithUnread = sortedMembers.find(
+      (member) => unreadCountForMember(member, unreadMessagesByIdentityKey) > 0,
+    );
+    if (firstWithUnread) {
+      setSelectedMemberId(firstWithUnread.id);
+      setMemberFilter("unreadMessages");
+      setShowCustomerToolsMobile(true);
+    }
     setCustomerSubTab("messages");
-  }, [openCustomerMessagesSignal, selectedMemberId]);
+  }, [openCustomerMessagesSignal, sortedMembers, unreadMessagesByIdentityKey]);
 
   useEffect(() => {
     if (!openCustomerOverviewSignal) return;
@@ -5050,7 +5085,12 @@ function pickFirstName(value: unknown): string {
                     setCustomerSubTab("messages");
                   }}
                 >
-                  Meldinger
+                  <span className="inline-flex items-center gap-1.5">
+                    Meldinger
+                    {selectedMemberUnreadMessageCount > 0 ? (
+                      <span className="motus-trainer-nav-badge">{selectedMemberUnreadMessageCount > 9 ? "9+" : selectedMemberUnreadMessageCount}</span>
+                    ) : null}
+                  </span>
                 </PillButton>
                 {selectedMemberNutritionAccess ? (
                   <PillButton active={customerSubTab === "nutrition"} onClick={() => setCustomerSubTab("nutrition")}>
@@ -5179,6 +5219,7 @@ function pickFirstName(value: unknown): string {
               <div className="flex items-center justify-between gap-2">
                 <div className="text-xs text-slate-500">
                   {sortedMembers.length} treff
+                  {totalUnreadMessageCount > 0 ? ` · ${totalUnreadMessageCount} uleste meldinger` : ""}
                   {memberFilter !== "all" || customerTypeFilter !== "all" || priorityFilter !== "all"
                     ? " med aktivt filter"
                     : ""}
@@ -5201,10 +5242,19 @@ function pickFirstName(value: unknown): string {
                 <SelectBox
                   value={memberFilter}
                   onChange={(value) =>
-                    setMemberFilter(value as "all" | "followUp" | "invited" | "notInvited" | "noProgram")
+                    setMemberFilter(
+                      value as "all" | "followUp" | "invited" | "notInvited" | "noProgram" | "unreadMessages",
+                    )
                   }
                   options={[
                     { value: "all", label: "Alle kunder" },
+                    {
+                      value: "unreadMessages",
+                      label:
+                        totalUnreadMessageCount > 0
+                          ? `Uleste meldinger (${totalUnreadMessageCount})`
+                          : "Uleste meldinger",
+                    },
                     { value: "followUp", label: "Må følges opp (7+ dager)" },
                     { value: "noProgram", label: "Mangler program" },
                     { value: "invited", label: "Invitert" },
@@ -5247,10 +5297,13 @@ function pickFirstName(value: unknown): string {
                 onChange={selectMemberWithUnsavedChangesGuard}
                 options={
                   sortedMembers.length
-                    ? sortedMembers.map((member) => ({
-                        value: member.id,
-                        label: `${member.name} · ${member.customerType}`,
-                      }))
+                    ? sortedMembers.map((member) => {
+                        const unread = unreadCountForMember(member, unreadMessagesByIdentityKey);
+                        return {
+                          value: member.id,
+                          label: `${member.name} · ${member.customerType}${unread > 0 ? ` · ${unread} ulest` : ""}`,
+                        };
+                      })
                     : [{ value: "", label: "Ingen kunder matcher filteret" }]
                 }
               />
@@ -5262,8 +5315,7 @@ function pickFirstName(value: unknown): string {
                     const needsFollowUp = daysSinceWorkout !== null && daysSinceWorkout >= 7;
                     const hasProgram = programsAttributedToMember(member, members, programs).length > 0;
                     const priorityTone = memberPriorityTone(member, members, logs);
-                    const unreadMessageCount =
-                      unreadMessagesByIdentityKey.get(getMemberIdentityKey(member)) ?? 0;
+                    const unreadMessageCount = unreadCountForMember(member, unreadMessagesByIdentityKey);
                     const activityLabel =
                       daysSinceWorkout !== null
                         ? daysSinceWorkout === 0
@@ -5319,10 +5371,10 @@ function pickFirstName(value: unknown): string {
                               ) : null}
                               {unreadMessageCount > 0 ? (
                                 <span
-                                  className="shrink-0 rounded-full bg-[#d91278] px-1.5 py-px text-[9px] font-bold uppercase tracking-wide text-white"
+                                  className="motus-trainer-nav-badge shrink-0"
                                   title={`${unreadMessageCount} uleste meldinger`}
                                 >
-                                  Mld {unreadMessageCount > 99 ? "99+" : unreadMessageCount}
+                                  {unreadMessageCount > 99 ? "9+" : unreadMessageCount}
                                 </span>
                               ) : null}
                             </div>
@@ -5907,7 +5959,16 @@ function pickFirstName(value: unknown): string {
                       Program & planer
                     </PillButton>
                     <PillButton active={customerSubTab === "workouts"} onClick={() => setCustomerSubTab("workouts")}>Økter</PillButton>
-                    <PillButton active={customerSubTab === "messages"} onClick={() => setCustomerSubTab("messages")}>Meldinger</PillButton>
+                    <PillButton active={customerSubTab === "messages"} onClick={() => setCustomerSubTab("messages")}>
+                      <span className="inline-flex items-center gap-1.5">
+                        Meldinger
+                        {selectedMemberUnreadMessageCount > 0 ? (
+                          <span className="motus-trainer-nav-badge">
+                            {selectedMemberUnreadMessageCount > 9 ? "9+" : selectedMemberUnreadMessageCount}
+                          </span>
+                        ) : null}
+                      </span>
+                    </PillButton>
                     {selectedMemberNutritionAccess ? (
                       <PillButton active={customerSubTab === "nutrition"} onClick={() => setCustomerSubTab("nutrition")}>
                         {CUSTOMER_NUTRITION_TAB_LABEL}
