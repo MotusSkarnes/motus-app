@@ -396,7 +396,6 @@ type TrainerPortalProps = {
   updateWorkoutExerciseNote?: (programExerciseId: string, note: string) => void;
   finishWorkoutMode?: (input?: { reflection?: WorkoutReflection }) => void;
   cancelWorkoutMode?: () => void;
-  dismissWorkoutMode?: () => void;
 };
 
 type MemberDedupePreviewMember = {
@@ -765,7 +764,6 @@ function pickFirstName(value: unknown): string {
     updateWorkoutExerciseNote = () => {},
     finishWorkoutMode = () => {},
     cancelWorkoutMode = () => {},
-    dismissWorkoutMode = () => {},
   } = props;
 
   const [programTitle, setProgramTitle] = useState("Nytt treningsprogram");
@@ -7389,7 +7387,6 @@ function pickFirstName(value: unknown): string {
       updateWorkoutExerciseNote={updateWorkoutExerciseNote}
       finishWorkoutMode={handleFinishTrainerLiveWorkout}
       cancelWorkoutMode={cancelWorkoutMode}
-      onDismissWorkout={dismissWorkoutMode}
     />
     <ConfirmDialog
       open={Boolean(confirmDialog)}

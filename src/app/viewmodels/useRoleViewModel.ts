@@ -262,7 +262,6 @@ export function useRoleViewModel(state: AppStateHookResult): RoleViewModel {
     updateWorkoutExerciseNote: state.updateWorkoutExerciseNote,
     finishWorkoutMode: state.finishWorkoutMode,
     cancelWorkoutMode: state.cancelWorkoutMode,
-    dismissWorkoutMode: state.dismissWorkoutMode,
   });
 
   const memberLayoutProps: ComponentProps<typeof MemberLayout> = buildMemberLayoutProps({

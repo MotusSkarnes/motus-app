@@ -123,7 +123,6 @@ export function LiveWorkoutSessionModal({
   onSetPersonalRecord,
   lastSessionByExercise,
 }: LiveWorkoutSessionModalProps) {
-  const leaveWorkout = onDismissWorkout ?? cancelWorkoutMode;
   const [showReplacementOptions, setShowReplacementOptions] = useState(false);
   const [showWorkoutReflection, setShowWorkoutReflection] = useState(false);
   const [isSavingWorkout, setIsSavingWorkout] = useState(false);
@@ -142,6 +141,14 @@ export function LiveWorkoutSessionModal({
   const incompleteWarningSeenRef = useRef(false);
   const completedCountByGroupRef = useRef<Record<string, number>>({});
   const lastRestBeepSecondRef = useRef<number | null>(null);
+
+  const leaveWorkout = () => {
+    if (onDismissWorkout) {
+      onDismissWorkout();
+      return;
+    }
+    setCancelConfirmOpen(true);
+  };
 
   useScreenWakeLock(Boolean(workoutMode));
 
@@ -657,7 +664,7 @@ export function LiveWorkoutSessionModal({
               type="button"
               onClick={leaveWorkout}
               className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white/10 text-white transition hover:bg-white/15 sm:h-10 sm:w-10"
-              aria-label="Pause økt"
+              aria-label={onDismissWorkout ? "Pause økt" : "Avslutt økt"}
             >
               <ArrowLeft className="h-4 w-4 sm:h-5 sm:w-5" aria-hidden />
             </button>
