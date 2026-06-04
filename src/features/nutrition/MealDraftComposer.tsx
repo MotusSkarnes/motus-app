@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Bookmark, BookmarkPlus, Trash2 } from "lucide-react";
+import { BookmarkPlus, Trash2 } from "lucide-react";
 import { formatMacro } from "../../app/foodBankTypes";
 import { canonicalMemberMealSlotId, memberMealSlotLabel } from "../../app/memberMealSlots";
 import {
@@ -10,13 +10,13 @@ import {
   mealDraftItemsFromSavedMeal,
   type MealDraftItem,
 } from "../../app/mealDraft";
-import type { FoodNutrition } from "../../app/foodBankTypes";
 import { resolveNutritionFromFoodItems } from "../../app/memberNutritionRehydrate";
 import type { FoodItem } from "../../app/foodBankTypes";
 import { savedMealsForSlot, type MemberSavedMeal } from "../../app/memberSavedMeals";
 import { sumQuickFoodLogMacros } from "../../app/quickFoodLogMacros";
 import { GradientButton, OutlineButton, TextInput } from "../../app/ui";
 import { FoodLogFormFields, type FoodLogDraft } from "./FoodLogFormFields";
+import { SavedMealsPicker } from "./SavedMealsPicker";
 
 type MealDraftComposerProps = {
   mealSlotId: string;
@@ -87,55 +87,24 @@ export function MealDraftComposer({
 
   return (
     <div className={`motus-meal-draft ${compact ? "motus-meal-draft--compact" : ""}`}>
+      <section className="motus-meal-draft__search-block" aria-label="Søk matvare">
+        <p className="motus-meal-draft__search-label">Søk og legg til matvare</p>
+        <FoodLogFormFields onSubmit={addToDraft} submitLabel="Legg til i måltid" compact={compact} />
+      </section>
+
       {slotSavedMeals.length > 0 ? (
-        <section className="motus-saved-meals motus-saved-meals--inline" aria-label="Lagrede måltider">
-          <h3 className="motus-saved-meals__title">
-            <Bookmark className="h-4 w-4" aria-hidden />
-            Lagrede måltider
-          </h3>
-          <p className="motus-saved-meals__lead text-[10px] text-slate-500">
-            Alle dine lagrede måltider — logges til {slotLabel.toLowerCase()} når du trykker «Hent inn» eller «Logg måltid».
-          </p>
-          <ul className="motus-saved-meals__list">
-            {slotSavedMeals.map((meal) => {
-              const macros = sumQuickFoodLogMacros(
-                meal.items.map((item, index) => ({
-                  id: `preview-${index}`,
-                  name: item.name,
-                  grams: item.grams,
-                  source: item.source,
-                  loggedAt: "",
-                  nutritionPer100g: item.nutritionPer100g,
-                })),
-              );
-              return (
-                <li key={meal.id} className="motus-saved-meals__item">
-                  <div className="motus-saved-meals__item-main min-w-0">
-                    <p className="motus-saved-meals__item-name">{meal.name}</p>
-                    <p className="motus-saved-meals__item-meta">
-                      {meal.items.length} {meal.items.length === 1 ? "vare" : "varer"} · {formatMacro(macros.kcal, 0)} kcal
-                      {meal.mealSlotId ? ` · ${memberMealSlotLabel(meal.mealSlotId)}` : ""}
-                    </p>
-                  </div>
-                  <div className="motus-saved-meals__item-actions">
-                    <button type="button" className="motus-saved-meals__use motus-pressable" onClick={() => loadSavedToDraft(meal)}>
-                      Hent inn
-                    </button>
-                    <button
-                      type="button"
-                      className="motus-saved-meals__delete motus-pressable"
-                      onClick={() => onDeleteSaved(meal.id)}
-                      aria-label={`Slett ${meal.name}`}
-                    >
-                      <Trash2 className="h-3.5 w-3.5" aria-hidden />
-                    </button>
-                  </div>
-                </li>
-              );
-            })}
-          </ul>
-        </section>
+        <>
+          <hr className="motus-meal-draft__section-divider" />
+          <SavedMealsPicker
+            meals={slotSavedMeals}
+            slotLabel={slotLabel}
+            onSelect={loadSavedToDraft}
+            onDelete={onDeleteSaved}
+          />
+        </>
       ) : null}
+
+      <hr className="motus-meal-draft__section-divider" />
 
       <section className="motus-meal-draft__basket" aria-label="Måltid du bygger nå">
         <header className="motus-meal-draft__basket-head">
@@ -209,9 +178,6 @@ export function MealDraftComposer({
           </>
         ) : null}
       </section>
-
-      <p className="motus-meal-draft__search-label">Søk og legg til matvare</p>
-      <FoodLogFormFields onSubmit={addToDraft} submitLabel="Legg til i måltid" compact={compact} />
     </div>
   );
 }

@@ -3930,11 +3930,142 @@
   text-decoration: underline;
 }
 
+.motus-meal-draft__search-block {
+  padding: 0.65rem 0.75rem;
+  border-radius: 0.75rem;
+  border: 1px solid #e2e8f0;
+  background: #ffffff;
+}
+
+.motus-meal-draft--compact .motus-meal-draft__search-block {
+  padding: 0.55rem 0.65rem;
+}
+
+.motus-meal-draft__section-divider {
+  margin: 0.75rem 0;
+  border: none;
+  border-top: 1px solid #e2e8f0;
+}
+
+.motus-meal-draft--compact .motus-meal-draft__section-divider {
+  margin: 0.55rem 0;
+}
+
 .motus-meal-draft__search-label {
   margin: 0 0 0.45rem;
   font-size: 0.6875rem;
   font-weight: 600;
   color: #475569;
+}
+
+.motus-saved-meals-picker {
+  padding: 0.65rem 0.75rem;
+  border-radius: 0.75rem;
+  border: 1px dashed #cbd5e1;
+  background: #f8fafc;
+}
+
+.motus-saved-meals-picker__title {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin: 0 0 0.35rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #334155;
+}
+
+.motus-saved-meals-picker__count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.15rem;
+  padding: 0 0.3rem;
+  border-radius: 999px;
+  font-size: 0.625rem;
+  font-weight: 700;
+  color: #0f766e;
+  background: #ccfbf1;
+}
+
+.motus-saved-meals-picker__lead {
+  margin: 0 0 0.5rem;
+  font-size: 0.625rem;
+  color: #64748b;
+  line-height: 1.35;
+}
+
+.motus-saved-meals-picker__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border-radius: 0.55rem;
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  background: #ffffff;
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.08);
+}
+
+.motus-saved-meals-picker__option {
+  display: flex;
+  align-items: stretch;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.motus-saved-meals-picker__option:last-child {
+  border-bottom: none;
+}
+
+.motus-saved-meals-picker__option-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.1rem;
+  border: none;
+  background: none;
+  padding: 0.5rem 0.55rem;
+  text-align: left;
+  cursor: pointer;
+}
+
+.motus-saved-meals-picker__option-main:hover {
+  background: #ecfdf5;
+}
+
+.motus-saved-meals-picker__option-name {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: #0f172a;
+}
+
+.motus-saved-meals-picker__option-meta {
+  font-size: 0.625rem;
+  color: #64748b;
+}
+
+.motus-saved-meals-picker__option-delete {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.25rem;
+  border: none;
+  border-left: 1px solid #f1f5f9;
+  background: none;
+  color: #94a3b8;
+  cursor: pointer;
+}
+
+.motus-saved-meals-picker__option-delete:hover {
+  color: #be123c;
+  background: #fff1f2;
+}
+
+.motus-saved-meals-picker__empty {
+  padding: 0.55rem 0.65rem;
+  font-size: 0.6875rem;
+  color: #64748b;
 }
 
 .motus-log-meal-panel__slot-badge {
