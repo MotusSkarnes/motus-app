@@ -85,6 +85,7 @@ export type MemberWorkoutHistoryLogListProps = {
     note: string;
     reflection: WorkoutReflection;
   }) => void;
+  onDeleteWorkoutLog?: (logId: string, title: string) => void;
   emptyTitle?: string;
   emptyDescription?: string;
 };
@@ -105,6 +106,7 @@ export function MemberWorkoutHistoryLogList({
   onDraftChange,
   onUpdateActivityWorkout,
   onUpdateGroupWorkoutLog,
+  onDeleteWorkoutLog,
   emptyTitle = "Ingen økter logget ennå",
   emptyDescription = "Start en økt for å bygge historikk og fremgang.",
 }: MemberWorkoutHistoryLogListProps) {
@@ -180,6 +182,11 @@ export function MemberWorkoutHistoryLogList({
                       onUpdateGroupWorkoutLog?.({ logId: log.id, ...payload });
                       setEditingSimpleLogId(null);
                     }}
+                    onDelete={
+                      onDeleteWorkoutLog
+                        ? () => onDeleteWorkoutLog(log.id, log.programTitle)
+                        : undefined
+                    }
                   />
                 ) : null}
                 {hasSetResults ? (

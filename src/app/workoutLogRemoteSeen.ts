@@ -1,3 +1,6 @@
+import { storedLogDatesMatch } from "./dateFormat";
+import type { WorkoutLog } from "./types";
+
 const STORAGE_KEY = "motus.remoteSeenWorkoutLogIds.v1";
 const seenInRemoteById = new Set<string>();
 let storageHydrated = false;
@@ -55,4 +58,10 @@ export function wasWorkoutLogSeenInRemote(logId: string): boolean {
 /** After explicit delete in app — prevents optimistic merge from resurrecting on same device. */
 export function markWorkoutLogDeletedLocally(logId: string): void {
   markWorkoutLogSeenInRemote(logId);
+}
+
+export function workoutLogsRepresentSameSession(a: WorkoutLog, b: WorkoutLog): boolean {
+  if (a.memberId.trim() !== b.memberId.trim()) return false;
+  if (a.programTitle.trim().toLowerCase() !== b.programTitle.trim().toLowerCase()) return false;
+  return storedLogDatesMatch(a.date, b.date);
 }

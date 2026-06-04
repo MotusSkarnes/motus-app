@@ -67,6 +67,7 @@ import {
 import {
   markWorkoutLogsSeenInRemote,
   wasWorkoutLogSeenInRemote,
+  workoutLogsRepresentSameSession,
 } from "./workoutLogRemoteSeen";
 import {
   enrichMemberWithBestProfile,
@@ -447,6 +448,8 @@ function mergeWorkoutLogsById(
 }
 
 const LOCAL_OPTIMISTIC_WORKOUT_LOG_KEEP_MS = 48 * 60 * 60 * 1000;
+/** Medlem: behold kun nylig opprettede lokale logger som ikke finnes i sky ennå (PT-sletting skal ikke gjenoppstå). */
+const MEMBER_PENDING_WORKOUT_LOG_MS = 25 * 60 * 1000;
 const remoteTombstoneCleanupInFlight = new Set<string>();
 
 function filterProgramsHiddenFromCloudViews(programs: TrainingProgram[]): TrainingProgram[] {
@@ -495,6 +498,34 @@ function mergeRemoteWorkoutLogsWithLocalOptimistic(
     if (!dateMs) continue;
     const ageMs = nowMs - dateMs;
     if (ageMs < 0 || ageMs > LOCAL_OPTIMISTIC_WORKOUT_LOG_KEEP_MS) continue;
+    byId.set(id, localLog);
+  }
+
+  return Array.from(byId.values()).sort((a, b) => workoutLogDateMs(b) - workoutLogDateMs(a));
+}
+
+function mergeMemberWorkoutLogsWithRemote(
+  remoteLogs: WorkoutLog[],
+  localLogs: WorkoutLog[],
+  nowMs = Date.now(),
+): WorkoutLog[] {
+  markWorkoutLogsSeenInRemote(remoteLogs.map((log) => log.id));
+  const byId = new Map<string, WorkoutLog>();
+  for (const log of remoteLogs) {
+    const id = log.id.trim();
+    if (id) byId.set(id, log);
+  }
+
+  for (const localLog of localLogs) {
+    const id = localLog.id.trim();
+    if (!id || byId.has(id)) continue;
+    if (wasWorkoutLogSeenInRemote(id)) continue;
+    if (remoteLogs.some((remoteLog) => workoutLogsRepresentSameSession(remoteLog, localLog))) continue;
+
+    const dateMs = workoutLogDateMs(localLog);
+    if (!dateMs) continue;
+    const ageMs = nowMs - dateMs;
+    if (ageMs < 0 || ageMs > MEMBER_PENDING_WORKOUT_LOG_MS) continue;
     byId.set(id, localLog);
   }
 
@@ -1275,11 +1306,13 @@ export function useAppState() {
           const mergedLogs = remoteLogs ?? [];
           if (isMemberLikeSession && (hydratedMember !== null || mergedLogs.length > 0)) {
             const memberIds = memberIdsForSessionEmail(next.members, sessionEmail);
-            next.logs = mergeRemoteWorkoutLogsWithLocalOptimistic(
-              filterLogsForMembers(mergedLogs, memberIds),
-              filterLogsForMembers(prev.logs, memberIds),
-              next.members,
-            );
+            const remoteForMember = filterLogsForMembers(mergedLogs, memberIds);
+            const localForMember = filterLogsForMembers(prev.logs, memberIds);
+            const otherLogs = prev.logs.filter((log) => !memberIds.has(log.memberId.trim()));
+            next.logs = [
+              ...mergeMemberWorkoutLogsWithRemote(remoteForMember, localForMember),
+              ...otherLogs,
+            ];
           } else if (isTrainerSession && trainerHydrateOk) {
             next.logs = mergeRemoteWorkoutLogsWithLocalOptimistic(mergedLogs, prev.logs, next.members);
           } else if (mergedLogs.length > 0 || shouldAdoptRemote(mergedLogs, prev.logs)) {

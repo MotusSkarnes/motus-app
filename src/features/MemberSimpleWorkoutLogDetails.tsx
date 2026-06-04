@@ -29,6 +29,7 @@ export type MemberSimpleWorkoutLogDetailsProps = {
   }) => void;
   onSaveGroup: (payload: { className: string; note: string; reflection: WorkoutReflection }) => void;
   allowEdit?: boolean;
+  onDelete?: () => void;
 };
 
 function ReflectionPicker({
@@ -84,6 +85,7 @@ export function MemberSimpleWorkoutLogDetails({
   onSaveActivity,
   onSaveGroup,
   allowEdit = true,
+  onDelete,
 }: MemberSimpleWorkoutLogDetailsProps) {
   const isActivity = isActivityWorkoutLog(log);
   const isGroup = isGroupWorkoutLog(log);
@@ -197,15 +199,26 @@ export function MemberSimpleWorkoutLogDetails({
           <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">
             {isActivity ? "Aktivitet" : "Gruppetime"}
           </div>
-          {allowEdit ? (
-            <button
-              type="button"
-              onClick={onStartEdit}
-              className="rounded-lg border border-sky-200 bg-sky-50 px-2 py-1 text-[11px] font-semibold text-sky-700 transition hover:bg-sky-100"
-            >
-              Rediger
-            </button>
-          ) : null}
+          <div className="flex shrink-0 flex-wrap gap-1">
+            {allowEdit ? (
+              <button
+                type="button"
+                onClick={onStartEdit}
+                className="rounded-lg border border-sky-200 bg-sky-50 px-2 py-1 text-[11px] font-semibold text-sky-700 transition hover:bg-sky-100"
+              >
+                Rediger
+              </button>
+            ) : null}
+            {onDelete ? (
+              <button
+                type="button"
+                onClick={onDelete}
+                className="rounded-lg border border-rose-200 bg-rose-50 px-2 py-1 text-[11px] font-semibold text-rose-700 transition hover:bg-rose-100"
+              >
+                Slett
+              </button>
+            ) : null}
+          </div>
         </div>
         {isActivity ? (
           <div className="mt-2 space-y-1 text-sm text-slate-700">

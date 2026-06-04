@@ -113,6 +113,7 @@ describe("Stability regressions", () => {
         logActivityWorkout={vi.fn()}
         updateActivityWorkout={vi.fn()}
         updateGroupWorkoutLog={vi.fn()}
+        deleteWorkoutLog={vi.fn()}
         logCompletedPlanEntry={vi.fn()}
         removeGroupWorkoutLog={vi.fn()}
         removeCompletedPlanEntryLog={vi.fn()}

@@ -335,6 +335,7 @@ type MemberPortalProps = {
   logActivityWorkout: (input: LogActivityWorkoutInput) => void;
   updateActivityWorkout: (input: UpdateActivityWorkoutInput) => void;
   updateGroupWorkoutLog: (input: UpdateGroupWorkoutLogInput) => void;
+  deleteWorkoutLog: (input: { logId: string }) => void;
   logIntervalWorkout: (input: LogIntervalWorkoutInput) => void;
   logCompletedPlanEntry: (input: LogCompletedPlanEntryInput) => void;
   removeGroupWorkoutLog: (input: { memberId: string; className: string; date?: string }) => void;
@@ -1107,6 +1108,7 @@ export function MemberPortal(props: MemberPortalProps) {
     logActivityWorkout,
     updateActivityWorkout,
     updateGroupWorkoutLog,
+    deleteWorkoutLog,
     logIntervalWorkout,
     logCompletedPlanEntry,
     removeGroupWorkoutLog,
@@ -1148,6 +1150,10 @@ export function MemberPortal(props: MemberPortalProps) {
     }
     previousMemberTabRef.current = memberTab;
   }, [memberTab]);
+  useEffect(() => {
+    if (trainingSection !== "history" || !refreshRemoteHydration) return;
+    void refreshRemoteHydration();
+  }, [trainingSection, refreshRemoteHydration]);
   const [ptChangeReason, setPtChangeReason] = useState("");
   const [ptChangeRequestStatus, setPtChangeRequestStatus] = useState<string | null>(null);
   const lastMemberSendKeyRef = useRef("");
@@ -5519,6 +5525,21 @@ export function MemberPortal(props: MemberPortalProps) {
     });
   }
 
+  function handleDeleteSimpleWorkoutLog(logId: string, title: string) {
+    setConfirmDialog({
+      title: "Slette logg",
+      message: `Slette «${title}» fra historikken?`,
+      confirmLabel: "Slett",
+      tone: "danger",
+      onConfirm: () => {
+        deleteWorkoutLog({ logId });
+        if (expandedRecentLogId === logId) setExpandedRecentLogId(null);
+        if (selectedCalendarLogId === logId) setSelectedCalendarLogId(null);
+        if (editingCalendarSimpleLogId === logId) setEditingCalendarSimpleLogId(null);
+      },
+    });
+  }
+
   function startEditLoggedExercise(logId: string, result: WorkoutLog["results"][number], index: number) {
     const editKey = `${logId}:${result.exerciseId}:${index}`;
     setEditingLoggedExerciseKey(editKey);
@@ -5975,6 +5996,12 @@ export function MemberPortal(props: MemberPortalProps) {
                                       updateGroupWorkoutLog({ logId: selectedCalendarLog.id, ...payload });
                                       setEditingCalendarSimpleLogId(null);
                                     }}
+                                    onDelete={() =>
+                                      handleDeleteSimpleWorkoutLog(
+                                        selectedCalendarLog.id,
+                                        selectedCalendarLog.programTitle,
+                                      )
+                                    }
                                   />
                                 ) : null}
                                 {selectedCalendarLog.results?.length ? (
@@ -7347,6 +7374,7 @@ export function MemberPortal(props: MemberPortalProps) {
                         note: input.note,
                         reflection: input.reflection,
                       }),
+                    onDeleteWorkoutLog: (logId, title) => handleDeleteSimpleWorkoutLog(logId, title),
                   }}
                 />
               ) : null}
