@@ -1,11 +1,10 @@
 import { uid } from "./storage";
-import { applyImageFocalPointToSrc, DEFAULT_IMAGE_FOCAL_POINT } from "./imageFocalPoint";
+import { applyProgramCoverFrameToSrc, DEFAULT_PROGRAM_COVER_FRAME } from "./imageFocalPoint";
 import {
   ALLOWED_PROGRAM_IMAGE_TYPES,
   MAX_PROGRAM_IMAGE_BYTES,
-  MEMBER_PROGRAM_THUMB_ASPECT,
-  MEMBER_PROGRAM_THUMB_PREVIEW_WIDTH_PX,
-  PROGRAM_COVER_HERO_FOCAL_BLEED,
+  PROGRAM_COVER_HERO_CANVAS_HEIGHT_PX,
+  PROGRAM_COVER_HERO_CANVAS_WIDTH_PX,
   PROGRAM_IMAGE_BUCKET,
   PROGRAM_IMAGE_PREFIX,
 } from "./programImage";
@@ -23,13 +22,8 @@ type ProgramImageVariant = {
 /** Format programkort bruker (bredt banner). */
 export const PRIMARY_PROGRAM_COVER_VARIANT = "hero" as const;
 
-const HERO_COVER_WIDTH = 1580;
-const HERO_COVER_HEIGHT = Math.round(
-  (HERO_COVER_WIDTH / MEMBER_PROGRAM_THUMB_ASPECT) * PROGRAM_COVER_HERO_FOCAL_BLEED,
-);
-
 const PROGRAM_IMAGE_VARIANTS: ProgramImageVariant[] = [
-  { key: "hero", width: HERO_COVER_WIDTH, height: HERO_COVER_HEIGHT },
+  { key: "hero", width: PROGRAM_COVER_HERO_CANVAS_WIDTH_PX, height: PROGRAM_COVER_HERO_CANVAS_HEIGHT_PX },
   { key: "portrait", width: 900, height: 1200 },
   { key: "square", width: 1000, height: 1000 },
 ];
@@ -90,6 +84,33 @@ async function detectFocalPoint(image: ImageBitmap | HTMLImageElement): Promise<
   }
 }
 
+/** Hele bildet beholdes (letterbox) — trener velger utsnitt med zoom/pan etterpå. */
+async function createContainedHeroFile(
+  source: ImageBitmap | HTMLImageElement,
+  variant: ProgramImageVariant,
+): Promise<File> {
+  const sourceWidth = source.width;
+  const sourceHeight = source.height;
+  const scale = Math.min(variant.width / sourceWidth, variant.height / sourceHeight);
+  const drawWidth = Math.round(sourceWidth * scale);
+  const drawHeight = Math.round(sourceHeight * scale);
+  const offsetX = Math.round((variant.width - drawWidth) / 2);
+  const offsetY = Math.round((variant.height - drawHeight) / 2);
+  const canvas = document.createElement("canvas");
+  canvas.width = variant.width;
+  canvas.height = variant.height;
+  const context = canvas.getContext("2d");
+  if (!context) throw new Error("Kunne ikke behandle bildet.");
+
+  context.fillStyle = "#eef2f7";
+  context.fillRect(0, 0, variant.width, variant.height);
+  context.drawImage(source, 0, 0, sourceWidth, sourceHeight, offsetX, offsetY, drawWidth, drawHeight);
+
+  const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/jpeg", 0.88));
+  if (!blob) throw new Error("Kunne ikke lage bildevariant.");
+  return new File([blob], "motus-hero.jpg", { type: "image/jpeg" });
+}
+
 async function createCroppedImageFile(
   source: ImageBitmap | HTMLImageElement,
   variant: ProgramImageVariant,
@@ -144,7 +165,10 @@ export async function uploadProgramCoverImage(
     let primaryPublicUrl: string | null = null;
 
     for (const variant of PROGRAM_IMAGE_VARIANTS) {
-      const variantFile = await createCroppedImageFile(source, variant, focalPoint);
+      const variantFile =
+        variant.key === PRIMARY_PROGRAM_COVER_VARIANT
+          ? await createContainedHeroFile(source, variant)
+          : await createCroppedImageFile(source, variant, focalPoint);
       const variantPath = `${PROGRAM_IMAGE_PREFIX}/${imageId}-${variant.key}.jpg`;
       const { error: uploadError } = await upload(variantPath, variantFile, { cacheControl: "31536000", upsert: false });
       if (uploadError) return { ok: false, message: uploadError.message };
@@ -156,7 +180,14 @@ export async function uploadProgramCoverImage(
     if (!primaryPublicUrl) {
       return { ok: false, message: "Mangler offentlig URL for opplastet bilde." };
     }
-    return { ok: true, publicUrl: applyImageFocalPointToSrc(primaryPublicUrl, focalPoint) };
+    return {
+      ok: true,
+      publicUrl: applyProgramCoverFrameToSrc(primaryPublicUrl, {
+        ...DEFAULT_PROGRAM_COVER_FRAME,
+        focalX: focalPoint.focalX,
+        focalY: focalPoint.focalY,
+      }),
+    };
   } catch {
     const extension = file.name.split(".").pop()?.toLowerCase() || "jpg";
     const imagePath = `${PROGRAM_IMAGE_PREFIX}/${imageId}.${extension}`;
@@ -168,7 +199,7 @@ export async function uploadProgramCoverImage(
     if (!publicUrl) {
       return { ok: false, message: "Mangler offentlig URL for opplastet bilde." };
     }
-    return { ok: true, publicUrl: applyImageFocalPointToSrc(publicUrl, DEFAULT_IMAGE_FOCAL_POINT) };
+    return { ok: true, publicUrl: applyProgramCoverFrameToSrc(publicUrl, DEFAULT_PROGRAM_COVER_FRAME) };
   }
 }
 

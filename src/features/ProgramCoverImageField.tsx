@@ -19,8 +19,8 @@ export function ProgramCoverImageField({
     <div className="space-y-2 rounded-xl border bg-slate-50/70 p-3" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
       <div className="text-xs font-semibold text-slate-700">Programbilde (valgfritt)</div>
       <p className="text-[11px] leading-relaxed text-slate-500">
-        Beskjæres til samme breddeformat som på kundens programkort. Etter opplasting kan du finjustere utsnitt under
-        forhåndsvisningen. Uten bilde brukes første øvelse.
+        Hele bildet lagres ved opplasting. Bruk zoom og flytt under forhåndsvisningen for å velge utsnitt på
+        programkortet. Uten bilde brukes første øvelse.
       </p>
       <div className="flex flex-wrap items-center gap-2">
         <label className="inline-flex">

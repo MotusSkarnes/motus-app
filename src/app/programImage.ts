@@ -27,10 +27,15 @@ export const MEMBER_PROGRAM_THUMB_HEIGHT_PX = 118;
 /** Bredde/høyde på kundens programkort-thumb — brukes ved opplasting. */
 export const MEMBER_PROGRAM_THUMB_ASPECT =
   MEMBER_PROGRAM_THUMB_PREVIEW_WIDTH_PX / MEMBER_PROGRAM_THUMB_HEIGHT_PX;
-/** Hero lagres høyere enn kortet — ekstra innhold i filen ved opplasting. */
-export const PROGRAM_COVER_HERO_FOCAL_BLEED = 1.78;
-/** Fast, moderat zoom i visning — pan på begge akser via translate (endres ikke med glidebryter). */
-export const PROGRAM_COVER_DISPLAY_PAN_SCALE = 1.28;
+/** Hero-lærred (hele bildet får plass — trener beskjærer med zoom/pan). */
+export const PROGRAM_COVER_HERO_CANVAS_WIDTH_PX = 1580;
+export const PROGRAM_COVER_HERO_CANVAS_HEIGHT_PX = Math.round(
+  (PROGRAM_COVER_HERO_CANVAS_WIDTH_PX / MEMBER_PROGRAM_THUMB_ASPECT) * 1.5,
+);
+/** Zoom-glidebryter: 1 = hele opplastet bilde, høyere = innzoom. */
+export const PROGRAM_COVER_ZOOM_MIN = 1;
+export const PROGRAM_COVER_ZOOM_DEFAULT = 1;
+export const PROGRAM_COVER_ZOOM_MAX = 2.25;
 
 const GROUP_WORKOUT_COVER_IMAGES: Record<string, string> = {
   smilepuls: SMILEPULS_COVER_IMAGE,

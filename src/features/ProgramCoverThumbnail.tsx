@@ -2,16 +2,16 @@ import { useId, useMemo } from "react";
 import { resolveProgramCoverDisplayUrl } from "../app/programImage";
 import {
   applyImageFocalPointToSrc,
-  parseImageFocalPointFromSrc,
+  parseProgramCoverFrameFromSrc,
   programCustomCoverImageStyle,
-  type ImageFocalPoint,
+  type ProgramCoverFrame,
 } from "../app/imageFocalPoint";
+import { PROGRAM_COVER_ZOOM_MAX, PROGRAM_COVER_ZOOM_MIN } from "../app/programImage";
 
 type ProgramCoverThumbnailProps = {
   src: string;
   alt?: string;
   className?: string;
-  /** Når satt: vis glidebrytere som oppdaterer fx/fy i URL (lagres med programmet). */
   onFocalPointChange?: (nextUrl: string) => void;
 };
 
@@ -19,18 +19,22 @@ type ProgramCoverThumbnailProps = {
 export function ProgramCoverThumbnail({ src, alt = "", className = "", onFocalPointChange }: ProgramCoverThumbnailProps) {
   const controlId = useId();
   const displaySrc = resolveProgramCoverDisplayUrl(src.trim());
-  const focal = useMemo(() => parseImageFocalPointFromSrc(src), [src]);
+  const frame = useMemo(() => parseProgramCoverFrameFromSrc(src), [src]);
   if (!displaySrc) return null;
 
-  const updateFocal = (patch: Partial<ImageFocalPoint>) => {
+  const updateFrame = (patch: Partial<ProgramCoverFrame>) => {
     if (!onFocalPointChange) return;
     onFocalPointChange(
       applyImageFocalPointToSrc(src, {
-        focalX: patch.focalX ?? focal.focalX,
-        focalY: patch.focalY ?? focal.focalY,
+        focalX: patch.focalX ?? frame.focalX,
+        focalY: patch.focalY ?? frame.focalY,
+        zoom: patch.zoom ?? frame.zoom,
       }),
     );
   };
+
+  const zoomMinPct = Math.round(PROGRAM_COVER_ZOOM_MIN * 100);
+  const zoomMaxPct = Math.round(PROGRAM_COVER_ZOOM_MAX * 100);
 
   return (
     <div className={`motus-program-cover-trainer-preview ${className}`.trim()}>
@@ -44,45 +48,60 @@ export function ProgramCoverThumbnail({ src, alt = "", className = "", onFocalPo
       </div>
       {onFocalPointChange ? (
         <div className="mt-2 space-y-2 rounded-lg border bg-white/80 p-2.5" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
-          <div className="text-[11px] font-semibold text-slate-700">Juster utsnitt i forhåndsvisning</div>
+          <div className="text-[11px] font-semibold text-slate-700">Juster utsnitt</div>
+          <label className="block space-y-1" htmlFor={`${controlId}-zoom`}>
+            <span className="flex justify-between text-[10px] text-slate-500">
+              <span>Zoom ut ← → inn</span>
+              <span>{Math.round(frame.zoom * 100)} %</span>
+            </span>
+            <input
+              id={`${controlId}-zoom`}
+              type="range"
+              min={zoomMinPct}
+              max={zoomMaxPct}
+              value={Math.round(frame.zoom * 100)}
+              className="w-full accent-slate-800"
+              onChange={(event) => updateFrame({ zoom: Number(event.target.value) / 100 })}
+            />
+          </label>
           <label className="block space-y-1" htmlFor={`${controlId}-fx`}>
             <span className="flex justify-between text-[10px] text-slate-500">
               <span>Venstre – høyre</span>
-              <span>{Math.round(focal.focalX * 100)}%</span>
+              <span>{Math.round(frame.focalX * 100)} %</span>
             </span>
             <input
               id={`${controlId}-fx`}
               type="range"
               min={0}
               max={100}
-              value={Math.round(focal.focalX * 100)}
+              value={Math.round(frame.focalX * 100)}
               className="w-full accent-slate-800"
-              onChange={(event) => updateFocal({ focalX: Number(event.target.value) / 100 })}
+              onChange={(event) => updateFrame({ focalX: Number(event.target.value) / 100 })}
             />
           </label>
           <label className="block space-y-1" htmlFor={`${controlId}-fy`}>
             <span className="flex justify-between text-[10px] text-slate-500">
               <span>Opp – ned</span>
-              <span>{Math.round(focal.focalY * 100)}%</span>
+              <span>{Math.round(frame.focalY * 100)} %</span>
             </span>
             <input
               id={`${controlId}-fy`}
               type="range"
               min={0}
               max={100}
-              value={Math.round(focal.focalY * 100)}
+              value={Math.round(frame.focalY * 100)}
               className="w-full accent-slate-800"
-              onChange={(event) => updateFocal({ focalY: Number(event.target.value) / 100 })}
+              onChange={(event) => updateFrame({ focalY: Number(event.target.value) / 100 })}
             />
           </label>
           <p className="text-[10px] leading-relaxed text-slate-500">
-            Flytter utsnitt (lett fast beskjæring for pan). Zoom endres ikke når du drar. Lagre programmet etter justering.
+            100 % zoom viser hele opplastet bilde. Øk zoom for å beskjære, flytt med venstre/høyre og opp/ned. Lagre
+            programmet etter justering. Last opp på nytt for bilder som ble kuttet for mye tidligere.
           </p>
         </div>
       ) : (
         <p className="mt-1.5 text-[10px] leading-relaxed text-slate-500">
-          Forhåndsvisning som på kundens programkort (ca. 390 px bred mobil). Smalere eller bredere telefoner kan beskjære
-          litt annerledes i kantene.
+          Forhåndsvisning som på kundens programkort (ca. 390 px bred mobil).
         </p>
       )}
     </div>
