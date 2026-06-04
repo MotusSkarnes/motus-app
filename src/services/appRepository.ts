@@ -1,4 +1,11 @@
-import { activityWorkoutLogTitle } from "../app/activityWorkoutLog";
+import {
+  activityWorkoutLogTitle,
+  groupWorkoutLogTitle,
+  isActivityWorkoutLog,
+  isGroupWorkoutLog,
+  parseActivityNameFromLogTitle,
+  parseGroupClassNameFromLogTitle,
+} from "../app/activityWorkoutLog";
 import { filterProgramExercisesAfterBankDelete } from "../app/exerciseBankUsage";
 import { isHoldBasedExerciseCategory } from "../app/exerciseCategories";
 import { prescriptionFieldsForExerciseSave } from "../app/exercisePrescriptionFields";
@@ -121,6 +128,27 @@ export type LogActivityWorkoutInput = {
   photoUrl?: string;
   keepCurrentTab?: boolean;
   date?: string;
+};
+
+export type UpdateActivityWorkoutInput = {
+  logId: string;
+  activityName?: string;
+  durationMinutes?: string;
+  note?: string;
+  reflection?: WorkoutReflection;
+  photoUrl?: string;
+  removePhoto?: boolean;
+};
+
+export type UpdateGroupWorkoutLogInput = {
+  logId: string;
+  className?: string;
+  note?: string;
+  reflection?: WorkoutReflection;
+};
+
+export type DeleteWorkoutLogInput = {
+  logId: string;
 };
 
 export type ReplaceWorkoutExerciseGroupInput = {
@@ -247,6 +275,9 @@ export interface AppRepository {
   finishWorkoutMode(state: AppState, input?: FinishWorkoutInput): AppState;
   logGroupWorkout(state: AppState, input: LogGroupWorkoutInput): AppState;
   logActivityWorkout(state: AppState, input: LogActivityWorkoutInput): AppState;
+  updateActivityWorkout(state: AppState, input: UpdateActivityWorkoutInput): AppState;
+  updateGroupWorkoutLog(state: AppState, input: UpdateGroupWorkoutLogInput): AppState;
+  deleteWorkoutLog(state: AppState, input: DeleteWorkoutLogInput): AppState;
   logIntervalWorkout(state: AppState, input: LogIntervalWorkoutInput): AppState;
   logCompletedPlanEntry(state: AppState, input: LogCompletedPlanEntryInput): AppState;
   removeCompletedPlanEntryLog(state: AppState, input: RemoveCompletedPlanEntryLogInput): AppState;
@@ -1166,6 +1197,79 @@ export function logActivityWorkoutInState(state: AppState, input: LogActivityWor
   };
 }
 
+export function updateActivityWorkoutInState(state: AppState, input: UpdateActivityWorkoutInput): AppState {
+  const logId = input.logId.trim();
+  if (!logId) return state;
+  return {
+    ...state,
+    logs: state.logs.map((log) => {
+      if (log.id !== logId || !isActivityWorkoutLog(log)) return log;
+      const activityName =
+        input.activityName !== undefined
+          ? input.activityName.trim()
+          : parseActivityNameFromLogTitle(log.programTitle);
+      const durationRaw =
+        input.durationMinutes !== undefined
+          ? input.durationMinutes.trim().replace(",", ".")
+          : String(log.activityDurationMinutes ?? "").trim();
+      const durationMinutes = Number(durationRaw);
+      if (input.activityName !== undefined && !activityName) return log;
+      if (input.durationMinutes !== undefined && (!Number.isFinite(durationMinutes) || durationMinutes <= 0)) {
+        return log;
+      }
+      const nextReflection = input.reflection ?? log.reflection;
+      const nextNote = input.note !== undefined ? input.note.trim() : (log.note ?? "");
+      const photoUrl = input.removePhoto
+        ? undefined
+        : input.photoUrl !== undefined
+          ? input.photoUrl.trim() || undefined
+          : log.activityPhotoUrl;
+      return {
+        ...log,
+        programTitle: activityWorkoutLogTitle(activityName || parseActivityNameFromLogTitle(log.programTitle)),
+        activityDurationMinutes:
+          input.durationMinutes !== undefined
+            ? String(Math.round(durationMinutes))
+            : log.activityDurationMinutes,
+        note: nextNote,
+        reflection: nextReflection,
+        activityPhotoUrl: photoUrl,
+      };
+    }),
+  };
+}
+
+export function updateGroupWorkoutLogInState(state: AppState, input: UpdateGroupWorkoutLogInput): AppState {
+  const logId = input.logId.trim();
+  if (!logId) return state;
+  return {
+    ...state,
+    logs: state.logs.map((log) => {
+      if (log.id !== logId || !isGroupWorkoutLog(log)) return log;
+      const className =
+        input.className !== undefined ? input.className.trim() : parseGroupClassNameFromLogTitle(log.programTitle);
+      if (input.className !== undefined && !className) return log;
+      const nextReflection = input.reflection ?? log.reflection;
+      const nextNote = input.note !== undefined ? input.note.trim() : (log.note ?? "");
+      return {
+        ...log,
+        programTitle: groupWorkoutLogTitle(className || parseGroupClassNameFromLogTitle(log.programTitle)),
+        note: nextNote,
+        reflection: nextReflection,
+      };
+    }),
+  };
+}
+
+export function deleteWorkoutLogInState(state: AppState, input: DeleteWorkoutLogInput): AppState {
+  const logId = input.logId.trim();
+  if (!logId) return state;
+  return {
+    ...state,
+    logs: state.logs.filter((log) => log.id !== logId),
+  };
+}
+
 export function removeGroupWorkoutLogInState(state: AppState, input: RemoveGroupWorkoutLogInput): AppState {
   const memberId = input.memberId.trim();
   const className = input.className.trim();
@@ -1453,6 +1557,9 @@ export const localAppRepository: AppRepository = {
   finishWorkoutMode: finishWorkoutModeInState,
   logGroupWorkout: logGroupWorkoutInState,
   logActivityWorkout: logActivityWorkoutInState,
+  updateActivityWorkout: updateActivityWorkoutInState,
+  updateGroupWorkoutLog: updateGroupWorkoutLogInState,
+  deleteWorkoutLog: deleteWorkoutLogInState,
   logIntervalWorkout: logIntervalWorkoutInState,
   logCompletedPlanEntry: logCompletedPlanEntryInState,
   removeCompletedPlanEntryLog: removeCompletedPlanEntryLogInState,

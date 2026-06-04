@@ -1,8 +1,11 @@
+import { useState } from "react";
 import { ChevronRight } from "lucide-react";
+import { isActivityWorkoutLog, isGroupWorkoutLog } from "../app/activityWorkoutLog";
 import { isHoldBasedExerciseCategory } from "../app/exerciseCategories";
 import { formatWorkoutResultPerformedLabel } from "../app/programExercisePresentation";
-import type { WorkoutLog } from "../app/types";
+import type { WorkoutLog, WorkoutReflection } from "../app/types";
 import { EmptyState, TextInput } from "../app/ui";
+import { MemberSimpleWorkoutLogDetails } from "./MemberSimpleWorkoutLogDetails";
 
 function groupLoggedResultsForDisplay(results: NonNullable<WorkoutLog["results"]>): Array<{
   key: string;
@@ -67,6 +70,21 @@ export type MemberWorkoutHistoryLogListProps = {
   onCancelEdit: () => void;
   onDeleteExercise: (logId: string, exerciseId: string) => void;
   onDraftChange: (updater: (prev: EditingLoggedExerciseDraft | null) => EditingLoggedExerciseDraft | null) => void;
+  onUpdateActivityWorkout?: (input: {
+    logId: string;
+    activityName: string;
+    durationMinutes: string;
+    note: string;
+    reflection: WorkoutReflection;
+    photoUrl?: string;
+    removePhoto?: boolean;
+  }) => void;
+  onUpdateGroupWorkoutLog?: (input: {
+    logId: string;
+    className: string;
+    note: string;
+    reflection: WorkoutReflection;
+  }) => void;
   emptyTitle?: string;
   emptyDescription?: string;
 };
@@ -85,9 +103,13 @@ export function MemberWorkoutHistoryLogList({
   onCancelEdit,
   onDeleteExercise,
   onDraftChange,
+  onUpdateActivityWorkout,
+  onUpdateGroupWorkoutLog,
   emptyTitle = "Ingen økter logget ennå",
   emptyDescription = "Start en økt for å bygge historikk og fremgang.",
 }: MemberWorkoutHistoryLogListProps) {
+  const [editingSimpleLogId, setEditingSimpleLogId] = useState<string | null>(null);
+
   return (
     <div className="motus-member-history-log-list space-y-3">
       {lastDeletedMessage ? (
@@ -107,6 +129,8 @@ export function MemberWorkoutHistoryLogList({
         const isExpanded = expandedLogId === log.id;
         const fromPeriodPlan = isPeriodPlanWorkoutLog(log);
         const isFocused = focusLogId === log.id;
+        const isSimpleLog = isActivityWorkoutLog(log) || isGroupWorkoutLog(log);
+        const hasSetResults = (log.results ?? []).length > 0;
         return (
           <div
             key={log.id}
@@ -138,12 +162,31 @@ export function MemberWorkoutHistoryLogList({
                     <div className="mt-1">{log.trainerComment}</div>
                   </div>
                 ) : null}
+                {isSimpleLog ? (
+                  <MemberSimpleWorkoutLogDetails
+                    log={log}
+                    allowEdit={
+                      (isActivityWorkoutLog(log) && Boolean(onUpdateActivityWorkout)) ||
+                      (isGroupWorkoutLog(log) && Boolean(onUpdateGroupWorkoutLog))
+                    }
+                    isEditing={editingSimpleLogId === log.id}
+                    onStartEdit={() => setEditingSimpleLogId(log.id)}
+                    onCancelEdit={() => setEditingSimpleLogId(null)}
+                    onSaveActivity={(payload) => {
+                      onUpdateActivityWorkout?.({ logId: log.id, ...payload });
+                      setEditingSimpleLogId(null);
+                    }}
+                    onSaveGroup={(payload) => {
+                      onUpdateGroupWorkoutLog?.({ logId: log.id, ...payload });
+                      setEditingSimpleLogId(null);
+                    }}
+                  />
+                ) : null}
+                {hasSetResults ? (
                 <div className="rounded-xl border bg-slate-50 p-3" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
                   <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Utført i økta</div>
                   <div className="mt-2 space-y-2">
-                    {(log.results ?? []).length === 0 ? (
-                      <div className="text-sm text-slate-500">Ingen settdata registrert for denne økta.</div>
-                    ) : (
+                    {
                       groupLoggedResultsForDisplay(log.results ?? []).map((group) => (
                         <div
                           key={group.key}
@@ -289,9 +332,12 @@ export function MemberWorkoutHistoryLogList({
                           </div>
                         </div>
                       ))
-                    )}
+                    }
                   </div>
                 </div>
+                ) : isSimpleLog ? null : (
+                  <div className="text-sm text-slate-500">Ingen settdata registrert for denne økta.</div>
+                )}
               </div>
             ) : null}
           </div>

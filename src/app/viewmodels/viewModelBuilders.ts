@@ -45,6 +45,7 @@ export function buildTrainerLayoutProps(input: {
   toggleChatMessageReaction: TrainerLayoutProps["toggleChatMessageReaction"];
   markChatConversationRead: TrainerLayoutProps["markChatConversationRead"];
   updateWorkoutLogTrainerComment?: TrainerLayoutProps["updateWorkoutLogTrainerComment"];
+  deleteWorkoutLog?: TrainerLayoutProps["deleteWorkoutLog"];
   clearLocalChatCache: TrainerLayoutProps["clearLocalChatCache"];
   saveExercise: TrainerLayoutProps["saveExercise"];
   deleteExercise: TrainerLayoutProps["deleteExercise"];
@@ -100,6 +101,8 @@ export function buildMemberLayoutProps(input: {
   finishWorkoutMode: MemberLayoutProps["finishWorkoutMode"];
   logGroupWorkout: MemberLayoutProps["logGroupWorkout"];
   logActivityWorkout: MemberLayoutProps["logActivityWorkout"];
+  updateActivityWorkout: MemberLayoutProps["updateActivityWorkout"];
+  updateGroupWorkoutLog: MemberLayoutProps["updateGroupWorkoutLog"];
   logIntervalWorkout: MemberLayoutProps["logIntervalWorkout"];
   logCompletedPlanEntry: MemberLayoutProps["logCompletedPlanEntry"];
   removeGroupWorkoutLog: MemberLayoutProps["removeGroupWorkoutLog"];

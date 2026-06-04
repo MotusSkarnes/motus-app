@@ -10,8 +10,10 @@ import {
   finishWorkoutModeInState,
   logCompletedPlanEntryInState,
   removeCompletedPlanEntryLogInState,
+  deleteWorkoutLogInState,
   removeWorkoutLogResultInState,
   setWorkoutLogResultsInState,
+  updateActivityWorkoutInState,
   startCustomWorkoutInState,
   ensureWorkoutModeSessionMetadata,
   startWorkoutModeInState,
@@ -773,5 +775,48 @@ describe("appRepository workout log guards", () => {
       note: "Test",
     });
     expect(next.logs[0]?.date).toBe("10.05.2026");
+  });
+
+  it("updates activity workout logs by id", () => {
+    const state = createBaseState();
+    state.logs = [
+      {
+        id: "log-activity",
+        memberId: "member-1",
+        programTitle: "Aktivitet: Turgåing",
+        date: "02.06.2026",
+        status: "Fullført",
+        note: "Fin tur",
+        activityDurationMinutes: "30",
+        reflection: { energyLevel: 3, difficultyLevel: 2, motivationLevel: 4, note: "Fin tur" },
+        results: [],
+      },
+    ];
+    const next = updateActivityWorkoutInState(state, {
+      logId: "log-activity",
+      activityName: "Sykling",
+      durationMinutes: "55",
+      note: "Lang tur",
+      reflection: { energyLevel: 2, difficultyLevel: 3, motivationLevel: 3, note: "Lang tur" },
+    });
+    expect(next.logs[0]?.programTitle).toBe("Aktivitet: Sykling");
+    expect(next.logs[0]?.activityDurationMinutes).toBe("55");
+    expect(next.logs[0]?.note).toBe("Lang tur");
+  });
+
+  it("deletes workout log by id", () => {
+    const state = createBaseState();
+    state.logs = [
+      {
+        id: "log-delete",
+        memberId: "member-1",
+        programTitle: "Aktivitet: Test",
+        date: "02.06.2026",
+        status: "Fullført",
+        results: [],
+      },
+    ];
+    const next = deleteWorkoutLogInState(state, { logId: "log-delete" });
+    expect(next.logs).toHaveLength(0);
   });
 });

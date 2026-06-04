@@ -11,8 +11,11 @@ import {
   type DeleteProgramContext,
   type FinishWorkoutInput,
   type LogCompletedPlanEntryInput,
+  type DeleteWorkoutLogInput,
   type LogActivityWorkoutInput,
   type LogGroupWorkoutInput,
+  type UpdateActivityWorkoutInput,
+  type UpdateGroupWorkoutLogInput,
   type LogIntervalWorkoutInput,
   type RemoveCompletedPlanEntryLogInput,
   type RemoveGroupWorkoutLogInput,
@@ -2396,6 +2399,18 @@ export function useAppState() {
     }
   }
 
+  function updateActivityWorkout(input: UpdateActivityWorkoutInput) {
+    setAppState((prev) => repository.updateActivityWorkout(prev, input));
+  }
+
+  function updateGroupWorkoutLog(input: UpdateGroupWorkoutLogInput) {
+    setAppState((prev) => repository.updateGroupWorkoutLog(prev, input));
+  }
+
+  function deleteWorkoutLog(input: DeleteWorkoutLogInput) {
+    setAppState((prev) => repository.deleteWorkoutLog(prev, input));
+  }
+
   function logIntervalWorkout(input: LogIntervalWorkoutInput) {
     const onPersisted = input.onPersisted;
     let persistJob: ReturnType<typeof prepareIntervalWorkoutLogState>["job"] = null;
@@ -2813,6 +2828,9 @@ export function useAppState() {
     finishWorkoutMode,
     logGroupWorkout,
     logActivityWorkout,
+    updateActivityWorkout,
+    updateGroupWorkoutLog,
+    deleteWorkoutLog,
     logIntervalWorkout,
     logCompletedPlanEntry,
     removeGroupWorkoutLog,

@@ -77,6 +77,7 @@ type TrainerLayoutProps = {
   toggleChatMessageReaction: ComponentProps<typeof TrainerPortal>["toggleChatMessageReaction"];
   markChatConversationRead: ComponentProps<typeof TrainerPortal>["markChatConversationRead"];
   updateWorkoutLogTrainerComment?: ComponentProps<typeof TrainerPortal>["updateWorkoutLogTrainerComment"];
+  deleteWorkoutLog?: ComponentProps<typeof TrainerPortal>["deleteWorkoutLog"];
   clearLocalChatCache: ComponentProps<typeof TrainerPortal>["clearLocalChatCache"];
   saveExercise: ComponentProps<typeof TrainerPortal>["saveExercise"];
   deleteExercise: ComponentProps<typeof TrainerPortal>["deleteExercise"];
@@ -162,6 +163,7 @@ export function TrainerLayout({
   toggleChatMessageReaction,
   markChatConversationRead,
   updateWorkoutLogTrainerComment,
+  deleteWorkoutLog,
   clearLocalChatCache,
   saveExercise,
   deleteExercise,
@@ -270,6 +272,7 @@ export function TrainerLayout({
     toggleChatMessageReaction,
   markChatConversationRead,
     updateWorkoutLogTrainerComment,
+    deleteWorkoutLog,
     clearLocalChatCache,
     saveExercise,
     deleteExercise,

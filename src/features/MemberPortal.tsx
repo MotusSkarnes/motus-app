@@ -103,6 +103,8 @@ import type {
   LogCompletedPlanEntryInput,
   LogActivityWorkoutInput,
   LogGroupWorkoutInput,
+  UpdateActivityWorkoutInput,
+  UpdateGroupWorkoutLogInput,
   LogIntervalWorkoutInput,
   ReplaceWorkoutExerciseGroupInput,
   SaveProgramInput,
@@ -227,7 +229,9 @@ import { buildWeekDayModels, MemberTrainingCalendar } from "./MemberTrainingCale
 import { getMondayStart, toCalendarDateKey, type TrainingCalendarDayStatus } from "../app/memberTrainingCalendar";
 import { MuscleSplitCard } from "./MuscleSplitCard";
 import { IntervalWorkoutSessionModal } from "./IntervalWorkoutSessionModal";
+import { isActivityWorkoutLog, isGroupWorkoutLog } from "../app/activityWorkoutLog";
 import { MemberActivityLoggerCard } from "./MemberActivityLoggerCard";
+import { MemberSimpleWorkoutLogDetails } from "./MemberSimpleWorkoutLogDetails";
 import { LiveWorkoutSessionModal } from "./LiveWorkoutSessionModal";
 import { PersonalRecordProgressModal } from "./PersonalRecordProgressModal";
 import { PeriodPlanActiveView } from "./PeriodPlanActiveView";
@@ -329,6 +333,8 @@ type MemberPortalProps = {
   finishWorkoutMode: (input?: { reflection?: WorkoutReflection }) => void;
   logGroupWorkout: (input: LogGroupWorkoutInput) => void;
   logActivityWorkout: (input: LogActivityWorkoutInput) => void;
+  updateActivityWorkout: (input: UpdateActivityWorkoutInput) => void;
+  updateGroupWorkoutLog: (input: UpdateGroupWorkoutLogInput) => void;
   logIntervalWorkout: (input: LogIntervalWorkoutInput) => void;
   logCompletedPlanEntry: (input: LogCompletedPlanEntryInput) => void;
   removeGroupWorkoutLog: (input: { memberId: string; className: string; date?: string }) => void;
@@ -1099,6 +1105,8 @@ export function MemberPortal(props: MemberPortalProps) {
     finishWorkoutMode,
     logGroupWorkout,
     logActivityWorkout,
+    updateActivityWorkout,
+    updateGroupWorkoutLog,
     logIntervalWorkout,
     logCompletedPlanEntry,
     removeGroupWorkoutLog,
@@ -1210,6 +1218,7 @@ export function MemberPortal(props: MemberPortalProps) {
   const [expandedRecentLogId, setExpandedRecentLogId] = useState<string | null>(null);
   const [selectedCalendarDateKey, setSelectedCalendarDateKey] = useState<string | null>(null);
   const [selectedCalendarLogId, setSelectedCalendarLogId] = useState<string | null>(null);
+  const [editingCalendarSimpleLogId, setEditingCalendarSimpleLogId] = useState<string | null>(null);
   const [progressShareStatus, setProgressShareStatus] = useState<string | null>(null);
   const [motusCardShareStatus, setMotusCardShareStatus] = useState<string | null>(null);
   const [isSharingCelebrationPr, setIsSharingCelebrationPr] = useState(false);
@@ -5943,16 +5952,33 @@ export function MemberPortal(props: MemberPortalProps) {
                               ))}
                             </div>
                             {selectedCalendarLog ? (
-                              <div className="rounded-lg border bg-slate-50 p-3" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+                              <div className="rounded-lg border bg-slate-50 p-3 space-y-2" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
                                 <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Detaljer fra økta</div>
                                 {selectedCalendarLog.trainerComment ? (
-                                  <div className="mt-2 rounded-lg border motus-brand-surface px-3 py-2 text-sm text-emerald-900">
+                                  <div className="rounded-lg border motus-brand-surface px-3 py-2 text-sm text-emerald-900">
                                     <div className="text-[11px] font-semibold uppercase tracking-wide text-emerald-700">Kommentar fra trener</div>
                                     <div className="mt-1">{selectedCalendarLog.trainerComment}</div>
                                   </div>
                                 ) : null}
+                                {isActivityWorkoutLog(selectedCalendarLog) || isGroupWorkoutLog(selectedCalendarLog) ? (
+                                  <MemberSimpleWorkoutLogDetails
+                                    log={selectedCalendarLog}
+                                    allowEdit
+                                    isEditing={editingCalendarSimpleLogId === selectedCalendarLog.id}
+                                    onStartEdit={() => setEditingCalendarSimpleLogId(selectedCalendarLog.id)}
+                                    onCancelEdit={() => setEditingCalendarSimpleLogId(null)}
+                                    onSaveActivity={(payload) => {
+                                      updateActivityWorkout({ logId: selectedCalendarLog.id, ...payload });
+                                      setEditingCalendarSimpleLogId(null);
+                                    }}
+                                    onSaveGroup={(payload) => {
+                                      updateGroupWorkoutLog({ logId: selectedCalendarLog.id, ...payload });
+                                      setEditingCalendarSimpleLogId(null);
+                                    }}
+                                  />
+                                ) : null}
                                 {selectedCalendarLog.results?.length ? (
-                                  <div className="mt-2 space-y-2">
+                                  <div className="space-y-2">
                                     {selectedCalendarLog.results.map((result, index) => (
                                       <div key={`${selectedCalendarLog.id}-${result.exerciseId}-${index}`} className="rounded-lg border bg-white p-2.5" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
                                         <div className="text-sm font-medium text-slate-800">{formatLoggedResultTitle(result)}</div>
@@ -5974,9 +6000,9 @@ export function MemberPortal(props: MemberPortalProps) {
                                       </div>
                                     ))}
                                   </div>
-                                ) : (
-                                  <div className="mt-2 text-sm text-slate-500">Ingen detaljerte sett registrert på denne økten.</div>
-                                )}
+                                ) : !isActivityWorkoutLog(selectedCalendarLog) && !isGroupWorkoutLog(selectedCalendarLog) ? (
+                                  <div className="text-sm text-slate-500">Ingen detaljerte sett registrert på denne økten.</div>
+                                ) : null}
                               </div>
                             ) : null}
                           </>
@@ -7304,6 +7330,23 @@ export function MemberPortal(props: MemberPortalProps) {
                     onCancelEdit: cancelEditLoggedExercise,
                     onDeleteExercise: handleDeleteLoggedExercise,
                     onDraftChange: setEditingLoggedExerciseDraft,
+                    onUpdateActivityWorkout: (input) =>
+                      updateActivityWorkout({
+                        logId: input.logId,
+                        activityName: input.activityName,
+                        durationMinutes: input.durationMinutes,
+                        note: input.note,
+                        reflection: input.reflection,
+                        photoUrl: input.photoUrl,
+                        removePhoto: input.removePhoto,
+                      }),
+                    onUpdateGroupWorkoutLog: (input) =>
+                      updateGroupWorkoutLog({
+                        logId: input.logId,
+                        className: input.className,
+                        note: input.note,
+                        reflection: input.reflection,
+                      }),
                   }}
                 />
               ) : null}

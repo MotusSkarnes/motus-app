@@ -27,8 +27,11 @@ import {
   type CreateMemberResult,
   type DeleteProgramContext,
   type FinishWorkoutInput,
+  type DeleteWorkoutLogInput,
   type LogActivityWorkoutInput,
   type LogGroupWorkoutInput,
+  type UpdateActivityWorkoutInput,
+  type UpdateGroupWorkoutLogInput,
   type LogIntervalWorkoutInput,
   type LogCompletedPlanEntryInput,
   type RemoveCompletedPlanEntryLogInput,
@@ -2771,6 +2774,16 @@ async function deleteCompletedPlanEntryLogs(input: RemoveCompletedPlanEntryLogIn
   }
 }
 
+async function deleteWorkoutLogById(logId: string) {
+  if (!supabaseClient) return;
+  const trimmed = logId.trim();
+  if (!trimmed) return;
+  const { error } = await supabaseClient.from("workout_logs").delete().eq("id", trimmed);
+  if (error) {
+    console.warn("Supabase workout log delete failed:", error.message);
+  }
+}
+
 function mapIsoToCreatedAt(iso: string): string {
   const date = new Date(iso);
   if (Number.isNaN(date.getTime())) return formatDateTimeDdMmYyyy(new Date());
@@ -4460,6 +4473,33 @@ export const supabaseAppRepository: AppRepository = {
         buildMemberPersistenceHints(state, latestLog.memberId, { programTitle: latestLog.programTitle }),
       );
     }
+    return nextState;
+  },
+  updateActivityWorkout(state: AppState, input: UpdateActivityWorkoutInput): AppState {
+    const nextState = localAppRepository.updateActivityWorkout(state, input);
+    const updatedLog = nextState.logs.find((log) => log.id === input.logId);
+    if (updatedLog) {
+      void persistWorkoutLog(
+        updatedLog,
+        buildMemberPersistenceHints(state, updatedLog.memberId, { programTitle: updatedLog.programTitle }),
+      );
+    }
+    return nextState;
+  },
+  updateGroupWorkoutLog(state: AppState, input: UpdateGroupWorkoutLogInput): AppState {
+    const nextState = localAppRepository.updateGroupWorkoutLog(state, input);
+    const updatedLog = nextState.logs.find((log) => log.id === input.logId);
+    if (updatedLog) {
+      void persistWorkoutLog(
+        updatedLog,
+        buildMemberPersistenceHints(state, updatedLog.memberId, { programTitle: updatedLog.programTitle }),
+      );
+    }
+    return nextState;
+  },
+  deleteWorkoutLog(state: AppState, input: DeleteWorkoutLogInput): AppState {
+    const nextState = localAppRepository.deleteWorkoutLog(state, input);
+    void deleteWorkoutLogById(input.logId);
     return nextState;
   },
   logIntervalWorkout(state: AppState, input: LogIntervalWorkoutInput): AppState {

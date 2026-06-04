@@ -350,6 +350,7 @@ type TrainerPortalProps = {
     trainerCommentUpdatedAt?: string;
     trainerCommentAuthorName?: string;
   }) => void;
+  deleteWorkoutLog?: (input: { logId: string }) => void;
   clearLocalChatCache?: () => number;
   saveExercise: (input: {
     id?: string;
@@ -747,6 +748,7 @@ function pickFirstName(value: unknown): string {
   toggleChatMessageReaction,
   markChatConversationRead,
     updateWorkoutLogTrainerComment,
+    deleteWorkoutLog,
     clearLocalChatCache,
     saveExercise,
     deleteExercise,
@@ -3012,6 +3014,23 @@ function pickFirstName(value: unknown): string {
       trainerCommentAuthorName: trainerAccountName.trim() || undefined,
     });
     setTrainerWorkoutCommentStatus(trimmedComment ? "Kommentar lagret." : "Kommentar fjernet.");
+  }
+
+  function handleDeleteSelectedWorkoutLog() {
+    if (!filteredSelectedWorkoutLog || !deleteWorkoutLog) return;
+    const logId = filteredSelectedWorkoutLog.id;
+    const title = filteredSelectedWorkoutLog.programTitle;
+    setConfirmDialog({
+      title: "Slette økt",
+      message: `Slette «${title}» permanent? Dette kan ikke angres.`,
+      confirmLabel: "Slett økt",
+      tone: "danger",
+      onConfirm: () => {
+        deleteWorkoutLog({ logId });
+        setSelectedWorkoutLogId(null);
+        setTrainerWorkoutCommentStatus("Økten er slettet.");
+      },
+    });
   }
 
   function handlePrintProgram(program: TrainingProgram) {
@@ -6790,6 +6809,13 @@ function pickFirstName(value: unknown): string {
                           ) : (
                             <div className="text-sm text-slate-500">Ingen detaljerte sett registrert på denne økten.</div>
                           )}
+                          {deleteWorkoutLog ? (
+                            <div className="pt-2">
+                              <DangerButton type="button" className="w-full text-xs" onClick={handleDeleteSelectedWorkoutLog}>
+                                Slett hele økten
+                              </DangerButton>
+                            </div>
+                          ) : null}
                         </div>
                       ) : (
                         <EmptyState

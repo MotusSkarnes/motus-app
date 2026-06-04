@@ -30,6 +30,32 @@ export function parseActivityNameFromLogTitle(programTitle: string): string {
   return trimmed.slice("aktivitet:".length).trim() || trimmed;
 }
 
+export const GROUP_LOG_TITLE_PREFIX = "Gruppetime:";
+
+export function isGroupWorkoutLog(log: Pick<WorkoutLog, "programTitle">): boolean {
+  return log.programTitle.trim().toLowerCase().startsWith("gruppetime:");
+}
+
+export function groupWorkoutLogTitle(className: string): string {
+  const trimmed = className.trim();
+  if (trimmed.toLowerCase().startsWith("gruppetime:")) return trimmed;
+  return `${GROUP_LOG_TITLE_PREFIX} ${trimmed}`;
+}
+
+export function parseGroupClassNameFromLogTitle(programTitle: string): string {
+  const trimmed = programTitle.trim();
+  if (!trimmed.toLowerCase().startsWith("gruppetime:")) return trimmed;
+  return trimmed.slice("gruppetime:".length).trim() || trimmed;
+}
+
+export function workoutReflectionEmoji(level?: 1 | 2 | 3 | 4 | 5): string {
+  if (!level || level <= 1) return "🥳";
+  if (level === 2) return "🙂";
+  if (level === 3) return "😌";
+  if (level === 4) return "😮‍💨";
+  return "🥵";
+}
+
 export function formatActivityDurationLabel(durationMinutes: string | undefined): string {
   const raw = String(durationMinutes ?? "").trim().replace(",", ".");
   const parsed = Number(raw);
