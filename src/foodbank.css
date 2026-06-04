@@ -2357,7 +2357,15 @@
   color: #0f766e;
 }
 
-.motus-matplan-progress-card__water,
+.motus-matplan-progress-card__water-summary {
+  margin-top: 0.65rem;
+}
+
+.motus-matplan-extra-log {
+  display: flex;
+  flex-direction: column;
+}
+
 .motus-log-meal-panel__water {
   margin-top: 0.75rem;
 }

@@ -28,8 +28,9 @@ type LogMealPanelProps = {
   mealPlanTargets?: MealPlanTargets | null;
   onRefreshFoodBank?: () => void;
   hasMealPlan?: boolean;
-  /** Vann vises i matplan-dashboard; skjul her for å unngå duplikat. */
+  /** Vann logges nederst i matplan-dashboard; skjul her for å unngå duplikat. */
   showWaterSection?: boolean;
+  planFoodWaterLiters?: number;
 };
 
 function todayKey(): string {
@@ -47,6 +48,7 @@ export function LogMealPanel({
   onRefreshFoodBank,
   hasMealPlan = false,
   showWaterSection = true,
+  planFoodWaterLiters = 0,
 }: LogMealPanelProps) {
   const foodItems = useFoodBankItems();
   const [open, setOpen] = useState(false);
@@ -83,8 +85,8 @@ export function LogMealPanel({
 
   const macrosToday = useMemo(() => sumQuickFoodLogMacros(logsToday), [logsToday]);
   const totalWaterTodayLiters = useMemo(
-    () => computeTotalWaterLiters(state, dateKey, foodItems),
-    [dateKey, foodItems, state],
+    () => computeTotalWaterLiters(state, dateKey, foodItems, planFoodWaterLiters),
+    [dateKey, foodItems, planFoodWaterLiters, state],
   );
   const logsBySlot = useMemo(() => {
     const grouped = new Map<string, MemberQuickFoodLogEntry[]>();
@@ -173,7 +175,14 @@ export function LogMealPanel({
             Logg et måltid
           </GradientButton>
         </div>
-        {showWaterSection ? <MemberWaterIntakeSection memberId={memberId} foodItems={foodItems} className="motus-log-meal-panel__water" /> : null}
+        {showWaterSection ? (
+          <MemberWaterIntakeSection
+            memberId={memberId}
+            foodItems={foodItems}
+            planFoodWaterLiters={planFoodWaterLiters}
+            className="motus-log-meal-panel__water"
+          />
+        ) : null}
       </div>
     );
   }
@@ -322,7 +331,14 @@ export function LogMealPanel({
         </div>
       ) : null}
 
-      {showWaterSection ? <MemberWaterIntakeSection memberId={memberId} foodItems={foodItems} className="motus-log-meal-panel__water" /> : null}
+      {showWaterSection ? (
+        <MemberWaterIntakeSection
+          memberId={memberId}
+          foodItems={foodItems}
+          planFoodWaterLiters={planFoodWaterLiters}
+          className="motus-log-meal-panel__water"
+        />
+      ) : null}
 
       {status ? <p className="motus-log-meal-panel__status">{status}</p> : null}
     </div>

@@ -80,6 +80,7 @@ import { resolveNutritionFromFoodItems } from "../../app/memberNutritionRehydrat
 import { MealDraftComposer } from "./MealDraftComposer";
 import { LogMealPanel } from "./LogMealPanel";
 import { MemberWaterIntakeSection } from "./MemberWaterIntakeSection";
+import { WaterTotalSummary } from "./WaterTotalSummary";
 import "../../foodbank.css";
 
 const RECIPE_PORTION_GRAMS = 100;
@@ -781,11 +782,9 @@ export function MemberMealPlanDashboard({ plan, memberId, onOpenAvoidances, onRe
             />
           </div>
         </div>
-        <MemberWaterIntakeSection
-          memberId={memberId}
-          foodItems={foodItems}
-          planFoodWaterLiters={waterFromLoggedPlanFoodTodayLiters}
-          className="motus-matplan-progress-card__water"
+        <WaterTotalSummary
+          totalLiters={totalWaterTodayLiters}
+          className="motus-matplan-progress-card__water-summary"
         />
       </section>
 
@@ -1129,13 +1128,19 @@ export function MemberMealPlanDashboard({ plan, memberId, onOpenAvoidances, onRe
             );
           })}
         </div>
-        <div className="mt-4">
+        <div className="mt-4 motus-matplan-extra-log">
           <LogMealPanel
             memberId={memberId}
             mealPlanTargets={plan.targets}
             onRefreshFoodBank={onRefreshFoodBank}
             hasMealPlan
             showWaterSection={false}
+          />
+          <MemberWaterIntakeSection
+            memberId={memberId}
+            foodItems={foodItems}
+            planFoodWaterLiters={waterFromLoggedPlanFoodTodayLiters}
+            className="motus-log-meal-panel__water"
           />
         </div>
       </section>
