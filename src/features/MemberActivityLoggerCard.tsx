@@ -1,9 +1,11 @@
 import { Footprints } from "lucide-react";
 import { useRef, useState } from "react";
+import type { ReflectionLevel } from "../app/activityWorkoutLog";
 import { compressImageFile } from "../app/imageCompress";
 import type { LogActivityWorkoutInput } from "../services/appRepository";
 import { GradientButton, TextArea, TextInput, TrainingStartButton } from "../app/ui";
 import { ActivityNameCombobox } from "./ActivityNameCombobox";
+import { ReflectionLevelPicker } from "./ReflectionLevelPicker";
 
 function toIsoDateInputValue(date: Date): string {
   const year = date.getFullYear();
@@ -20,22 +22,14 @@ export type MemberActivityLoggerCardProps = {
   memberId: string;
 };
 
-function getReflectionEmoji(level: 1 | 2 | 3 | 4 | 5): string {
-  if (level <= 1) return "🥳";
-  if (level === 2) return "🙂";
-  if (level === 3) return "😌";
-  if (level === 4) return "😮‍💨";
-  return "🥵";
-}
-
 export function MemberActivityLoggerCard({ onLog, memberId }: MemberActivityLoggerCardProps) {
   const [showForm, setShowForm] = useState(false);
   const [activityName, setActivityName] = useState("");
   const [durationMinutes, setDurationMinutes] = useState("45");
   const [activityDateIso, setActivityDateIso] = useState(() => toIsoDateInputValue(new Date()));
-  const [energyLevel, setEnergyLevel] = useState<1 | 2 | 3 | 4 | 5>(3);
-  const [difficultyLevel, setDifficultyLevel] = useState<1 | 2 | 3 | 4 | 5>(3);
-  const [motivationLevel, setMotivationLevel] = useState<1 | 2 | 3 | 4 | 5>(3);
+  const [energyLevel, setEnergyLevel] = useState<ReflectionLevel>(3);
+  const [difficultyLevel, setDifficultyLevel] = useState<ReflectionLevel>(3);
+  const [motivationLevel, setMotivationLevel] = useState<ReflectionLevel>(3);
   const [comment, setComment] = useState("");
   const [photoPreview, setPhotoPreview] = useState("");
   const [photoDataUrl, setPhotoDataUrl] = useState("");
@@ -191,34 +185,21 @@ export function MemberActivityLoggerCard({ onLog, memberId }: MemberActivityLogg
             />
           </label>
 
-          {[
-            { key: "activity-energy", question: "Hvordan føles energinivået nå?", value: energyLevel, setValue: setEnergyLevel },
-            { key: "activity-difficulty", question: "Hvor tung opplevdes aktiviteten?", value: difficultyLevel, setValue: setDifficultyLevel },
-            { key: "activity-motivation", question: "Hvordan er motivasjonen videre?", value: motivationLevel, setValue: setMotivationLevel },
-          ].map((item) => (
-            <div key={item.key} className="space-y-2">
-              <div className="text-xs font-medium text-slate-700">{item.question}</div>
-              <div className="grid grid-cols-5 gap-2">
-                {[1, 2, 3, 4, 5].map((level) => {
-                  const numericLevel = level as 1 | 2 | 3 | 4 | 5;
-                  const active = item.value === numericLevel;
-                  return (
-                    <button
-                      key={level}
-                      type="button"
-                      onClick={() => item.setValue(numericLevel)}
-                      className={`rounded-xl border px-2 py-2 text-lg transition ${
-                        active ? "border-teal-400 bg-emerald-50" : "border-slate-200 bg-white hover:bg-slate-50"
-                      }`}
-                      aria-label={`Velg nivå ${level}`}
-                    >
-                      {getReflectionEmoji(numericLevel)}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          ))}
+          <ReflectionLevelPicker
+            question="Hvordan føles energinivået nå?"
+            value={energyLevel}
+            onChange={setEnergyLevel}
+          />
+          <ReflectionLevelPicker
+            question="Hvor tung opplevdes aktiviteten?"
+            value={difficultyLevel}
+            onChange={setDifficultyLevel}
+          />
+          <ReflectionLevelPicker
+            question="Hvordan er motivasjonen videre?"
+            value={motivationLevel}
+            onChange={setMotivationLevel}
+          />
 
           <div className="flex flex-wrap items-center gap-3">
             <GradientButton type="button" onClick={handleSave} className="w-full sm:w-auto">

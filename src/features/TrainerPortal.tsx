@@ -10,7 +10,7 @@
   type SetStateAction,
 } from "react";
 import { Apple, CalendarRange, ChevronDown, ChevronUp, ClipboardList, Copy, Dumbbell, Eye, EyeOff, Mail, MessageSquare, MoreHorizontal, Pencil, Play, Share2, ShieldCheck, Star, Trash2, UserCheck, UserCircle2, Users } from "lucide-react";
-import { formatActivityDurationLabel, isActivityWorkoutLog } from "../app/activityWorkoutLog";
+import { formatActivityDurationLabel, formatReflectionLevelForDisplay, isActivityWorkoutLog } from "../app/activityWorkoutLog";
 import { buildUnreadMessagesByIdentityKey, unreadCountForMember } from "../app/trainerUnreadMessages";
 import { MOTUS } from "../app/data";
 import { formatDateDdMmYyyy, getDefaultPeriodPlanStartMondayISO, periodPlanStartDateForDateInput } from "../app/dateFormat";
@@ -1774,10 +1774,6 @@ function pickFirstName(value: unknown): string {
   useEffect(() => {
     setTrainerWorkoutCommentDraft(filteredSelectedWorkoutLog?.trainerComment ?? "");
   }, [filteredSelectedWorkoutLog?.id, filteredSelectedWorkoutLog?.trainerComment]);
-  function reflectionEmoji(level?: 1 | 2 | 3 | 4 | 5): string {
-    if (!level) return "–";
-    return `${level}/5`;
-  }
   const exercisePopularityScores = useMemo(
     () => computeExercisePopularityScores(exercises, programs, logs),
     [exercises, programs, logs],
@@ -6816,7 +6812,9 @@ function pickFirstName(value: unknown): string {
                             </div>
                             <div className="mt-1 text-xs text-slate-500">{filteredSelectedWorkoutLog.status}</div>
                             <div className="mt-2 text-xs text-slate-700">
-                              Følelse: {reflectionEmoji(filteredSelectedWorkoutLog.reflection?.energyLevel)} · Belastning: {reflectionEmoji(filteredSelectedWorkoutLog.reflection?.difficultyLevel)} · Motivasjon: {reflectionEmoji(filteredSelectedWorkoutLog.reflection?.motivationLevel)}
+                              Følelse: {formatReflectionLevelForDisplay(filteredSelectedWorkoutLog.reflection?.energyLevel)} · Belastning:{" "}
+                              {formatReflectionLevelForDisplay(filteredSelectedWorkoutLog.reflection?.difficultyLevel)} · Motivasjon:{" "}
+                              {formatReflectionLevelForDisplay(filteredSelectedWorkoutLog.reflection?.motivationLevel)}
                             </div>
                             {isActivityWorkoutLog(filteredSelectedWorkoutLog) &&
                             formatActivityDurationLabel(filteredSelectedWorkoutLog.activityDurationMinutes) ? (

@@ -16,6 +16,7 @@ import {
   type WorkoutPlanLabelOptions,
 } from "../app/programExercisePresentation";
 import { GradientButton, OutlineButton, TextArea, TextInput } from "../app/ui";
+import { ReflectionLevelPicker } from "./ReflectionLevelPicker";
 import type { Exercise, TrainingProgram, WorkoutModeState, WorkoutReflection } from "../app/types";
 import { resolveDetailLastSessionLabel } from "../app/lastSessionSetDisplay";
 import { buildTrainingProgramFromWorkoutMode } from "../app/pausedWorkoutSession";
@@ -90,14 +91,6 @@ function parseRestSeconds(value: string | undefined): number {
   const parsed = Number(String(value ?? "").trim().replace(",", "."));
   if (!Number.isFinite(parsed) || parsed <= 0) return 60;
   return Math.min(600, Math.round(parsed));
-}
-
-function getReflectionEmoji(level: 1 | 2 | 3 | 4 | 5): string {
-  if (level <= 1) return "🥳";
-  if (level === 2) return "🙂";
-  if (level === 3) return "😌";
-  if (level === 4) return "😮‍💨";
-  return "🥵";
 }
 
 export function LiveWorkoutSessionModal({
@@ -1019,34 +1012,21 @@ export function LiveWorkoutSessionModal({
                     placeholder="Hvordan gikk økta som helhet?"
                   />
                 </label>
-                {[
-                  { key: "energy", question: "Hvordan føles energinivået nå?", value: reflectionEnergyLevel, setValue: setReflectionEnergyLevel },
-                  { key: "difficulty", question: "Hvor tung opplevdes økta?", value: reflectionDifficultyLevel, setValue: setReflectionDifficultyLevel },
-                  { key: "motivation", question: "Hvordan er motivasjonen videre?", value: reflectionMotivationLevel, setValue: setReflectionMotivationLevel },
-                ].map((item) => (
-                  <div key={item.key} className="space-y-2">
-                    <div className="text-xs font-medium text-slate-700">{item.question}</div>
-                    <div className="grid grid-cols-5 gap-2">
-                      {[1, 2, 3, 4, 5].map((level) => {
-                        const numericLevel = level as 1 | 2 | 3 | 4 | 5;
-                        const active = item.value === numericLevel;
-                        return (
-                          <button
-                            key={level}
-                            type="button"
-                            onClick={() => item.setValue(numericLevel)}
-                            className={`rounded-xl border px-2 py-2 text-lg transition ${
-                              active ? "border-teal-400 bg-emerald-50" : "border-slate-200 bg-white hover:bg-slate-50"
-                            }`}
-                            aria-label={`Velg nivå ${level}`}
-                          >
-                            {getReflectionEmoji(numericLevel)}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-                ))}
+                <ReflectionLevelPicker
+                  question="Hvordan føles energinivået nå?"
+                  value={reflectionEnergyLevel}
+                  onChange={setReflectionEnergyLevel}
+                />
+                <ReflectionLevelPicker
+                  question="Hvor tung opplevdes økta?"
+                  value={reflectionDifficultyLevel}
+                  onChange={setReflectionDifficultyLevel}
+                />
+                <ReflectionLevelPicker
+                  question="Hvordan er motivasjonen videre?"
+                  value={reflectionMotivationLevel}
+                  onChange={setReflectionMotivationLevel}
+                />
                 <TextArea
                   value={reflectionNote}
                   onChange={(e) => setReflectionNote(e.target.value)}

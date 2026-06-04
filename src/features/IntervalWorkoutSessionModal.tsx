@@ -8,6 +8,7 @@ import { useScreenWakeLock } from "../app/useScreenWakeLock";
 import { expandProgramExercisesToWorkoutResults } from "../app/programBlocks";
 import { buildIntervalProgramSteps, type IntervalTimerStep } from "../app/intervalWorkoutSteps";
 import { GradientButton, OutlineButton, StatusMessage, TextArea, TextInput } from "../app/ui";
+import { ReflectionLevelPicker } from "./ReflectionLevelPicker";
 import type { Exercise, TrainingProgram, WorkoutExerciseResult, WorkoutReflection } from "../app/types";
 import type { LogIntervalWorkoutInput } from "../services/appRepository";
 import {
@@ -74,14 +75,6 @@ function parseIntervalInclinePercentHint(hint: string): string {
 function intervalStepAllowsSpeedInclineEdit(step: IntervalTimerStep | null): boolean {
   if (!step || step.tone === "rest") return false;
   return step.speedHint !== "-" || step.inclineHint !== "-";
-}
-
-function getReflectionEmoji(level: 1 | 2 | 3 | 4 | 5): string {
-  if (level <= 1) return "🥳";
-  if (level === 2) return "🙂";
-  if (level === 3) return "😌";
-  if (level === 4) return "😮‍💨";
-  return "🥵";
 }
 
 function buildIntervalSessionResults(
@@ -528,34 +521,21 @@ export function IntervalWorkoutSessionModal({
                   placeholder="Hvordan gikk kondisjonsøkten?"
                 />
               </label>
-              {[
-                { key: "energy", question: "Hvordan føles energinivået nå?", value: energyLevel, setValue: setEnergyLevel },
-                { key: "difficulty", question: "Hvor tung opplevdes økta?", value: difficultyLevel, setValue: setDifficultyLevel },
-                { key: "motivation", question: "Hvordan er motivasjonen videre?", value: motivationLevel, setValue: setMotivationLevel },
-              ].map((item) => (
-                <div key={item.key} className="space-y-2">
-                  <div className="text-xs font-medium text-slate-700">{item.question}</div>
-                  <div className="grid grid-cols-5 gap-2">
-                    {[1, 2, 3, 4, 5].map((level) => {
-                      const numericLevel = level as 1 | 2 | 3 | 4 | 5;
-                      const active = item.value === numericLevel;
-                      return (
-                        <button
-                          key={level}
-                          type="button"
-                          onClick={() => item.setValue(numericLevel)}
-                          className={`rounded-xl border px-2 py-2 text-lg transition ${
-                            active ? "border-teal-400 bg-emerald-50" : "border-slate-200 bg-white hover:bg-slate-50"
-                          }`}
-                          aria-label={`Velg nivå ${level}`}
-                        >
-                          {getReflectionEmoji(numericLevel)}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              ))}
+              <ReflectionLevelPicker
+                question="Hvordan føles energinivået nå?"
+                value={energyLevel}
+                onChange={setEnergyLevel}
+              />
+              <ReflectionLevelPicker
+                question="Hvor tung opplevdes økta?"
+                value={difficultyLevel}
+                onChange={setDifficultyLevel}
+              />
+              <ReflectionLevelPicker
+                question="Hvordan er motivasjonen videre?"
+                value={motivationLevel}
+                onChange={setMotivationLevel}
+              />
               <label className="block space-y-1">
                 <span className="text-xs font-semibold text-slate-700">Notat til PT (valgfritt)</span>
                 <TextArea

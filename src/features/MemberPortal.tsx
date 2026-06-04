@@ -231,6 +231,7 @@ import { MuscleSplitCard } from "./MuscleSplitCard";
 import { IntervalWorkoutSessionModal } from "./IntervalWorkoutSessionModal";
 import { isActivityWorkoutLog, isGroupWorkoutLog } from "../app/activityWorkoutLog";
 import { MemberActivityLoggerCard } from "./MemberActivityLoggerCard";
+import { ReflectionLevelPicker } from "./ReflectionLevelPicker";
 import { MemberSimpleWorkoutLogDetails } from "./MemberSimpleWorkoutLogDetails";
 import { LiveWorkoutSessionModal } from "./LiveWorkoutSessionModal";
 import { PersonalRecordProgressModal } from "./PersonalRecordProgressModal";
@@ -4918,14 +4919,6 @@ export function MemberPortal(props: MemberPortalProps) {
     setSelectedCalendarLogId(null);
   }, [selectedCalendarDateKey]);
 
-  function getReflectionEmoji(level: 1 | 2 | 3 | 4 | 5): string {
-    if (level <= 1) return "🥳";
-    if (level === 2) return "🙂";
-    if (level === 3) return "😌";
-    if (level === 4) return "😮‍💨";
-    return "🥵";
-  }
-
   function buildGroupWorkoutReflection(): WorkoutReflection {
     return {
       energyLevel: groupWorkoutEnergyLevel,
@@ -7008,49 +7001,21 @@ export function MemberPortal(props: MemberPortalProps) {
                         <TextInput value={groupWorkoutNote} onChange={(event) => setGroupWorkoutNote(event.target.value)} placeholder="Hvordan gikk timen?" />
                       </label>
                     </div>
-                    {[
-                      {
-                        key: "group-energy",
-                        question: "Hvordan føles energinivået nå?",
-                        value: groupWorkoutEnergyLevel,
-                        setValue: setGroupWorkoutEnergyLevel,
-                      },
-                      {
-                        key: "group-difficulty",
-                        question: "Hvor tung opplevdes timen?",
-                        value: groupWorkoutDifficultyLevel,
-                        setValue: setGroupWorkoutDifficultyLevel,
-                      },
-                      {
-                        key: "group-motivation",
-                        question: "Hvordan er motivasjonen videre?",
-                        value: groupWorkoutMotivationLevel,
-                        setValue: setGroupWorkoutMotivationLevel,
-                      },
-                    ].map((item) => (
-                      <div key={item.key} className="space-y-2">
-                        <div className="text-xs font-medium text-slate-700">{item.question}</div>
-                        <div className="grid grid-cols-5 gap-2">
-                          {[1, 2, 3, 4, 5].map((level) => {
-                            const numericLevel = level as 1 | 2 | 3 | 4 | 5;
-                            const active = item.value === numericLevel;
-                            return (
-                              <button
-                                key={level}
-                                type="button"
-                                onClick={() => item.setValue(numericLevel)}
-                                className={`rounded-xl border px-2 py-2 text-lg transition ${
-                                  active ? "border-teal-400 bg-emerald-50" : "border-slate-200 bg-white hover:bg-slate-50"
-                                }`}
-                                aria-label={`Velg nivå ${level}`}
-                              >
-                                {getReflectionEmoji(numericLevel)}
-                              </button>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    ))}
+                    <ReflectionLevelPicker
+                      question="Hvordan føles energinivået nå?"
+                      value={groupWorkoutEnergyLevel}
+                      onChange={setGroupWorkoutEnergyLevel}
+                    />
+                    <ReflectionLevelPicker
+                      question="Hvor tung opplevdes timen?"
+                      value={groupWorkoutDifficultyLevel}
+                      onChange={setGroupWorkoutDifficultyLevel}
+                    />
+                    <ReflectionLevelPicker
+                      question="Hvordan er motivasjonen videre?"
+                      value={groupWorkoutMotivationLevel}
+                      onChange={setGroupWorkoutMotivationLevel}
+                    />
                     <div className="flex flex-wrap items-center gap-3">
                       <GradientButton onClick={handleLogGroupWorkout} className="w-full sm:w-auto">Lagre gruppetime</GradientButton>
                       {groupWorkoutStatus ? <div className="text-xs text-emerald-700">{groupWorkoutStatus}</div> : null}

@@ -3,10 +3,14 @@ import {
   activityWorkoutLogTitle,
   filterActivityNameSuggestions,
   formatActivityDurationLabel,
+  formatReflectionLevelForDisplay,
   groupWorkoutLogTitle,
   isActivityWorkoutLog,
   isGroupWorkoutLog,
   parseGroupClassNameFromLogTitle,
+  reflectionLevelToStorage,
+  reflectionLevelToUi,
+  workoutReflectionEmoji,
 } from "./activityWorkoutLog";
 
 describe("activityWorkoutLog", () => {
@@ -26,6 +30,15 @@ describe("activityWorkoutLog", () => {
     );
     expect(filterActivityNameSuggestions("S")).not.toContain("Turgåing");
     expect(filterActivityNameSuggestions("Fris")).toEqual(["Frisbeegolf"]);
+  });
+
+  it("maps ui reflection scale to stored scale and display", () => {
+    expect(workoutReflectionEmoji(1)).toBe("🥵");
+    expect(workoutReflectionEmoji(5)).toBe("🥳");
+    expect(reflectionLevelToStorage(1)).toBe(5);
+    expect(reflectionLevelToUi(5)).toBe(1);
+    expect(formatReflectionLevelForDisplay(5)).toBe("1/5");
+    expect(formatReflectionLevelForDisplay(1)).toBe("5/5");
   });
 
   it("formats duration labels", () => {

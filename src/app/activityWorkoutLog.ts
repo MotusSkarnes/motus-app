@@ -81,12 +81,31 @@ export function parseGroupClassNameFromLogTitle(programTitle: string): string {
   return trimmed.slice("gruppetime:".length).trim() || trimmed;
 }
 
-export function workoutReflectionEmoji(level?: 1 | 2 | 3 | 4 | 5): string {
-  if (!level || level <= 1) return "🥳";
-  if (level === 2) return "🙂";
-  if (level === 3) return "😌";
-  if (level === 4) return "😮‍💨";
-  return "🥵";
+export type ReflectionLevel = 1 | 2 | 3 | 4 | 5;
+
+/** Lagret nivå (høyere = mer sliten/tungt) → visning 1–5 der 1 = sliten og 5 = bra. */
+export function reflectionLevelToUi(stored: ReflectionLevel): ReflectionLevel {
+  return (6 - stored) as ReflectionLevel;
+}
+
+/** UI-nivå (1 = sliten … 5 = bra) → lagret skala for beregninger og historikk. */
+export function reflectionLevelToStorage(ui: ReflectionLevel): ReflectionLevel {
+  return (6 - ui) as ReflectionLevel;
+}
+
+/** Emoji for visning i felt (ui-skala: venstre = sliten, høyre = bra). */
+export function workoutReflectionEmoji(uiLevel?: ReflectionLevel): string {
+  if (!uiLevel || uiLevel <= 1) return "🥵";
+  if (uiLevel === 2) return "😮‍💨";
+  if (uiLevel === 3) return "😌";
+  if (uiLevel === 4) return "🙂";
+  return "🥳";
+}
+
+/** Tall vist til PT/medlem: 1/5 = sliten/tungt, 5/5 = lett og god form. */
+export function formatReflectionLevelForDisplay(stored?: ReflectionLevel): string {
+  if (!stored) return "–";
+  return `${reflectionLevelToUi(stored)}/5`;
 }
 
 export function formatActivityDurationLabel(durationMinutes: string | undefined): string {

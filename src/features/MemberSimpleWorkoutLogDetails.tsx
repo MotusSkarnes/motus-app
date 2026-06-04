@@ -5,8 +5,10 @@ import {
   isGroupWorkoutLog,
   parseActivityNameFromLogTitle,
   parseGroupClassNameFromLogTitle,
+  reflectionLevelToUi,
   workoutReflectionEmoji,
 } from "../app/activityWorkoutLog";
+import { ReflectionLevelPicker } from "./ReflectionLevelPicker";
 import { compressImageFile } from "../app/imageCompress";
 import type { WorkoutLog, WorkoutReflection } from "../app/types";
 import { GradientButton, TextArea, TextInput } from "../app/ui";
@@ -32,47 +34,13 @@ export type MemberSimpleWorkoutLogDetailsProps = {
   onDelete?: () => void;
 };
 
-function ReflectionPicker({
-  label,
-  value,
-  onChange,
-}: {
-  label: string;
-  value: 1 | 2 | 3 | 4 | 5;
-  onChange: (level: 1 | 2 | 3 | 4 | 5) => void;
-}) {
-  return (
-    <div className="space-y-2">
-      <div className="text-xs font-medium text-slate-700">{label}</div>
-      <div className="grid grid-cols-5 gap-2">
-        {[1, 2, 3, 4, 5].map((level) => {
-          const numericLevel = level as 1 | 2 | 3 | 4 | 5;
-          const active = value === numericLevel;
-          return (
-            <button
-              key={level}
-              type="button"
-              onClick={() => onChange(numericLevel)}
-              className={`rounded-xl border px-2 py-2 text-lg transition ${
-                active ? "border-teal-400 bg-emerald-50" : "border-slate-200 bg-white hover:bg-slate-50"
-              }`}
-              aria-label={`Velg nivå ${level}`}
-            >
-              {workoutReflectionEmoji(numericLevel)}
-            </button>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
-
 function ReflectionSummary({ reflection }: { reflection?: WorkoutReflection }) {
   if (!reflection) return null;
   return (
     <div className="text-xs text-slate-600">
-      Følelse {workoutReflectionEmoji(reflection.energyLevel)} · Belastning {workoutReflectionEmoji(reflection.difficultyLevel)} ·
-      Motivasjon {workoutReflectionEmoji(reflection.motivationLevel)}
+      Følelse {workoutReflectionEmoji(reflectionLevelToUi(reflection.energyLevel))} · Belastning{" "}
+      {workoutReflectionEmoji(reflectionLevelToUi(reflection.difficultyLevel))} · Motivasjon{" "}
+      {workoutReflectionEmoji(reflectionLevelToUi(reflection.motivationLevel))}
     </div>
   );
 }
@@ -315,9 +283,9 @@ export function MemberSimpleWorkoutLogDetails({
           placeholder="Hvordan gikk det?"
         />
       </label>
-      <ReflectionPicker label="Hvordan føles energinivået?" value={energyLevel} onChange={setEnergyLevel} />
-      <ReflectionPicker label="Hvor tung opplevdes økten?" value={difficultyLevel} onChange={setDifficultyLevel} />
-      <ReflectionPicker label="Hvordan er motivasjonen videre?" value={motivationLevel} onChange={setMotivationLevel} />
+      <ReflectionLevelPicker question="Hvordan føles energinivået?" value={energyLevel} onChange={setEnergyLevel} />
+      <ReflectionLevelPicker question="Hvor tung opplevdes økten?" value={difficultyLevel} onChange={setDifficultyLevel} />
+      <ReflectionLevelPicker question="Hvordan er motivasjonen videre?" value={motivationLevel} onChange={setMotivationLevel} />
       <div className="flex flex-wrap items-center gap-2">
         <GradientButton type="button" onClick={handleSave} className="px-4 py-2 text-xs">
           Lagre endringer
