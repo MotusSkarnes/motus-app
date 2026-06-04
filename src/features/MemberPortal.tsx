@@ -38,7 +38,6 @@ import { memberBadgeImageSrc } from "../app/badgeAssets";
 import { resolveExerciseImageSrc } from "../app/exerciseIllustrations";
 import { imageObjectPositionFromSrc, programCustomCoverImageStyle } from "../app/imageFocalPoint";
 import {
-  PROGRAM_COVER_DISPLAY_VERTICAL_ZOOM,
   programCoverUsesPhotoStyle,
   resolveGroupWorkoutCoverImage,
   resolveNoPlanDayCoverImage,
@@ -6625,14 +6624,7 @@ export function MemberPortal(props: MemberPortalProps) {
 	                        className="motus-member-program-card motus-card overflow-hidden"
 	                      >
 	                        <div className="motus-member-program-layout">
-	                        <div
-	                          className="motus-member-program-thumb motus-image-frame"
-	                          style={
-	                            programUsesCustomCover
-	                              ? ({ ["--motus-program-cover-vzoom"]: String(PROGRAM_COVER_DISPLAY_VERTICAL_ZOOM) } as React.CSSProperties)
-	                              : undefined
-	                          }
-	                        >
+	                        <div className="motus-member-program-thumb motus-image-frame">
 	                          {programCoverSrc ? (
 	                            <img
 	                              src={programCoverSrc}

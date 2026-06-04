@@ -1,3 +1,5 @@
+import { PROGRAM_COVER_DISPLAY_ZOOM } from "./programImage";
+
 export type ImageFocalPoint = {
   focalX: number;
   focalY: number;
@@ -51,7 +53,24 @@ export function imageObjectPositionFromSrc(src?: string | null): string {
   return `${x.toFixed(1)}% ${y.toFixed(1)}%`;
 }
 
-/** Inline-stil for egendefinert programforside (fy-glidebryter + vertikal zoom i CSS-klasse). */
-export function programCustomCoverImageStyle(src?: string | null): { objectPosition: string } {
-  return { objectPosition: imageObjectPositionFromSrc(src) };
+export type ProgramCustomCoverImageStyle = {
+  objectFit: "cover";
+  transform: string;
+  transformOrigin: string;
+};
+
+/**
+ * Panering via scale + transform-origin (object-position alene virker ikke på brede hero-bannere).
+ */
+export function programCustomCoverImageStyle(
+  src?: string | null,
+  zoom: number = PROGRAM_COVER_DISPLAY_ZOOM,
+): ProgramCustomCoverImageStyle {
+  const { focalX, focalY } = parseImageFocalPointFromSrc(src);
+  const scale = Number.isFinite(zoom) && zoom > 1 ? zoom : PROGRAM_COVER_DISPLAY_ZOOM;
+  return {
+    objectFit: "cover",
+    transform: scale > 1 ? `scale(${scale})` : "none",
+    transformOrigin: `${(focalX * 100).toFixed(1)}% ${(focalY * 100).toFixed(1)}%`,
+  };
 }

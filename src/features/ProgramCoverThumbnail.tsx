@@ -1,4 +1,4 @@
-import { useId, useMemo, type CSSProperties } from "react";
+import { useId, useMemo } from "react";
 import { resolveProgramCoverDisplayUrl } from "../app/programImage";
 import {
   applyImageFocalPointToSrc,
@@ -6,7 +6,6 @@ import {
   programCustomCoverImageStyle,
   type ImageFocalPoint,
 } from "../app/imageFocalPoint";
-import { PROGRAM_COVER_DISPLAY_VERTICAL_ZOOM } from "../app/programImage";
 
 type ProgramCoverThumbnailProps = {
   src: string;
@@ -35,14 +34,7 @@ export function ProgramCoverThumbnail({ src, alt = "", className = "", onFocalPo
 
   return (
     <div className={`motus-program-cover-trainer-preview ${className}`.trim()}>
-      <div
-        className="motus-member-program-thumb motus-image-frame"
-        style={
-          {
-            ["--motus-program-cover-vzoom"]: String(PROGRAM_COVER_DISPLAY_VERTICAL_ZOOM),
-          } as CSSProperties
-        }
-      >
+      <div className="motus-member-program-thumb motus-image-frame">
         <img
           src={displaySrc}
           alt={alt}
@@ -84,8 +76,7 @@ export function ProgramCoverThumbnail({ src, alt = "", className = "", onFocalPo
             />
           </label>
           <p className="text-[10px] leading-relaxed text-slate-500">
-            Samme utsnitt brukes på kundens programkort. Husk å lagre programmet etter justering. Last opp bildet på nytt hvis
-            opp–ned har lite effekt.
+            Samme utsnitt brukes på kundens programkort. Husk å lagre programmet etter justering.
           </p>
         </div>
       ) : (
