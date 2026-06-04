@@ -520,6 +520,10 @@ function countCardioDragRows(draft: ProgramExercise[]): number {
   return draft.filter((row) => /^drag\b/i.test(row.exerciseName.trim())).length;
 }
 
+function firstCardioCooldownIndex(draft: ProgramExercise[]): number {
+  return draft.findIndex((row) => isCardioCooldownStepName(row.exerciseName));
+}
+
 function cardioSetLabel(): string {
   return "Antall drag";
 }
@@ -2442,7 +2446,6 @@ function pickFirstName(value: unknown): string {
   }
 
   function appendCardioDragRow() {
-    if (hasCardioCooldownRow(programExercisesDraft)) return;
     const base = pickCardioExerciseForEquipment(exercises, cardioEquipmentId);
     if (!base) {
       setTemplateAssignStatus("Fant ingen kondisjonsøvelse for valgt utstyr.");
@@ -2459,7 +2462,13 @@ function pickFirstName(value: unknown): string {
       },
       cardioIntervalIntensity,
     );
-    setProgramExercisesDraft((prev) => [...prev, drag]);
+    setProgramExercisesDraft((prev) => {
+      const cooldownIndex = firstCardioCooldownIndex(prev);
+      if (cooldownIndex < 0) return [...prev, drag];
+      const next = [...prev];
+      next.splice(cooldownIndex, 0, drag);
+      return next;
+    });
     setTemplateAssignStatus(null);
   }
 
@@ -2476,7 +2485,7 @@ function pickFirstName(value: unknown): string {
     );
     setProgramExercisesDraft((prev) => [...prev, cooldown]);
     setTemplateAssignStatus(
-      `${CARDIO_COOLDOWN_STEP_NAME} lagt til. Fjern ${CARDIO_COOLDOWN_STEP_NAME.toLowerCase()}-raden om du vil legge til flere drag.`,
+      `${CARDIO_COOLDOWN_STEP_NAME} lagt til. Du kan fortsatt legge til drag før nedtrapping, eller sett «Antall drag» på én drag-rad (f.eks. 10).`,
     );
   }
 
@@ -6954,7 +6963,7 @@ function pickFirstName(value: unknown): string {
                     <OutlineButton
                       type="button"
                       onClick={appendCardioDragRow}
-                      disabled={programExercisesDraft.length === 0 || hasCardioCooldownRow(programExercisesDraft)}
+                      disabled={programExercisesDraft.length === 0}
                     >
                       Legg til drag
                     </OutlineButton>

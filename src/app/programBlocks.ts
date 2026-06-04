@@ -146,6 +146,9 @@ export function isLegacyIntervalCooldownDrag(exercises: ProgramExercise[], index
   if (isCardioCooldownStepName(name)) return false;
   if (!/^drag\b/i.test(name)) return false;
 
+  // Én rad med «Antall drag» > 1 er arbeidsintervaller, ikke nedtrapping.
+  if (parseProgramSetCount(exercise.sets) > 1) return false;
+
   const restSeconds = Number(String(exercise.restSeconds ?? "").trim() || "0");
   const hasNoRestAfter = !Number.isFinite(restSeconds) || restSeconds <= 0;
   if (!hasNoRestAfter) return false;
@@ -154,15 +157,25 @@ export function isLegacyIntervalCooldownDrag(exercises: ProgramExercise[], index
   const prevIsDrag = /^drag\b/i.test(previousName);
   const prevIsWarmup = /^oppvarming$/i.test(previousName);
 
-  // Vanligste feil: siste rad «Drag 4/5» etter minst ett tidligere drag, uten hvile etterpå.
-  if (prevIsDrag) return true;
+  // Siste rad etter flere drag: bare nedtrapping hvis den er vesentlig lengre (mismerket «Drag 4»).
+  if (prevIsDrag) {
+    const namedDragCount = exercises.filter((row) => /^drag\b/i.test(row.exerciseName.trim())).length;
+    if (namedDragCount >= 2) {
+      const prevDuration = Number(previousExercise?.durationMinutes ?? 0);
+      const duration = Number(exercise.durationMinutes ?? 0);
+      return duration > prevDuration + 0.5;
+    }
+    return true;
+  }
 
   const speed = Number(String(exercise.speed ?? "").replace(",", "."));
   const previousSpeed = Number(String(previousExercise?.speed ?? "").replace(",", "."));
   const targetHr = String(exercise.targetHrPercent ?? "").trim();
+  const hasSpeedSignal = Number.isFinite(speed) && speed > 0;
+  const hasPreviousSpeedSignal = Number.isFinite(previousSpeed) && previousSpeed > 0;
   const looksLikeEasyCooldown =
-    (Number.isFinite(speed) && Number.isFinite(previousSpeed) && speed < previousSpeed) ||
-    (Number.isFinite(speed) && speed > 0 && speed <= 7.5) ||
+    (hasSpeedSignal && hasPreviousSpeedSignal && speed < previousSpeed) ||
+    (hasSpeedSignal && speed <= 7.5) ||
     /55|60|65|rolig|lav/i.test(targetHr);
 
   return prevIsWarmup && looksLikeEasyCooldown;

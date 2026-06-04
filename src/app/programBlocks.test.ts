@@ -155,6 +155,80 @@ describe("programBlocks", () => {
     expect(pickRestrictiveMemberLibraryStatus(undefined, "hidden")).toBe("archived");
   });
 
+  it("does not treat last drag in a multi-drag program as nedtrapping when duration matches", () => {
+    const exercises = [
+      {
+        id: "w",
+        exerciseId: "ex1",
+        exerciseName: "Oppvarming",
+        sets: "1",
+        reps: "",
+        weight: "",
+        durationMinutes: "5",
+        speed: "",
+        restSeconds: "0",
+        notes: "",
+      },
+      {
+        id: "d1",
+        exerciseId: "ex1",
+        exerciseName: "Drag 1",
+        sets: "1",
+        reps: "",
+        weight: "",
+        durationMinutes: "1",
+        speed: "",
+        restSeconds: "60",
+        notes: "",
+      },
+      {
+        id: "d10",
+        exerciseId: "ex1",
+        exerciseName: "Drag 10",
+        sets: "1",
+        reps: "",
+        weight: "",
+        durationMinutes: "1",
+        speed: "",
+        restSeconds: "0",
+        notes: "",
+      },
+    ];
+    expect(isLegacyIntervalCooldownDrag(exercises, 2)).toBe(false);
+  });
+
+  it("does not rename multi-set drag row after oppvarming", () => {
+    const exercises = [
+      {
+        id: "w",
+        exerciseId: "ex1",
+        exerciseName: "Oppvarming",
+        sets: "1",
+        reps: "",
+        weight: "",
+        durationMinutes: "5",
+        speed: "",
+        restSeconds: "0",
+        notes: "",
+      },
+      {
+        id: "d",
+        exerciseId: "ex1",
+        exerciseName: "Drag 1",
+        sets: "10",
+        reps: "",
+        weight: "",
+        durationMinutes: "1",
+        speed: "",
+        restSeconds: "60",
+        notes: "",
+      },
+    ];
+    expect(isLegacyIntervalCooldownDrag(exercises, 1)).toBe(false);
+    const normalized = normalizeLegacyIntervalCooldownExerciseNames(exercises);
+    expect(normalized[1]?.exerciseName).toMatch(/drag/i);
+  });
+
   it("does not treat last work drag as nedjogg when it still has rest after", () => {
     const exercises = [
       {
