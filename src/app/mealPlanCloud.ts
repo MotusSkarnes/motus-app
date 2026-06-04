@@ -488,35 +488,47 @@ export async function deleteMealPlanForLookupIds(
 }
 
 /** Sky er kilde når rad finnes; overskriver aldri PT-plan med tom standardplan. */
+export type MealPlanMemberSyncResult = {
+  plan: MealPlan | null;
+  cloudSynced: boolean;
+  /** Sky bekreftet at det ikke finnes matplan (slettet eller aldri lagret). */
+  noMealPlanInCloud: boolean;
+};
+
 export async function syncMealPlanForMember(
   memberId: string,
   ownerUserId: string,
   memberEmail?: string,
-): Promise<{ plan: MealPlan | null; cloudSynced: boolean }> {
+): Promise<MealPlanMemberSyncResult> {
   const lookupIds = await resolveMealPlanLookupIds(memberId, memberEmail, {
     forTrainerView: Boolean(ownerUserId.trim()),
   });
   const trimmedMemberId = memberId.trim() || lookupIds[0] || "";
-  const { plan: remote } = await fetchMealPlanFromSupabase(lookupIds);
+  const clearIds = lookupIds.length ? lookupIds : [trimmedMemberId];
+  const { plan: remote, hadFetchErrors } = await fetchMealPlanFromSupabase(lookupIds);
   const local = loadBestLocalMealPlan(lookupIds);
+  const remoteHasFood = remote ? countMealPlanFoodItems(remote) > 0 : false;
 
-  if (remote) {
-    const preferred = pickPreferredMealPlan([remote, local].filter((row): row is MealPlan => Boolean(row))) ?? remote;
+  if (remoteHasFood) {
+    const preferred = pickPreferredMealPlan([remote!, local].filter((row): row is MealPlan => Boolean(row))) ?? remote!;
     const normalized = { ...preferred, memberId: trimmedMemberId };
     if (!mealPlansEqual(loadMealPlanForMember(trimmedMemberId), normalized)) {
       persistMealPlan(normalized, { notify: false });
     }
-    return { plan: normalized, cloudSynced: true };
+    return { plan: normalized, cloudSynced: true, noMealPlanInCloud: false };
   }
 
-  if (local && (countMealPlanFoodItems(local) > 0 || local.notes.trim())) {
-    const normalized = { ...local, memberId: trimmedMemberId };
-    persistMealPlan(normalized, { notify: false });
-    return { plan: normalized, cloudSynced: false };
+  if (hadFetchErrors) {
+    if (local && (countMealPlanFoodItems(local) > 0 || local.notes.trim())) {
+      const normalized = { ...local, memberId: trimmedMemberId };
+      persistMealPlan(normalized, { notify: false });
+      return { plan: normalized, cloudSynced: false, noMealPlanInCloud: false };
+    }
+    return { plan: null, cloudSynced: false, noMealPlanInCloud: false };
   }
 
-  clearMealPlanLocalForMemberIds(lookupIds.length ? lookupIds : [trimmedMemberId], { notify: false });
-  return { plan: null, cloudSynced: true };
+  clearMealPlanLocalForMemberIds(clearIds, { notify: false });
+  return { plan: null, cloudSynced: true, noMealPlanInCloud: true };
 }
 
 export type TrainerMealPlanLoadResult =

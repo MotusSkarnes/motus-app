@@ -14,6 +14,7 @@ import type { Member } from "../app/types";
 import { MemberFoodAvoidancesPanel } from "./nutrition/MemberFoodAvoidancesPanel";
 import { LogMealPanel } from "./nutrition/LogMealPanel";
 import { MemberSubmitFoodPanel } from "./MemberSubmitFoodPanel";
+import { MemberMealPlanContactCard } from "./nutrition/MemberMealPlanContactCard";
 import { MemberMealPlanDashboard } from "./nutrition/MemberMealPlanDashboard";
 import { NutritionHub } from "./nutrition/NutritionHub";
 
@@ -21,9 +22,15 @@ type MemberNutritionViewProps = {
   member: Member;
   members: Member[];
   onSavePersonalGoals: (personalGoals: string) => void;
+  onOpenMessages?: () => void;
 };
 
-export function MemberNutritionView({ member, members, onSavePersonalGoals }: MemberNutritionViewProps) {
+export function MemberNutritionView({
+  member,
+  members,
+  onSavePersonalGoals,
+  onOpenMessages,
+}: MemberNutritionViewProps) {
   const [nutritionTab, setNutritionTab] = useState<NutritionHubTab>("mealPlan");
   const memberId = member.id;
   const memberName = member.name;
@@ -40,6 +47,7 @@ export function MemberNutritionView({ member, members, onSavePersonalGoals }: Me
   const [plan, setPlan] = useState<MealPlan | null>(null);
   const [loading, setLoading] = useState(true);
   const [cloudSynced, setCloudSynced] = useState(true);
+  const [noMealPlanInCloud, setNoMealPlanInCloud] = useState(false);
   const reloadInFlightRef = useRef(false);
   const hasLoadedOnceRef = useRef(false);
 
@@ -56,6 +64,7 @@ export function MemberNutritionView({ member, members, onSavePersonalGoals }: Me
           : null;
         setPlan((prev) => (mealPlansEqual(prev, hydrated) ? prev : hydrated));
         setCloudSynced(result.cloudSynced);
+        setNoMealPlanInCloud(result.noMealPlanInCloud);
         hasLoadedOnceRef.current = true;
       } finally {
         reloadInFlightRef.current = false;
@@ -89,6 +98,7 @@ export function MemberNutritionView({ member, members, onSavePersonalGoals }: Me
   useEffect(() => {
     hasLoadedOnceRef.current = false;
     setPlan(null);
+    setNoMealPlanInCloud(false);
     setLoading(true);
     void reload();
   }, [memberId, memberEmail, reload]);
@@ -113,27 +123,34 @@ export function MemberNutritionView({ member, members, onSavePersonalGoals }: Me
       return <Card className="p-6 text-center text-sm text-slate-600">Laster din matplan …</Card>;
     }
     const planHasAssignedFood = countMealPlanFoodItems(plan) > 0;
+    const showSyncWarning = !cloudSynced && !noMealPlanInCloud;
+
     if (!planHasAssignedFood) {
       return (
         <div className="space-y-3">
-          {!cloudSynced ? (
+          {showSyncWarning ? (
             <Card className="border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
-              Kunne ikke hente matplan fra sky ennå. Sjekk nett og oppdater siden, eller be PT trykke «Lagre» på matplanen din.
+              Kunne ikke hente matplan fra sky akkurat nå. Sjekk nett og oppdater siden. Vi viser det som er lagret på
+              denne enheten til det er synkronisert igjen.
             </Card>
-          ) : null}
+          ) : (
+            <MemberMealPlanContactCard onOpenMessages={onOpenMessages} />
+          )}
           <LogMealPanel
             memberId={memberId}
             mealPlanTargets={plan?.targets}
             onRefreshFoodBank={refreshMemberFoodBank}
+            hasMealPlan={false}
           />
         </div>
       );
     }
     return (
       <div className="space-y-4">
-        {!cloudSynced ? (
+        {showSyncWarning ? (
           <Card className="border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
-            Kunne ikke hente matplan fra sky ennå. Sjekk nett og oppdater siden, eller be PT trykke «Lagre» på matplanen din.
+            Kunne ikke hente matplan fra sky akkurat nå. Sjekk nett og oppdater siden. Vi viser det som er lagret på
+            denne enheten til det er synkronisert igjen.
           </Card>
         ) : null}
         <MemberMealPlanDashboard
@@ -145,7 +162,17 @@ export function MemberNutritionView({ member, members, onSavePersonalGoals }: Me
         />
       </div>
     );
-  }, [loading, plan, cloudSynced, memberId, memberName, setNutritionTab, refreshMemberFoodBank]);
+  }, [
+    loading,
+    plan,
+    cloudSynced,
+    noMealPlanInCloud,
+    memberId,
+    memberName,
+    onOpenMessages,
+    setNutritionTab,
+    refreshMemberFoodBank,
+  ]);
 
   const profileMember = pickCanonicalMemberRowForProfile(member, members);
   const resolvedPersonalGoals = useMemo(

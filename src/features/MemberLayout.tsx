@@ -622,6 +622,7 @@ export function MemberLayout({
             <MemberNutritionView
               member={activeMember}
               members={appState.members}
+              onOpenMessages={() => setMemberTab("messages")}
               onSavePersonalGoals={(personalGoals) => {
                 const anchor = pickCanonicalMemberRowForProfile(activeMember, appState.members);
                 const related = findMembersByEmail(anchor, appState.members);
