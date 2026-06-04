@@ -1,4 +1,3 @@
-import type { AuthBootstrapParams } from "../app/supabaseAuthBootstrap";
 import {
   buildMemberInviteRedirectUrl,
   readAuthParamsFromLocation,
