@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from "react";
 import {
-  ACTIVITY_NAME_SUGGESTIONS,
   formatActivityDurationLabel,
   isActivityWorkoutLog,
   isGroupWorkoutLog,
@@ -11,6 +10,7 @@ import {
 import { compressImageFile } from "../app/imageCompress";
 import type { WorkoutLog, WorkoutReflection } from "../app/types";
 import { GradientButton, TextArea, TextInput } from "../app/ui";
+import { ActivityNameCombobox } from "./ActivityNameCombobox";
 
 const MAX_ACTIVITY_PHOTO_CHARS = 420_000;
 
@@ -259,16 +259,7 @@ export function MemberSimpleWorkoutLogDetails({
         <div className="grid gap-3 sm:grid-cols-2">
           <label className="space-y-1 sm:col-span-2">
             <span className="text-xs font-medium text-slate-600">Aktivitet</span>
-            <TextInput
-              value={activityName}
-              onChange={(event) => setActivityName(event.target.value)}
-              list="motus-history-activity-suggestions"
-            />
-            <datalist id="motus-history-activity-suggestions">
-              {ACTIVITY_NAME_SUGGESTIONS.map((name) => (
-                <option key={name} value={name} />
-              ))}
-            </datalist>
+            <ActivityNameCombobox value={activityName} onChange={setActivityName} />
           </label>
           <label className="space-y-1">
             <span className="text-xs font-medium text-slate-600">Varighet (min)</span>

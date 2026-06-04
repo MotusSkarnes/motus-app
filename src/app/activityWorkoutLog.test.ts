@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   activityWorkoutLogTitle,
+  filterActivityNameSuggestions,
   formatActivityDurationLabel,
   groupWorkoutLogTitle,
   isActivityWorkoutLog,
@@ -16,6 +17,15 @@ describe("activityWorkoutLog", () => {
   it("detects activity logs", () => {
     expect(isActivityWorkoutLog({ programTitle: "Aktivitet: Sykling" })).toBe(true);
     expect(isActivityWorkoutLog({ programTitle: "Gruppetime: Yoga" })).toBe(false);
+  });
+
+  it("filters activity suggestions by first-letter prefix", () => {
+    expect(filterActivityNameSuggestions("")).toContain("Frisbeegolf");
+    expect(filterActivityNameSuggestions("S")).toEqual(
+      expect.arrayContaining(["Sykling", "Svømming", "Ski", "Spinning", "Squash", "Stavtur", "Styrke annet sted"]),
+    );
+    expect(filterActivityNameSuggestions("S")).not.toContain("Turgåing");
+    expect(filterActivityNameSuggestions("Fris")).toEqual(["Frisbeegolf"]);
   });
 
   it("formats duration labels", () => {

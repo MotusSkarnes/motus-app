@@ -1,9 +1,9 @@
 import { Footprints } from "lucide-react";
 import { useRef, useState } from "react";
-import { ACTIVITY_NAME_SUGGESTIONS } from "../app/activityWorkoutLog";
 import { compressImageFile } from "../app/imageCompress";
 import type { LogActivityWorkoutInput } from "../services/appRepository";
 import { GradientButton, TextArea, TextInput, TrainingStartButton } from "../app/ui";
+import { ActivityNameCombobox } from "./ActivityNameCombobox";
 
 function toIsoDateInputValue(date: Date): string {
   const year = date.getFullYear();
@@ -30,7 +30,7 @@ function getReflectionEmoji(level: 1 | 2 | 3 | 4 | 5): string {
 
 export function MemberActivityLoggerCard({ onLog, memberId }: MemberActivityLoggerCardProps) {
   const [showForm, setShowForm] = useState(false);
-  const [activityName, setActivityName] = useState("Turgåing");
+  const [activityName, setActivityName] = useState("");
   const [durationMinutes, setDurationMinutes] = useState("45");
   const [activityDateIso, setActivityDateIso] = useState(() => toIsoDateInputValue(new Date()));
   const [energyLevel, setEnergyLevel] = useState<1 | 2 | 3 | 4 | 5>(3);
@@ -97,6 +97,7 @@ export function MemberActivityLoggerCard({ onLog, memberId }: MemberActivityLogg
     });
 
     setStatus("Aktivitet lagret. PT kan se den under dine økter.");
+    setActivityName("");
     setEnergyLevel(3);
     setDifficultyLevel(3);
     setMotivationLevel(3);
@@ -150,17 +151,7 @@ export function MemberActivityLoggerCard({ onLog, memberId }: MemberActivityLogg
             </label>
             <label className="space-y-1 md:col-span-2">
               <span className="text-xs font-medium text-slate-600">Aktivitet</span>
-              <TextInput
-                value={activityName}
-                onChange={(event) => setActivityName(event.target.value)}
-                placeholder="F.eks. turgåing"
-                list="motus-activity-suggestions"
-              />
-              <datalist id="motus-activity-suggestions">
-                {ACTIVITY_NAME_SUGGESTIONS.map((name) => (
-                  <option key={name} value={name} />
-                ))}
-              </datalist>
+              <ActivityNameCombobox value={activityName} onChange={setActivityName} placeholder="Velg eller skriv aktivitet" />
             </label>
             <label className="space-y-1">
               <span className="text-xs font-medium text-slate-600">Varighet (min)</span>

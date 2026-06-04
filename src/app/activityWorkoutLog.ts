@@ -3,16 +3,49 @@ import type { WorkoutLog } from "./types";
 export const ACTIVITY_LOG_TITLE_PREFIX = "Aktivitet:";
 
 export const ACTIVITY_NAME_SUGGESTIONS = [
-  "Turgåing",
-  "Sykling",
-  "Svømming",
-  "Padling",
-  "Ski",
+  "Alpint",
+  "Badminton",
+  "Buldring",
   "Dans",
-  "Yoga",
+  "Fjelltur",
+  "Fotball",
+  "Frisbeegolf",
+  "Golf",
+  "Håndball",
+  "Klatring",
+  "Langrenn",
+  "Løping",
+  "Padel",
+  "Padling",
+  "Pilates",
+  "Ridning",
+  "Roing",
+  "Roller ski",
+  "Ski",
+  "Spinning",
+  "Squash",
+  "Stavtur",
   "Styrke annet sted",
+  "Svømming",
+  "Sykling",
+  "Tennis",
+  "Terrengsykling",
+  "Turgåing",
+  "Volleyball",
+  "Yoga",
   "Annet",
 ] as const;
+
+/** Filtrerer forslag der første bokstav(er) brukeren skrev matcher starten av aktivitetsnavnet. */
+export function filterActivityNameSuggestions(
+  query: string,
+  suggestions: readonly string[] = ACTIVITY_NAME_SUGGESTIONS,
+): string[] {
+  const trimmed = query.trim();
+  if (!trimmed) return [...suggestions];
+  const prefix = trimmed.toLocaleLowerCase("nb");
+  return suggestions.filter((name) => name.toLocaleLowerCase("nb").startsWith(prefix));
+}
 
 export function activityWorkoutLogTitle(activityName: string): string {
   const trimmed = activityName.trim();
