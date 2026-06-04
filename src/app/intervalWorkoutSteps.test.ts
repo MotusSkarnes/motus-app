@@ -56,6 +56,40 @@ describe("buildIntervalProgramSteps", () => {
     expect(steps.at(-1)?.tone).toBe("cooldown");
   });
 
+  it("expands Roing hoveddel with sets=10 without drag in exercise name (tre bolker via programmer)", () => {
+    const steps = buildIntervalProgramSteps(
+      program([
+        cardioRow({ id: "w", exerciseName: "Roing", durationMinutes: "5", sets: "1", restSeconds: "0" }),
+        cardioRow({ id: "m", exerciseName: "Roing", durationMinutes: "1", sets: "10", restSeconds: "60" }),
+        cardioRow({ id: "c", exerciseName: "Nedtrapping", durationMinutes: "5", sets: "1" }),
+      ]),
+      [rowingBank],
+    );
+    expect(steps.find((s) => s.tone === "warmup")?.durationSeconds).toBe(5 * 60);
+    expect(countIntervalWorkSteps(steps)).toBe(10);
+    expect(steps.filter((s) => s.tone === "work" && s.headline.startsWith("Drag")).length).toBe(10);
+    expect(steps.at(-1)?.tone).toBe("cooldown");
+    expect(steps.at(-1)?.durationSeconds).toBe(5 * 60);
+  });
+
+  it("honors circuit block rounds when middle block is a sirkel with one timed exercise", () => {
+    const blockId = "block-main";
+    const steps = buildIntervalProgramSteps(
+      program([
+        cardioRow({ id: "w", exerciseName: "Oppvarming", durationMinutes: "5", sets: "1" }),
+        {
+          ...cardioRow({ id: "m", exerciseName: "Roing", durationMinutes: "1", sets: "10" }),
+          blockId,
+          blockType: "circuit",
+          blockRounds: "10",
+        },
+        cardioRow({ id: "c", exerciseName: "Nedtrapping", durationMinutes: "5", sets: "1" }),
+      ]),
+      [rowingBank],
+    );
+    expect(countIntervalWorkSteps(steps)).toBe(10);
+  });
+
   it("runs all drag rows before cooldown when nedtrapping was added early in builder", () => {
     const steps = buildIntervalProgramSteps(
       program([

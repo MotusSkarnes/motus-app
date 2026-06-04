@@ -222,13 +222,26 @@ export function formatBlockExerciseTitle(blockType: ExerciseBlockType | undefine
   return `${blockLabel(blockType, names.length)}: ${names.join(" · ")}`;
 }
 
-function resolveCircuitRounds(exercises: ProgramExercise[]): number {
+export function resolveCircuitRounds(exercises: ProgramExercise[]): number {
   const explicitRaw = exercises.map((ex) => String(ex.blockRounds ?? "").trim()).find(Boolean);
   if (explicitRaw) {
     const parsed = parseProgramSetCount(explicitRaw);
     if (parsed > 0) return parsed;
   }
   return Math.max(1, ...exercises.map((ex) => parseProgramSetCount(ex.sets)));
+}
+
+/** Antall gjentakelser for ett programsegment (enkeltøvelse, supersett, sirkel osv.). */
+export function resolveProgramSegmentRepeatCount(segment: ProgramExercise[]): number {
+  if (!segment.length) return 1;
+  const first = segment[0];
+  if (first.blockId?.trim() && first.blockType === "circuit") {
+    return resolveCircuitRounds(segment);
+  }
+  if (first.blockId?.trim() && first.blockType) {
+    return Math.max(1, ...segment.map((exercise) => parseProgramSetCount(exercise.sets)));
+  }
+  return parseProgramSetCount(first.sets);
 }
 
 function buildWorkoutRow(
