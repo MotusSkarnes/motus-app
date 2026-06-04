@@ -3930,9 +3930,9 @@ button.motus-progress-status-banner {
   height: 100%;
 }
 
-/* Egendefinert forside: object-position (inline) panerer utsnitt — se programCustomCoverImageStyle. */
+/* Egendefinert forside: fast scale + translate (inline) — pan begge akser, se programCustomCoverImageStyle. */
 .motus-member-program-thumb .motus-member-program-cover--custom.motus-image-media {
-  object-position: center center;
+  will-change: transform;
 }
 
 .motus-member-program-cover--exercise {

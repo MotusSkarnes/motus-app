@@ -76,7 +76,7 @@ export function ProgramCoverThumbnail({ src, alt = "", className = "", onFocalPo
             />
           </label>
           <p className="text-[10px] leading-relaxed text-slate-500">
-            Flytter utsnitt uten zoom. Lagre programmet etter justering. Last opp bildet på nytt hvis glidebryterne har lite effekt.
+            Flytter utsnitt (lett fast beskjæring for pan). Zoom endres ikke når du drar. Lagre programmet etter justering.
           </p>
         </div>
       ) : (
