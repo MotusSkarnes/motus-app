@@ -30,6 +30,7 @@ export type TrainerPtListMember = {
   statusTone: "active" | "warning" | "critical" | "neutral";
   statusHint?: string;
   selected: boolean;
+  unreadMessageCount?: number;
 };
 
 export type TrainerPtDashboardProps = {
@@ -234,8 +235,16 @@ export function TrainerPtDashboard({
                 ) : null}
               </div>
               <div className="min-w-0 flex-1 text-left">
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 min-w-0">
                   <span className="truncate text-sm font-semibold text-slate-900">{row.member.name}</span>
+                  {(row.unreadMessageCount ?? 0) > 0 ? (
+                    <span
+                      className="motus-member-unread-badge"
+                      title={`${row.unreadMessageCount} uleste meldinger`}
+                    >
+                      {(row.unreadMessageCount ?? 0) > 99 ? "9+" : row.unreadMessageCount}
+                    </span>
+                  ) : null}
                   <StatusDot tone={row.statusTone} title={row.statusHint} />
                 </div>
                 <div className="mt-0.5 truncate text-xs text-slate-500">{row.customerTypeLabel}</div>

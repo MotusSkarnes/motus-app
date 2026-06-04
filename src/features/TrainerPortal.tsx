@@ -4670,9 +4670,10 @@ function pickFirstName(value: unknown): string {
         statusTone: status.statusTone,
         statusHint: status.statusHint,
         selected: member.id === selectedMemberId,
+        unreadMessageCount: unreadCountForMember(member, unreadMessagesByIdentityKey),
       };
     });
-  }, [ptFilteredMembers, members, logs, selectedMemberId]);
+  }, [ptFilteredMembers, members, logs, selectedMemberId, unreadMessagesByIdentityKey]);
 
   const selectedCustomerMetrics = useMemo(() => {
     if (!selectedMember) return null;
@@ -5309,7 +5310,7 @@ function pickFirstName(value: unknown): string {
                         const unread = unreadCountForMember(member, unreadMessagesByIdentityKey);
                         return {
                           value: member.id,
-                          label: `${member.name} · ${member.customerType}${unread > 0 ? ` · ${unread} ulest` : ""}`,
+                          label: `${member.name}${unread > 0 ? ` (${unread})` : ""} · ${member.customerType}`,
                         };
                       })
                     : [{ value: "", label: "Ingen kunder matcher filteret" }]
@@ -5366,23 +5367,25 @@ function pickFirstName(value: unknown): string {
                                   aria-hidden
                                 />
                               ) : null}
-                              <div className="min-w-0 flex-1 truncate text-sm font-semibold leading-tight text-slate-900">
-                                {member.name}
-                              </div>
+                              <span className="inline-flex min-w-0 max-w-full items-center gap-1.5">
+                                <span className="truncate text-sm font-semibold leading-tight text-slate-900">
+                                  {member.name}
+                                </span>
+                                {unreadMessageCount > 0 ? (
+                                  <span
+                                    className="motus-member-unread-badge"
+                                    title={`${unreadMessageCount} uleste meldinger`}
+                                  >
+                                    {unreadMessageCount > 99 ? "9+" : unreadMessageCount}
+                                  </span>
+                                ) : null}
+                              </span>
                               {needsFollowUp ? (
                                 <span
-                                  className="shrink-0 rounded-full bg-amber-100 px-1.5 py-px text-[9px] font-bold uppercase tracking-wide text-amber-800"
+                                  className="ml-auto shrink-0 rounded-full bg-amber-100 px-1.5 py-px text-[9px] font-bold uppercase tracking-wide text-amber-800"
                                   title="7+ dager siden siste økt"
                                 >
                                   Følg opp
-                                </span>
-                              ) : null}
-                              {unreadMessageCount > 0 ? (
-                                <span
-                                  className="motus-trainer-nav-badge shrink-0"
-                                  title={`${unreadMessageCount} uleste meldinger`}
-                                >
-                                  {unreadMessageCount > 99 ? "9+" : unreadMessageCount}
                                 </span>
                               ) : null}
                             </div>
