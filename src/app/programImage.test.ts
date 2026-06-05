@@ -207,6 +207,7 @@ describe("resolveNoPlanDayCoverImage", () => {
     expect(resolveNoPlanDayCoverImage([], "https://cdn.example/cached.png")).toBe(
       "https://cdn.example/cached.png",
     );
+    expect(resolveNoPlanDayCoverImage([], NO_PLAN_DAY_COVER_IMAGE)).toBe(NO_PLAN_DAY_COVER_IMAGE);
     expect(resolveNoPlanDayCoverImage([], null)).toBe(NO_PLAN_DAY_COVER_IMAGE);
   });
 });

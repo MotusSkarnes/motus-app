@@ -2,6 +2,7 @@ import type { PeriodSchedulePlan } from "./types";
 
 const PERIOD_PLAN_ROWS_CACHE_KEY = "motus.member.cachedPeriodPlanRows.v1";
 const HOME_WORKOUT_SNAPSHOT_KEY = "motus.member.homeWorkoutSnapshot.v1";
+const NO_PLAN_COVER_URL_CACHE_KEY = "motus.member.noPlanCoverUrl.v1";
 
 export type MemberPeriodPlanRow = { memberId: string; plan: PeriodSchedulePlan };
 
@@ -64,11 +65,37 @@ export function writeMemberHomeWorkoutSnapshot(snapshot: MemberHomeWorkoutSnapsh
   }
 }
 
+export function readCachedNoPlanDayCoverUrl(): string | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = window.sessionStorage.getItem(NO_PLAN_COVER_URL_CACHE_KEY);
+    const trimmed = raw?.trim();
+    return trimmed || null;
+  } catch {
+    return null;
+  }
+}
+
+export function writeCachedNoPlanDayCoverUrl(imageUrl: string | null | undefined): void {
+  if (typeof window === "undefined") return;
+  try {
+    const trimmed = imageUrl?.trim();
+    if (!trimmed) {
+      window.sessionStorage.removeItem(NO_PLAN_COVER_URL_CACHE_KEY);
+      return;
+    }
+    window.sessionStorage.setItem(NO_PLAN_COVER_URL_CACHE_KEY, trimmed);
+  } catch {
+    // ignore
+  }
+}
+
 export function clearMemberSessionCaches(): void {
   if (typeof window === "undefined") return;
   try {
     window.sessionStorage.removeItem(PERIOD_PLAN_ROWS_CACHE_KEY);
     window.sessionStorage.removeItem(HOME_WORKOUT_SNAPSHOT_KEY);
+    window.sessionStorage.removeItem(NO_PLAN_COVER_URL_CACHE_KEY);
   } catch {
     // ignore
   }

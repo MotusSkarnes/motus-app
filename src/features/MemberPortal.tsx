@@ -46,6 +46,7 @@ import { imageObjectPositionFromSrc, programCustomCoverImageStyle } from "../app
 import {
   programCoverUsesPhotoStyle,
   resolveGroupWorkoutCoverImage,
+  NO_PLAN_DAY_COVER_IMAGE,
   resolveNoPlanDayCoverImage,
   resolveFirstProgramCoverExercise,
   resolvePeriodPlanEntryCoverImage,
@@ -54,7 +55,9 @@ import {
 } from "../app/programImage";
 import {
   memberLocalDateKey,
+  readCachedNoPlanDayCoverUrl,
   readMemberHomeWorkoutSnapshot,
+  writeCachedNoPlanDayCoverUrl,
   writeMemberHomeWorkoutSnapshot,
 } from "../app/memberSessionCache";
 import { isSupabaseConfigured } from "../services/supabaseClient";
@@ -1538,6 +1541,7 @@ export function MemberPortal(props: MemberPortalProps) {
   }, [todayDateKey]);
   const periodPlansForHome = useMemo(() => {
     if (!homeWorkoutHydrationPending) return periodPlans;
+    if (periodPlans.length === 0) return [];
     const remoteOnly = mergedPeriodPlanListForMember(relatedMemberIds, {}, remoteMemberPeriodPlanRows);
     return remoteOnly.sort((a, b) => (parseDateOnly(b.startDate)?.getTime() ?? 0) - (parseDateOnly(a.startDate)?.getTime() ?? 0));
   }, [homeWorkoutHydrationPending, periodPlans, relatedMemberIds, remoteMemberPeriodPlanRows]);
@@ -1654,7 +1658,11 @@ export function MemberPortal(props: MemberPortalProps) {
   );
   /** Maler har memberId __template__ og ligger utenfor memberPrograms — hent fra hele programlisten. */
   const activityTemplatesForPeriodPlan = useMemo(() => listActivityTemplates(programs), [programs]);
-  const noPlanDayCoverTemplate = useMemo(() => findNoPlanDayCoverTemplate(programs), [programs]);
+  const memberPtOwnerUserId = editableMember?.ownerUserId?.trim() ?? "";
+  const noPlanDayCoverTemplate = useMemo(
+    () => findNoPlanDayCoverTemplate(programs, memberPtOwnerUserId || undefined),
+    [programs, memberPtOwnerUserId],
+  );
   const memberProgramsInActiveLibrary = useMemo(
     () => memberAssignedPrograms.filter((program) => !programIsInMemberArchive(program.memberLibraryStatus)),
     [memberAssignedPrograms],
@@ -4630,19 +4638,41 @@ export function MemberPortal(props: MemberPortalProps) {
   }, [activityTemplatesForPeriodPlan, todayPlanEntry]);
   const isNoPlanHomeDay = useMemo(() => {
     if (todayPlanIsPassiveDay) return false;
+    const cachedTitle = cachedHomeWorkout?.title.trim() ?? "";
+    if (cachedHomeWorkout?.isNoPlanDay || cachedTitle === NO_PLAN_DAY_TEMPLATE_TITLE) return true;
+    if (homeWorkoutHydrationPending) {
+      if (periodPlans.length === 0) return true;
+      if (!todayPlanEntry.trim()) return true;
+      return false;
+    }
+    if (!visiblePeriodPlans.length && !todayPlanEntry.trim()) return true;
     if (todayPlanEntry.trim()) return false;
-    if (homeWorkoutHydrationPending) return true;
     return !homeHasPlannedWorkoutToday;
-  }, [todayPlanIsPassiveDay, todayPlanEntry, homeWorkoutHydrationPending, homeHasPlannedWorkoutToday]);
+  }, [
+    todayPlanIsPassiveDay,
+    cachedHomeWorkout,
+    homeWorkoutHydrationPending,
+    periodPlans.length,
+    todayPlanEntry,
+    visiblePeriodPlans.length,
+    homeHasPlannedWorkoutToday,
+  ]);
   const cachedNoPlanCoverFallback = useMemo(() => {
-    if (!cachedHomeWorkout) return null;
-    if (cachedHomeWorkout.isNoPlanDay) return cachedHomeWorkout.imageSrc;
-    if (cachedHomeWorkout.title.trim() === NO_PLAN_DAY_TEMPLATE_TITLE) return cachedHomeWorkout.imageSrc;
-    return null;
+    const dedicated = readCachedNoPlanDayCoverUrl();
+    if (!cachedHomeWorkout) return dedicated;
+    if (cachedHomeWorkout.isNoPlanDay) return cachedHomeWorkout.imageSrc ?? dedicated;
+    if (cachedHomeWorkout.title.trim() === NO_PLAN_DAY_TEMPLATE_TITLE) {
+      return cachedHomeWorkout.imageSrc ?? dedicated;
+    }
+    return dedicated;
   }, [cachedHomeWorkout]);
   const homeWorkoutCoverSrc = useMemo(() => {
     if (isNoPlanHomeDay) {
-      return resolveNoPlanDayCoverImage(programs, cachedNoPlanCoverFallback);
+      return resolveNoPlanDayCoverImage(
+        programs,
+        cachedNoPlanCoverFallback,
+        memberPtOwnerUserId || undefined,
+      );
     }
     return (
       resolvePeriodPlanEntryCoverImage(todayPlanEntry, {
@@ -4650,13 +4680,15 @@ export function MemberPortal(props: MemberPortalProps) {
         memberPrograms: memberProgramsForPeriodPlan,
         exercises,
         exerciseCategoryById,
-      }) ?? resolveNoPlanDayCoverImage(programs, cachedNoPlanCoverFallback)
+      }) ??
+      resolveNoPlanDayCoverImage(programs, cachedNoPlanCoverFallback, memberPtOwnerUserId || undefined)
     );
   }, [
     isNoPlanHomeDay,
     todayPlanEntry,
     programs,
     cachedNoPlanCoverFallback,
+    memberPtOwnerUserId,
     activityTemplatesForPeriodPlan,
     memberProgramsForPeriodPlan,
     exercises,
@@ -4915,16 +4947,31 @@ export function MemberPortal(props: MemberPortalProps) {
       title: homePrimaryFocus,
       imageSrc: homeWorkoutCoverSrc,
       isPassiveDay: todayPlanIsPassiveDay,
-      isNoPlanDay: !homeHasPlannedWorkoutToday && !todayPlanIsPassiveDay,
+      isNoPlanDay: isNoPlanHomeDay,
     });
   }, [
     homeWorkoutHydrationPending,
     homePrimaryFocus,
     homeWorkoutCoverSrc,
     todayPlanIsPassiveDay,
-    homeHasPlannedWorkoutToday,
+    isNoPlanHomeDay,
     todayDateKey,
   ]);
+
+  useEffect(() => {
+    const templateUrl = noPlanDayCoverTemplate?.imageUrl?.trim();
+    if (templateUrl) {
+      writeCachedNoPlanDayCoverUrl(templateUrl);
+      return;
+    }
+    if (
+      isNoPlanHomeDay &&
+      homeWorkoutCoverSrc &&
+      homeWorkoutCoverSrc !== NO_PLAN_DAY_COVER_IMAGE
+    ) {
+      writeCachedNoPlanDayCoverUrl(homeWorkoutCoverSrc);
+    }
+  }, [noPlanDayCoverTemplate?.imageUrl, isNoPlanHomeDay, homeWorkoutCoverSrc]);
 
   const openHomeWorkoutDestination = useCallback(() => {
     setMemberTab("programs");

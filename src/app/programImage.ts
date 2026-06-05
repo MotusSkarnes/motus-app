@@ -106,11 +106,12 @@ export function resolveRestDayCoverImage(): string {
 export function resolveNoPlanDayCoverImage(
   programs: TrainingProgram[] = [],
   fallbackSrc?: string | null,
+  ownerUserId?: string | null,
 ): string {
-  const imageUrl = findNoPlanDayCoverTemplate(programs)?.imageUrl?.trim();
+  const imageUrl = findNoPlanDayCoverTemplate(programs, ownerUserId)?.imageUrl?.trim();
   if (imageUrl) return resolveProgramCoverDisplayUrl(imageUrl);
   const fallback = fallbackSrc?.trim();
-  if (fallback) return fallback;
+  if (fallback && fallback !== NO_PLAN_DAY_COVER_IMAGE) return fallback;
   return NO_PLAN_DAY_COVER_IMAGE;
 }
 

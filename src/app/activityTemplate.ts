@@ -81,12 +81,20 @@ export function listActivityTemplates(
     .filter((program) => !kind || parseActivityTemplateKind(program) === kind);
 }
 
-export function findNoPlanDayCoverTemplate(programs: TrainingProgram[]): TrainingProgram | null {
-  return (
-    programs.find(
-      (program) => program.memberId === "__template__" && parseActivityTemplateKind(program) === "no-plan",
-    ) ?? null
+export function findNoPlanDayCoverTemplate(
+  programs: TrainingProgram[],
+  ownerUserId?: string | null,
+): TrainingProgram | null {
+  const candidates = programs.filter(
+    (program) => program.memberId === "__template__" && parseActivityTemplateKind(program) === "no-plan",
   );
+  if (!candidates.length) return null;
+  const trimmedOwner = ownerUserId?.trim();
+  const scoped = trimmedOwner
+    ? candidates.filter((program) => program.ownerUserId?.trim() === trimmedOwner)
+    : candidates;
+  const pool = scoped.length ? scoped : candidates;
+  return pool.find((program) => program.imageUrl?.trim()) ?? pool[0] ?? null;
 }
 
 /** Skal programmet beholdes i medlems appState.programs etter sesjonsfiltrering? */

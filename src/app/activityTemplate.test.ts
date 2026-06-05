@@ -132,6 +132,18 @@ describe("activityTemplate", () => {
     expect(findNoPlanDayCoverTemplate(programs)?.id).toBe(noPlan.id);
   });
 
+  it("prefers no-plan template with image and scopes by PT owner", () => {
+    const withoutImage = templateProgram("no-plan", "Ingen plan i dag");
+    withoutImage.ownerUserId = "pt-a";
+    const withImage = templateProgram("no-plan", "Ingen plan i dag");
+    withImage.ownerUserId = "pt-b";
+    withImage.imageUrl = "https://cdn.example/custom.png";
+    expect(findNoPlanDayCoverTemplate([withoutImage, withImage])?.imageUrl).toBe(
+      "https://cdn.example/custom.png",
+    );
+    expect(findNoPlanDayCoverTemplate([withoutImage, withImage], "pt-a")?.id).toBe(withoutImage.id);
+  });
+
   it("merges no-plan cover template into member programs", () => {
     const noPlan = templateProgram("no-plan", "Ingen plan i dag");
     noPlan.imageUrl = "https://cdn.example/no-plan.png";
