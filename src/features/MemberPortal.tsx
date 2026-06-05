@@ -285,6 +285,9 @@ function inferStatusTone(message: string): "success" | "error" | "info" {
     normalized.includes("sendt") ||
     normalized.includes("oppdatert") ||
     normalized.includes("slettet") ||
+    normalized.includes("skjult") ||
+    normalized.includes("tilbake") ||
+    normalized.includes("synlige") ||
     normalized.includes("aktivert") ||
     normalized.includes("slått på")
   ) {
@@ -7205,6 +7208,13 @@ export function MemberPortal(props: MemberPortalProps) {
                   </button>
                   {showPeriodPlanManageSection ? (
                     <div className="mt-3 space-y-2">
+                      {periodPlanActionStatus ? (
+                        <StatusMessage
+                          message={periodPlanActionStatus}
+                          tone={inferStatusTone(periodPlanActionStatus)}
+                          className="!rounded-lg !px-3 !py-2 !text-sm"
+                        />
+                      ) : null}
                       {visiblePeriodPlans.length === 0 ? (
                         <p className="text-sm text-slate-600">Ingen synlige planer akkurat nå. Bruk «Skjulte planer» nedenfor.</p>
                       ) : null}
@@ -7253,7 +7263,15 @@ export function MemberPortal(props: MemberPortalProps) {
                                         <OutlineButton
                                           type="button"
                                           className="rounded-lg px-2 py-1 text-[11px] font-medium"
-                                          onClick={() => hideTrainerPeriodPlan(plan.id)}
+                                          onClick={() =>
+                                            setConfirmDialog({
+                                              title: "Skjule periodeplan?",
+                                              message: `«${plan.title.trim()}» fjernes fra oversikten din. Planen er ikke slettet — du finner den igjen under «Skjulte planer».`,
+                                              confirmLabel: "Skjul",
+                                              tone: "default",
+                                              onConfirm: () => hideTrainerPeriodPlan(plan.id),
+                                            })
+                                          }
                                         >
                                           <span className="inline-flex items-center gap-1.5">
                                             <EyeOff className="h-3.5 w-3.5" />

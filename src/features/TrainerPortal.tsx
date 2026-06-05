@@ -1044,6 +1044,7 @@ function pickFirstName(value: unknown): string {
   useToastStatus(exerciseFormStatus, { title: "Øvelse", tone: inferStatusTone, shouldToast: trainerPtStatusShouldToast });
   useToastStatus(trainerWorkoutCommentStatus, { title: "Øktkommentar", tone: inferStatusTone, shouldToast: trainerPtStatusShouldToast });
   useToastStatus(trainerLiveWorkoutSaveStatus, { title: "Live økt", tone: inferStatusTone, shouldToast: trainerPtStatusShouldToast });
+  useToastStatus(periodPlanStatus, { title: "Periodeplan", tone: inferStatusTone, shouldToast: trainerPtStatusShouldToast });
   function getMemberIdentityKey(member: Member): string {
     const emailKey = member.email.trim().toLowerCase();
     return emailKey || `id:${member.id}`;
@@ -6356,6 +6357,16 @@ function pickFirstName(value: unknown): string {
                         </div>
                         <div className="space-y-3">
                           <div className="text-base font-semibold text-slate-900">Lagrede periodeplaner</div>
+                          {periodPlanStatus &&
+                          (periodPlanStatus.toLowerCase().includes("slettet") ||
+                            periodPlanStatus.toLowerCase().includes("lagret") ||
+                            periodPlanStatus.toLowerCase().includes("oppdatert")) ? (
+                            <StatusMessage
+                              message={periodPlanStatus}
+                              tone="success"
+                              className="w-full !rounded-xl !px-3 !py-2 !text-sm"
+                            />
+                          ) : null}
                           {selectedPeriodPlans.length === 0 ? (
                             <div className="rounded-xl border border-dashed bg-slate-50 p-4 text-sm text-slate-600">
                               Ingen periodeplan lagret for kunden ennå.
@@ -6372,7 +6383,18 @@ function pickFirstName(value: unknown): string {
                                       <div className="text-base font-semibold text-slate-900">{plan.title}</div>
                                       <div className="mt-1 text-sm text-slate-600">Start: {plan.startDate} · {plan.weeks} uker · Lagret {plan.createdAt}</div>
                                     </div>
-                                    <OutlineButton className="px-3 py-1.5 text-sm" onClick={() => removePeriodPlan(plan.id)}>
+                                    <OutlineButton
+                                      className="px-3 py-1.5 text-sm"
+                                      onClick={() =>
+                                        setConfirmDialog({
+                                          title: "Slette periodeplan?",
+                                          message: `Dette sletter «${plan.title.trim()}» for kunden permanent. Handlingen kan ikke angres.`,
+                                          confirmLabel: "Slett",
+                                          tone: "danger",
+                                          onConfirm: () => removePeriodPlan(plan.id),
+                                        })
+                                      }
+                                    >
                                       Slett
                                     </OutlineButton>
                                   </div>
