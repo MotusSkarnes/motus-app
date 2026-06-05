@@ -40,6 +40,7 @@ import {
   activityTemplateMatchesPeriodEntry,
   findNoPlanDayCoverTemplate,
   listActivityTemplates,
+  NO_PLAN_DAY_TEMPLATE_TITLE,
 } from "../app/activityTemplate";
 import { imageObjectPositionFromSrc, programCustomCoverImageStyle } from "../app/imageFocalPoint";
 import {
@@ -4627,9 +4628,21 @@ export function MemberPortal(props: MemberPortalProps) {
       ) ?? null
     );
   }, [activityTemplatesForPeriodPlan, todayPlanEntry]);
+  const isNoPlanHomeDay = useMemo(() => {
+    if (todayPlanIsPassiveDay) return false;
+    if (todayPlanEntry.trim()) return false;
+    if (homeWorkoutHydrationPending) return true;
+    return !homeHasPlannedWorkoutToday;
+  }, [todayPlanIsPassiveDay, todayPlanEntry, homeWorkoutHydrationPending, homeHasPlannedWorkoutToday]);
+  const cachedNoPlanCoverFallback = useMemo(() => {
+    if (!cachedHomeWorkout) return null;
+    if (cachedHomeWorkout.isNoPlanDay) return cachedHomeWorkout.imageSrc;
+    if (cachedHomeWorkout.title.trim() === NO_PLAN_DAY_TEMPLATE_TITLE) return cachedHomeWorkout.imageSrc;
+    return null;
+  }, [cachedHomeWorkout]);
   const homeWorkoutCoverSrc = useMemo(() => {
-    if (!homeHasPlannedWorkoutToday && !todayPlanIsPassiveDay) {
-      return resolveNoPlanDayCoverImage(programs);
+    if (isNoPlanHomeDay) {
+      return resolveNoPlanDayCoverImage(programs, cachedNoPlanCoverFallback);
     }
     return (
       resolvePeriodPlanEntryCoverImage(todayPlanEntry, {
@@ -4637,13 +4650,13 @@ export function MemberPortal(props: MemberPortalProps) {
         memberPrograms: memberProgramsForPeriodPlan,
         exercises,
         exerciseCategoryById,
-      }) ?? resolveNoPlanDayCoverImage(programs)
+      }) ?? resolveNoPlanDayCoverImage(programs, cachedNoPlanCoverFallback)
     );
   }, [
-    homeHasPlannedWorkoutToday,
-    todayPlanIsPassiveDay,
+    isNoPlanHomeDay,
     todayPlanEntry,
     programs,
+    cachedNoPlanCoverFallback,
     activityTemplatesForPeriodPlan,
     memberProgramsForPeriodPlan,
     exercises,
@@ -4657,13 +4670,17 @@ export function MemberPortal(props: MemberPortalProps) {
   }, [homeWorkoutHydrationPending, cachedHomeWorkout, homePrimaryFocus]);
   const homeDisplayLoading = homeWorkoutHydrationPending && !cachedHomeWorkout?.title;
   const homeDisplayCoverSrc = useMemo(() => {
-    if (homeWorkoutHydrationPending) {
-      if (cachedHomeWorkout?.isPassiveDay) return resolveRestDayCoverImage();
-      if (cachedHomeWorkout?.isNoPlanDay) return resolveNoPlanDayCoverImage(programs);
-      return cachedHomeWorkout?.imageSrc ?? null;
-    }
+    if (todayPlanIsPassiveDay) return resolveRestDayCoverImage();
+    if (isNoPlanHomeDay) return homeWorkoutCoverSrc;
+    if (homeWorkoutHydrationPending) return cachedHomeWorkout?.imageSrc ?? homeWorkoutCoverSrc;
     return homeWorkoutCoverSrc;
-  }, [homeWorkoutHydrationPending, cachedHomeWorkout, homeWorkoutCoverSrc, programs]);
+  }, [
+    todayPlanIsPassiveDay,
+    isNoPlanHomeDay,
+    homeWorkoutHydrationPending,
+    cachedHomeWorkout,
+    homeWorkoutCoverSrc,
+  ]);
   const homeDisplayCoverPresentation = useMemo((): {
     style: CSSProperties;
     usesPhotoStyle: boolean;
@@ -4672,11 +4689,17 @@ export function MemberPortal(props: MemberPortalProps) {
     if (!src) return { style: {}, usesPhotoStyle: false };
     if (!homeWorkoutProgram) {
       const coverTemplate = todayActivityTemplate ?? noPlanDayCoverTemplate;
-      if (coverTemplate?.imageUrl?.trim()) {
-        const templateSrc = coverTemplate.imageUrl.trim();
+      const templateImageUrl = coverTemplate?.imageUrl?.trim();
+      if (templateImageUrl) {
         return {
-          style: programCustomCoverImageStyle(templateSrc),
-          usesPhotoStyle: programCoverUsesPhotoStyle(coverTemplate, templateSrc),
+          style: programCustomCoverImageStyle(templateImageUrl),
+          usesPhotoStyle: programCoverUsesPhotoStyle(coverTemplate!, templateImageUrl),
+        };
+      }
+      if (isNoPlanHomeDay && src && src !== resolveNoPlanDayCoverImage()) {
+        return {
+          style: programCustomCoverImageStyle(src),
+          usesPhotoStyle: true,
         };
       }
       return { style: { objectPosition: imageObjectPositionFromSrc(src) }, usesPhotoStyle: false };
@@ -4693,7 +4716,15 @@ export function MemberPortal(props: MemberPortalProps) {
       };
     }
     return { style: { objectPosition: imageObjectPositionFromSrc(src) }, usesPhotoStyle: false };
-  }, [homeDisplayCoverSrc, homeWorkoutProgram, todayActivityTemplate, noPlanDayCoverTemplate, exercises, exerciseCategoryById]);
+  }, [
+    homeDisplayCoverSrc,
+    homeWorkoutProgram,
+    todayActivityTemplate,
+    noPlanDayCoverTemplate,
+    isNoPlanHomeDay,
+    exercises,
+    exerciseCategoryById,
+  ]);
   const homeWorkoutZoneLabel = useMemo(() => {
     if (todayPlanAction.kind === "log-group") {
       return extractZoneFromPlanEntry(todayPlanEntry) ?? "Gruppe";

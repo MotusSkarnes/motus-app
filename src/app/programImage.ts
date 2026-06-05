@@ -103,9 +103,14 @@ export function resolveRestDayCoverImage(): string {
   return REST_RECOVERY_COVER_IMAGE;
 }
 
-export function resolveNoPlanDayCoverImage(programs: TrainingProgram[] = []): string {
+export function resolveNoPlanDayCoverImage(
+  programs: TrainingProgram[] = [],
+  fallbackSrc?: string | null,
+): string {
   const imageUrl = findNoPlanDayCoverTemplate(programs)?.imageUrl?.trim();
   if (imageUrl) return resolveProgramCoverDisplayUrl(imageUrl);
+  const fallback = fallbackSrc?.trim();
+  if (fallback) return fallback;
   return NO_PLAN_DAY_COVER_IMAGE;
 }
 

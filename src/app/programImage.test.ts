@@ -1,8 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { enrichProgramWithActivityTemplateKind } from "./activityTemplate";
+import { buildActivityTemplateNotes, enrichProgramWithActivityTemplateKind } from "./activityTemplate";
 import {
   CONDITIONING_TRAINING_COVER_IMAGE,
   MOBILITY_TRAINING_COVER_IMAGE,
+  NO_PLAN_DAY_COVER_IMAGE,
   SENIORS_GROUP_COVER_IMAGE,
   STRENGTH_TRAINING_COVER_IMAGE,
   mergeProgramImageUrl,
@@ -11,6 +12,7 @@ import {
   programCoverUsesPhotoStyle,
   resolveFirstProgramCoverExercise,
   resolveGroupWorkoutCoverImage,
+  resolveNoPlanDayCoverImage,
   resolvePeriodPlanEntryCoverImage,
   resolveProgramCoverDisplayUrl,
   resolveProgramImageSrc,
@@ -181,5 +183,30 @@ describe("resolveGroupWorkoutCoverImage", () => {
 describe("programCoverUsesPhotoStyle", () => {
   it("treats strength default cover as photo style", () => {
     expect(programCoverUsesPhotoStyle(program(), STRENGTH_TRAINING_COVER_IMAGE)).toBe(true);
+  });
+});
+
+describe("resolveNoPlanDayCoverImage", () => {
+  it("uses PT template image when available", () => {
+    const programs: TrainingProgram[] = [
+      {
+        id: "tpl-no-plan",
+        memberId: "__template__",
+        title: "Ingen plan i dag",
+        goal: "",
+        notes: buildActivityTemplateNotes("no-plan", ""),
+        createdAt: "",
+        exercises: [],
+        imageUrl: "https://cdn.example/custom-no-plan.png",
+      },
+    ];
+    expect(resolveNoPlanDayCoverImage(programs)).toBe("https://cdn.example/custom-no-plan.png");
+  });
+
+  it("falls back to cached src before default cover", () => {
+    expect(resolveNoPlanDayCoverImage([], "https://cdn.example/cached.png")).toBe(
+      "https://cdn.example/cached.png",
+    );
+    expect(resolveNoPlanDayCoverImage([], null)).toBe(NO_PLAN_DAY_COVER_IMAGE);
   });
 });
