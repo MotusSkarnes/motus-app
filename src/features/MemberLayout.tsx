@@ -130,6 +130,7 @@ type MemberLayoutProps = {
   setMemberCheckInOverlayOpen: (open: boolean) => void;
   remoteMemberPeriodPlanRows: ComponentProps<typeof MemberPortal>["remoteMemberPeriodPlanRows"];
   memberRemoteHydrated?: ComponentProps<typeof MemberPortal>["memberRemoteHydrated"];
+  memberNoPlanCoverImageUrl?: ComponentProps<typeof MemberPortal>["memberNoPlanCoverImageUrl"];
   isLocalDemoSession?: ComponentProps<typeof MemberPortal>["isLocalDemoSession"];
   refreshRemoteHydration?: ComponentProps<typeof MemberPortal>["refreshRemoteHydration"];
   onLogout: () => void;
@@ -196,6 +197,7 @@ export function MemberLayout({
   setMemberCheckInOverlayOpen,
   remoteMemberPeriodPlanRows,
   memberRemoteHydrated = false,
+  memberNoPlanCoverImageUrl = null,
   isLocalDemoSession = false,
   refreshRemoteHydration,
   onLogout,
@@ -520,6 +522,7 @@ export function MemberLayout({
     clearMemberFocusProgramId,
     remoteMemberPeriodPlanRows,
     memberRemoteHydrated,
+    memberNoPlanCoverImageUrl,
     isLocalDemoSession,
     refreshRemoteHydration,
     onOpenMonthlyCheckIn: () => setMemberCheckInOverlayOpen(true),

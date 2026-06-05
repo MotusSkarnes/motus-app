@@ -490,12 +490,19 @@ Deno.serve(async (req) => {
     return true;
   });
 
+  const ownerIdsFromAssignedPrograms = [
+    ...(programsRaw ?? []),
+    ...(programsByRequesterOwner ?? []),
+  ]
+    .map((row) => String((row as { owner_user_id?: string }).owner_user_id ?? "").trim())
+    .filter(Boolean);
   const trainerOwnerIds = Array.from(
-    new Set(
-      (scopedMembers ?? [])
+    new Set([
+      ...(scopedMembers ?? [])
         .map((row) => String((row as { owner_user_id?: string }).owner_user_id ?? "").trim())
         .filter(Boolean),
-    ),
+      ...ownerIdsFromAssignedPrograms,
+    ]),
   );
   let activityTemplateRows: Array<Record<string, unknown>> = [];
   if (trainerOwnerIds.length > 0) {

@@ -134,6 +134,7 @@ export function buildMemberLayoutProps(input: {
   setMemberCheckInOverlayOpen: MemberLayoutProps["setMemberCheckInOverlayOpen"];
   remoteMemberPeriodPlanRows: MemberLayoutProps["remoteMemberPeriodPlanRows"];
   memberRemoteHydrated?: MemberLayoutProps["memberRemoteHydrated"];
+  memberNoPlanCoverImageUrl?: MemberLayoutProps["memberNoPlanCoverImageUrl"];
   refreshRemoteHydration?: MemberLayoutProps["refreshRemoteHydration"];
   onLogout: MemberLayoutProps["onLogout"];
 }): MemberLayoutProps {

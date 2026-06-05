@@ -371,6 +371,7 @@ type MemberPortalProps = {
   remoteMemberPeriodPlanRows?: Array<{ memberId: string; plan: PeriodSchedulePlan }>;
   /** Første sky-hydrate for medlem er ferdig — unngår feil «Dagens økt» under lasting. */
   memberRemoteHydrated?: boolean;
+  memberNoPlanCoverImageUrl?: string | null;
   isLocalDemoSession?: boolean;
   /** Etter lagring: kjør hydrate fra Supabase (persist er asynk) */
   refreshRemoteHydration?: () => void | Promise<void>;
@@ -1142,6 +1143,7 @@ export function MemberPortal(props: MemberPortalProps) {
     clearMemberFocusProgramId,
     remoteMemberPeriodPlanRows = EMPTY_REMOTE_PERIOD_PLAN_ROWS,
     memberRemoteHydrated = true,
+    memberNoPlanCoverImageUrl = null,
     isLocalDemoSession = false,
     refreshRemoteHydration,
     onOpenMonthlyCheckIn,
@@ -1659,10 +1661,24 @@ export function MemberPortal(props: MemberPortalProps) {
   /** Maler har memberId __template__ og ligger utenfor memberPrograms — hent fra hele programlisten. */
   const activityTemplatesForPeriodPlan = useMemo(() => listActivityTemplates(programs), [programs]);
   const memberPtOwnerUserId = editableMember?.ownerUserId?.trim() ?? "";
-  const noPlanDayCoverTemplate = useMemo(
-    () => findNoPlanDayCoverTemplate(programs, memberPtOwnerUserId || undefined),
-    [programs, memberPtOwnerUserId],
-  );
+  const noPlanDayCoverTemplate = useMemo(() => {
+    const fromPrograms = findNoPlanDayCoverTemplate(programs, memberPtOwnerUserId || undefined);
+    if (fromPrograms?.imageUrl?.trim()) return fromPrograms;
+    const hydratedUrl = memberNoPlanCoverImageUrl?.trim() || readCachedNoPlanDayCoverUrl();
+    if (!hydratedUrl) return fromPrograms;
+    return {
+      id: fromPrograms?.id ?? "hydrated-no-plan-cover",
+      memberId: "__template__",
+      title: NO_PLAN_DAY_TEMPLATE_TITLE,
+      goal: "",
+      notes: "",
+      createdAt: fromPrograms?.createdAt ?? "",
+      exercises: [],
+      imageUrl: hydratedUrl,
+      activityTemplateKind: "no-plan" as const,
+      ownerUserId: fromPrograms?.ownerUserId ?? (memberPtOwnerUserId || undefined),
+    };
+  }, [programs, memberPtOwnerUserId, memberNoPlanCoverImageUrl]);
   const memberProgramsInActiveLibrary = useMemo(
     () => memberAssignedPrograms.filter((program) => !programIsInMemberArchive(program.memberLibraryStatus)),
     [memberAssignedPrograms],
@@ -4638,6 +4654,7 @@ export function MemberPortal(props: MemberPortalProps) {
   }, [activityTemplatesForPeriodPlan, todayPlanEntry]);
   const isNoPlanHomeDay = useMemo(() => {
     if (todayPlanIsPassiveDay) return false;
+    if (homePrimaryFocus.trim() === NO_PLAN_DAY_TEMPLATE_TITLE) return true;
     const cachedTitle = cachedHomeWorkout?.title.trim() ?? "";
     if (cachedHomeWorkout?.isNoPlanDay || cachedTitle === NO_PLAN_DAY_TEMPLATE_TITLE) return true;
     if (homeWorkoutHydrationPending) {
@@ -4650,6 +4667,7 @@ export function MemberPortal(props: MemberPortalProps) {
     return !homeHasPlannedWorkoutToday;
   }, [
     todayPlanIsPassiveDay,
+    homePrimaryFocus,
     cachedHomeWorkout,
     homeWorkoutHydrationPending,
     periodPlans.length,
@@ -4658,14 +4676,14 @@ export function MemberPortal(props: MemberPortalProps) {
     homeHasPlannedWorkoutToday,
   ]);
   const cachedNoPlanCoverFallback = useMemo(() => {
-    const dedicated = readCachedNoPlanDayCoverUrl();
-    if (!cachedHomeWorkout) return dedicated;
-    if (cachedHomeWorkout.isNoPlanDay) return cachedHomeWorkout.imageSrc ?? dedicated;
+    const hydrated = memberNoPlanCoverImageUrl?.trim() || readCachedNoPlanDayCoverUrl();
+    if (!cachedHomeWorkout) return hydrated;
+    if (cachedHomeWorkout.isNoPlanDay) return cachedHomeWorkout.imageSrc ?? hydrated;
     if (cachedHomeWorkout.title.trim() === NO_PLAN_DAY_TEMPLATE_TITLE) {
-      return cachedHomeWorkout.imageSrc ?? dedicated;
+      return cachedHomeWorkout.imageSrc ?? hydrated;
     }
-    return dedicated;
-  }, [cachedHomeWorkout]);
+    return hydrated;
+  }, [cachedHomeWorkout, memberNoPlanCoverImageUrl, memberRemoteHydrated]);
   const homeWorkoutCoverSrc = useMemo(() => {
     if (isNoPlanHomeDay) {
       return resolveNoPlanDayCoverImage(

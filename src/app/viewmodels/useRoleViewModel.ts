@@ -342,6 +342,7 @@ export function useRoleViewModel(state: AppStateHookResult): RoleViewModel {
     setMemberCheckInOverlayOpen,
     remoteMemberPeriodPlanRows: state.remoteMemberPeriodPlanRows,
     memberRemoteHydrated: state.memberRemoteHydrated,
+    memberNoPlanCoverImageUrl: state.memberNoPlanCoverImageUrl,
     isLocalDemoSession: state.isLocalDemoSession,
     refreshRemoteHydration: state.refreshRemoteHydration,
     onLogout: state.handleLogout,

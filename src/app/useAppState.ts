@@ -42,6 +42,7 @@ import { pickBestPersonalGoals } from "./memberProfileGoals";
 import {
   clearMemberSessionCaches,
   readCachedMemberPeriodPlanRows,
+  readCachedNoPlanDayCoverUrl,
   writeCachedMemberPeriodPlanRows,
   writeCachedNoPlanDayCoverUrl,
 } from "./memberSessionCache";
@@ -86,7 +87,11 @@ import {
   saveTrainerRosterBackup,
   syncMissingRosterMembersToCloud,
 } from "./trainerRosterBackup";
-import { isMemberSessionScopedProgram, mergeMemberProgramsWithActivityTemplates } from "./activityTemplate";
+import {
+  findNoPlanDayCoverTemplate,
+  isMemberSessionScopedProgram,
+  mergeMemberProgramsWithActivityTemplates,
+} from "./activityTemplate";
 import { memberMayDeleteProgram, mergeProgramAuthorFields } from "./programAuthor";
 import {
   mergeProgramImageUrl,
@@ -806,7 +811,25 @@ export function useAppState() {
     () => readCachedMemberPeriodPlanRows(),
   );
   const [memberRemoteHydrated, setMemberRemoteHydrated] = useState(false);
+  const [memberNoPlanCoverImageUrl, setMemberNoPlanCoverImageUrl] = useState<string | null>(() =>
+    readCachedNoPlanDayCoverUrl(),
+  );
   const [recentlyFinishedLogId, setRecentlyFinishedLogId] = useState<string | null>(null);
+
+  function syncMemberNoPlanCoverFromHydrate(hydratedMember: HydratedMemberData | null) {
+    const explicit = hydratedMember?.noPlanDayCoverImageUrl?.trim();
+    const memberOwnerUserId =
+      hydratedMember?.members
+        ?.map((member) => member.ownerUserId?.trim() ?? "")
+        .find(Boolean) ?? "";
+    const fromPrograms = hydratedMember?.programs
+      ? findNoPlanDayCoverTemplate(hydratedMember.programs, memberOwnerUserId || undefined)?.imageUrl?.trim()
+      : "";
+    const url = explicit || fromPrograms || null;
+    if (!url) return;
+    setMemberNoPlanCoverImageUrl(url);
+    writeCachedNoPlanDayCoverUrl(url);
+  }
 
   function dismissRecentlyFinishedLog() {
     setRecentlyFinishedLogId(null);
@@ -1215,9 +1238,7 @@ export function useAppState() {
         const periodPlanRows = hydratedMember.periodPlanRows ?? [];
         setRemoteMemberPeriodPlanRows(periodPlanRows);
         writeCachedMemberPeriodPlanRows(periodPlanRows);
-        if (hydratedMember.noPlanDayCoverImageUrl?.trim()) {
-          writeCachedNoPlanDayCoverUrl(hydratedMember.noPlanDayCoverImageUrl);
-        }
+        syncMemberNoPlanCoverFromHydrate(hydratedMember);
         if (hydratedMember.mealPlans?.length) {
           const aliasIds = hydratedMember.members.map((m) => m.id).filter(Boolean);
           let mealPlanChanged = false;
@@ -2028,6 +2049,7 @@ export function useAppState() {
     setRemoteTrainerPeriodPlansByMemberId({});
     setRemoteMemberPeriodPlanRows([]);
     setMemberRemoteHydrated(false);
+    setMemberNoPlanCoverImageUrl(null);
     clearMemberSessionCaches();
   }
 
@@ -2042,6 +2064,7 @@ export function useAppState() {
     setRemoteTrainerPeriodPlansByMemberId({});
     setRemoteMemberPeriodPlanRows([]);
     setMemberRemoteHydrated(false);
+    setMemberNoPlanCoverImageUrl(null);
     clearMemberSessionCaches();
     if (typeof window !== "undefined") {
       window.localStorage.removeItem(STORAGE_KEY);
@@ -2913,6 +2936,7 @@ export function useAppState() {
     remoteTrainerPeriodPlansByMemberId,
     remoteMemberPeriodPlanRows,
     memberRemoteHydrated,
+    memberNoPlanCoverImageUrl,
     recentlyFinishedLogId,
     dismissRecentlyFinishedLog,
   };
