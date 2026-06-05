@@ -33,7 +33,9 @@ describe("buildPeriodPlanProgramSelectOptions", () => {
       },
     ];
     const options = buildPeriodPlanProgramSelectOptions(["Fullkropp A"], templates);
-    expect(options.some((option) => option.value === "Gruppetime: Morgenyoga")).toBe(true);
-    expect(options.some((option) => option.value === "Aktivitet: Aktiv hvile")).toBe(true);
+    const groupOption = options.find((option) => option.value === "Gruppetime: Morgenyoga");
+    const activityOption = options.find((option) => option.value === "Aktivitet: Aktiv hvile");
+    expect(groupOption?.label).toBe("Gruppetime: Morgenyoga");
+    expect(activityOption?.label).toBe("Aktivitet: Aktiv hvile");
   });
 });

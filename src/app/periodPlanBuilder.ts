@@ -45,9 +45,8 @@ export function buildPeriodPlanProgramSelectOptions(
   });
   listActivityTemplates(activityTemplates).forEach((template) => {
     const value = periodPlanEntryForActivityTemplate(template);
-    const label = template.title.trim();
-    if (!value || !label) return;
-    if (!uniqueByValue.has(value)) uniqueByValue.set(value, { value, label });
+    if (!value) return;
+    if (!uniqueByValue.has(value)) uniqueByValue.set(value, { value, label: value });
   });
   programTitles
     .map((title) => title.trim())
