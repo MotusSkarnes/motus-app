@@ -36,6 +36,7 @@ import { programAuthorLabelForTrainer } from "../app/programAuthor";
 import { uid } from "../app/storage";
 import {
   categoryForSubTab,
+  isActivityTemplateSubTab,
   defaultCategoryForExerciseBankTab,
   emptyTemplatesMessage,
   EXERCISE_CATEGORY_OPTIONS,
@@ -207,7 +208,13 @@ import { pickBestPersonalGoals } from "../app/memberProfileGoals";
 import { memberEffectivelyInvited, memberHasFirstLoginStamp } from "../app/memberInviteStatus";
 import { resolveMemberTrainerDisplayName } from "../app/trainerProfile";
 import { printHtmlDocument } from "../app/printHtmlDocument";
+import {
+  buildActivityTemplateNotes,
+  parseActivityTemplateKind,
+  stripActivityTemplateMarker,
+} from "../app/activityTemplate";
 import { findProgramForPeriodPlanEntry } from "../app/periodPlanEntryActions";
+import { buildPeriodPlanProgramSelectOptions } from "../app/periodPlanBuilder";
 import {
   dedupePeriodPlansById,
   memberIdsForPeriodPlanMerge,
@@ -561,21 +568,6 @@ const WEEKDAY_PLAN_FIELDS: Array<{ key: WeekdayPlanKey; label: string }> = [
   { key: "saturday", label: "Lørdag" },
   { key: "sunday", label: "Søndag" },
 ];
-const GROUP_WORKOUT_PLAN_OPTIONS = [
-  "Gruppetime",
-  "Gruppetime: Smilepuls",
-  "Gruppetime: Sykkel 45",
-  "Gruppetime: Mølle 45",
-  "Gruppetime: Sterk",
-  "Gruppetime: Sirkeltrening",
-  "Gruppetime: Stram opp",
-  "Gruppetime: Dansemix",
-  "Gruppetime: Yoga",
-  "Gruppetime: Tabata",
-  "Gruppetime: Godt voksen",
-  "Gruppetime: Step styrke",
-];
-
 const DEFAULT_EXERCISE_GROUP_OPTIONS = [
   "Bryst",
   "Rygg",
@@ -1877,24 +1869,14 @@ function pickFirstName(value: unknown): string {
       return normalized;
     });
   }, [periodPlanWeeksDraft]);
-  const periodPlanProgramOptions = useMemo(() => {
-    const baseOptions = [
-      { value: "", label: "Ingen plan valgt" },
-      { value: "Hvile / restitusjon", label: "Hvile / restitusjon" },
-      { value: "Aktiv restitusjon", label: "Aktiv restitusjon" },
-      { value: "Valgfri økt", label: "Valgfri økt" },
-      ...GROUP_WORKOUT_PLAN_OPTIONS.map((label) => ({ value: label, label })),
-    ];
-    const programOptions = selectedPrograms.map((program) => ({
-      value: program.title,
-      label: program.title,
-    }));
-    const uniqueByValue = new Map<string, { value: string; label: string }>();
-    [...baseOptions, ...programOptions].forEach((option) => {
-      if (!uniqueByValue.has(option.value)) uniqueByValue.set(option.value, option);
-    });
-    return Array.from(uniqueByValue.values());
-  }, [selectedPrograms]);
+  const periodPlanProgramOptions = useMemo(
+    () =>
+      buildPeriodPlanProgramSelectOptions(
+        selectedPrograms.map((program) => program.title),
+        templatePrograms,
+      ),
+    [selectedPrograms, templatePrograms],
+  );
 
   useEffect(() => {
     window.localStorage.setItem("motus.trainer.memberSearch", memberSearch);
@@ -1963,6 +1945,12 @@ function pickFirstName(value: unknown): string {
   useEffect(() => {
     if (trainerTab !== "programs") return;
     setProgramExerciseCategoryFilter(categoryForSubTab(programsSubTab));
+    if (isActivityTemplateSubTab(programsSubTab)) {
+      setProgramExercisesDraft([]);
+      setEditingTemplateProgramId(null);
+      setTemplateProgramTitle(programsSubTab === "group" ? "Ny gruppetime-mal" : "Ny aktivitetsmal");
+      setProgramNotes("");
+    }
   }, [programsSubTab, trainerTab]);
 
   useEffect(() => {
@@ -2683,6 +2671,28 @@ function pickFirstName(value: unknown): string {
       setTemplateAssignStatus("Skriv inn navn på treningsmalen.");
       return;
     }
+    if (isActivityTemplateSubTab(programsSubTab)) {
+      const kind = programsSubTab === "group" ? "group" : "activity";
+      saveProgramForMember({
+        id: editingTemplateProgramId ?? undefined,
+        title,
+        goal: "",
+        notes: buildActivityTemplateNotes(kind, programNotes),
+        memberId: "__template__",
+        exercises: [],
+        imageUrl: programSaveImageUrl(),
+      });
+      if (editingTemplateProgramId) {
+        setTemplateAssignStatus("Mal oppdatert.");
+      } else {
+        setTemplateAssignStatus("Mal lagret.");
+      }
+      setEditingTemplateProgramId(null);
+      setTemplateProgramTitle(programsSubTab === "group" ? "Ny gruppetime-mal" : "Ny aktivitetsmal");
+      setProgramFormImageUrl("");
+      setProgramNotes("");
+      return;
+    }
     if (programExercisesDraft.length === 0) {
       setTemplateAssignStatus("Legg til minst én øvelse før du lagrer malen.");
       return;
@@ -2709,15 +2719,17 @@ function pickFirstName(value: unknown): string {
   }
 
   function startEditTemplateProgram(program: TrainingProgram) {
-    const subTab = getTrainingProgramSubTab(program, exerciseCategoryById);
+    const templateKind = parseActivityTemplateKind(program);
+    const subTab: TrainingSubTab = templateKind ?? getTrainingProgramSubTab(program, exerciseCategoryById);
     const draft = program.exercises.map((exercise) => ({ ...exercise }));
     setProgramsSubTab(subTab);
     setEditingTemplateProgramId(program.id);
     setExpandedTemplateProgramId(program.id);
     setTemplateProgramTitle(program.title);
     setProgramFormImageUrl(program.imageUrl ?? "");
-    setProgramExercisesDraft(draft);
-    if (subTab === "conditioning") {
+    setProgramNotes(templateKind ? stripActivityTemplateMarker(program.notes) : program.notes);
+    setProgramExercisesDraft(templateKind ? [] : draft);
+    if (!templateKind && subTab === "conditioning") {
       setCardioIntervalIntensity(inferCardioIntensityFromDraft(draft));
       const first = draft[0];
       const linked = first ? exercisesById.get(first.exerciseId) : undefined;
@@ -2729,8 +2741,15 @@ function pickFirstName(value: unknown): string {
 
   function resetTemplateProgramBuilder() {
     setEditingTemplateProgramId(null);
-    setTemplateProgramTitle("Ny treningsmal");
+    setTemplateProgramTitle(
+      isActivityTemplateSubTab(programsSubTab)
+        ? programsSubTab === "group"
+          ? "Ny gruppetime-mal"
+          : "Ny aktivitetsmal"
+        : "Ny treningsmal",
+    );
     setProgramFormImageUrl("");
+    setProgramNotes("");
     setProgramExercisesDraft([]);
     setCardioIntervalIntensity("medium");
     setCardioEquipmentId(defaultCardioEquipmentId());
@@ -7080,6 +7099,8 @@ function pickFirstName(value: unknown): string {
           onExpandedTemplateProgramIdChange={setExpandedTemplateProgramId}
           onStartEditTemplate={startEditTemplateProgram}
           onDeleteTemplate={deleteTemplateProgram}
+          templateDescription={programNotes}
+          onTemplateDescriptionChange={setProgramNotes}
           cardioIntervalIntensity={cardioIntervalIntensity}
           cardioEquipmentId={cardioEquipmentId}
           programsSubTabConditioningExtras={
@@ -7118,6 +7139,7 @@ function pickFirstName(value: unknown): string {
             ) : null
           }
           assignTemplateSection={
+            isActivityTemplateSubTab(programsSubTab) ? null : (
             <Card className="mt-4 p-4 space-y-3">
               <div className="font-semibold">Tildel mal til kunde</div>
               <div className="grid gap-3 md:grid-cols-2">
@@ -7145,6 +7167,7 @@ function pickFirstName(value: unknown): string {
                 </div>
               ) : null}
           </Card>
+            )
           }
         />
       ) : null}

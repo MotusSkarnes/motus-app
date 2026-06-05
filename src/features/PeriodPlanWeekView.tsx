@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Check, ChevronRight, Coffee, Play, RotateCcw, X } from "lucide-react";
 import {
   findProgramForPeriodPlanEntry,
@@ -15,7 +15,9 @@ import {
   WEEKDAY_PLAN_ORDER,
   type PeriodPlanSwapsByPlan,
 } from "../app/periodPlanSwaps";
-import { resolveNoPlanDayCoverImage, resolveRestDayCoverImage } from "../app/programImage";
+import { listActivityTemplates } from "../app/activityTemplate";
+import { resolvePeriodPlanEntryCoverImage } from "../app/programImage";
+import { buildExerciseCategoryById } from "../app/trainingProgramKind";
 import { GradientButton, OutlineButton } from "../app/ui";
 import type { Exercise, PeriodSchedulePlan, TrainingProgram, WeekdayPlanKey, WeeklySchedulePlan } from "../app/types";
 import { TrainingProgramPreviewModal } from "./TrainingProgramPreviewModal";
@@ -44,6 +46,7 @@ type PeriodPlanWeekViewProps = {
   week: WeeklySchedulePlan;
   swapsByPlan: PeriodPlanSwapsByPlan;
   memberPrograms: TrainingProgram[];
+  activityTemplates?: TrainingProgram[];
   actionStatus: string | null;
   isEntryCompleted: (planId: string, weekNumber: number, day: WeekdayPlanKey) => boolean;
   onToggleCompleted: (input: {
@@ -76,6 +79,7 @@ export function PeriodPlanWeekView({
   week,
   swapsByPlan,
   memberPrograms,
+  activityTemplates = [],
   actionStatus,
   isEntryCompleted,
   onToggleCompleted,
@@ -87,6 +91,11 @@ export function PeriodPlanWeekView({
   resolveEntryDate,
   exerciseLibrary = [],
 }: PeriodPlanWeekViewProps) {
+  const exerciseCategoryById = useMemo(() => buildExerciseCategoryById(exerciseLibrary), [exerciseLibrary]);
+  const resolvedActivityTemplates = useMemo(
+    () => (activityTemplates.length > 0 ? activityTemplates : listActivityTemplates(memberPrograms)),
+    [activityTemplates, memberPrograms],
+  );
   const weekSwaps = getSwapsForWeek(swapsByPlan, plan.id, week.weekNumber);
   const effectiveDays = applyPeriodPlanSwaps(week.days, weekSwaps);
   const [swapFromDay, setSwapFromDay] = useState<WeekdayPlanKey | null>(null);
@@ -236,10 +245,15 @@ export function PeriodPlanWeekView({
                     className={`motus-period-plan-day-main ${canOpenPreview ? "motus-period-plan-day-main--clickable" : ""}`}
                     aria-label={canOpenPreview ? `Se økt for ${dayLabel}` : undefined}
                   >
-                    {status === "empty" || status === "rest" ? (
+                    {entry.trim() ? (
                       <div className="motus-period-plan-day-cover motus-image-frame" aria-hidden>
                         <img
-                          src={status === "rest" ? resolveRestDayCoverImage() : resolveNoPlanDayCoverImage()}
+                          src={resolvePeriodPlanEntryCoverImage(entry, {
+                            activityTemplates: resolvedActivityTemplates,
+                            memberPrograms,
+                            exercises: exerciseLibrary,
+                            exerciseCategoryById,
+                          })}
                           alt=""
                           className="motus-image-media"
                           loading="lazy"

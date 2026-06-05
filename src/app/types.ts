@@ -213,6 +213,8 @@ export type TrainingProgram = {
   memberLibraryStatus?: MemberProgramLibraryStatus;
   /** Valgfritt forsidebilde på programkort (URL). */
   imageUrl?: string;
+  /** Gruppetrening/aktivitetsmal (parsed fra notes, brukes i periodeplan). */
+  activityTemplateKind?: "group" | "activity";
   /** Not persisted; removed after økt fullføres eller avbrytes. */
   ephemeral?: boolean;
 };

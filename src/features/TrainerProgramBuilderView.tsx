@@ -24,12 +24,14 @@ import {
   isHoldBasedExerciseCategory,
   programDraftUsesHoldFields,
   programExerciseHoldSeconds,
+  isActivityTemplateSubTab,
   programsBuilderDescription,
   programsBuilderTitle,
   savedTemplatesTitle,
   TRAINING_SUB_TAB_OPTIONS,
   type TrainingSubTab,
 } from "../app/exerciseCategories";
+import { isActivityTemplate } from "../app/activityTemplate";
 import {
   computeProgramDraftStats,
   draftExercisePrescriptionLabel,
@@ -43,7 +45,7 @@ import { ProgramCoverImageField } from "./ProgramCoverImageField";
 import { ProgramExerciseBlockActions } from "./ProgramExerciseBlockActions";
 import { TrainingProgramPreviewModal } from "./TrainingProgramPreviewModal";
 import { resolveExercisePrescriptionFields } from "../app/exercisePrescriptionFields";
-import { EmptyState, GradientButton, OutlineButton, PillButton, SelectBox, TextInput } from "../app/ui";
+import { EmptyState, GradientButton, OutlineButton, PillButton, SelectBox, TextArea, TextInput } from "../app/ui";
 import { useToast } from "../app/toast";
 import type { Exercise, ProgramExercise, TrainingProgram } from "../app/types";
 import type { CardioIntensityLevel } from "../app/cardioIntervalIntensity";
@@ -134,6 +136,8 @@ export type TrainerProgramBuilderViewProps = {
   onExpandedTemplateProgramIdChange: (id: string | null) => void;
   onStartEditTemplate: (program: TrainingProgram) => void;
   onDeleteTemplate: (program: TrainingProgram) => void;
+  templateDescription?: string;
+  onTemplateDescriptionChange?: (value: string) => void;
   programsSubTabConditioningExtras?: ReactNode;
   cardioIntervalIntensity?: CardioIntensityLevel;
   cardioEquipmentId?: CardioEquipmentId;
@@ -181,12 +185,15 @@ export function TrainerProgramBuilderView({
   onExpandedTemplateProgramIdChange,
   onStartEditTemplate,
   onDeleteTemplate,
+  templateDescription = "",
+  onTemplateDescriptionChange,
   programsSubTabConditioningExtras,
   cardioIntervalIntensity,
   cardioEquipmentId = "rowing",
   assignTemplateSection,
 }: TrainerProgramBuilderViewProps) {
   const { pushToast } = useToast();
+  const isActivityTab = isActivityTemplateSubTab(programsSubTab);
   const [favoritesOnly, setFavoritesOnly] = useState(false);
   const [muscleFilter, setMuscleFilter] = useState<MuscleFilter>("all");
   const [categoryFilter, setCategoryFilter] = useState<"tab" | "all">("tab");
@@ -259,9 +266,11 @@ export function TrainerProgramBuilderView({
           </div>
           <p className="motus-prog-builder-subtitle">{programsBuilderDescription(programsSubTab)}</p>
         </div>
-        <OutlineButton type="button" onClick={() => setPreviewOpen(true)} disabled={programExercisesDraft.length === 0}>
-          Forhåndsvis program
-        </OutlineButton>
+        {!isActivityTab ? (
+          <OutlineButton type="button" onClick={() => setPreviewOpen(true)} disabled={programExercisesDraft.length === 0}>
+            Forhåndsvis program
+          </OutlineButton>
+        ) : null}
       </header>
 
       <div className="flex flex-wrap gap-2">
@@ -296,7 +305,11 @@ export function TrainerProgramBuilderView({
                     onClick={() => onExpandedTemplateProgramIdChange(expandedTemplateProgramId === program.id ? null : program.id)}
                   >
                     <div className="truncate text-sm font-semibold text-slate-900">{program.title}</div>
-                    <div className="text-xs text-slate-500">{program.exercises.length} øvelser</div>
+                    <div className="text-xs text-slate-500">
+                      {isActivityTemplate(program)
+                        ? "Periodeplan-mal"
+                        : `${program.exercises.length} øvelser`}
+                    </div>
                   </button>
                   <OutlineButton type="button" className="!px-2 !py-1 text-xs" onClick={() => onStartEditTemplate(program)}>
                     Rediger
@@ -311,6 +324,50 @@ export function TrainerProgramBuilderView({
         </div>
       ) : null}
 
+      {isActivityTab ? (
+        <div className="motus-prog-builder-activity-template space-y-4 rounded-2xl border bg-white p-4 sm:p-5" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+          <div className="motus-member-program-thumb motus-image-frame max-w-xl">
+            {coverPreviewSrc ? (
+              <img
+                src={coverPreviewSrc}
+                alt=""
+                className="motus-member-program-cover motus-image-media"
+                loading="lazy"
+              />
+            ) : (
+              <div className="motus-member-program-thumb-fallback" aria-hidden />
+            )}
+          </div>
+          <TextInput
+            value={templateProgramTitle}
+            onChange={(e) => onTemplateProgramTitleChange(e.target.value)}
+            placeholder={programsSubTab === "group" ? "Navn på gruppetime" : "Navn på aktivitet"}
+          />
+          <ProgramCoverImageField
+            imageUrl={programFormImageUrl}
+            onImageUrlChange={onProgramFormImageUrlChange}
+            onUploadFile={onProgramImageUpload}
+            isUploading={isUploadingProgramImage}
+          />
+          <TextArea
+            value={templateDescription}
+            onChange={(e) => onTemplateDescriptionChange?.(e.target.value)}
+            className="min-h-[96px]"
+            placeholder="Kort beskrivelse (valgfritt) — vises for deg, ikke i periodeplan-cellen."
+          />
+          <p className="text-xs leading-relaxed text-slate-500">
+            Malen legges i periodeplan-dropdown for alle kunder. Gruppetime logges som «Gruppetime: navn», aktivitet som «Aktivitet: navn».
+          </p>
+          <div className="flex flex-wrap gap-2">
+            <GradientButton type="button" onClick={onSaveTemplate}>
+              {editingTemplateProgramId ? "Oppdater mal" : "Lagre mal"}
+            </GradientButton>
+            <OutlineButton type="button" onClick={onResetTemplate}>
+              Nullstill
+            </OutlineButton>
+          </div>
+        </div>
+      ) : (
       <div className="motus-prog-builder-layout">
         <div className="motus-prog-builder-left">
           <div className="motus-prog-builder-hero">
@@ -688,6 +745,7 @@ export function TrainerProgramBuilderView({
           )}
         </div>
       </div>
+      )}
 
       {assignTemplateSection}
 

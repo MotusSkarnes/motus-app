@@ -1,7 +1,7 @@
 import type { Exercise, ProgramExercise } from "./types";
 import { MOTUS_COLORS } from "./designSystem";
 
-export type TrainingSubTab = "strength" | "conditioning" | "mobility" | "rehab";
+export type TrainingSubTab = "strength" | "conditioning" | "mobility" | "rehab" | "group" | "activity";
 
 export type ProgramsSubTab = TrainingSubTab;
 export type ExerciseBankSubTab = TrainingSubTab | "all";
@@ -11,7 +11,13 @@ export const TRAINING_SUB_TAB_OPTIONS: Array<{ id: TrainingSubTab; programsLabel
   { id: "conditioning", programsLabel: "Kondisjon", exerciseBankLabel: "Kondisjon" },
   { id: "mobility", programsLabel: "Mobilitet", exerciseBankLabel: "Mobilitet" },
   { id: "rehab", programsLabel: "Rehab", exerciseBankLabel: "Rehab" },
+  { id: "group", programsLabel: "Gruppetrening", exerciseBankLabel: "Gruppetrening" },
+  { id: "activity", programsLabel: "Aktivitet", exerciseBankLabel: "Aktivitet" },
 ];
+
+export function isActivityTemplateSubTab(subTab: TrainingSubTab): boolean {
+  return subTab === "group" || subTab === "activity";
+}
 
 export const EXERCISE_BANK_TAB_OPTIONS: Array<{ id: ExerciseBankSubTab; label: string }> = [
   { id: "all", label: "Alle" },
@@ -46,6 +52,10 @@ export function categoryForSubTab(subTab: TrainingSubTab): Exercise["category"] 
       return "Mobilitet";
     case "rehab":
       return "Rehab";
+    case "group":
+      return "Kondisjon";
+    case "activity":
+      return "Mobilitet";
     default:
       return "Styrke";
   }
@@ -59,6 +69,7 @@ export function subTabForExerciseCategory(category: Exercise["category"]): Train
 }
 
 export function exerciseMatchesSubTab(category: Exercise["category"], subTab: TrainingSubTab): boolean {
+  if (subTab === "group" || subTab === "activity") return false;
   return subTabForExerciseCategory(category) === subTab;
 }
 
@@ -189,8 +200,12 @@ export function programsBuilderTitle(subTab: TrainingSubTab): string {
       return "Lag mobilitetsmal";
     case "rehab":
       return "Lag rehab-mal";
+    case "group":
+      return "Lag gruppetime-mal";
+    case "activity":
+      return "Lag aktivitetsmal";
     default:
-      return "Lag styrkemal";
+      return "Lag treningsmal";
   }
 }
 
@@ -202,8 +217,12 @@ export function programsBuilderDescription(subTab: TrainingSubTab): string {
       return "Bygg mobilitets- og tøyningsøkter med hold/sek på hvert steg.";
     case "rehab":
       return "Bygg rehab-øvelser med kontrollert belastning og hold/sek.";
+    case "group":
+      return "Lag gruppetime-maler med bilde til periodeplan og medlemsoversikt.";
+    case "activity":
+      return "Lag aktivitetsmaler (f.eks. aktiv hvile, egen trening) med bilde til periodeplan.";
     default:
-      return "Bygg styrkeprogram med sett, reps og vekt — drag-and-drop fra biblioteket.";
+      return "Bygg treningsprogram med sett, reps og vekt — drag-and-drop fra biblioteket.";
   }
 }
 
@@ -215,8 +234,12 @@ export function savedTemplatesTitle(subTab: TrainingSubTab): string {
       return "Lagrede mobilitetsmaler";
     case "rehab":
       return "Lagrede rehab-maler";
+    case "group":
+      return "Lagrede gruppetime-maler";
+    case "activity":
+      return "Lagrede aktivitetsmaler";
     default:
-      return "Lagrede styrkemaler";
+      return "Lagrede treningsmaler";
   }
 }
 
@@ -228,8 +251,12 @@ export function emptyTemplatesMessage(subTab: TrainingSubTab): string {
       return "Ingen mobilitetsmaler lagret ennå.";
     case "rehab":
       return "Ingen rehab-maler lagret ennå.";
+    case "group":
+      return "Ingen gruppetime-maler lagret ennå.";
+    case "activity":
+      return "Ingen aktivitetsmaler lagret ennå.";
     default:
-      return "Ingen styrkemaler lagret ennå.";
+      return "Ingen treningsmaler lagret ennå.";
   }
 }
 

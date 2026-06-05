@@ -1,3 +1,4 @@
+import { parseActivityTemplateKind } from "./activityTemplate";
 import { isLegacyIntervalCooldownDrag } from "./programBlocks";
 import type { Exercise, ProgramExercise, TrainingProgram } from "./types";
 import {
@@ -129,10 +130,14 @@ export function isConditioningTrainingProgram(
 }
 
 export function getTrainingProgramSubTab(
-  program: Pick<TrainingProgram, "exercises" | "title">,
+  program: Pick<TrainingProgram, "exercises" | "title" | "notes" | "activityTemplateKind">,
   exerciseCategoryById: Map<string, Exercise["category"]>,
   exerciseBank: Exercise[] = [],
 ): TrainingSubTab {
+  const templateKind = program.activityTemplateKind ?? parseActivityTemplateKind(program);
+  if (templateKind === "group") return "group";
+  if (templateKind === "activity") return "activity";
+
   const titleKey = program.title?.trim().toLowerCase() ?? "";
   if (titleKey.includes("mobilitet løper")) return "mobility";
   if (titleKey.includes("styrke løper")) return "strength";
@@ -164,6 +169,8 @@ export function getTrainingProgramSubTab(
     conditioning: 0,
     mobility: 0,
     rehab: 0,
+    group: 0,
+    activity: 0,
   };
   categories.forEach((category) => {
     counts[subTabForExerciseCategory(category)] += 1;
@@ -183,6 +190,10 @@ export function trainingProgramCategoryLabel(
       return "Mobilitet";
     case "rehab":
       return "Rehab";
+    case "group":
+      return "Gruppetrening";
+    case "activity":
+      return "Aktivitet";
     default:
       return "Styrke";
   }

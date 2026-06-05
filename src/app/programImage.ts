@@ -1,3 +1,6 @@
+import { activityTemplateMatchesPeriodEntry, parseActivityTemplateKind } from "./activityTemplate";
+import { findProgramForPeriodPlanEntry, isGroupPeriodPlanEntry, isPassivePeriodPlanEntry, isRestPeriodPlanEntry, resolveGroupClassNameFromPeriodEntry } from "./periodPlanEntryActions";
+import { getTrainingProgramSubTab } from "./trainingProgramKind";
 import { resolveExerciseImageSrc } from "./exerciseIllustrations";
 import { RUNNER_STRENGTH_COVER_IMAGE, RUNNER_MOBILITY_COVER_IMAGE, SUB45_PROGRAM_TITLES, SUB60_PROGRAM_TITLES } from "./inspirationRunningPlans";
 import type { TrainingSubTab } from "./exerciseCategories";
@@ -183,4 +186,48 @@ export function programCoverUsesPhotoStyle(
     resolvedSrc === CONDITIONING_TRAINING_COVER_IMAGE ||
     resolvedSrc === MOBILITY_TRAINING_COVER_IMAGE
   );
+}
+
+export function resolvePeriodPlanEntryCoverImage(
+  entry: string,
+  options: {
+    activityTemplates?: TrainingProgram[];
+    memberPrograms?: TrainingProgram[];
+    exercises?: Exercise[];
+    exerciseCategoryById?: Map<string, Exercise["category"]>;
+  } = {},
+): string | null {
+  const trimmed = entry.trim();
+  if (!trimmed) return resolveNoPlanDayCoverImage();
+  if (isPassivePeriodPlanEntry(entry)) {
+    return isRestPeriodPlanEntry(entry) ? resolveRestDayCoverImage() : resolveNoPlanDayCoverImage();
+  }
+
+  const templates = options.activityTemplates ?? [];
+  const matchedTemplate = templates.find((template) => activityTemplateMatchesPeriodEntry(template, entry));
+  if (matchedTemplate?.imageUrl?.trim()) {
+    return resolveProgramCoverDisplayUrl(matchedTemplate.imageUrl.trim());
+  }
+
+  if (isGroupPeriodPlanEntry(entry)) {
+    return (
+      resolveGroupWorkoutCoverImage(resolveGroupClassNameFromPeriodEntry(entry)) ??
+      CONDITIONING_TRAINING_COVER_IMAGE
+    );
+  }
+
+  const matchedTemplateKind = matchedTemplate ? parseActivityTemplateKind(matchedTemplate) : null;
+  if (matchedTemplateKind === "activity" || trimmed.toLowerCase().startsWith("aktivitet:")) {
+    return MOBILITY_TRAINING_COVER_IMAGE;
+  }
+
+  const program = findProgramForPeriodPlanEntry(entry, options.memberPrograms ?? []);
+  if (program) {
+    const coverExercise = resolveFirstProgramCoverExercise(program, options.exercises ?? []);
+    return resolveProgramImageSrc(program, coverExercise, {
+      subTab: getTrainingProgramSubTab(program, options.exerciseCategoryById ?? new Map(), options.exercises ?? []),
+    });
+  }
+
+  return CONDITIONING_TRAINING_COVER_IMAGE;
 }

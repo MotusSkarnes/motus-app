@@ -490,8 +490,31 @@ Deno.serve(async (req) => {
     return true;
   });
 
+  const trainerOwnerIds = Array.from(
+    new Set(
+      (scopedMembers ?? [])
+        .map((row) => String((row as { owner_user_id?: string }).owner_user_id ?? "").trim())
+        .filter(Boolean),
+    ),
+  );
+  let activityTemplateRows: Array<Record<string, unknown>> = [];
+  if (trainerOwnerIds.length > 0) {
+    const { data: templateRows, error: templateError } = await adminClient
+      .from("training_programs")
+      .select("*")
+      .eq("member_id", "__template__")
+      .like("notes", "__motusTemplateKind=%")
+      .in("owner_user_id", trainerOwnerIds);
+    if (templateError) {
+      console.warn("hydrate-member-data: activity template query failed:", templateError.message);
+    } else {
+      activityTemplateRows = (templateRows ?? []) as Array<Record<string, unknown>>;
+    }
+  }
+  const trainerOwnerIdSet = new Set(trainerOwnerIds);
+
   const mergedProgramsById = new Map<string, Record<string, unknown>>();
-  [...(programsByRequesterOwner ?? []), ...(programsRaw ?? [])].forEach((row) => {
+  [...(programsByRequesterOwner ?? []), ...(programsRaw ?? []), ...activityTemplateRows].forEach((row) => {
     const id = String((row as { id?: string }).id ?? "").trim();
     if (!id) return;
     if (!mergedProgramsById.has(id)) {
@@ -531,6 +554,13 @@ Deno.serve(async (req) => {
     .filter((row) => {
       const memberId = String((row as { member_id?: string }).member_id ?? "").trim();
       const ownerUserId = String((row as { owner_user_id?: string }).owner_user_id ?? "").trim();
+      if (
+        memberId === "__template__" &&
+        trainerOwnerIdSet.has(ownerUserId) &&
+        String((row as { notes?: string }).notes ?? "").includes("__motusTemplateKind=")
+      ) {
+        return true;
+      }
       return memberDataLookupIdSet.has(memberId) || (requesterUserId && ownerUserId === requesterUserId);
     })
     .map((row) => {

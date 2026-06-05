@@ -13,6 +13,7 @@ import type {
   WorkoutExerciseResult,
   WorkoutLog,
 } from "../app/types";
+import { enrichProgramWithActivityTemplateKind } from "../app/activityTemplate";
 import { formatDateDdMmYyyy, formatDateTimeDdMmYyyy, normalizeStoredLogDate } from "../app/dateFormat";
 import { normalizeMemberGender } from "../app/memberGender";
 import { dedupePeriodPlansById } from "../app/periodPlanMerge";
@@ -3015,7 +3016,7 @@ function trainingProgramFromHydrateRow(program: Record<string, unknown>): Traini
   const memberLibraryStatus: MemberProgramLibraryStatus | undefined =
     rawLibrary === "hidden" || rawLibrary === "archived" ? "archived" : undefined;
   const imageUrl = String(program.image_url ?? "").trim();
-  return {
+  return enrichProgramWithActivityTemplateKind({
     id: String(program.id ?? ""),
     memberId: String(program.member_id ?? ""),
     title: String(program.title ?? ""),
@@ -3030,7 +3031,7 @@ function trainingProgramFromHydrateRow(program: Record<string, unknown>): Traini
       : {}),
     ...(memberLibraryStatus ? { memberLibraryStatus } : {}),
     ...(imageUrl ? { imageUrl } : {}),
-  };
+  });
 }
 
 function mapHydrateMemberPayload(payload: Record<string, unknown>): HydratedMemberData {

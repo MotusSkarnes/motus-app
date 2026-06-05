@@ -1,4 +1,5 @@
-import type { WeekdayPlanKey } from "./types";
+import { listActivityTemplates, periodPlanEntryForActivityTemplate } from "./activityTemplate";
+import type { TrainingProgram, WeekdayPlanKey } from "./types";
 
 export const WEEKDAY_PLAN_FIELDS: Array<{ key: WeekdayPlanKey; label: string }> = [
   { key: "monday", label: "Mandag" },
@@ -34,10 +35,19 @@ const BASE_PERIOD_PLAN_DAY_OPTIONS: Array<{ value: string; label: string }> = [
 ];
 
 /** Dropdown-alternativer for dag i periodeplan (grunnvalg + programmaler). */
-export function buildPeriodPlanProgramSelectOptions(programTitles: string[]): Array<{ value: string; label: string }> {
+export function buildPeriodPlanProgramSelectOptions(
+  programTitles: string[],
+  activityTemplates: TrainingProgram[] = [],
+): Array<{ value: string; label: string }> {
   const uniqueByValue = new Map<string, { value: string; label: string }>();
   BASE_PERIOD_PLAN_DAY_OPTIONS.forEach((option) => {
     if (!uniqueByValue.has(option.value)) uniqueByValue.set(option.value, option);
+  });
+  listActivityTemplates(activityTemplates).forEach((template) => {
+    const value = periodPlanEntryForActivityTemplate(template);
+    const label = template.title.trim();
+    if (!value || !label) return;
+    if (!uniqueByValue.has(value)) uniqueByValue.set(value, { value, label });
   });
   programTitles
     .map((title) => title.trim())
