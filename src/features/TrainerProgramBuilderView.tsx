@@ -99,7 +99,7 @@ export type TrainerProgramBuilderViewProps = {
   templateProgramTitle: string;
   onTemplateProgramTitleChange: (value: string) => void;
   programFormImageUrl: string;
-  onProgramFormImageUrlChange: (value: string) => void;
+  onProgramFormImageUrlChange: (value: string, options?: { removed?: boolean }) => void;
   onProgramImageUpload: (file: File) => void;
   isUploadingProgramImage: boolean;
   programExercisesDraft: ProgramExercise[];

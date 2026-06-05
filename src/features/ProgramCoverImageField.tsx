@@ -2,7 +2,7 @@ import { ProgramCoverThumbnail } from "./ProgramCoverThumbnail";
 
 type ProgramCoverImageFieldProps = {
   imageUrl: string;
-  onImageUrlChange: (url: string) => void;
+  onImageUrlChange: (url: string, options?: { removed?: boolean }) => void;
   onUploadFile: (file: File) => void | Promise<void>;
   isUploading?: boolean;
   disabled?: boolean;
@@ -49,7 +49,7 @@ export function ProgramCoverImageField({
             className="rounded-xl border px-3 py-2 text-xs font-medium text-slate-600 hover:bg-white"
             style={{ borderColor: "rgba(15,23,42,0.12)" }}
             disabled={disabled || isUploading}
-            onClick={() => onImageUrlChange("")}
+            onClick={() => onImageUrlChange("", { removed: true })}
           >
             Fjern bilde
           </button>

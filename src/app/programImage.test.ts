@@ -8,6 +8,7 @@ import {
   pickProgramImageUrlAfterServerSync,
   pickProgramImageUrlFromDuplicateMerge,
   programCoverUsesPhotoStyle,
+  programImageUrlForSave,
   resolveFirstProgramCoverExercise,
   resolveGroupWorkoutCoverImage,
   resolveProgramCoverDisplayUrl,
@@ -60,6 +61,16 @@ describe("program image sync merge", () => {
     const older = { imageUrl: "https://cdn.example/old.png" };
     expect(pickProgramImageUrlFromDuplicateMerge(newer)).toBeUndefined();
     expect(pickProgramImageUrlFromDuplicateMerge(older)).toBe("https://cdn.example/old.png");
+  });
+});
+
+describe("programImageUrlForSave", () => {
+  it("returns an explicit empty string when a cover was removed", () => {
+    expect(programImageUrlForSave("", true)).toBe("");
+  });
+
+  it("omits the image field when an empty cover was not changed", () => {
+    expect(programImageUrlForSave("", false)).toBeUndefined();
   });
 });
 
