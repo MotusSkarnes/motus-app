@@ -131,6 +131,12 @@ export function pickProgramImageUrlFromSnapshotMerge(
   return direct.imageUrl?.trim() || undefined;
 }
 
+export function programImageUrlForSave(imageUrl: string, wasRemoved: boolean): string | undefined {
+  const trimmed = imageUrl.trim();
+  if (trimmed) return trimmed;
+  return wasRemoved ? "" : undefined;
+}
+
 /** Første øvelse i programrekkefølge som finnes i øvelsesbanken. */
 export function resolveFirstProgramCoverExercise(
   program: Pick<TrainingProgram, "exercises">,

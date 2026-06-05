@@ -232,6 +232,7 @@ import { PeriodPlanWeekNavigator } from "./PeriodPlanWeekNavigator";
 import { TrainingProgramPreviewModal } from "./TrainingProgramPreviewModal";
 import { ProgramCoverImageField } from "./ProgramCoverImageField";
 import { uploadProgramCoverImageToSupabase } from "../app/programImageUpload";
+import { programImageUrlForSave } from "../app/programImage";
 
 const CUSTOMER_CARD_ACTION_BTN = "!min-h-8 !px-2.5 !py-1.5 !text-xs !rounded-md";
 
@@ -2420,9 +2421,7 @@ function pickFirstName(value: unknown): string {
   }
 
   function programSaveImageUrl(): string | undefined {
-    const trimmed = programFormImageUrl.trim();
-    if (trimmed) return trimmed;
-    return programCoverCleared ? "" : undefined;
+    return programImageUrlForSave(programFormImageUrl, programCoverCleared);
   }
 
   function startEditProgram(program: TrainingProgram) {
@@ -2704,6 +2703,7 @@ function pickFirstName(value: unknown): string {
     }
     setEditingTemplateProgramId(null);
     setTemplateProgramTitle("Ny treningsmal");
+    setProgramCoverCleared(false);
     setProgramExercisesDraft([]);
   }
 
@@ -2715,6 +2715,7 @@ function pickFirstName(value: unknown): string {
     setExpandedTemplateProgramId(program.id);
     setTemplateProgramTitle(program.title);
     setProgramFormImageUrl(program.imageUrl ?? "");
+    setProgramCoverCleared(false);
     setProgramExercisesDraft(draft);
     if (subTab === "conditioning") {
       setCardioIntervalIntensity(inferCardioIntensityFromDraft(draft));
@@ -2730,6 +2731,7 @@ function pickFirstName(value: unknown): string {
     setEditingTemplateProgramId(null);
     setTemplateProgramTitle("Ny treningsmal");
     setProgramFormImageUrl("");
+    setProgramCoverCleared(false);
     setProgramExercisesDraft([]);
     setCardioIntervalIntensity("medium");
     setCardioEquipmentId(defaultCardioEquipmentId());
@@ -6452,9 +6454,10 @@ function pickFirstName(value: unknown): string {
                       <TextArea value={programNotes} onChange={(e) => setProgramNotes(e.target.value)} className="min-h-[72px]" placeholder="Notater" />
                       <ProgramCoverImageField
                         imageUrl={programFormImageUrl}
-                        onImageUrlChange={(url) => {
+                        onImageUrlChange={(url, options) => {
                           setProgramFormImageUrl(url);
-                          if (!url.trim()) setProgramCoverCleared(true);
+                          if (options?.removed) setProgramCoverCleared(true);
+                          else if (url.trim()) setProgramCoverCleared(false);
                         }}
                         onUploadFile={(file) => handleProgramImageUpload(file)}
                         isUploading={isUploadingProgramImage}
@@ -7023,7 +7026,11 @@ function pickFirstName(value: unknown): string {
           templateProgramTitle={templateProgramTitle}
           onTemplateProgramTitleChange={setTemplateProgramTitle}
           programFormImageUrl={programFormImageUrl}
-          onProgramFormImageUrlChange={setProgramFormImageUrl}
+          onProgramFormImageUrlChange={(url, options) => {
+            setProgramFormImageUrl(url);
+            if (options?.removed) setProgramCoverCleared(true);
+            else if (url.trim()) setProgramCoverCleared(false);
+          }}
           onProgramImageUpload={(file) => void handleProgramImageUpload(file)}
           isUploadingProgramImage={isUploadingProgramImage}
           programExercisesDraft={programExercisesDraft}

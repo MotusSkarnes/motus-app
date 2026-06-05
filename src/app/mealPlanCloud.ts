@@ -146,6 +146,10 @@ export function countMealPlanFoodItems(plan: MealPlan | null | undefined): numbe
   );
 }
 
+function hasMeaningfulMealPlanContent(plan: MealPlan | null | undefined): plan is MealPlan {
+  return Boolean(plan && (countMealPlanFoodItems(plan) > 0 || plan.notes.trim()));
+}
+
 function planUpdatedAtMs(plan: MealPlan | null | undefined): number {
   const raw = plan?.updatedAt?.trim();
   if (!raw) return 0;
@@ -256,7 +260,7 @@ export async function fetchMealPlanFromSupabase(
   const ids = [...new Set((Array.isArray(memberIds) ? memberIds : [memberIds]).map((id) => id.trim()).filter(Boolean))];
   if (!ids.length) return { plan: null, hadFetchErrors: false };
   const results = await Promise.all(ids.map((id) => fetchMealPlanRow(id, options)));
-  const hadFetchErrors = results.length > 0 && results.every((row) => row.failed);
+  const hadFetchErrors = results.some((row) => row.failed);
   const plans = results.map((row) => row.plan).filter((plan): plan is MealPlan => Boolean(plan));
   return { plan: pickPreferredMealPlan(plans), hadFetchErrors };
 }
@@ -519,12 +523,18 @@ export async function syncMealPlanForMember(
   }
 
   if (hadFetchErrors) {
-    if (local && (countMealPlanFoodItems(local) > 0 || local.notes.trim())) {
+    if (hasMeaningfulMealPlanContent(local)) {
       const normalized = { ...local, memberId: trimmedMemberId };
       persistMealPlan(normalized, { notify: false });
       return { plan: normalized, cloudSynced: false, noMealPlanInCloud: false };
     }
     return { plan: null, cloudSynced: false, noMealPlanInCloud: false };
+  }
+
+  if (hasMeaningfulMealPlanContent(local)) {
+    const normalized = { ...local, memberId: trimmedMemberId };
+    persistMealPlan(normalized, { notify: false });
+    return { plan: normalized, cloudSynced: false, noMealPlanInCloud: false };
   }
 
   clearMealPlanLocalForMemberIds(clearIds, { notify: false });

@@ -16,6 +16,7 @@ import { MOTUS } from "../app/data";
 import { exerciseCategoryAccentColor, isHoldBasedExerciseCategory } from "../app/exerciseCategories";
 import { resolveExerciseImageSrc } from "../app/exerciseIllustrations";
 import { computeExercisePopularityScores, computeTrainerProgramExerciseIds } from "../app/exerciseBankStats";
+import { programImageUrlForSave } from "../app/programImage";
 import { uploadProgramCoverImageToSupabase } from "../app/programImageUpload";
 import { isSupabaseConfigured, supabaseClient } from "../services/supabaseClient";
 import { EXERCISE_IMAGE_SMALL_CLASS } from "../app/exerciseIllustrations/constants";
@@ -100,6 +101,7 @@ export function CustomWorkoutBuilder({
   const [lines, setLines] = useState<CustomWorkoutLine[]>([]);
   const [programTitle, setProgramTitle] = useState("Mitt treningsprogram");
   const [programFormImageUrl, setProgramFormImageUrl] = useState("");
+  const [programCoverCleared, setProgramCoverCleared] = useState(false);
   const [isUploadingProgramImage, setIsUploadingProgramImage] = useState(false);
   const [saveStatus, setSaveStatus] = useState<string | null>(null);
   const [favoriteExerciseIds, setFavoriteExerciseIds] = useState<string[]>([]);
@@ -123,12 +125,14 @@ export function CustomWorkoutBuilder({
       setLines([]);
       setProgramTitle("Mitt treningsprogram");
       setProgramFormImageUrl("");
+      setProgramCoverCleared(false);
       setSaveStatus(null);
       return;
     }
     setLines(programExercisesToCustomLines(editingProgram.exercises));
     setProgramTitle(editingProgram.title);
     setProgramFormImageUrl(editingProgram.imageUrl ?? "");
+    setProgramCoverCleared(false);
     setSaveStatus(null);
   }, [editingProgram?.id]);
 
@@ -333,7 +337,7 @@ export function CustomWorkoutBuilder({
       notes: isEditing ? editingProgram!.notes ?? "" : "",
       memberId: activeMemberId,
       exercises: isEditing ? built : built.map((exercise) => ({ ...exercise, id: uid("prog-ex") })),
-      imageUrl: programFormImageUrl.trim() || undefined,
+      imageUrl: programImageUrlForSave(programFormImageUrl, programCoverCleared),
       programCreatedBy: isEditing ? editingProgram!.programCreatedBy ?? "member" : "member",
       programCreatedByName: isEditing ? editingProgram!.programCreatedByName ?? authorFull : authorFull,
       onPersisted: (result) => {
@@ -350,6 +354,7 @@ export function CustomWorkoutBuilder({
           setLines([]);
           setSearch("");
           setProgramFormImageUrl("");
+          setProgramCoverCleared(false);
         }
         void refreshRemoteHydration?.();
       },
@@ -371,6 +376,7 @@ export function CustomWorkoutBuilder({
         return;
       }
       setProgramFormImageUrl(result.publicUrl);
+      setProgramCoverCleared(false);
       setSaveStatus("Programbilde lastet opp. Husk å lagre programmet.");
     } catch {
       setSaveStatus("Kunne ikke laste opp bilde akkurat nå.");
@@ -559,7 +565,11 @@ export function CustomWorkoutBuilder({
             <div className="mt-3 w-full min-w-0">
               <ProgramCoverImageField
                 imageUrl={programFormImageUrl}
-                onImageUrlChange={setProgramFormImageUrl}
+                onImageUrlChange={(url, options) => {
+                  setProgramFormImageUrl(url);
+                  if (options?.removed) setProgramCoverCleared(true);
+                  else if (url.trim()) setProgramCoverCleared(false);
+                }}
                 onUploadFile={handleProgramImageUpload}
                 isUploading={isUploadingProgramImage}
               />
