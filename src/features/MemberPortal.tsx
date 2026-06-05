@@ -50,6 +50,7 @@ import {
   resolveNoPlanDayCoverImage,
   resolveFirstProgramCoverExercise,
   resolvePeriodPlanEntryCoverImage,
+  resolveProgramCoverDisplayUrl,
   resolveProgramImageSrc,
   resolveRestDayCoverImage,
 } from "../app/programImage";
@@ -4677,15 +4678,21 @@ export function MemberPortal(props: MemberPortalProps) {
   ]);
   const cachedNoPlanCoverFallback = useMemo(() => {
     const hydrated = memberNoPlanCoverImageUrl?.trim() || readCachedNoPlanDayCoverUrl();
-    if (!cachedHomeWorkout) return hydrated;
-    if (cachedHomeWorkout.isNoPlanDay) return cachedHomeWorkout.imageSrc ?? hydrated;
+    if (hydrated) return hydrated;
+    if (!cachedHomeWorkout) return null;
+    if (cachedHomeWorkout.isNoPlanDay) return cachedHomeWorkout.imageSrc ?? null;
     if (cachedHomeWorkout.title.trim() === NO_PLAN_DAY_TEMPLATE_TITLE) {
-      return cachedHomeWorkout.imageSrc ?? hydrated;
+      return cachedHomeWorkout.imageSrc ?? null;
     }
-    return hydrated;
+    return null;
   }, [cachedHomeWorkout, memberNoPlanCoverImageUrl, memberRemoteHydrated]);
   const homeWorkoutCoverSrc = useMemo(() => {
     if (isNoPlanHomeDay) {
+      const directUrl =
+        noPlanDayCoverTemplate?.imageUrl?.trim() ||
+        memberNoPlanCoverImageUrl?.trim() ||
+        readCachedNoPlanDayCoverUrl();
+      if (directUrl) return resolveProgramCoverDisplayUrl(directUrl);
       return resolveNoPlanDayCoverImage(
         programs,
         cachedNoPlanCoverFallback,
@@ -4705,6 +4712,8 @@ export function MemberPortal(props: MemberPortalProps) {
     isNoPlanHomeDay,
     todayPlanEntry,
     programs,
+    noPlanDayCoverTemplate,
+    memberNoPlanCoverImageUrl,
     cachedNoPlanCoverFallback,
     memberPtOwnerUserId,
     activityTemplatesForPeriodPlan,

@@ -72,6 +72,15 @@ export function isPeriodPlanActivityTemplate(
   return program.memberId === "__template__" && (kind === "group" || kind === "activity");
 }
 
+/** «Ingen plan i dag»-mal — gjenkjennes via notes-markør eller fast tittel (eldre rader uten markør). */
+export function isNoPlanDayCoverProgram(
+  program: Pick<TrainingProgram, "memberId" | "title" | "notes" | "activityTemplateKind">,
+): boolean {
+  if (program.memberId !== "__template__") return false;
+  if (parseActivityTemplateKind(program) === "no-plan") return true;
+  return program.title.trim() === NO_PLAN_DAY_TEMPLATE_TITLE;
+}
+
 export function listActivityTemplates(
   programs: TrainingProgram[],
   kind?: ActivityTemplateKind,
@@ -85,9 +94,7 @@ export function findNoPlanDayCoverTemplate(
   programs: TrainingProgram[],
   ownerUserId?: string | null,
 ): TrainingProgram | null {
-  const candidates = programs.filter(
-    (program) => program.memberId === "__template__" && parseActivityTemplateKind(program) === "no-plan",
-  );
+  const candidates = programs.filter((program) => isNoPlanDayCoverProgram(program));
   if (!candidates.length) return null;
   const withImage = (list: TrainingProgram[]) => list.find((program) => program.imageUrl?.trim()) ?? null;
   const trimmedOwner = ownerUserId?.trim();
@@ -105,7 +112,7 @@ export function isMemberSessionScopedProgram(
 ): boolean {
   const memberId = program.memberId.trim();
   if (allowedMemberIds.has(memberId)) return true;
-  return memberId === "__template__" && isActivityTemplate(program);
+  return memberId === "__template__" && (isActivityTemplate(program) || isNoPlanDayCoverProgram(program));
 }
 
 /** Medlem: behold tildelte programmer + PT sine periodeplan-maler (ikke i memberIds). */
@@ -118,7 +125,43 @@ export function mergeMemberProgramsWithActivityTemplates(
     .filter((program) => memberIds.has(program.memberId.trim()))
     .forEach((program) => byId.set(program.id, program));
   remotePrograms
-    .filter((program) => program.memberId === "__template__" && isActivityTemplate(program))
+    .filter(
+      (program) =>
+        program.memberId === "__template__" && (isActivityTemplate(program) || isNoPlanDayCoverProgram(program)),
+    )
     .forEach((program) => byId.set(program.id, program));
   return Array.from(byId.values());
+}
+
+/** Etter hydrate: sørg for at PT-bilde finnes i programs når vi har URL men malen mangler i listen. */
+export function ensureNoPlanCoverProgramInList(
+  programs: TrainingProgram[],
+  imageUrl: string,
+  ownerUserId?: string | null,
+): TrainingProgram[] {
+  const trimmedUrl = imageUrl.trim();
+  if (!trimmedUrl) return programs;
+  if (findNoPlanDayCoverTemplate(programs, ownerUserId)?.imageUrl?.trim()) return programs;
+  const existing = findNoPlanDayCoverTemplate(programs, ownerUserId);
+  if (existing) {
+    return programs.map((program) =>
+      program.id === existing.id ? { ...program, imageUrl: trimmedUrl, activityTemplateKind: "no-plan" as const } : program,
+    );
+  }
+  const trimmedOwner = ownerUserId?.trim();
+  return [
+    ...programs,
+    {
+      id: `hydrated-no-plan-cover-${trimmedOwner || "pt"}`,
+      memberId: "__template__",
+      title: NO_PLAN_DAY_TEMPLATE_TITLE,
+      goal: "",
+      notes: buildActivityTemplateNotes("no-plan", ""),
+      createdAt: "",
+      exercises: [],
+      imageUrl: trimmedUrl,
+      activityTemplateKind: "no-plan" as const,
+      ...(trimmedOwner ? { ownerUserId: trimmedOwner } : {}),
+    },
+  ];
 }

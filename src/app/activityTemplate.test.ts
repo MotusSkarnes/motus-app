@@ -4,8 +4,8 @@ import {
   buildActivityTemplateNotes,
   enrichProgramWithActivityTemplateKind,
   findNoPlanDayCoverTemplate,
-  listActivityTemplates,
   isMemberSessionScopedProgram,
+  listActivityTemplates,
   mergeMemberProgramsWithActivityTemplates,
   periodPlanEntryForActivityTemplate,
   stripActivityTemplateMarker,
@@ -152,5 +152,23 @@ describe("activityTemplate", () => {
     const merged = mergeMemberProgramsWithActivityTemplates([noPlan], new Set(["member-1"]));
     expect(merged).toHaveLength(1);
     expect(merged[0]?.imageUrl).toBe("https://cdn.example/no-plan.png");
+  });
+
+  it("recognises no-plan cover by title when notes marker is missing", () => {
+    const legacy: TrainingProgram = {
+      id: "legacy-no-plan",
+      memberId: "__template__",
+      title: "Ingen plan i dag",
+      goal: "",
+      notes: "",
+      createdAt: "",
+      exercises: [],
+      imageUrl: "https://cdn.example/legacy.png",
+      ownerUserId: "pt-1",
+    };
+    expect(findNoPlanDayCoverTemplate([legacy], "pt-1")?.imageUrl).toBe("https://cdn.example/legacy.png");
+    expect(isMemberSessionScopedProgram(legacy, new Set(["member-1"]))).toBe(true);
+    const merged = mergeMemberProgramsWithActivityTemplates([legacy], new Set(["member-1"]));
+    expect(merged).toHaveLength(1);
   });
 });

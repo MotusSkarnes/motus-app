@@ -210,4 +210,20 @@ describe("resolveNoPlanDayCoverImage", () => {
     expect(resolveNoPlanDayCoverImage([], NO_PLAN_DAY_COVER_IMAGE)).toBe(NO_PLAN_DAY_COVER_IMAGE);
     expect(resolveNoPlanDayCoverImage([], null)).toBe(NO_PLAN_DAY_COVER_IMAGE);
   });
+
+  it("uses title-only no-plan template without notes marker", () => {
+    const programs: TrainingProgram[] = [
+      {
+        id: "legacy-no-plan",
+        memberId: "__template__",
+        title: "Ingen plan i dag",
+        goal: "",
+        notes: "",
+        createdAt: "",
+        exercises: [],
+        imageUrl: "https://cdn.example/legacy-no-plan.png",
+      },
+    ];
+    expect(resolveNoPlanDayCoverImage(programs)).toBe("https://cdn.example/legacy-no-plan.png");
+  });
 });

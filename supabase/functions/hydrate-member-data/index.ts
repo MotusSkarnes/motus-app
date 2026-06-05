@@ -396,7 +396,7 @@ Deno.serve(async (req) => {
     memberDataLookupList.length > 0
       ? await adminClient
           .from("chat_messages")
-          .select("id, member_id, sender, text, created_at, read_by_member_at, read_by_trainer_at")
+          .select("id, member_id, owner_user_id, sender, text, created_at, read_by_member_at, read_by_trainer_at")
           .in("member_id", memberDataLookupList)
           .order("created_at", { ascending: true })
       : { data: [], error: null };
@@ -404,7 +404,7 @@ Deno.serve(async (req) => {
     requesterUserId
       ? await adminClient
           .from("chat_messages")
-          .select("id, member_id, sender, text, created_at, read_by_member_at, read_by_trainer_at")
+          .select("id, member_id, owner_user_id, sender, text, created_at, read_by_member_at, read_by_trainer_at")
           .eq("owner_user_id", requesterUserId)
           .order("created_at", { ascending: true })
       : { data: [], error: null };
@@ -496,27 +496,66 @@ Deno.serve(async (req) => {
   ]
     .map((row) => String((row as { owner_user_id?: string }).owner_user_id ?? "").trim())
     .filter(Boolean);
+  const ownerIdsFromMessages = [...(messagesByMember ?? []), ...(messagesByRequesterOwner ?? [])]
+    .map((row) => String((row as { owner_user_id?: string }).owner_user_id ?? "").trim())
+    .filter(Boolean);
   const trainerOwnerIds = Array.from(
     new Set([
       ...(scopedMembers ?? [])
         .map((row) => String((row as { owner_user_id?: string }).owner_user_id ?? "").trim())
         .filter(Boolean),
       ...ownerIdsFromAssignedPrograms,
+      ...ownerIdsFromMessages,
     ]),
   );
+
+  const NO_PLAN_DAY_TEMPLATE_TITLE = "Ingen plan i dag";
+  function rowIsActivityTemplate(row: Record<string, unknown>): boolean {
+    const notes = String(row.notes ?? "");
+    if (notes.includes("__motusTemplateKind=")) return true;
+    return (
+      String(row.member_id ?? "").trim() === "__template__" &&
+      String(row.title ?? "").trim() === NO_PLAN_DAY_TEMPLATE_TITLE
+    );
+  }
+  function rowIsNoPlanCoverTemplate(row: Record<string, unknown>): boolean {
+    const notes = String(row.notes ?? "");
+    if (notes.includes("__motusTemplateKind=no-plan")) return true;
+    return (
+      String(row.member_id ?? "").trim() === "__template__" &&
+      String(row.title ?? "").trim() === NO_PLAN_DAY_TEMPLATE_TITLE
+    );
+  }
+
   let activityTemplateRows: Array<Record<string, unknown>> = [];
   if (trainerOwnerIds.length > 0) {
-    const { data: templateRows, error: templateError } = await adminClient
-      .from("training_programs")
-      .select("*")
-      .eq("member_id", "__template__")
-      .like("notes", "__motusTemplateKind=%")
-      .in("owner_user_id", trainerOwnerIds);
-    if (templateError) {
-      console.warn("hydrate-member-data: activity template query failed:", templateError.message);
-    } else {
-      activityTemplateRows = (templateRows ?? []) as Array<Record<string, unknown>>;
+    const [byNotesResult, byTitleResult] = await Promise.all([
+      adminClient
+        .from("training_programs")
+        .select("*")
+        .eq("member_id", "__template__")
+        .like("notes", "__motusTemplateKind=%")
+        .in("owner_user_id", trainerOwnerIds),
+      adminClient
+        .from("training_programs")
+        .select("*")
+        .eq("member_id", "__template__")
+        .ilike("title", NO_PLAN_DAY_TEMPLATE_TITLE)
+        .in("owner_user_id", trainerOwnerIds),
+    ]);
+    if (byNotesResult.error) {
+      console.warn("hydrate-member-data: activity template query failed:", byNotesResult.error.message);
     }
+    if (byTitleResult.error) {
+      console.warn("hydrate-member-data: no-plan title template query failed:", byTitleResult.error.message);
+    }
+    const templateById = new Map<string, Record<string, unknown>>();
+    [...(byNotesResult.data ?? []), ...(byTitleResult.data ?? [])].forEach((row) => {
+      const id = String((row as { id?: string }).id ?? "").trim();
+      if (!id) return;
+      if (!templateById.has(id)) templateById.set(id, row as Record<string, unknown>);
+    });
+    activityTemplateRows = Array.from(templateById.values());
   }
   const trainerOwnerIdSet = new Set(trainerOwnerIds);
 
@@ -561,11 +600,7 @@ Deno.serve(async (req) => {
     .filter((row) => {
       const memberId = String((row as { member_id?: string }).member_id ?? "").trim();
       const ownerUserId = String((row as { owner_user_id?: string }).owner_user_id ?? "").trim();
-      if (
-        memberId === "__template__" &&
-        trainerOwnerIdSet.has(ownerUserId) &&
-        String((row as { notes?: string }).notes ?? "").includes("__motusTemplateKind=")
-      ) {
+      if (memberId === "__template__" && trainerOwnerIdSet.has(ownerUserId) && rowIsActivityTemplate(row)) {
         return true;
       }
       return memberDataLookupIdSet.has(memberId) || (requesterUserId && ownerUserId === requesterUserId);
@@ -595,9 +630,7 @@ Deno.serve(async (req) => {
 
   const noPlanDayCoverImageUrl = (() => {
     const ownerSet = new Set(trainerOwnerIds);
-    const noPlanRows = activityTemplateRows.filter((row) =>
-      String((row as { notes?: string }).notes ?? "").includes("__motusTemplateKind=no-plan"),
-    );
+    const noPlanRows = activityTemplateRows.filter((row) => rowIsNoPlanCoverTemplate(row));
     const scoped = noPlanRows.filter((row) => ownerSet.has(String((row as { owner_user_id?: string }).owner_user_id ?? "").trim()));
     const pool = scoped.length ? scoped : noPlanRows;
     const withImage = pool.find((row) => String((row as { image_url?: string }).image_url ?? "").trim());

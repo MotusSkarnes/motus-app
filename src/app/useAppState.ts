@@ -88,6 +88,7 @@ import {
   syncMissingRosterMembersToCloud,
 } from "./trainerRosterBackup";
 import {
+  ensureNoPlanCoverProgramInList,
   findNoPlanDayCoverTemplate,
   isMemberSessionScopedProgram,
   mergeMemberProgramsWithActivityTemplates,
@@ -1137,6 +1138,23 @@ export function useAppState() {
           });
         }
         remotePrograms = filterProgramsHiddenFromCloudViews(remotePrograms);
+        if (isMemberLikeSession && hydratedMember) {
+          const memberOwnerUserId =
+            hydratedMember.members
+              ?.map((member) => member.ownerUserId?.trim() ?? "")
+              .find(Boolean) ?? "";
+          const noPlanCoverUrl =
+            hydratedMember.noPlanDayCoverImageUrl?.trim() ||
+            findNoPlanDayCoverTemplate(remotePrograms, memberOwnerUserId || undefined)?.imageUrl?.trim() ||
+            "";
+          if (noPlanCoverUrl) {
+            remotePrograms = ensureNoPlanCoverProgramInList(
+              remotePrograms,
+              noPlanCoverUrl,
+              memberOwnerUserId || undefined,
+            );
+          }
+        }
       }
       let remoteLogs =
         hydratedTrainer?.logs ??
