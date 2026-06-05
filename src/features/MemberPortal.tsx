@@ -47,6 +47,7 @@ import {
   programCoverUsesPhotoStyle,
   resolveGroupWorkoutCoverImage,
   NO_PLAN_DAY_COVER_IMAGE,
+  isUploadedProgramCoverSrc,
   resolveNoPlanDayCoverImage,
   resolveFirstProgramCoverExercise,
   resolvePeriodPlanEntryCoverImage,
@@ -4731,7 +4732,13 @@ export function MemberPortal(props: MemberPortalProps) {
   const homeDisplayCoverSrc = useMemo(() => {
     if (todayPlanIsPassiveDay) return resolveRestDayCoverImage();
     if (isNoPlanHomeDay) return homeWorkoutCoverSrc;
-    if (homeWorkoutHydrationPending) return cachedHomeWorkout?.imageSrc ?? homeWorkoutCoverSrc;
+    if (homeWorkoutHydrationPending) {
+      const cachedTitle = cachedHomeWorkout?.title.trim() ?? "";
+      if (cachedHomeWorkout?.isNoPlanDay || cachedTitle === NO_PLAN_DAY_TEMPLATE_TITLE) {
+        return homeWorkoutCoverSrc;
+      }
+      return cachedHomeWorkout?.imageSrc ?? homeWorkoutCoverSrc;
+    }
     return homeWorkoutCoverSrc;
   }, [
     todayPlanIsPassiveDay,
@@ -4747,18 +4754,21 @@ export function MemberPortal(props: MemberPortalProps) {
     const src = homeDisplayCoverSrc;
     if (!src) return { style: {}, usesPhotoStyle: false };
     if (!homeWorkoutProgram) {
+      if (isNoPlanHomeDay) {
+        if (isUploadedProgramCoverSrc(src)) {
+          return {
+            style: programCustomCoverImageStyle(src),
+            usesPhotoStyle: true,
+          };
+        }
+        return { style: { objectPosition: "center top" }, usesPhotoStyle: false };
+      }
       const coverTemplate = todayActivityTemplate ?? noPlanDayCoverTemplate;
       const templateImageUrl = coverTemplate?.imageUrl?.trim();
-      if (templateImageUrl) {
+      if (templateImageUrl && isUploadedProgramCoverSrc(templateImageUrl)) {
         return {
           style: programCustomCoverImageStyle(templateImageUrl),
           usesPhotoStyle: programCoverUsesPhotoStyle(coverTemplate!, templateImageUrl),
-        };
-      }
-      if (isNoPlanHomeDay && src && src !== resolveNoPlanDayCoverImage()) {
-        return {
-          style: programCustomCoverImageStyle(src),
-          usesPhotoStyle: true,
         };
       }
       return { style: { objectPosition: imageObjectPositionFromSrc(src) }, usesPhotoStyle: false };

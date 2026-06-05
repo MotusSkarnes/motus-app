@@ -388,7 +388,7 @@ Deno.serve(async (req) => {
     memberDataLookupList.length > 0
       ? await adminClient
           .from("workout_logs")
-          .select("id, member_id, program_title, date, status, note, results, created_at")
+          .select("id, member_id, owner_user_id, program_title, date, status, note, results, created_at")
           .in("member_id", memberDataLookupList)
           .order("created_at", { ascending: false })
       : { data: [], error: null };
@@ -499,6 +499,9 @@ Deno.serve(async (req) => {
   const ownerIdsFromMessages = [...(messagesByMember ?? []), ...(messagesByRequesterOwner ?? [])]
     .map((row) => String((row as { owner_user_id?: string }).owner_user_id ?? "").trim())
     .filter(Boolean);
+  const ownerIdsFromLogs = (logs ?? [])
+    .map((row) => String((row as { owner_user_id?: string }).owner_user_id ?? "").trim())
+    .filter(Boolean);
   const trainerOwnerIds = Array.from(
     new Set([
       ...(scopedMembers ?? [])
@@ -506,6 +509,7 @@ Deno.serve(async (req) => {
         .filter(Boolean),
       ...ownerIdsFromAssignedPrograms,
       ...ownerIdsFromMessages,
+      ...ownerIdsFromLogs,
     ]),
   );
 
@@ -596,7 +600,7 @@ Deno.serve(async (req) => {
   }
 
   const memberDataLookupIdSet = new Set(memberDataLookupList);
-  const programs = mergedPrograms
+  let programs = mergedPrograms
     .filter((row) => {
       const memberId = String((row as { member_id?: string }).member_id ?? "").trim();
       const ownerUserId = String((row as { owner_user_id?: string }).owner_user_id ?? "").trim();
@@ -628,14 +632,63 @@ Deno.serve(async (req) => {
     };
   });
 
-  const noPlanDayCoverImageUrl = (() => {
+  function pickNoPlanCoverUrlFromRows(rows: Array<Record<string, unknown>>): string | null {
     const ownerSet = new Set(trainerOwnerIds);
-    const noPlanRows = activityTemplateRows.filter((row) => rowIsNoPlanCoverTemplate(row));
+    const noPlanRows = rows.filter((row) => rowIsNoPlanCoverTemplate(row));
     const scoped = noPlanRows.filter((row) => ownerSet.has(String((row as { owner_user_id?: string }).owner_user_id ?? "").trim()));
     const pool = scoped.length ? scoped : noPlanRows;
     const withImage = pool.find((row) => String((row as { image_url?: string }).image_url ?? "").trim());
     return String((withImage ?? pool[0])?.image_url ?? "").trim() || null;
-  })();
+  }
+
+  let noPlanDayCoverImageUrl = pickNoPlanCoverUrlFromRows(activityTemplateRows);
+
+  if (!noPlanDayCoverImageUrl && trainerOwnerIds.length > 0) {
+    const { data: directNoPlanRows, error: directNoPlanError } = await adminClient
+      .from("training_programs")
+      .select("*")
+      .eq("member_id", "__template__")
+      .ilike("title", NO_PLAN_DAY_TEMPLATE_TITLE)
+      .in("owner_user_id", trainerOwnerIds)
+      .not("image_url", "is", null)
+      .order("created_at", { ascending: false })
+      .limit(5);
+    if (directNoPlanError) {
+      console.warn("hydrate-member-data: direct no-plan cover query failed:", directNoPlanError.message);
+    } else {
+      const directRows = (directNoPlanRows ?? []) as Array<Record<string, unknown>>;
+      noPlanDayCoverImageUrl = pickNoPlanCoverUrlFromRows(directRows);
+      const programIds = new Set(
+        programs.map((row) => String((row as { id?: string }).id ?? "").trim()).filter(Boolean),
+      );
+      for (const row of directRows) {
+        const id = String((row as { id?: string }).id ?? "").trim();
+        if (!id || programIds.has(id)) continue;
+        programIds.add(id);
+        programs.push({
+          ...row,
+          assigned_trainer_name:
+            trainerNameByOwnerId.get(String((row as { owner_user_id?: string }).owner_user_id ?? "").trim()) ?? "",
+        });
+      }
+    }
+  }
+
+  if (noPlanDayCoverImageUrl && !programs.some((row) => rowIsNoPlanCoverTemplate(row))) {
+    const injectOwnerId = trainerOwnerIds[0] ?? "";
+    programs.push({
+      id: `motus-no-plan-cover-${injectOwnerId || "shared"}`,
+      member_id: "__template__",
+      owner_user_id: injectOwnerId,
+      title: NO_PLAN_DAY_TEMPLATE_TITLE,
+      goal: "",
+      notes: "__motusTemplateKind=no-plan",
+      exercises: [],
+      image_url: noPlanDayCoverImageUrl,
+      created_at: new Date().toISOString(),
+      assigned_trainer_name: trainerNameByOwnerId.get(injectOwnerId) ?? "",
+    });
+  }
 
   return jsonResponse(200, {
     members: harmonizedMembers,

@@ -12,6 +12,7 @@ import {
   programCoverUsesPhotoStyle,
   resolveFirstProgramCoverExercise,
   resolveGroupWorkoutCoverImage,
+  isUploadedProgramCoverSrc,
   resolveNoPlanDayCoverImage,
   resolvePeriodPlanEntryCoverImage,
   resolveProgramCoverDisplayUrl,
@@ -183,6 +184,17 @@ describe("resolveGroupWorkoutCoverImage", () => {
 describe("programCoverUsesPhotoStyle", () => {
   it("treats strength default cover as photo style", () => {
     expect(programCoverUsesPhotoStyle(program(), STRENGTH_TRAINING_COVER_IMAGE)).toBe(true);
+  });
+});
+
+describe("isUploadedProgramCoverSrc", () => {
+  it("treats supabase URLs as uploaded covers", () => {
+    expect(isUploadedProgramCoverSrc("https://cdn.example/hero.jpg?fx=0.5")).toBe(true);
+  });
+
+  it("treats bundled default covers as not uploaded", () => {
+    expect(isUploadedProgramCoverSrc(NO_PLAN_DAY_COVER_IMAGE)).toBe(false);
+    expect(isUploadedProgramCoverSrc(MOBILITY_TRAINING_COVER_IMAGE)).toBe(false);
   });
 });
 

@@ -818,16 +818,16 @@ export function useAppState() {
   const [recentlyFinishedLogId, setRecentlyFinishedLogId] = useState<string | null>(null);
 
   function syncMemberNoPlanCoverFromHydrate(hydratedMember: HydratedMemberData | null) {
-    const explicit = hydratedMember?.noPlanDayCoverImageUrl?.trim();
+    if (!hydratedMember) return;
+    const explicit = hydratedMember.noPlanDayCoverImageUrl?.trim();
     const memberOwnerUserId =
-      hydratedMember?.members
+      hydratedMember.members
         ?.map((member) => member.ownerUserId?.trim() ?? "")
         .find(Boolean) ?? "";
-    const fromPrograms = hydratedMember?.programs
+    const fromPrograms = hydratedMember.programs
       ? findNoPlanDayCoverTemplate(hydratedMember.programs, memberOwnerUserId || undefined)?.imageUrl?.trim()
       : "";
     const url = explicit || fromPrograms || null;
-    if (!url) return;
     setMemberNoPlanCoverImageUrl(url);
     writeCachedNoPlanDayCoverUrl(url);
   }

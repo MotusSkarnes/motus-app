@@ -103,6 +103,14 @@ export function resolveRestDayCoverImage(): string {
   return REST_RECOVERY_COVER_IMAGE;
 }
 
+/** Opplastet PT-forside (ikke statisk /program-covers/*.png). */
+export function isUploadedProgramCoverSrc(src?: string | null): boolean {
+  const trimmed = src?.trim() ?? "";
+  if (!trimmed) return false;
+  if (trimmed.startsWith("/program-covers/")) return false;
+  return trimmed.startsWith("http://") || trimmed.startsWith("https://");
+}
+
 export function resolveNoPlanDayCoverImage(
   programs: TrainingProgram[] = [],
   fallbackSrc?: string | null,
