@@ -624,58 +624,95 @@ Deno.serve(async (req) => {
     inspirationItems = inspirationFeed.data.items;
   }
 
-  const harmonizedMembers = harmonizeMemberProfilesByEmail([...(scopedMembers ?? [])]).map((row) => {
-    const ownerUserId = String((row as { owner_user_id?: string }).owner_user_id ?? "").trim();
-    return {
-      ...row,
-      assigned_trainer_name: trainerNameByOwnerId.get(ownerUserId) ?? "",
-    };
-  });
+  function rowCreatedAtMs(row: Record<string, unknown>): number {
+    const raw = String(row.created_at ?? "").trim();
+    const parsed = Date.parse(raw);
+    return Number.isNaN(parsed) ? 0 : parsed;
+  }
 
   function pickNoPlanCoverUrlFromRows(rows: Array<Record<string, unknown>>): string | null {
     const ownerSet = new Set(trainerOwnerIds);
-    const noPlanRows = rows.filter((row) => rowIsNoPlanCoverTemplate(row));
+    const noPlanRows = rows
+      .filter((row) => rowIsNoPlanCoverTemplate(row))
+      .sort((left, right) => rowCreatedAtMs(right) - rowCreatedAtMs(left));
     const scoped = noPlanRows.filter((row) => ownerSet.has(String((row as { owner_user_id?: string }).owner_user_id ?? "").trim()));
     const pool = scoped.length ? scoped : noPlanRows;
     const withImage = pool.find((row) => String((row as { image_url?: string }).image_url ?? "").trim());
     return String((withImage ?? pool[0])?.image_url ?? "").trim() || null;
   }
 
-  let noPlanDayCoverImageUrl = pickNoPlanCoverUrlFromRows(activityTemplateRows);
+  const noPlanCoverByOwner = new Map<string, string>();
+  const ownerIdsForCoverLookup = Array.from(
+    new Set(
+      [
+        ...trainerOwnerIds,
+        ...(scopedMembers ?? []).map((row) => String((row as { owner_user_id?: string }).owner_user_id ?? "").trim()),
+      ].filter(Boolean),
+    ),
+  );
 
-  if (!noPlanDayCoverImageUrl && trainerOwnerIds.length > 0) {
-    const { data: directNoPlanRows, error: directNoPlanError } = await adminClient
+  if (ownerIdsForCoverLookup.length > 0) {
+    const { data: coverRows, error: coverRowsError } = await adminClient
       .from("training_programs")
       .select("*")
       .eq("member_id", "__template__")
       .ilike("title", NO_PLAN_DAY_TEMPLATE_TITLE)
-      .in("owner_user_id", trainerOwnerIds)
+      .in("owner_user_id", ownerIdsForCoverLookup)
       .not("image_url", "is", null)
-      .order("created_at", { ascending: false })
-      .limit(5);
-    if (directNoPlanError) {
-      console.warn("hydrate-member-data: direct no-plan cover query failed:", directNoPlanError.message);
+      .order("created_at", { ascending: false });
+    if (coverRowsError) {
+      console.warn("hydrate-member-data: no-plan cover by owner query failed:", coverRowsError.message);
     } else {
-      const directRows = (directNoPlanRows ?? []) as Array<Record<string, unknown>>;
-      noPlanDayCoverImageUrl = pickNoPlanCoverUrlFromRows(directRows);
       const programIds = new Set(
         programs.map((row) => String((row as { id?: string }).id ?? "").trim()).filter(Boolean),
       );
-      for (const row of directRows) {
+      for (const row of (coverRows ?? []) as Array<Record<string, unknown>>) {
+        const ownerUserId = String((row as { owner_user_id?: string }).owner_user_id ?? "").trim();
+        const imageUrl = String((row as { image_url?: string }).image_url ?? "").trim();
+        if (!ownerUserId || !imageUrl || noPlanCoverByOwner.has(ownerUserId)) continue;
+        noPlanCoverByOwner.set(ownerUserId, imageUrl);
         const id = String((row as { id?: string }).id ?? "").trim();
-        if (!id || programIds.has(id)) continue;
-        programIds.add(id);
-        programs.push({
-          ...row,
-          assigned_trainer_name:
-            trainerNameByOwnerId.get(String((row as { owner_user_id?: string }).owner_user_id ?? "").trim()) ?? "",
-        });
+        if (id && !programIds.has(id)) {
+          programIds.add(id);
+          programs.push({
+            ...row,
+            assigned_trainer_name: trainerNameByOwnerId.get(ownerUserId) ?? "",
+          });
+        }
       }
     }
   }
 
+  let noPlanDayCoverImageUrl = pickNoPlanCoverUrlFromRows(activityTemplateRows);
+  if (!noPlanDayCoverImageUrl && noPlanCoverByOwner.size > 0) {
+    const preferredOwner =
+      String((scopedMembers?.[0] as { owner_user_id?: string } | undefined)?.owner_user_id ?? "").trim() ||
+      trainerOwnerIds[0] ||
+      "";
+    noPlanDayCoverImageUrl =
+      (preferredOwner ? noPlanCoverByOwner.get(preferredOwner) : undefined) ??
+      Array.from(noPlanCoverByOwner.values())[0] ??
+      null;
+  }
+
+  if (!noPlanDayCoverImageUrl && ownerIdsForCoverLookup.length === 0) {
+    const { data: fallbackRows, error: fallbackError } = await adminClient
+      .from("training_programs")
+      .select("*")
+      .eq("member_id", "__template__")
+      .ilike("title", NO_PLAN_DAY_TEMPLATE_TITLE)
+      .not("image_url", "is", null)
+      .order("created_at", { ascending: false })
+      .limit(3);
+    if (fallbackError) {
+      console.warn("hydrate-member-data: global no-plan cover fallback failed:", fallbackError.message);
+    } else {
+      noPlanDayCoverImageUrl = pickNoPlanCoverUrlFromRows((fallbackRows ?? []) as Array<Record<string, unknown>>);
+    }
+  }
+
   if (noPlanDayCoverImageUrl && !programs.some((row) => rowIsNoPlanCoverTemplate(row))) {
-    const injectOwnerId = trainerOwnerIds[0] ?? "";
+    const injectOwnerId = trainerOwnerIds[0] ?? ownerIdsForCoverLookup[0] ?? "";
     programs.push({
       id: `motus-no-plan-cover-${injectOwnerId || "shared"}`,
       member_id: "__template__",
@@ -688,6 +725,22 @@ Deno.serve(async (req) => {
       created_at: new Date().toISOString(),
       assigned_trainer_name: trainerNameByOwnerId.get(injectOwnerId) ?? "",
     });
+  }
+
+  const harmonizedMembers = harmonizeMemberProfilesByEmail([...(scopedMembers ?? [])]).map((row) => {
+    const ownerUserId = String((row as { owner_user_id?: string }).owner_user_id ?? "").trim();
+    return {
+      ...row,
+      assigned_trainer_name: trainerNameByOwnerId.get(ownerUserId) ?? "",
+      no_plan_day_cover_url: ownerUserId ? (noPlanCoverByOwner.get(ownerUserId) ?? "") : "",
+    };
+  });
+
+  if (!noPlanDayCoverImageUrl) {
+    const fromMemberRow = harmonizedMembers
+      .map((row) => String((row as { no_plan_day_cover_url?: string }).no_plan_day_cover_url ?? "").trim())
+      .find(Boolean);
+    if (fromMemberRow) noPlanDayCoverImageUrl = fromMemberRow;
   }
 
   return jsonResponse(200, {

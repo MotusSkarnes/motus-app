@@ -857,7 +857,21 @@ async function persistProgramDirectTrainer(
     return { ok: false, message: "Kunne ikke bekrefte innlogget trener." };
   }
   const isUuid = (value: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
-  const programId = isUuid(normalizedProgramId) ? normalizedProgramId : crypto.randomUUID();
+  let programId = isUuid(normalizedProgramId) ? normalizedProgramId : "";
+  if (!programId && memberId === "__template__" && input.title.trim()) {
+    const { data: existingTemplate } = await supabaseClient
+      .from("training_programs")
+      .select("id")
+      .eq("member_id", "__template__")
+      .eq("owner_user_id", ownerUserId)
+      .eq("title", input.title.trim())
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    const existingId = String((existingTemplate as { id?: string } | null)?.id ?? "").trim();
+    if (isUuid(existingId)) programId = existingId;
+  }
+  if (!programId) programId = crypto.randomUUID();
   const timestamp = new Date().toISOString();
   const authorDb =
     input.programCreatedBy === "member" || input.programCreatedBy === "trainer"
@@ -3081,15 +3095,20 @@ function mapHydrateMemberPayload(payload: Record<string, unknown>): HydratedMemb
     membersRows
       .map((row) => String((row as { owner_user_id?: string }).owner_user_id ?? "").trim())
       .find(Boolean) ?? "";
+  const memberRowNoPlanCovers = membersRows
+    .map((row) => String((row as { no_plan_day_cover_url?: string }).no_plan_day_cover_url ?? "").trim())
+    .filter(Boolean);
   const explicitNoPlanCover = String(payload.noPlanDayCoverImageUrl ?? "").trim();
   const noPlanDayCoverImageUrl =
     explicitNoPlanCover ||
+    memberRowNoPlanCovers[0] ||
     findNoPlanDayCoverTemplate(mappedPrograms, memberOwnerUserId || undefined)?.imageUrl?.trim() ||
     null;
 
   return {
     members: membersRows.map((row) => {
       const member = row as Record<string, unknown>;
+      const memberNoPlanCover = String(member.no_plan_day_cover_url ?? "").trim() || undefined;
       return {
         id: String(member.id ?? ""),
         ownerUserId: String(member.owner_user_id ?? ""),
@@ -3115,6 +3134,7 @@ function mapHydrateMemberPayload(payload: Record<string, unknown>): HydratedMemb
         injuries: String(member.injuries ?? ""),
         coachNotes: String(member.coach_notes ?? ""),
         avatarUrl: String(member.avatar_url ?? ""),
+        noPlanDayCoverImageUrl: memberNoPlanCover,
       } as Member;
     }),
     messages: messagesRows.map((row) => chatMessageFromRow(row as Record<string, unknown>)),

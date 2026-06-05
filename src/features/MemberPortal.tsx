@@ -1663,10 +1663,14 @@ export function MemberPortal(props: MemberPortalProps) {
   /** Maler har memberId __template__ og ligger utenfor memberPrograms — hent fra hele programlisten. */
   const activityTemplatesForPeriodPlan = useMemo(() => listActivityTemplates(programs), [programs]);
   const memberPtOwnerUserId = editableMember?.ownerUserId?.trim() ?? "";
+  const memberHydratedNoPlanCoverUrl = editableMember?.noPlanDayCoverImageUrl?.trim() ?? "";
   const noPlanDayCoverTemplate = useMemo(() => {
     const fromPrograms = findNoPlanDayCoverTemplate(programs, memberPtOwnerUserId || undefined);
     if (fromPrograms?.imageUrl?.trim()) return fromPrograms;
-    const hydratedUrl = memberNoPlanCoverImageUrl?.trim() || readCachedNoPlanDayCoverUrl();
+    const hydratedUrl =
+      memberHydratedNoPlanCoverUrl ||
+      memberNoPlanCoverImageUrl?.trim() ||
+      readCachedNoPlanDayCoverUrl();
     if (!hydratedUrl) return fromPrograms;
     return {
       id: fromPrograms?.id ?? "hydrated-no-plan-cover",
@@ -1680,7 +1684,7 @@ export function MemberPortal(props: MemberPortalProps) {
       activityTemplateKind: "no-plan" as const,
       ownerUserId: fromPrograms?.ownerUserId ?? (memberPtOwnerUserId || undefined),
     };
-  }, [programs, memberPtOwnerUserId, memberNoPlanCoverImageUrl]);
+  }, [programs, memberPtOwnerUserId, memberHydratedNoPlanCoverUrl, memberNoPlanCoverImageUrl]);
   const memberProgramsInActiveLibrary = useMemo(
     () => memberAssignedPrograms.filter((program) => !programIsInMemberArchive(program.memberLibraryStatus)),
     [memberAssignedPrograms],
@@ -4691,6 +4695,7 @@ export function MemberPortal(props: MemberPortalProps) {
     if (isNoPlanHomeDay) {
       const directUrl =
         noPlanDayCoverTemplate?.imageUrl?.trim() ||
+        memberHydratedNoPlanCoverUrl ||
         memberNoPlanCoverImageUrl?.trim() ||
         readCachedNoPlanDayCoverUrl();
       if (directUrl) return resolveProgramCoverDisplayUrl(directUrl);
@@ -4714,6 +4719,7 @@ export function MemberPortal(props: MemberPortalProps) {
     todayPlanEntry,
     programs,
     noPlanDayCoverTemplate,
+    memberHydratedNoPlanCoverUrl,
     memberNoPlanCoverImageUrl,
     cachedNoPlanCoverFallback,
     memberPtOwnerUserId,

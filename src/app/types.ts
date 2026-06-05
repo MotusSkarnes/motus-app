@@ -128,6 +128,8 @@ export type Member = {
   personalGoals: string;
   injuries: string;
   coachNotes: string;
+  /** PT sitt «Ingen plan i dag»-forsidebilde (fra hydrate-member-data). */
+  noPlanDayCoverImageUrl?: string;
 };
 
 /** Variabler PT kan konfigurere per øvelse i øvelsesbanken. */

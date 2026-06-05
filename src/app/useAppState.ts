@@ -820,6 +820,9 @@ export function useAppState() {
   function syncMemberNoPlanCoverFromHydrate(hydratedMember: HydratedMemberData | null) {
     if (!hydratedMember) return;
     const explicit = hydratedMember.noPlanDayCoverImageUrl?.trim();
+    const fromMemberRows = hydratedMember.members
+      ?.map((member) => member.noPlanDayCoverImageUrl?.trim() ?? "")
+      .find(Boolean);
     const memberOwnerUserId =
       hydratedMember.members
         ?.map((member) => member.ownerUserId?.trim() ?? "")
@@ -827,7 +830,7 @@ export function useAppState() {
     const fromPrograms = hydratedMember.programs
       ? findNoPlanDayCoverTemplate(hydratedMember.programs, memberOwnerUserId || undefined)?.imageUrl?.trim()
       : "";
-    const url = explicit || fromPrograms || null;
+    const url = explicit || fromMemberRows || fromPrograms || null;
     setMemberNoPlanCoverImageUrl(url);
     writeCachedNoPlanDayCoverUrl(url);
   }

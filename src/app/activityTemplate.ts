@@ -90,19 +90,41 @@ export function listActivityTemplates(
     .filter((program) => !kind || parseActivityTemplateKind(program) === kind);
 }
 
+function programCreatedAtSortMs(program: Pick<TrainingProgram, "createdAt">): number {
+  const raw = program.createdAt?.trim() ?? "";
+  if (!raw) return 0;
+  const iso = Date.parse(raw);
+  if (!Number.isNaN(iso)) return iso;
+  const dotted = raw.match(/^(\d{2})\.(\d{2})\.(\d{4})$/);
+  if (dotted) {
+    const parsed = Date.parse(`${dotted[3]}-${dotted[2]}-${dotted[1]}`);
+    return Number.isNaN(parsed) ? 0 : parsed;
+  }
+  return 0;
+}
+
+function pickNewestNoPlanCoverProgram(programs: TrainingProgram[]): TrainingProgram | null {
+  if (!programs.length) return null;
+  const sorted = [...programs].sort(
+    (left, right) => programCreatedAtSortMs(right) - programCreatedAtSortMs(left),
+  );
+  return sorted.find((program) => program.imageUrl?.trim()) ?? sorted[0] ?? null;
+}
+
 export function findNoPlanDayCoverTemplate(
   programs: TrainingProgram[],
   ownerUserId?: string | null,
 ): TrainingProgram | null {
   const candidates = programs.filter((program) => isNoPlanDayCoverProgram(program));
   if (!candidates.length) return null;
-  const withImage = (list: TrainingProgram[]) => list.find((program) => program.imageUrl?.trim()) ?? null;
   const trimmedOwner = ownerUserId?.trim();
   if (trimmedOwner) {
     const scoped = candidates.filter((program) => program.ownerUserId?.trim() === trimmedOwner);
-    return withImage(scoped) ?? withImage(candidates) ?? scoped[0] ?? candidates[0] ?? null;
+    const scopedPick = pickNewestNoPlanCoverProgram(scoped);
+    if (scopedPick?.imageUrl?.trim()) return scopedPick;
+    return pickNewestNoPlanCoverProgram(candidates);
   }
-  return withImage(candidates) ?? candidates[0] ?? null;
+  return pickNewestNoPlanCoverProgram(candidates);
 }
 
 /** Skal programmet beholdes i medlems appState.programs etter sesjonsfiltrering? */
