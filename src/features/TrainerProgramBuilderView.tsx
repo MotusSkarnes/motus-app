@@ -24,6 +24,7 @@ import {
   isHoldBasedExerciseCategory,
   programDraftUsesHoldFields,
   programExerciseHoldSeconds,
+  defaultTemplateProgramTitle,
   isActivityTemplateSubTab,
   programsBuilderDescription,
   programsBuilderTitle,
@@ -32,6 +33,10 @@ import {
   type TrainingSubTab,
 } from "../app/exerciseCategories";
 import { isActivityTemplate } from "../app/activityTemplate";
+import {
+  CONDITIONING_TRAINING_COVER_IMAGE,
+  MOBILITY_TRAINING_COVER_IMAGE,
+} from "../app/programImage";
 import {
   computeProgramDraftStats,
   draftExercisePrescriptionLabel,
@@ -214,17 +219,20 @@ export function TrainerProgramBuilderView({
 
   const coverPreviewSrc = useMemo(() => {
     if (programFormImageUrl.trim()) return programFormImageUrl.trim();
+    if (isActivityTemplateSubTab(programsSubTab)) {
+      return programsSubTab === "group" ? CONDITIONING_TRAINING_COVER_IMAGE : MOBILITY_TRAINING_COVER_IMAGE;
+    }
     const first = programExercisesDraft[0];
     if (!first) return null;
     const linked = exercisesById.get(first.exerciseId);
     return linked ? getExercisePreviewSrc(linked) : null;
-  }, [programFormImageUrl, programExercisesDraft, exercisesById, getExercisePreviewSrc]);
+  }, [programFormImageUrl, programExercisesDraft, exercisesById, getExercisePreviewSrc, programsSubTab]);
 
   const previewProgram = useMemo((): TrainingProgram => {
     return {
       id: "preview-draft",
       memberId: "__template__",
-      title: templateProgramTitle.trim() || programsBuilderTitle(programsSubTab),
+      title: templateProgramTitle.trim() || defaultTemplateProgramTitle(programsSubTab),
       goal: "",
       notes: "",
       createdAt: "",
@@ -326,23 +334,25 @@ export function TrainerProgramBuilderView({
 
       {isActivityTab ? (
         <div className="motus-prog-builder-activity-template space-y-4 rounded-2xl border bg-white p-4 sm:p-5" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
-          <div className="motus-member-program-thumb motus-image-frame max-w-xl">
+          <div className="motus-prog-builder-hero max-w-xl">
             {coverPreviewSrc ? (
-              <img
-                src={coverPreviewSrc}
-                alt=""
-                className="motus-member-program-cover motus-image-media"
-                loading="lazy"
-              />
+              <img src={coverPreviewSrc} alt="" className="motus-prog-builder-hero-img" loading="lazy" />
             ) : (
-              <div className="motus-member-program-thumb-fallback" aria-hidden />
+              <div className="motus-prog-builder-hero-placeholder" />
             )}
+            <div className="motus-prog-builder-hero-overlay">
+              <TextInput
+                value={templateProgramTitle}
+                onChange={(e) => onTemplateProgramTitleChange(e.target.value)}
+                placeholder={defaultTemplateProgramTitle(programsSubTab)}
+                className="!border-0 !bg-white/95 !text-base !font-semibold"
+              />
+              <div className="motus-prog-builder-hero-tags">
+                <span className="motus-prog-builder-hero-tag">{programCategoryLabel(programsSubTab)}</span>
+                <span className="motus-prog-builder-hero-tag">Mal</span>
+              </div>
+            </div>
           </div>
-          <TextInput
-            value={templateProgramTitle}
-            onChange={(e) => onTemplateProgramTitleChange(e.target.value)}
-            placeholder={programsSubTab === "group" ? "Navn på gruppetime" : "Navn på aktivitet"}
-          />
           <ProgramCoverImageField
             imageUrl={programFormImageUrl}
             onImageUrlChange={onProgramFormImageUrlChange}
@@ -380,7 +390,7 @@ export function TrainerProgramBuilderView({
               <TextInput
                 value={templateProgramTitle}
                 onChange={(e) => onTemplateProgramTitleChange(e.target.value)}
-                placeholder="Navn på program"
+                placeholder={defaultTemplateProgramTitle(programsSubTab)}
                 className="!border-0 !bg-white/95 !text-base !font-semibold"
               />
               <div className="motus-prog-builder-hero-tags">

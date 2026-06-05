@@ -36,6 +36,7 @@ import { programAuthorLabelForTrainer } from "../app/programAuthor";
 import { uid } from "../app/storage";
 import {
   categoryForSubTab,
+  defaultTemplateProgramTitle,
   isActivityTemplateSubTab,
   defaultCategoryForExerciseBankTab,
   emptyTemplatesMessage,
@@ -795,7 +796,7 @@ function pickFirstName(value: unknown): string {
   const [programExercisesDraft, setProgramExercisesDraft] = useState<ProgramExercise[]>([]);
   const [cardioIntervalIntensity, setCardioIntervalIntensity] = useState<CardioIntensityLevel>("medium");
   const [cardioEquipmentId, setCardioEquipmentId] = useState<CardioEquipmentId>(defaultCardioEquipmentId);
-  const [templateProgramTitle, setTemplateProgramTitle] = useState("Ny treningsmal");
+  const [templateProgramTitle, setTemplateProgramTitle] = useState(() => defaultTemplateProgramTitle("strength"));
   const [editingTemplateProgramId, setEditingTemplateProgramId] = useState<string | null>(null);
   const [expandedTemplateProgramId, setExpandedTemplateProgramId] = useState<string | null>(null);
   const [selectedTemplateProgramId, setSelectedTemplateProgramId] = useState("");
@@ -1943,15 +1944,15 @@ function pickFirstName(value: unknown): string {
   }, [activeTemplatePrograms, selectedTemplateProgramId]);
 
   useEffect(() => {
-    if (trainerTab !== "programs") return;
+    if (trainerTab !== "programs" || editingTemplateProgramId) return;
     setProgramExerciseCategoryFilter(categoryForSubTab(programsSubTab));
+    setTemplateProgramTitle(defaultTemplateProgramTitle(programsSubTab));
     if (isActivityTemplateSubTab(programsSubTab)) {
       setProgramExercisesDraft([]);
-      setEditingTemplateProgramId(null);
-      setTemplateProgramTitle(programsSubTab === "group" ? "Ny gruppetime-mal" : "Ny aktivitetsmal");
       setProgramNotes("");
+      setProgramFormImageUrl("");
     }
-  }, [programsSubTab, trainerTab]);
+  }, [programsSubTab, trainerTab, editingTemplateProgramId]);
 
   useEffect(() => {
     const previousTab = prevTrainerTabRef.current;
@@ -1969,7 +1970,7 @@ function pickFirstName(value: unknown): string {
         cardioEquipmentId,
       };
       setProgramExercisesDraft([]);
-      setTemplateProgramTitle("Ny treningsmal");
+      setTemplateProgramTitle(defaultTemplateProgramTitle(programsSubTab));
       setProgramFormImageUrl("");
       setProgramCoverCleared(false);
       setCardioIntervalIntensity("medium");
@@ -2688,7 +2689,7 @@ function pickFirstName(value: unknown): string {
         setTemplateAssignStatus("Mal lagret.");
       }
       setEditingTemplateProgramId(null);
-      setTemplateProgramTitle(programsSubTab === "group" ? "Ny gruppetime-mal" : "Ny aktivitetsmal");
+      setTemplateProgramTitle(defaultTemplateProgramTitle(programsSubTab));
       setProgramFormImageUrl("");
       setProgramNotes("");
       return;
@@ -2714,7 +2715,7 @@ function pickFirstName(value: unknown): string {
       setTemplateAssignStatus("Treningsmal lagret.");
     }
     setEditingTemplateProgramId(null);
-    setTemplateProgramTitle("Ny treningsmal");
+    setTemplateProgramTitle(defaultTemplateProgramTitle(programsSubTab));
     setProgramExercisesDraft([]);
   }
 
@@ -2741,13 +2742,7 @@ function pickFirstName(value: unknown): string {
 
   function resetTemplateProgramBuilder() {
     setEditingTemplateProgramId(null);
-    setTemplateProgramTitle(
-      isActivityTemplateSubTab(programsSubTab)
-        ? programsSubTab === "group"
-          ? "Ny gruppetime-mal"
-          : "Ny aktivitetsmal"
-        : "Ny treningsmal",
-    );
+    setTemplateProgramTitle(defaultTemplateProgramTitle(programsSubTab));
     setProgramFormImageUrl("");
     setProgramNotes("");
     setProgramExercisesDraft([]);

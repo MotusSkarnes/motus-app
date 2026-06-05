@@ -6,6 +6,7 @@ import {
   categoryForSubTab,
   programDraftUsesHoldFields,
   programExerciseHoldSeconds,
+  programsSubTabLabel,
   type TrainingSubTab,
 } from "./exerciseCategories";
 import { formatProgramExercisePrescription } from "./programExercisePresentation";
@@ -98,5 +99,8 @@ export function draftExercisePrescriptionLabel(
 }
 
 export function programCategoryLabel(subTab: TrainingSubTab): string {
+  if (subTab === "group" || subTab === "activity" || subTab === "strength") {
+    return programsSubTabLabel(subTab);
+  }
   return categoryForSubTab(subTab);
 }

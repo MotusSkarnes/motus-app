@@ -192,6 +192,28 @@ export function exerciseCategoryTagClass(category: Exercise["category"]): string
   }
 }
 
+export function programsSubTabLabel(subTab: TrainingSubTab): string {
+  return TRAINING_SUB_TAB_OPTIONS.find((tab) => tab.id === subTab)?.programsLabel ?? "Styrkeøkter";
+}
+
+/** Forslagstittel i mal-byggeren når du starter en ny mal. */
+export function defaultTemplateProgramTitle(subTab: TrainingSubTab): string {
+  switch (subTab) {
+    case "conditioning":
+      return "Ny kondisjonsmal";
+    case "mobility":
+      return "Ny mobilitetsmal";
+    case "rehab":
+      return "Ny rehab-mal";
+    case "group":
+      return "Ny gruppetime-mal";
+    case "activity":
+      return "Ny aktivitetsmal";
+    default:
+      return "Ny styrketreningsmal";
+  }
+}
+
 export function programsBuilderTitle(subTab: TrainingSubTab): string {
   switch (subTab) {
     case "conditioning":
@@ -205,7 +227,7 @@ export function programsBuilderTitle(subTab: TrainingSubTab): string {
     case "activity":
       return "Lag aktivitetsmal";
     default:
-      return "Lag treningsmal";
+      return "Lag styrketreningsmal";
   }
 }
 
