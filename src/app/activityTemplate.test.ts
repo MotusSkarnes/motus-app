@@ -4,6 +4,7 @@ import {
   buildActivityTemplateNotes,
   enrichProgramWithActivityTemplateKind,
   listActivityTemplates,
+  mergeMemberProgramsWithActivityTemplates,
   periodPlanEntryForActivityTemplate,
   stripActivityTemplateMarker,
 } from "./activityTemplate";
@@ -50,6 +51,23 @@ describe("activityTemplate", () => {
     const enriched = enrichProgramWithActivityTemplateKind(templateProgram("group", "Spinning"));
     expect(listActivityTemplates([enriched])).toHaveLength(1);
     expect(periodPlanEntryForActivityTemplate(enriched)).toBe("Gruppetime: Spinning");
+  });
+
+  it("keeps activity templates when filtering member hydrate programs", () => {
+    const group = templateProgram("group", "Testgruppetime");
+    group.imageUrl = "https://cdn.example/test.png";
+    const assigned: TrainingProgram = {
+      id: "p1",
+      memberId: "member-1",
+      title: "Styrke A",
+      goal: "",
+      notes: "",
+      createdAt: "01.01.2025",
+      exercises: [],
+    };
+    const merged = mergeMemberProgramsWithActivityTemplates([assigned, group], new Set(["member-1"]));
+    expect(merged).toHaveLength(2);
+    expect(merged.find((program) => program.id === group.id)?.imageUrl).toBe("https://cdn.example/test.png");
   });
 
   it("lists activity templates by kind", () => {

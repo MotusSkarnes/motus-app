@@ -85,6 +85,7 @@ import {
   saveTrainerRosterBackup,
   syncMissingRosterMembersToCloud,
 } from "./trainerRosterBackup";
+import { mergeMemberProgramsWithActivityTemplates } from "./activityTemplate";
 import { memberMayDeleteProgram, mergeProgramAuthorFields } from "./programAuthor";
 import {
   pickProgramImageUrlAfterServerSync,
@@ -435,7 +436,9 @@ function mergeMemberProgramsWithLocalEphemeral(
   memberIds: Set<string>,
   activeWorkoutProgramId?: string,
 ): TrainingProgram[] {
-  const merged = new Map(filterProgramsForMembers(remotePrograms, memberIds).map((program) => [program.id, program]));
+  const merged = new Map(
+    mergeMemberProgramsWithActivityTemplates(remotePrograms, memberIds).map((program) => [program.id, program]),
+  );
   for (const local of prevPrograms) {
     if (!memberIds.has(local.memberId.trim())) continue;
     const remote = merged.get(local.id);

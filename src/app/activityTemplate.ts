@@ -69,3 +69,16 @@ export function listActivityTemplates(
     .filter((program) => program.memberId === "__template__" && isActivityTemplate(program))
     .filter((program) => !kind || parseActivityTemplateKind(program) === kind);
 }
+
+/** Medlem: behold tildelte programmer + PT sine periodeplan-maler (ikke i memberIds). */
+export function mergeMemberProgramsWithActivityTemplates(
+  remotePrograms: TrainingProgram[],
+  memberIds: Set<string>,
+): TrainingProgram[] {
+  const byId = new Map<string, TrainingProgram>();
+  remotePrograms
+    .filter((program) => memberIds.has(program.memberId.trim()))
+    .forEach((program) => byId.set(program.id, program));
+  listActivityTemplates(remotePrograms).forEach((program) => byId.set(program.id, program));
+  return Array.from(byId.values());
+}

@@ -165,8 +165,10 @@ export function resolveProgramImageSrc(
   if (byTitle) return byTitle;
   if (coverExercise) return resolveExerciseImageSrc(coverExercise);
   if (options?.subTab === "strength") return STRENGTH_TRAINING_COVER_IMAGE;
-  if (options?.subTab === "conditioning") return CONDITIONING_TRAINING_COVER_IMAGE;
-  if (options?.subTab === "mobility" || options?.subTab === "rehab") return MOBILITY_TRAINING_COVER_IMAGE;
+  if (options?.subTab === "conditioning" || options?.subTab === "group") return CONDITIONING_TRAINING_COVER_IMAGE;
+  if (options?.subTab === "mobility" || options?.subTab === "rehab" || options?.subTab === "activity") {
+    return MOBILITY_TRAINING_COVER_IMAGE;
+  }
   return null;
 }
 
@@ -205,8 +207,19 @@ export function resolvePeriodPlanEntryCoverImage(
 
   const templates = options.activityTemplates ?? [];
   const matchedTemplate = templates.find((template) => activityTemplateMatchesPeriodEntry(template, entry));
-  if (matchedTemplate?.imageUrl?.trim()) {
-    return resolveProgramCoverDisplayUrl(matchedTemplate.imageUrl.trim());
+  if (matchedTemplate) {
+    const customImage = matchedTemplate.imageUrl?.trim();
+    if (customImage) return resolveProgramCoverDisplayUrl(customImage);
+    const matchedTemplateKind = parseActivityTemplateKind(matchedTemplate);
+    const templateFallback = resolveProgramImageSrc(matchedTemplate, null, {
+      subTab:
+        matchedTemplateKind === "activity"
+          ? "activity"
+          : matchedTemplateKind === "group"
+            ? "group"
+            : "conditioning",
+    });
+    if (templateFallback) return templateFallback;
   }
 
   if (isGroupPeriodPlanEntry(entry)) {
@@ -216,8 +229,7 @@ export function resolvePeriodPlanEntryCoverImage(
     );
   }
 
-  const matchedTemplateKind = matchedTemplate ? parseActivityTemplateKind(matchedTemplate) : null;
-  if (matchedTemplateKind === "activity" || trimmed.toLowerCase().startsWith("aktivitet:")) {
+  if (trimmed.toLowerCase().startsWith("aktivitet:")) {
     return MOBILITY_TRAINING_COVER_IMAGE;
   }
 
