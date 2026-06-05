@@ -133,6 +133,7 @@ import {
   groupWorkoutLogTitle,
   isGroupPeriodPlanEntry,
   isPassivePeriodPlanEntry,
+  isRestPeriodPlanEntry,
   isPeriodPlanEntryDateInFuture,
   resolveGroupClassNameFromPeriodEntry,
   resolvePeriodPlanEntryAction,
@@ -4659,10 +4660,11 @@ export function MemberPortal(props: MemberPortalProps) {
     );
   }, [activityTemplatesForPeriodPlan, todayPlanEntry]);
   const isNoPlanHomeDay = useMemo(() => {
-    if (todayPlanIsPassiveDay) return false;
     if (homePrimaryFocus.trim() === NO_PLAN_DAY_TEMPLATE_TITLE) return true;
     const cachedTitle = cachedHomeWorkout?.title.trim() ?? "";
     if (cachedHomeWorkout?.isNoPlanDay || cachedTitle === NO_PLAN_DAY_TEMPLATE_TITLE) return true;
+    if (todayPlanEntry.trim() && isRestPeriodPlanEntry(todayPlanEntry)) return false;
+    if (todayPlanIsPassiveDay && todayPlanEntry.trim()) return false;
     if (homeWorkoutHydrationPending) {
       if (periodPlans.length === 0) return true;
       if (!todayPlanEntry.trim()) return true;
@@ -4736,8 +4738,8 @@ export function MemberPortal(props: MemberPortalProps) {
   }, [homeWorkoutHydrationPending, cachedHomeWorkout, homePrimaryFocus]);
   const homeDisplayLoading = homeWorkoutHydrationPending && !cachedHomeWorkout?.title;
   const homeDisplayCoverSrc = useMemo(() => {
-    if (todayPlanIsPassiveDay) return resolveRestDayCoverImage();
     if (isNoPlanHomeDay) return homeWorkoutCoverSrc;
+    if (todayPlanEntry.trim() && isRestPeriodPlanEntry(todayPlanEntry)) return resolveRestDayCoverImage();
     if (homeWorkoutHydrationPending) {
       const cachedTitle = cachedHomeWorkout?.title.trim() ?? "";
       if (cachedHomeWorkout?.isNoPlanDay || cachedTitle === NO_PLAN_DAY_TEMPLATE_TITLE) {
@@ -4747,8 +4749,8 @@ export function MemberPortal(props: MemberPortalProps) {
     }
     return homeWorkoutCoverSrc;
   }, [
-    todayPlanIsPassiveDay,
     isNoPlanHomeDay,
+    todayPlanEntry,
     homeWorkoutHydrationPending,
     cachedHomeWorkout,
     homeWorkoutCoverSrc,
