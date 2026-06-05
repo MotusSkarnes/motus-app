@@ -546,6 +546,29 @@ button {
   box-shadow: var(--motus-shadow-soft);
 }
 
+.motus-home-workout-card--stacked {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border: 0;
+  border-radius: 1.25rem;
+  background: rgba(255, 255, 255, 0.92);
+}
+
+.motus-home-workout-media {
+  position: relative;
+}
+
+.motus-home-workout-card--stacked .motus-member-program-thumb::after {
+  display: none;
+}
+
+.motus-home-workout-card--stacked .motus-member-program-thumb-fallback {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
 .motus-home-workout-cover {
   position: absolute;
   inset: 0;
@@ -603,6 +626,12 @@ button {
   color: #ffffff;
 }
 
+.motus-home-workout-card--stacked .motus-home-workout-content {
+  position: static;
+  padding: 0.875rem 1rem 1.125rem;
+  color: #0f172a;
+}
+
 .motus-home-workout-label {
   font-size: 0.6875rem;
   font-weight: 700;
@@ -612,6 +641,11 @@ button {
   text-shadow: 0 1px 8px rgba(2, 6, 23, 0.42);
 }
 
+.motus-home-workout-card--stacked .motus-home-workout-label {
+  color: #0d9488;
+  text-shadow: none;
+}
+
 .motus-home-workout-title {
   margin-top: 4px;
   font-size: clamp(1.25rem, 5vw, 1.5rem);
@@ -619,6 +653,11 @@ button {
   line-height: 1.08;
   color: #ffffff;
   text-shadow: 0 2px 16px rgba(2, 6, 23, 0.46);
+}
+
+.motus-home-workout-card--stacked .motus-home-workout-title {
+  color: #0f172a;
+  text-shadow: none;
 }
 
 .motus-home-workout-subtitle {
@@ -634,6 +673,11 @@ button {
   text-shadow: 0 1px 10px rgba(2, 6, 23, 0.42);
 }
 
+.motus-home-workout-card--stacked .motus-home-workout-subtitle {
+  color: #64748b;
+  text-shadow: none;
+}
+
 .motus-home-workout-meta {
   display: flex;
   flex-wrap: wrap;
@@ -646,10 +690,20 @@ button {
   text-shadow: 0 1px 10px rgba(2, 6, 23, 0.48);
 }
 
+.motus-home-workout-card--stacked .motus-home-workout-meta {
+  color: #64748b;
+  text-shadow: none;
+}
+
 .motus-home-workout-cta {
   margin-top: 8px;
   width: min(12.5rem, 68%);
   min-width: 10.5rem;
+}
+
+.motus-home-workout-card--stacked .motus-home-workout-cta {
+  width: 100%;
+  min-width: 0;
 }
 
 .motus-home-workout-cta > button {
@@ -673,6 +727,10 @@ button {
 @media (min-width: 640px) {
   .motus-home-workout-content {
     padding: 4.5rem 1.5rem 1.25rem;
+  }
+
+  .motus-home-workout-card--stacked .motus-home-workout-content {
+    padding: 0.875rem 1rem 1.125rem;
   }
 
   .motus-home-workout-title {

@@ -6119,6 +6119,8 @@ export function MemberPortal(props: MemberPortalProps) {
                 workoutSubtitle={homeDisplaySubtitle}
                 workoutDuration={homeDisplayDuration}
                 workoutImageSrc={homeDisplayCoverSrc}
+                workoutCoverImageStyle={homeDisplayCoverPresentation.style}
+                workoutCoverUsesPhotoStyle={homeDisplayCoverPresentation.usesPhotoStyle}
                 workoutZoneLabel={homeDisplayZoneLabel}
                 onWorkoutCardClick={openHomeWorkoutDestination}
                 quickActions={{

@@ -1,4 +1,4 @@
-﻿import type { ReactNode } from "react";
+﻿import type { CSSProperties, ReactNode } from "react";
 import {
   Bookmark,
   CalendarDays,
@@ -53,6 +53,8 @@ export type MemberHomeOverviewProps = {
   workoutSubtitle?: string | null;
   workoutDuration: string | null;
   workoutImageSrc?: string | null;
+  workoutCoverImageStyle?: CSSProperties;
+  workoutCoverUsesPhotoStyle?: boolean;
   workoutZoneLabel?: string | null;
   weekStats?: MemberHomeWeekStats | null;
   quickActions?: MemberHomeQuickActions;
@@ -85,6 +87,8 @@ export function MemberHomeOverview({
   workoutSubtitle,
   workoutDuration,
   workoutImageSrc,
+  workoutCoverImageStyle,
+  workoutCoverUsesPhotoStyle = false,
   workoutZoneLabel,
   primaryCta,
   onWorkoutCardClick,
@@ -135,32 +139,42 @@ export function MemberHomeOverview({
         </div>
       </header>
 
-      <article className="motus-home-workout-card motus-image-frame motus-image-frame--hero">
-        {workoutImageSrc ? (
-          <img
-            className="motus-home-workout-cover motus-image-media"
-            src={workoutImageSrc}
-            alt=""
-            loading="lazy"
-            style={{ objectPosition: imageObjectPositionFromSrc(workoutImageSrc) }}
-          />
-        ) : (
-          <div className="motus-home-workout-cover motus-home-workout-cover--fallback" aria-hidden>
-            <Dumbbell className="h-10 w-10 text-white/60" strokeWidth={1.5} />
+      <article className="motus-home-workout-card motus-home-workout-card--stacked">
+        <div className="motus-home-workout-media">
+          <div className="motus-member-program-thumb motus-image-frame">
+            {workoutImageSrc ? (
+              <img
+                className={`motus-member-program-cover motus-image-media${
+                  workoutCoverUsesPhotoStyle
+                    ? " motus-member-program-cover--custom"
+                    : " motus-member-program-cover--exercise"
+                }`}
+                src={workoutImageSrc}
+                alt=""
+                loading="lazy"
+                style={
+                  workoutCoverImageStyle ?? { objectPosition: imageObjectPositionFromSrc(workoutImageSrc) }
+                }
+              />
+            ) : (
+              <div className="motus-member-program-thumb-fallback" aria-hidden>
+                <Dumbbell className="h-10 w-10 text-slate-400" strokeWidth={1.5} />
+              </div>
+            )}
           </div>
-        )}
 
-        {onWorkoutCardClick ? (
-          <button
-            type="button"
-            onClick={onWorkoutCardClick}
-            className="motus-home-workout-top-action motus-pressable"
-            aria-label="Se trening"
-            title="Se trening"
-          >
-            <Bookmark className="h-5 w-5" aria-hidden />
-          </button>
-        ) : null}
+          {onWorkoutCardClick ? (
+            <button
+              type="button"
+              onClick={onWorkoutCardClick}
+              className="motus-home-workout-top-action motus-pressable"
+              aria-label="Se trening"
+              title="Se trening"
+            >
+              <Bookmark className="h-5 w-5" aria-hidden />
+            </button>
+          ) : null}
+        </div>
 
         <div className="motus-home-workout-content">
           <div className="min-w-0 w-full">
