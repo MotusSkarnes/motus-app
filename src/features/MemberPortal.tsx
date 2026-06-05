@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { flushSync } from "react-dom";
 import {
   Archive,
@@ -4644,6 +4644,28 @@ export function MemberPortal(props: MemberPortalProps) {
     }
     return homeWorkoutCoverSrc;
   }, [homeWorkoutHydrationPending, cachedHomeWorkout, homeWorkoutCoverSrc]);
+  const homeDisplayCoverPresentation = useMemo((): {
+    style: CSSProperties;
+    usesPhotoStyle: boolean;
+  } => {
+    const src = homeDisplayCoverSrc;
+    if (!src) return { style: {}, usesPhotoStyle: false };
+    if (!homeWorkoutProgram) {
+      return { style: { objectPosition: imageObjectPositionFromSrc(src) }, usesPhotoStyle: false };
+    }
+    const coverExercise = resolveFirstProgramCoverExercise(homeWorkoutProgram, exercises);
+    const programCoverSrc = resolveProgramImageSrc(homeWorkoutProgram, coverExercise ?? null, {
+      subTab: getTrainingProgramSubTab(homeWorkoutProgram, exerciseCategoryById, exercises),
+    });
+    const usesPhotoStyle = programCoverUsesPhotoStyle(homeWorkoutProgram, programCoverSrc);
+    if (usesPhotoStyle) {
+      return {
+        style: programCustomCoverImageStyle(homeWorkoutProgram.imageUrl ?? programCoverSrc),
+        usesPhotoStyle: true,
+      };
+    }
+    return { style: { objectPosition: imageObjectPositionFromSrc(src) }, usesPhotoStyle: false };
+  }, [homeDisplayCoverSrc, homeWorkoutProgram, exercises, exerciseCategoryById]);
   const homeWorkoutZoneLabel = useMemo(() => {
     if (todayPlanAction.kind === "log-group") {
       return extractZoneFromPlanEntry(todayPlanEntry) ?? "Gruppe";
@@ -6388,6 +6410,8 @@ export function MemberPortal(props: MemberPortalProps) {
                 <MemberTrainingOverview
                   title={homePrimaryFocus}
                   imageSrc={homeDisplayCoverSrc}
+                  coverImageStyle={homeDisplayCoverPresentation.style}
+                  coverUsesPhotoStyle={homeDisplayCoverPresentation.usesPhotoStyle}
                   durationLabel={homeWorkoutDuration}
                   zoneLabel={homeWorkoutZoneLabel}
                   exerciseCountLabel={

@@ -190,6 +190,12 @@ button {
   min-height: 16rem;
 }
 
+.motus-image-frame--program-cover {
+  aspect-ratio: 390 / 118;
+  width: 100%;
+  flex-shrink: 0;
+}
+
 .motus-image-frame--portrait {
   aspect-ratio: 3 / 4;
 }
@@ -6903,6 +6909,21 @@ html:has(.motus-trainer-app) {
   box-shadow: 0 10px 30px rgba(16, 24, 40, 0.06);
 }
 
+.motus-training-hero--stacked {
+  display: flex;
+  flex-direction: column;
+  background: rgba(255, 255, 255, 0.92);
+  border-radius: 1.25rem;
+}
+
+.motus-training-hero-thumb {
+  background: #eef2f7;
+}
+
+.motus-training-hero-thumb::after {
+  display: none;
+}
+
 .motus-training-hero-cover {
   position: absolute;
   inset: 0;
@@ -6919,7 +6940,7 @@ html:has(.motus-trainer-app) {
   background:
     radial-gradient(circle at 28% 25%, rgba(48, 227, 190, 0.34), transparent 34%),
     radial-gradient(circle at 76% 72%, rgba(217, 18, 120, 0.3), transparent 36%),
-    linear-gradient(145deg, #1e293b 0%, #0f172a 100%);
+    linear-gradient(145deg, #dfe8ea 0%, #f7faf9 100%);
 }
 
 .motus-training-hero-overlay {
@@ -6943,6 +6964,14 @@ html:has(.motus-trainer-app) {
   color: #fff;
 }
 
+.motus-training-hero-body {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.375rem;
+  padding: 0.875rem 1rem 1.125rem;
+}
+
 .motus-training-hero-label {
   max-width: 100%;
   font-size: 0.6875rem;
@@ -6950,6 +6979,10 @@ html:has(.motus-trainer-app) {
   letter-spacing: 0.16em;
   text-transform: uppercase;
   color: rgba(48, 227, 190, 0.96);
+}
+
+.motus-training-hero--stacked .motus-training-hero-label {
+  color: #0d9488;
 }
 
 .motus-training-hero-title {
@@ -6961,6 +6994,11 @@ html:has(.motus-trainer-app) {
   overflow-wrap: anywhere;
 }
 
+.motus-training-hero--stacked .motus-training-hero-title {
+  font-size: clamp(1.25rem, 4.5vw, 1.625rem);
+  color: #0f172a;
+}
+
 .motus-training-hero-meta {
   max-width: 100%;
   font-size: 0.9375rem;
@@ -6969,9 +7007,18 @@ html:has(.motus-trainer-app) {
   overflow-wrap: anywhere;
 }
 
+.motus-training-hero--stacked .motus-training-hero-meta {
+  font-size: 0.875rem;
+  color: #64748b;
+}
+
 .motus-training-hero-cta {
   margin-top: 0.75rem;
   width: 100%;
+}
+
+.motus-training-hero--stacked .motus-training-hero-cta {
+  margin-top: 0.5rem;
 }
 
 .motus-training-hero-cta > button {
@@ -6983,6 +7030,10 @@ html:has(.motus-trainer-app) {
   margin-top: 0.5rem;
   font-size: 0.8125rem;
   color: rgba(255, 255, 255, 0.82);
+}
+
+.motus-training-hero--stacked .motus-training-hero-next {
+  color: #64748b;
 }
 
 .motus-training-stat-grid {

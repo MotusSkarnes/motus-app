@@ -1,3 +1,4 @@
+import type { CSSProperties } from "react";
 import { Check, ChevronRight, Dumbbell, Flame, Play, Trophy, Zap } from "lucide-react";
 import { MOTUS } from "../app/data";
 import { resolveExerciseImageSrc } from "../app/exerciseIllustrations";
@@ -44,6 +45,8 @@ function completedTimesLabel(count: number): string {
 type MemberTrainingOverviewProps = {
   title: string;
   imageSrc: string | null;
+  coverImageStyle?: CSSProperties;
+  coverUsesPhotoStyle?: boolean;
   durationLabel: string | null;
   zoneLabel: string | null;
   exerciseCountLabel: string | null;
@@ -147,6 +150,8 @@ function WeeklyProgressChart({ points, currentPct }: { points: DailyWeekProgress
 export function MemberTrainingOverview({
   title,
   imageSrc,
+  coverImageStyle,
+  coverUsesPhotoStyle = false,
   durationLabel,
   zoneLabel,
   exerciseCountLabel,
@@ -170,22 +175,29 @@ export function MemberTrainingOverview({
 
   return (
     <div className="motus-training-overview motus-fade-in-up">
-      <article className="motus-training-hero motus-image-frame motus-image-frame--training-hero">
-        {imageSrc ? (
-          <img
-            className="motus-training-hero-cover motus-image-media"
-            src={imageSrc}
-            alt=""
-            loading="lazy"
-            style={{ objectPosition: imageObjectPositionFromSrc(imageSrc) }}
-          />
-        ) : (
-          <div className="motus-training-hero-cover motus-training-hero-cover--fallback" aria-hidden>
-            <Dumbbell className="h-10 w-10 text-white/60" strokeWidth={1.5} />
-          </div>
-        )}
-        <div className="motus-training-hero-overlay" aria-hidden />
-        <div className="motus-training-hero-content">
+      <article className="motus-training-hero motus-training-hero--stacked">
+        <div className="motus-training-hero-thumb motus-image-frame motus-image-frame--program-cover">
+          {imageSrc ? (
+            <img
+              className={`motus-training-hero-cover motus-image-media${
+                coverUsesPhotoStyle
+                  ? " motus-member-program-cover--custom"
+                  : " motus-member-program-cover--exercise"
+              }`}
+              src={imageSrc}
+              alt=""
+              loading="lazy"
+              style={
+                coverImageStyle ?? { objectPosition: imageObjectPositionFromSrc(imageSrc) }
+              }
+            />
+          ) : (
+            <div className="motus-training-hero-cover motus-training-hero-cover--fallback" aria-hidden>
+              <Dumbbell className="h-10 w-10 text-slate-400" strokeWidth={1.5} />
+            </div>
+          )}
+        </div>
+        <div className="motus-training-hero-body">
           <p className="motus-training-hero-label">Dagens økt</p>
           <h2 className="motus-training-hero-title">{title}</h2>
           {heroMeta.length > 0 ? (
