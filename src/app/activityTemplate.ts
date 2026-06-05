@@ -41,7 +41,9 @@ export function enrichProgramWithActivityTemplateKind(program: TrainingProgram):
 }
 
 /** Lagret verdi i periodeplan-celle for denne malen. */
-export function periodPlanEntryForActivityTemplate(program: Pick<TrainingProgram, "title" | "notes">): string {
+export function periodPlanEntryForActivityTemplate(
+  program: Pick<TrainingProgram, "title" | "notes" | "activityTemplateKind">,
+): string {
   const kind = parseActivityTemplateKind(program);
   const title = program.title.trim();
   if (!title || !kind) return title;
@@ -50,7 +52,7 @@ export function periodPlanEntryForActivityTemplate(program: Pick<TrainingProgram
 }
 
 export function activityTemplateMatchesPeriodEntry(
-  program: Pick<TrainingProgram, "title" | "notes">,
+  program: Pick<TrainingProgram, "title" | "notes" | "activityTemplateKind">,
   entry: string,
 ): boolean {
   const expected = periodPlanEntryForActivityTemplate(program).trim().toLowerCase();

@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { enrichProgramWithActivityTemplateKind } from "./activityTemplate";
 import {
   CONDITIONING_TRAINING_COVER_IMAGE,
   MOBILITY_TRAINING_COVER_IMAGE,
@@ -10,6 +11,7 @@ import {
   programCoverUsesPhotoStyle,
   resolveFirstProgramCoverExercise,
   resolveGroupWorkoutCoverImage,
+  resolvePeriodPlanEntryCoverImage,
   resolveProgramCoverDisplayUrl,
   resolveProgramImageSrc,
 } from "./programImage";
@@ -141,6 +143,32 @@ describe("resolveProgramImageSrc", () => {
 
   it("falls back to exercise illustration for other program types", () => {
     expect(resolveProgramImageSrc(program(), strengthExercise)).toBe("/exercises/bench.png");
+  });
+});
+
+describe("resolvePeriodPlanEntryCoverImage", () => {
+  it("uses custom image from matched gruppetime-mal", () => {
+    const template = enrichProgramWithActivityTemplateKind({
+      id: "tpl-1",
+      memberId: "__template__",
+      title: "Testgruppetime",
+      goal: "",
+      notes: "__motusTemplateKind=group",
+      createdAt: "01.01.2025",
+      exercises: [],
+      imageUrl: "https://cdn.example/testgruppetime.png",
+    });
+    expect(
+      resolvePeriodPlanEntryCoverImage("Gruppetime: Testgruppetime", {
+        activityTemplates: [template],
+      }),
+    ).toBe("https://cdn.example/testgruppetime.png");
+  });
+
+  it("falls back to generic group cover when template is missing", () => {
+    expect(resolvePeriodPlanEntryCoverImage("Gruppetime: Testgruppetime", { activityTemplates: [] })).toBe(
+      CONDITIONING_TRAINING_COVER_IMAGE,
+    );
   });
 });
 

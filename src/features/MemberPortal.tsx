@@ -1647,7 +1647,8 @@ export function MemberPortal(props: MemberPortalProps) {
     () => memberPrograms.filter((program) => !program.ephemeral && program.memberId !== "__template__"),
     [memberPrograms],
   );
-  const activityTemplatesForPeriodPlan = useMemo(() => listActivityTemplates(memberPrograms), [memberPrograms]);
+  /** Maler har memberId __template__ og ligger utenfor memberPrograms — hent fra hele programlisten. */
+  const activityTemplatesForPeriodPlan = useMemo(() => listActivityTemplates(programs), [programs]);
   const memberProgramsInActiveLibrary = useMemo(
     () => memberAssignedPrograms.filter((program) => !programIsInMemberArchive(program.memberLibraryStatus)),
     [memberAssignedPrograms],

@@ -88,6 +88,7 @@ import {
 import { mergeMemberProgramsWithActivityTemplates } from "./activityTemplate";
 import { memberMayDeleteProgram, mergeProgramAuthorFields } from "./programAuthor";
 import {
+  mergeProgramImageUrl,
   pickProgramImageUrlAfterServerSync,
   pickProgramImageUrlFromSnapshotMerge,
 } from "./programImage";
@@ -359,7 +360,10 @@ function mergeTrainingProgramSnapshots(primary: TrainingProgram, secondary: Trai
     ...primary,
     ...secondary,
     ...mergeProgramAuthorFields(primary, secondary),
-    imageUrl: pickProgramImageUrlFromSnapshotMerge(secondary),
+    imageUrl: mergeProgramImageUrl(
+      pickProgramImageUrlFromSnapshotMerge(secondary),
+      primary.imageUrl,
+    ),
     memberLibraryStatus: mergeMemberLibraryStatus(secondary.memberLibraryStatus, primary.memberLibraryStatus),
   };
 }
