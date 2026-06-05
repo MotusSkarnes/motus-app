@@ -208,20 +208,10 @@ function mergeTwoMemberSnapshots(primary: Member, secondary: Member): Member {
   merged.goal = secondary.goal.trim() || primary.goal.trim() || merged.goal;
   merged.focus = secondary.focus.trim() || primary.focus.trim() || merged.focus;
   merged.injuries = secondary.injuries.trim() || primary.injuries.trim() || merged.injuries;
-  // Sky-styrte rolle-/abonnementsfelt: la PT-/Premium-oppgraderinger fra sky vinne hvis de er satt.
-  // Tidligere lot {...primary, ...secondary} stale lokal cache med Medlem/Standard maskere live-data.
-  if (primary.customerType && primary.customerType !== "Medlem") {
-    merged.customerType = primary.customerType;
-  } else if (secondary.customerType && secondary.customerType !== "Medlem") {
-    merged.customerType = secondary.customerType;
-  } else {
-    merged.customerType = primary.customerType || secondary.customerType || merged.customerType;
-  }
-  if (primary.membershipType === "Premium" || secondary.membershipType === "Premium") {
-    merged.membershipType = "Premium";
-  } else {
-    merged.membershipType = primary.membershipType || secondary.membershipType || merged.membershipType;
-  }
+  // Kundetype/medlemskap: primary (første i mergeMembersById, vanligvis sky ved hydrering) styrer,
+  // slik at nedgradering til Medlem synkes på tvers av enheter. Secondary fyller kun tomme felt.
+  merged.customerType = primary.customerType || secondary.customerType || merged.customerType;
+  merged.membershipType = primary.membershipType || secondary.membershipType || merged.membershipType;
   const primaryOwner = String(primary.ownerUserId ?? "").trim();
   const secondaryOwner = String(secondary.ownerUserId ?? "").trim();
   const primaryPrivate = isPrivatePtRosterCustomerType(primary.customerType, primary.membershipType);
@@ -254,6 +244,25 @@ function mergeMembersById(primary: AppState["members"] | null, secondary: AppSta
 /** Nylig opprettede kunder kan mangle i sky-listen i noen sekunder etter create. */
 const TRAINER_MEMBER_PIN_MS = 120_000;
 
+function applyPinnedTrainerMemberFields(remote: Member, pinned: Member): Member {
+  return {
+    ...remote,
+    customerType: pinned.customerType,
+    membershipType: pinned.membershipType,
+    ownerUserId: pinned.ownerUserId || remote.ownerUserId,
+    nutritionAccess: pinned.nutritionAccess === true || remote.nutritionAccess === true,
+    name: pinned.name.trim() || remote.name,
+    email: pinned.email.trim() || remote.email,
+    phone: pinned.phone.trim() || remote.phone,
+    birthDate: pinned.birthDate.trim() || remote.birthDate,
+    goal: pinned.goal.trim() || remote.goal,
+    focus: pinned.focus.trim() || remote.focus,
+    injuries: pinned.injuries.trim() || remote.injuries,
+    personalGoals: pinned.personalGoals?.trim() || remote.personalGoals,
+    isActive: pinned.isActive !== false || remote.isActive !== false,
+  };
+}
+
 function mergeTrainerMembersWithLocalAndPinned(
   remoteMembers: AppState["members"],
   localMembers: AppState["members"],
@@ -264,13 +273,28 @@ function mergeTrainerMembersWithLocalAndPinned(
     includeRosterBackup?: boolean;
   },
 ): AppState["members"] {
-  let merged = mergeMembersById(remoteMembers, localMembers) ?? remoteMembers;
-  merged = mergeMembersById(merged, pinnedMembers) ?? merged;
-
+  let merged = [...remoteMembers];
   const remoteIds = new Set(merged.map((member) => member.id.trim()).filter(Boolean));
   const remoteEmails = new Set(
     merged.map((member) => member.email.trim().toLowerCase()).filter((email) => email.includes("@")),
   );
+
+  if (pinnedMembers.length) {
+    const pinById = new Map<string, Member>();
+    const pinByEmail = new Map<string, Member>();
+    for (const pin of pinnedMembers) {
+      const id = pin.id.trim();
+      if (id) pinById.set(id, pin);
+      const email = pin.email.trim().toLowerCase();
+      if (email.includes("@")) pinByEmail.set(email, pin);
+    }
+    merged = merged.map((remote) => {
+      const email = remote.email.trim().toLowerCase();
+      const pin = pinById.get(remote.id.trim()) ?? (email.includes("@") ? pinByEmail.get(email) : undefined);
+      return pin ? applyPinnedTrainerMemberFields(remote, pin) : remote;
+    });
+  }
+
   const trainerId = String(options?.trainerOwnerUserId ?? "").trim();
   const programLinkedIds = new Set<string>();
   if (trainerId && options?.localPrograms?.length) {
@@ -283,11 +307,17 @@ function mergeTrainerMembersWithLocalAndPinned(
   const rosterBackup =
     trainerId && options?.includeRosterBackup !== false ? loadTrainerRosterBackup(trainerId) : [];
   const keepLocal: Member[] = [];
-  for (const local of [...localMembers, ...pinnedMembers, ...rosterBackup]) {
+  for (const local of [...localMembers, ...rosterBackup]) {
     if (local.isActive === false && !programLinkedIds.has(local.id.trim())) continue;
     const email = local.email.trim().toLowerCase();
     const inRemote = remoteIds.has(local.id.trim()) || (email.includes("@") && remoteEmails.has(email));
-    if (!inRemote || programLinkedIds.has(local.id.trim())) keepLocal.push(local);
+    if (!inRemote) keepLocal.push(local);
+  }
+  for (const pin of pinnedMembers) {
+    const id = pin.id.trim();
+    const email = pin.email.trim().toLowerCase();
+    const inRemote = remoteIds.has(id) || (email.includes("@") && remoteEmails.has(email));
+    if (!inRemote) keepLocal.push(pin);
   }
   if (keepLocal.length) {
     merged = mergeMembersById(merged, keepLocal) ?? merged;
@@ -1229,11 +1259,8 @@ export function useAppState() {
             const normalizedUserEmail = currentUser.email.trim().toLowerCase();
             const remoteForEmail = filterMembersForSessionEmail(mergedMembers, normalizedUserEmail);
             const localForEmail = filterMembersForSessionEmail(prevStripped.members, normalizedUserEmail);
-            mergedMembers = remoteForEmail.length > 0 ? remoteForEmail : localForEmail;
-            mergedMembers = mergeMembersById(mergedMembers, localForEmail) ?? mergedMembers;
-            mergedMembers = mergedMembers.map((member) =>
-              enrichMemberWithBestProfile(member, mergedMembers),
-            );
+            const sessionMembers = remoteForEmail.length > 0 ? remoteForEmail : localForEmail;
+            mergedMembers = sessionMembers.map((member) => enrichMemberWithBestProfile(member, sessionMembers));
           }
           if (currentUser?.role === "trainer") {
             const trainerOwnerUserId = String(currentUser.id ?? ownerUserId ?? "").trim();
@@ -1244,24 +1271,6 @@ export function useAppState() {
               { trainerOwnerUserId, localPrograms: prevStripped.programs },
             );
             mergedMembers = preserveTrainerInvitedAtFromLocal(mergedMembers, prev.members);
-            mergedMembers = mergedMembers.map((remote) => {
-              const prevRow = prev.members.find((m) => m.id === remote.id);
-              if (!prevRow) return remote;
-              const prevPrivate =
-                prevRow.customerType === "PT-kunde" ||
-                prevRow.membershipType === "Premium" ||
-                (prevRow.customerType !== "Medlem" && Boolean(prevRow.customerType));
-              const remoteShared = remote.customerType === "Medlem" && remote.membershipType !== "Premium";
-              if (prevPrivate && remoteShared) {
-                return {
-                  ...remote,
-                  customerType: prevRow.customerType,
-                  membershipType: prevRow.membershipType,
-                  ownerUserId: prevRow.ownerUserId || remote.ownerUserId,
-                };
-              }
-              return remote;
-            });
             reconcileArchiveTombstonesWithRemoteMembers(mergedMembers);
           }
           next.members = mergedMembers;
