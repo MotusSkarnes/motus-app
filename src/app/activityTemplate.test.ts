@@ -4,6 +4,7 @@ import {
   buildActivityTemplateNotes,
   enrichProgramWithActivityTemplateKind,
   listActivityTemplates,
+  isMemberSessionScopedProgram,
   mergeMemberProgramsWithActivityTemplates,
   periodPlanEntryForActivityTemplate,
   stripActivityTemplateMarker,
@@ -51,6 +52,40 @@ describe("activityTemplate", () => {
     const enriched = enrichProgramWithActivityTemplateKind(templateProgram("group", "Spinning"));
     expect(listActivityTemplates([enriched])).toHaveLength(1);
     expect(periodPlanEntryForActivityTemplate(enriched)).toBe("Gruppetime: Spinning");
+  });
+
+  it("keeps activity templates in member session program scope", () => {
+    const group = enrichProgramWithActivityTemplateKind(templateProgram("group", "Testgruppetime"));
+    group.imageUrl = "https://cdn.example/test.png";
+    expect(isMemberSessionScopedProgram(group, new Set(["member-1"]))).toBe(true);
+    expect(
+      isMemberSessionScopedProgram(
+        {
+          id: "p1",
+          memberId: "member-1",
+          title: "Styrke",
+          goal: "",
+          notes: "",
+          createdAt: "",
+          exercises: [],
+        },
+        new Set(["member-1"]),
+      ),
+    ).toBe(true);
+    expect(
+      isMemberSessionScopedProgram(
+        {
+          id: "p2",
+          memberId: "other-member",
+          title: "Styrke",
+          goal: "",
+          notes: "",
+          createdAt: "",
+          exercises: [],
+        },
+        new Set(["member-1"]),
+      ),
+    ).toBe(false);
   });
 
   it("keeps activity templates when filtering member hydrate programs", () => {

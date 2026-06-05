@@ -72,6 +72,16 @@ export function listActivityTemplates(
     .filter((program) => !kind || parseActivityTemplateKind(program) === kind);
 }
 
+/** Skal programmet beholdes i medlems appState.programs etter sesjonsfiltrering? */
+export function isMemberSessionScopedProgram(
+  program: Pick<TrainingProgram, "memberId" | "notes" | "activityTemplateKind">,
+  allowedMemberIds: Set<string>,
+): boolean {
+  const memberId = program.memberId.trim();
+  if (allowedMemberIds.has(memberId)) return true;
+  return memberId === "__template__" && isActivityTemplate(program);
+}
+
 /** Medlem: behold tildelte programmer + PT sine periodeplan-maler (ikke i memberIds). */
 export function mergeMemberProgramsWithActivityTemplates(
   remotePrograms: TrainingProgram[],

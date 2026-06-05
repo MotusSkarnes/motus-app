@@ -85,7 +85,7 @@ import {
   saveTrainerRosterBackup,
   syncMissingRosterMembersToCloud,
 } from "./trainerRosterBackup";
-import { mergeMemberProgramsWithActivityTemplates } from "./activityTemplate";
+import { isMemberSessionScopedProgram, mergeMemberProgramsWithActivityTemplates } from "./activityTemplate";
 import { memberMayDeleteProgram, mergeProgramAuthorFields } from "./programAuthor";
 import {
   mergeProgramImageUrl,
@@ -1350,7 +1350,7 @@ export function useAppState() {
           allowedMemberIds.add(sessionEmail);
           const linkedMemberId = prevStripped.currentUser?.memberId?.trim();
           if (linkedMemberId) allowedMemberIds.add(linkedMemberId);
-          next.programs = next.programs.filter((program) => allowedMemberIds.has(program.memberId.trim()));
+          next.programs = next.programs.filter((program) => isMemberSessionScopedProgram(program, allowedMemberIds));
           next.logs = next.logs.filter((log) => allowedMemberIds.has(log.memberId.trim()));
           next.messages = next.messages.filter((message) => allowedMemberIds.has(message.memberId.trim()));
           next.members = filterMembersForSessionEmail(next.members, sessionEmail);
