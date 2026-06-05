@@ -242,7 +242,7 @@ export function programsBuilderDescription(subTab: TrainingSubTab): string {
     case "group":
       return "Lag gruppetime-maler med bilde til periodeplan og medlemsoversikt.";
     case "activity":
-      return "Lag aktivitetsmaler (f.eks. aktiv hvile, egen trening) med bilde til periodeplan.";
+      return "Tilpass bilde for «Ingen plan i dag» og lag aktivitetsmaler til periodeplan.";
     default:
       return "Bygg treningsprogram med sett, reps og vekt — drag-and-drop fra biblioteket.";
   }

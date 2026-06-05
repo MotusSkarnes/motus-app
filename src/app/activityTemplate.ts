@@ -1,15 +1,17 @@
 import { groupWorkoutLogTitle } from "./periodPlanEntryActions";
 import type { TrainingProgram } from "./types";
 
-export type ActivityTemplateKind = "group" | "activity";
+export type ActivityTemplateKind = "group" | "activity" | "no-plan";
 
-const TEMPLATE_KIND_PREFIX = /^__motusTemplateKind=(group|activity)(?:\r?\n|$)/;
+export const NO_PLAN_DAY_TEMPLATE_TITLE = "Ingen plan i dag";
+
+const TEMPLATE_KIND_PREFIX = /^__motusTemplateKind=(group|activity|no-plan)(?:\r?\n|$)/;
 
 export function parseActivityTemplateKind(
   program: Pick<TrainingProgram, "notes" | "activityTemplateKind">,
 ): ActivityTemplateKind | null {
   const storedKind = program.activityTemplateKind;
-  if (storedKind === "group" || storedKind === "activity") return storedKind;
+  if (storedKind === "group" || storedKind === "activity" || storedKind === "no-plan") return storedKind;
   const match = String(program.notes ?? "").match(TEMPLATE_KIND_PREFIX);
   if (!match) return null;
   return match[1] as ActivityTemplateKind;
@@ -46,7 +48,7 @@ export function periodPlanEntryForActivityTemplate(
 ): string {
   const kind = parseActivityTemplateKind(program);
   const title = program.title.trim();
-  if (!title || !kind) return title;
+  if (!title || !kind || kind === "no-plan") return title;
   if (kind === "group") return groupWorkoutLogTitle(title);
   return `Aktivitet: ${title}`;
 }
@@ -63,13 +65,28 @@ export function activityTemplateMatchesPeriodEntry(
   return Boolean(title) && (normalizedEntry === title || normalizedEntry.endsWith(`: ${title}`));
 }
 
+export function isPeriodPlanActivityTemplate(
+  program: Pick<TrainingProgram, "memberId" | "notes" | "activityTemplateKind">,
+): boolean {
+  const kind = parseActivityTemplateKind(program);
+  return program.memberId === "__template__" && (kind === "group" || kind === "activity");
+}
+
 export function listActivityTemplates(
   programs: TrainingProgram[],
   kind?: ActivityTemplateKind,
 ): TrainingProgram[] {
   return programs
-    .filter((program) => program.memberId === "__template__" && isActivityTemplate(program))
+    .filter((program) => isPeriodPlanActivityTemplate(program))
     .filter((program) => !kind || parseActivityTemplateKind(program) === kind);
+}
+
+export function findNoPlanDayCoverTemplate(programs: TrainingProgram[]): TrainingProgram | null {
+  return (
+    programs.find(
+      (program) => program.memberId === "__template__" && parseActivityTemplateKind(program) === "no-plan",
+    ) ?? null
+  );
 }
 
 /** Skal programmet beholdes i medlems appState.programs etter sesjonsfiltrering? */
@@ -91,6 +108,8 @@ export function mergeMemberProgramsWithActivityTemplates(
   remotePrograms
     .filter((program) => memberIds.has(program.memberId.trim()))
     .forEach((program) => byId.set(program.id, program));
-  listActivityTemplates(remotePrograms).forEach((program) => byId.set(program.id, program));
+  remotePrograms
+    .filter((program) => program.memberId === "__template__" && isActivityTemplate(program))
+    .forEach((program) => byId.set(program.id, program));
   return Array.from(byId.values());
 }

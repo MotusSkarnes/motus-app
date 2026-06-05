@@ -214,7 +214,7 @@ export type TrainingProgram = {
   /** Valgfritt forsidebilde på programkort (URL). */
   imageUrl?: string;
   /** Gruppetrening/aktivitetsmal (parsed fra notes, brukes i periodeplan). */
-  activityTemplateKind?: "group" | "activity";
+  activityTemplateKind?: "group" | "activity" | "no-plan";
   /** Not persisted; removed after økt fullføres eller avbrytes. */
   ephemeral?: boolean;
 };

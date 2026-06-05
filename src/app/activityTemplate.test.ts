@@ -3,6 +3,7 @@ import {
   activityTemplateMatchesPeriodEntry,
   buildActivityTemplateNotes,
   enrichProgramWithActivityTemplateKind,
+  findNoPlanDayCoverTemplate,
   listActivityTemplates,
   isMemberSessionScopedProgram,
   mergeMemberProgramsWithActivityTemplates,
@@ -11,7 +12,7 @@ import {
 } from "./activityTemplate";
 import type { TrainingProgram } from "./types";
 
-function templateProgram(kind: "group" | "activity", title: string, notesBody = ""): TrainingProgram {
+function templateProgram(kind: "group" | "activity" | "no-plan", title: string, notesBody = ""): TrainingProgram {
   return {
     id: `tpl-${kind}-${title}`,
     memberId: "__template__",
@@ -122,5 +123,20 @@ describe("activityTemplate", () => {
     expect(listActivityTemplates(programs)).toHaveLength(2);
     expect(listActivityTemplates(programs, "group")).toHaveLength(1);
     expect(listActivityTemplates(programs, "activity")).toHaveLength(1);
+  });
+
+  it("excludes no-plan template from period plan template list", () => {
+    const noPlan = templateProgram("no-plan", "Ingen plan i dag");
+    const programs = [templateProgram("activity", "Svømming"), noPlan];
+    expect(listActivityTemplates(programs)).toHaveLength(1);
+    expect(findNoPlanDayCoverTemplate(programs)?.id).toBe(noPlan.id);
+  });
+
+  it("merges no-plan cover template into member programs", () => {
+    const noPlan = templateProgram("no-plan", "Ingen plan i dag");
+    noPlan.imageUrl = "https://cdn.example/no-plan.png";
+    const merged = mergeMemberProgramsWithActivityTemplates([noPlan], new Set(["member-1"]));
+    expect(merged).toHaveLength(1);
+    expect(merged[0]?.imageUrl).toBe("https://cdn.example/no-plan.png");
   });
 });

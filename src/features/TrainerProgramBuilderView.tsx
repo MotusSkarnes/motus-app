@@ -32,10 +32,11 @@ import {
   TRAINING_SUB_TAB_OPTIONS,
   type TrainingSubTab,
 } from "../app/exerciseCategories";
-import { isActivityTemplate } from "../app/activityTemplate";
+import { isActivityTemplate, isPeriodPlanActivityTemplate, NO_PLAN_DAY_TEMPLATE_TITLE } from "../app/activityTemplate";
 import {
   CONDITIONING_TRAINING_COVER_IMAGE,
   MOBILITY_TRAINING_COVER_IMAGE,
+  NO_PLAN_DAY_COVER_IMAGE,
 } from "../app/programImage";
 import {
   computeProgramDraftStats,
@@ -143,6 +144,11 @@ export type TrainerProgramBuilderViewProps = {
   onDeleteTemplate: (program: TrainingProgram) => void;
   templateDescription?: string;
   onTemplateDescriptionChange?: (value: string) => void;
+  noPlanDayCoverImageUrl?: string;
+  onNoPlanDayCoverImageUrlChange?: (value: string) => void;
+  onNoPlanDayCoverImageUpload?: (file: File) => void;
+  onSaveNoPlanDayCover?: () => void;
+  hasNoPlanDayCoverTemplate?: boolean;
   programsSubTabConditioningExtras?: ReactNode;
   cardioIntervalIntensity?: CardioIntensityLevel;
   cardioEquipmentId?: CardioEquipmentId;
@@ -192,6 +198,11 @@ export function TrainerProgramBuilderView({
   onDeleteTemplate,
   templateDescription = "",
   onTemplateDescriptionChange,
+  noPlanDayCoverImageUrl = "",
+  onNoPlanDayCoverImageUrlChange,
+  onNoPlanDayCoverImageUpload,
+  onSaveNoPlanDayCover,
+  hasNoPlanDayCoverTemplate = false,
   programsSubTabConditioningExtras,
   cardioIntervalIntensity,
   cardioEquipmentId = "rowing",
@@ -199,6 +210,7 @@ export function TrainerProgramBuilderView({
 }: TrainerProgramBuilderViewProps) {
   const { pushToast } = useToast();
   const isActivityTab = isActivityTemplateSubTab(programsSubTab);
+  const noPlanCoverPreviewSrc = noPlanDayCoverImageUrl.trim() || NO_PLAN_DAY_COVER_IMAGE;
   const [favoritesOnly, setFavoritesOnly] = useState(false);
   const [muscleFilter, setMuscleFilter] = useState<MuscleFilter>("all");
   const [categoryFilter, setCategoryFilter] = useState<"tab" | "all">("tab");
@@ -314,9 +326,11 @@ export function TrainerProgramBuilderView({
                   >
                     <div className="truncate text-sm font-semibold text-slate-900">{program.title}</div>
                     <div className="text-xs text-slate-500">
-                      {isActivityTemplate(program)
+                      {isPeriodPlanActivityTemplate(program)
                         ? "Periodeplan-mal"
-                        : `${program.exercises.length} øvelser`}
+                        : isActivityTemplate(program)
+                          ? "Hjem — ingen plan"
+                          : `${program.exercises.length} øvelser`}
                     </div>
                   </button>
                   <OutlineButton type="button" className="!px-2 !py-1 text-xs" onClick={() => onStartEditTemplate(program)}>
@@ -332,8 +346,50 @@ export function TrainerProgramBuilderView({
         </div>
       ) : null}
 
+      {programsSubTab === "activity" ? (
+        <div className="motus-prog-builder-activity-template space-y-4 rounded-2xl border bg-white p-4 sm:p-5" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+          <div>
+            <h2 className="text-base font-semibold text-slate-900">Bilde: Ingen plan i dag</h2>
+            <p className="mt-1 text-sm leading-relaxed text-slate-600">
+              Vises på Hjem når kunden ikke har noe planlagt i dag (f.eks. uten periodeplan eller tom dag).
+            </p>
+          </div>
+          <div className="motus-prog-builder-hero max-w-xl">
+            <img src={noPlanCoverPreviewSrc} alt="" className="motus-prog-builder-hero-img" loading="lazy" />
+            <div className="motus-prog-builder-hero-overlay">
+              <p className="rounded-lg bg-white/95 px-3 py-2 text-base font-semibold text-slate-900">
+                {NO_PLAN_DAY_TEMPLATE_TITLE}
+              </p>
+              <div className="motus-prog-builder-hero-tags">
+                <span className="motus-prog-builder-hero-tag">Hjem</span>
+                <span className="motus-prog-builder-hero-tag">Mal</span>
+              </div>
+            </div>
+          </div>
+          {onNoPlanDayCoverImageUrlChange && onNoPlanDayCoverImageUpload ? (
+            <ProgramCoverImageField
+              imageUrl={noPlanDayCoverImageUrl}
+              onImageUrlChange={onNoPlanDayCoverImageUrlChange}
+              onUploadFile={onNoPlanDayCoverImageUpload}
+              isUploading={isUploadingProgramImage}
+            />
+          ) : null}
+          {onSaveNoPlanDayCover ? (
+            <GradientButton type="button" onClick={onSaveNoPlanDayCover}>
+              {hasNoPlanDayCoverTemplate ? "Oppdater bilde" : "Lagre bilde"}
+            </GradientButton>
+          ) : null}
+        </div>
+      ) : null}
+
       {isActivityTab ? (
         <div className="motus-prog-builder-activity-template space-y-4 rounded-2xl border bg-white p-4 sm:p-5" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+          <div>
+            <h2 className="text-base font-semibold text-slate-900">Aktivitetsmal til periodeplan</h2>
+            <p className="mt-1 text-sm leading-relaxed text-slate-600">
+              Legges i periodeplan-dropdown som «Aktivitet: navn».
+            </p>
+          </div>
           <div className="motus-prog-builder-hero max-w-xl">
             {coverPreviewSrc ? (
               <img src={coverPreviewSrc} alt="" className="motus-prog-builder-hero-img" loading="lazy" />

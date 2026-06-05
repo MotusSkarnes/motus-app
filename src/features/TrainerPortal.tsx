@@ -211,6 +211,8 @@ import { resolveMemberTrainerDisplayName } from "../app/trainerProfile";
 import { printHtmlDocument } from "../app/printHtmlDocument";
 import {
   buildActivityTemplateNotes,
+  findNoPlanDayCoverTemplate,
+  NO_PLAN_DAY_TEMPLATE_TITLE,
   parseActivityTemplateKind,
   stripActivityTemplateMarker,
 } from "../app/activityTemplate";
@@ -801,6 +803,7 @@ function pickFirstName(value: unknown): string {
   const [expandedTemplateProgramId, setExpandedTemplateProgramId] = useState<string | null>(null);
   const [selectedTemplateProgramId, setSelectedTemplateProgramId] = useState("");
   const [templateAssignStatus, setTemplateAssignStatus] = useState<string | null>(null);
+  const [noPlanDayCoverImageUrl, setNoPlanDayCoverImageUrl] = useState("");
   const [draggedExerciseIdFromLibrary, setDraggedExerciseIdFromLibrary] = useState<string | null>(null);
   const [draggedDraftExerciseId, setDraggedDraftExerciseId] = useState<string | null>(null);
   const [isDraftDropZoneActive, setIsDraftDropZoneActive] = useState(false);
@@ -1588,8 +1591,15 @@ function pickFirstName(value: unknown): string {
     [programs],
   );
   const exerciseCategoryById = useMemo(() => buildExerciseCategoryById(exercises), [exercises]);
+  const noPlanDayCoverTemplate = useMemo(
+    () => findNoPlanDayCoverTemplate(templatePrograms),
+    [templatePrograms],
+  );
   const activeTemplatePrograms = useMemo(
-    () => filterTemplateProgramsBySubTab(templatePrograms, programsSubTab, exerciseCategoryById),
+    () =>
+      filterTemplateProgramsBySubTab(templatePrograms, programsSubTab, exerciseCategoryById).filter(
+        (program) => parseActivityTemplateKind(program) !== "no-plan",
+      ),
     [templatePrograms, programsSubTab, exerciseCategoryById],
   );
   const selectedLogs = useMemo(() => {
@@ -1953,6 +1963,11 @@ function pickFirstName(value: unknown): string {
       setProgramFormImageUrl("");
     }
   }, [programsSubTab, trainerTab, editingTemplateProgramId]);
+
+  useEffect(() => {
+    if (trainerTab !== "programs" || programsSubTab !== "activity") return;
+    setNoPlanDayCoverImageUrl(noPlanDayCoverTemplate?.imageUrl ?? "");
+  }, [trainerTab, programsSubTab, noPlanDayCoverTemplate?.id, noPlanDayCoverTemplate?.imageUrl]);
 
   useEffect(() => {
     const previousTab = prevTrainerTabRef.current;
@@ -2666,6 +2681,47 @@ function pickFirstName(value: unknown): string {
     setPeriodPlanStatus("Periodeplan slettet.");
   }
 
+  function saveNoPlanDayCoverTemplate() {
+    const imageUrl = noPlanDayCoverImageUrl.trim();
+    if (!imageUrl) {
+      setTemplateAssignStatus("Last opp et bilde for «Ingen plan i dag».");
+      return;
+    }
+    saveProgramForMember({
+      id: noPlanDayCoverTemplate?.id,
+      title: NO_PLAN_DAY_TEMPLATE_TITLE,
+      goal: "",
+      notes: buildActivityTemplateNotes("no-plan", ""),
+      memberId: "__template__",
+      exercises: [],
+      imageUrl,
+    });
+    setTemplateAssignStatus(noPlanDayCoverTemplate ? "Bilde for «Ingen plan i dag» oppdatert." : "Bilde for «Ingen plan i dag» lagret.");
+  }
+
+  async function handleNoPlanDayCoverImageUpload(file: File | null) {
+    if (!file) return;
+    if (!supabaseClient) {
+      setTemplateAssignStatus("Bildefunksjonen er ikke tilgjengelig akkurat nå.");
+      return;
+    }
+    setIsUploadingProgramImage(true);
+    setTemplateAssignStatus("Laster opp bilde...");
+    try {
+      const result = await uploadProgramCoverImageToSupabase(file, supabaseClient);
+      if (!result.ok) {
+        setTemplateAssignStatus(result.message);
+        return;
+      }
+      setNoPlanDayCoverImageUrl(result.publicUrl);
+      setTemplateAssignStatus("Bilde lastet opp. Husk å lagre.");
+    } catch {
+      setTemplateAssignStatus("Kunne ikke laste opp bilde akkurat nå. Prøv igjen senere.");
+    } finally {
+      setIsUploadingProgramImage(false);
+    }
+  }
+
   function saveTemplateFromProgramsTab() {
     const title = templateProgramTitle.trim();
     if (!title) {
@@ -2721,6 +2777,13 @@ function pickFirstName(value: unknown): string {
 
   function startEditTemplateProgram(program: TrainingProgram) {
     const templateKind = parseActivityTemplateKind(program);
+    if (templateKind === "no-plan") {
+      setProgramsSubTab("activity");
+      setEditingTemplateProgramId(null);
+      setNoPlanDayCoverImageUrl(program.imageUrl ?? "");
+      setTemplateAssignStatus("Redigerer bilde for «Ingen plan i dag».");
+      return;
+    }
     const subTab: TrainingSubTab = templateKind ?? getTrainingProgramSubTab(program, exerciseCategoryById);
     const draft = program.exercises.map((exercise) => ({ ...exercise }));
     setProgramsSubTab(subTab);
@@ -7096,6 +7159,11 @@ function pickFirstName(value: unknown): string {
           onDeleteTemplate={deleteTemplateProgram}
           templateDescription={programNotes}
           onTemplateDescriptionChange={setProgramNotes}
+          noPlanDayCoverImageUrl={noPlanDayCoverImageUrl}
+          onNoPlanDayCoverImageUrlChange={setNoPlanDayCoverImageUrl}
+          onNoPlanDayCoverImageUpload={(file) => void handleNoPlanDayCoverImageUpload(file)}
+          onSaveNoPlanDayCover={saveNoPlanDayCoverTemplate}
+          hasNoPlanDayCoverTemplate={Boolean(noPlanDayCoverTemplate)}
           cardioIntervalIntensity={cardioIntervalIntensity}
           cardioEquipmentId={cardioEquipmentId}
           programsSubTabConditioningExtras={

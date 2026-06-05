@@ -1,4 +1,8 @@
-import { activityTemplateMatchesPeriodEntry, parseActivityTemplateKind } from "./activityTemplate";
+import {
+  activityTemplateMatchesPeriodEntry,
+  findNoPlanDayCoverTemplate,
+  parseActivityTemplateKind,
+} from "./activityTemplate";
 import { findProgramForPeriodPlanEntry, isGroupPeriodPlanEntry, isPassivePeriodPlanEntry, isRestPeriodPlanEntry, resolveGroupClassNameFromPeriodEntry } from "./periodPlanEntryActions";
 import { getTrainingProgramSubTab } from "./trainingProgramKind";
 import { resolveExerciseImageSrc } from "./exerciseIllustrations";
@@ -99,7 +103,9 @@ export function resolveRestDayCoverImage(): string {
   return REST_RECOVERY_COVER_IMAGE;
 }
 
-export function resolveNoPlanDayCoverImage(): string {
+export function resolveNoPlanDayCoverImage(programs: TrainingProgram[] = []): string {
+  const imageUrl = findNoPlanDayCoverTemplate(programs)?.imageUrl?.trim();
+  if (imageUrl) return resolveProgramCoverDisplayUrl(imageUrl);
   return NO_PLAN_DAY_COVER_IMAGE;
 }
 

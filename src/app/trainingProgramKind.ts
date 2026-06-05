@@ -136,7 +136,7 @@ export function getTrainingProgramSubTab(
 ): TrainingSubTab {
   const templateKind = program.activityTemplateKind ?? parseActivityTemplateKind(program);
   if (templateKind === "group") return "group";
-  if (templateKind === "activity") return "activity";
+  if (templateKind === "activity" || templateKind === "no-plan") return "activity";
 
   const titleKey = program.title?.trim().toLowerCase() ?? "";
   if (titleKey.includes("mobilitet løper")) return "mobility";

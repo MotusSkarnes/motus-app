@@ -36,7 +36,11 @@ import motusSkrytekortLogo from "../assets/motus-skrytekort-logo.png";
 import { formatDateDdMmYyyy, parseStoredLogDate, resolveWorkoutLogDateTime, storedLogDatesMatch } from "../app/dateFormat";
 import { memberBadgeImageSrc } from "../app/badgeAssets";
 import { resolveExerciseImageSrc } from "../app/exerciseIllustrations";
-import { activityTemplateMatchesPeriodEntry, listActivityTemplates } from "../app/activityTemplate";
+import {
+  activityTemplateMatchesPeriodEntry,
+  findNoPlanDayCoverTemplate,
+  listActivityTemplates,
+} from "../app/activityTemplate";
 import { imageObjectPositionFromSrc, programCustomCoverImageStyle } from "../app/imageFocalPoint";
 import {
   programCoverUsesPhotoStyle,
@@ -1649,6 +1653,7 @@ export function MemberPortal(props: MemberPortalProps) {
   );
   /** Maler har memberId __template__ og ligger utenfor memberPrograms — hent fra hele programlisten. */
   const activityTemplatesForPeriodPlan = useMemo(() => listActivityTemplates(programs), [programs]);
+  const noPlanDayCoverTemplate = useMemo(() => findNoPlanDayCoverTemplate(programs), [programs]);
   const memberProgramsInActiveLibrary = useMemo(
     () => memberAssignedPrograms.filter((program) => !programIsInMemberArchive(program.memberLibraryStatus)),
     [memberAssignedPrograms],
@@ -4624,7 +4629,7 @@ export function MemberPortal(props: MemberPortalProps) {
   }, [activityTemplatesForPeriodPlan, todayPlanEntry]);
   const homeWorkoutCoverSrc = useMemo(() => {
     if (!homeHasPlannedWorkoutToday && !todayPlanIsPassiveDay) {
-      return resolveNoPlanDayCoverImage();
+      return resolveNoPlanDayCoverImage(programs);
     }
     return (
       resolvePeriodPlanEntryCoverImage(todayPlanEntry, {
@@ -4632,12 +4637,13 @@ export function MemberPortal(props: MemberPortalProps) {
         memberPrograms: memberProgramsForPeriodPlan,
         exercises,
         exerciseCategoryById,
-      }) ?? resolveNoPlanDayCoverImage()
+      }) ?? resolveNoPlanDayCoverImage(programs)
     );
   }, [
     homeHasPlannedWorkoutToday,
     todayPlanIsPassiveDay,
     todayPlanEntry,
+    programs,
     activityTemplatesForPeriodPlan,
     memberProgramsForPeriodPlan,
     exercises,
@@ -4653,11 +4659,11 @@ export function MemberPortal(props: MemberPortalProps) {
   const homeDisplayCoverSrc = useMemo(() => {
     if (homeWorkoutHydrationPending) {
       if (cachedHomeWorkout?.isPassiveDay) return resolveRestDayCoverImage();
-      if (cachedHomeWorkout?.isNoPlanDay) return resolveNoPlanDayCoverImage();
+      if (cachedHomeWorkout?.isNoPlanDay) return resolveNoPlanDayCoverImage(programs);
       return cachedHomeWorkout?.imageSrc ?? null;
     }
     return homeWorkoutCoverSrc;
-  }, [homeWorkoutHydrationPending, cachedHomeWorkout, homeWorkoutCoverSrc]);
+  }, [homeWorkoutHydrationPending, cachedHomeWorkout, homeWorkoutCoverSrc, programs]);
   const homeDisplayCoverPresentation = useMemo((): {
     style: CSSProperties;
     usesPhotoStyle: boolean;
@@ -4665,11 +4671,12 @@ export function MemberPortal(props: MemberPortalProps) {
     const src = homeDisplayCoverSrc;
     if (!src) return { style: {}, usesPhotoStyle: false };
     if (!homeWorkoutProgram) {
-      if (todayActivityTemplate?.imageUrl?.trim()) {
-        const templateSrc = todayActivityTemplate.imageUrl.trim();
+      const coverTemplate = todayActivityTemplate ?? noPlanDayCoverTemplate;
+      if (coverTemplate?.imageUrl?.trim()) {
+        const templateSrc = coverTemplate.imageUrl.trim();
         return {
           style: programCustomCoverImageStyle(templateSrc),
-          usesPhotoStyle: programCoverUsesPhotoStyle(todayActivityTemplate, templateSrc),
+          usesPhotoStyle: programCoverUsesPhotoStyle(coverTemplate, templateSrc),
         };
       }
       return { style: { objectPosition: imageObjectPositionFromSrc(src) }, usesPhotoStyle: false };
@@ -4686,7 +4693,7 @@ export function MemberPortal(props: MemberPortalProps) {
       };
     }
     return { style: { objectPosition: imageObjectPositionFromSrc(src) }, usesPhotoStyle: false };
-  }, [homeDisplayCoverSrc, homeWorkoutProgram, todayActivityTemplate, exercises, exerciseCategoryById]);
+  }, [homeDisplayCoverSrc, homeWorkoutProgram, todayActivityTemplate, noPlanDayCoverTemplate, exercises, exerciseCategoryById]);
   const homeWorkoutZoneLabel = useMemo(() => {
     if (todayPlanAction.kind === "log-group") {
       return extractZoneFromPlanEntry(todayPlanEntry) ?? "Gruppe";
