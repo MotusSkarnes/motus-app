@@ -1041,6 +1041,7 @@ function pickFirstName(value: unknown): string {
   useToastStatus(trainerWorkoutCommentStatus, { title: "Øktkommentar", tone: inferStatusTone, shouldToast: trainerPtStatusShouldToast });
   useToastStatus(trainerLiveWorkoutSaveStatus, { title: "Live økt", tone: inferStatusTone, shouldToast: trainerPtStatusShouldToast });
   useToastStatus(periodPlanStatus, { title: "Periodeplan", tone: inferStatusTone, shouldToast: trainerPtStatusShouldToast });
+  useToastStatus(templateAssignStatus, { title: "Treningsmal", tone: inferStatusTone, shouldToast: trainerPtStatusShouldToast });
   function getMemberIdentityKey(member: Member): string {
     const emailKey = member.email.trim().toLowerCase();
     return emailKey || `id:${member.id}`;
@@ -2687,6 +2688,8 @@ function pickFirstName(value: unknown): string {
       setTemplateAssignStatus("Last opp et bilde for «Ingen plan i dag».");
       return;
     }
+    setTemplateAssignStatus("Lagrer bilde for «Ingen plan i dag»...");
+    const wasUpdate = Boolean(noPlanDayCoverTemplate);
     saveProgramForMember({
       id: noPlanDayCoverTemplate?.id,
       title: NO_PLAN_DAY_TEMPLATE_TITLE,
@@ -2695,8 +2698,16 @@ function pickFirstName(value: unknown): string {
       memberId: "__template__",
       exercises: [],
       imageUrl,
+      onPersisted: (result) => {
+        if (result.ok) {
+          setTemplateAssignStatus(
+            wasUpdate ? "Bilde for «Ingen plan i dag» oppdatert." : "Bilde for «Ingen plan i dag» lagret.",
+          );
+          return;
+        }
+        setTemplateAssignStatus(result.message ?? "Kunne ikke lagre bildet. Prøv igjen.");
+      },
     });
-    setTemplateAssignStatus(noPlanDayCoverTemplate ? "Bilde for «Ingen plan i dag» oppdatert." : "Bilde for «Ingen plan i dag» lagret.");
   }
 
   async function handleNoPlanDayCoverImageUpload(file: File | null) {
@@ -7164,6 +7175,7 @@ function pickFirstName(value: unknown): string {
           onNoPlanDayCoverImageUpload={(file) => void handleNoPlanDayCoverImageUpload(file)}
           onSaveNoPlanDayCover={saveNoPlanDayCoverTemplate}
           hasNoPlanDayCoverTemplate={Boolean(noPlanDayCoverTemplate)}
+          noPlanDayCoverSaveStatus={programsSubTab === "activity" ? templateAssignStatus : null}
           cardioIntervalIntensity={cardioIntervalIntensity}
           cardioEquipmentId={cardioEquipmentId}
           programsSubTabConditioningExtras={

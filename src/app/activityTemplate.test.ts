@@ -141,7 +141,9 @@ describe("activityTemplate", () => {
     expect(findNoPlanDayCoverTemplate([withoutImage, withImage])?.imageUrl).toBe(
       "https://cdn.example/custom.png",
     );
-    expect(findNoPlanDayCoverTemplate([withoutImage, withImage], "pt-a")?.id).toBe(withoutImage.id);
+    expect(findNoPlanDayCoverTemplate([withoutImage, withImage], "pt-a")?.imageUrl).toBe(
+      "https://cdn.example/custom.png",
+    );
   });
 
   it("merges no-plan cover template into member programs", () => {

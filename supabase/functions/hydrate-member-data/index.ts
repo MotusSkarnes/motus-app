@@ -586,9 +586,21 @@ Deno.serve(async (req) => {
     };
   });
 
+  const noPlanDayCoverImageUrl = (() => {
+    const ownerSet = new Set(trainerOwnerIds);
+    const noPlanRows = activityTemplateRows.filter((row) =>
+      String((row as { notes?: string }).notes ?? "").includes("__motusTemplateKind=no-plan"),
+    );
+    const scoped = noPlanRows.filter((row) => ownerSet.has(String((row as { owner_user_id?: string }).owner_user_id ?? "").trim()));
+    const pool = scoped.length ? scoped : noPlanRows;
+    const withImage = pool.find((row) => String((row as { image_url?: string }).image_url ?? "").trim());
+    return String((withImage ?? pool[0])?.image_url ?? "").trim() || null;
+  })();
+
   return jsonResponse(200, {
     members: harmonizedMembers,
     programs,
+    noPlanDayCoverImageUrl,
     logs: logs ?? [],
     messages: dedupedMessages ?? [],
     periodPlans,

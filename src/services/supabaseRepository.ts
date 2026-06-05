@@ -13,7 +13,7 @@ import type {
   WorkoutExerciseResult,
   WorkoutLog,
 } from "../app/types";
-import { enrichProgramWithActivityTemplateKind } from "../app/activityTemplate";
+import { enrichProgramWithActivityTemplateKind, findNoPlanDayCoverTemplate } from "../app/activityTemplate";
 import { formatDateDdMmYyyy, formatDateTimeDdMmYyyy, normalizeStoredLogDate } from "../app/dateFormat";
 import { normalizeMemberGender } from "../app/memberGender";
 import { dedupePeriodPlansById } from "../app/periodPlanMerge";
@@ -2979,6 +2979,7 @@ export type HydratedMemberData = {
   mealPlanStates: Array<{ memberId: string; state: MemberMealPlanState }>;
   exercises: Exercise[];
   inspirationItems: unknown[];
+  noPlanDayCoverImageUrl?: string | null;
   accessDenied?: MemberAccessDenied;
 };
 
@@ -3075,6 +3076,17 @@ function mapHydrateMemberPayload(payload: Record<string, unknown>): HydratedMemb
     mealPlanStates.push({ memberId, state: parsed });
   }
 
+  const mappedPrograms = programsRows.map((row) => trainingProgramFromHydrateRow(row as Record<string, unknown>));
+  const memberOwnerUserId =
+    membersRows
+      .map((row) => String((row as { owner_user_id?: string }).owner_user_id ?? "").trim())
+      .find(Boolean) ?? "";
+  const explicitNoPlanCover = String(payload.noPlanDayCoverImageUrl ?? "").trim();
+  const noPlanDayCoverImageUrl =
+    explicitNoPlanCover ||
+    findNoPlanDayCoverTemplate(mappedPrograms, memberOwnerUserId || undefined)?.imageUrl?.trim() ||
+    null;
+
   return {
     members: membersRows.map((row) => {
       const member = row as Record<string, unknown>;
@@ -3106,7 +3118,7 @@ function mapHydrateMemberPayload(payload: Record<string, unknown>): HydratedMemb
       } as Member;
     }),
     messages: messagesRows.map((row) => chatMessageFromRow(row as Record<string, unknown>)),
-    programs: programsRows.map((row) => trainingProgramFromHydrateRow(row as Record<string, unknown>)),
+    programs: mappedPrograms,
     logs: logsRows.map((row) => {
       const log = row as Record<string, unknown>;
       const parsedNote = parseWorkoutNote(log.note);
@@ -3131,6 +3143,7 @@ function mapHydrateMemberPayload(payload: Record<string, unknown>): HydratedMemb
     mealPlanStates,
     inspirationItems: Array.isArray(payload.inspirationItems) ? payload.inspirationItems : [],
     exercises: exercisesRows.map((row) => mapExerciseBankRow(row as Record<string, unknown>)),
+    noPlanDayCoverImageUrl,
   };
 }
 

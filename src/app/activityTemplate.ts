@@ -89,12 +89,13 @@ export function findNoPlanDayCoverTemplate(
     (program) => program.memberId === "__template__" && parseActivityTemplateKind(program) === "no-plan",
   );
   if (!candidates.length) return null;
+  const withImage = (list: TrainingProgram[]) => list.find((program) => program.imageUrl?.trim()) ?? null;
   const trimmedOwner = ownerUserId?.trim();
-  const scoped = trimmedOwner
-    ? candidates.filter((program) => program.ownerUserId?.trim() === trimmedOwner)
-    : candidates;
-  const pool = scoped.length ? scoped : candidates;
-  return pool.find((program) => program.imageUrl?.trim()) ?? pool[0] ?? null;
+  if (trimmedOwner) {
+    const scoped = candidates.filter((program) => program.ownerUserId?.trim() === trimmedOwner);
+    return withImage(scoped) ?? withImage(candidates) ?? scoped[0] ?? candidates[0] ?? null;
+  }
+  return withImage(candidates) ?? candidates[0] ?? null;
 }
 
 /** Skal programmet beholdes i medlems appState.programs etter sesjonsfiltrering? */

@@ -33,10 +33,12 @@ import {
   type TrainingSubTab,
 } from "../app/exerciseCategories";
 import { isActivityTemplate, isPeriodPlanActivityTemplate, NO_PLAN_DAY_TEMPLATE_TITLE } from "../app/activityTemplate";
+import { programCustomCoverImageStyle } from "../app/imageFocalPoint";
 import {
   CONDITIONING_TRAINING_COVER_IMAGE,
   MOBILITY_TRAINING_COVER_IMAGE,
   NO_PLAN_DAY_COVER_IMAGE,
+  resolveProgramCoverDisplayUrl,
 } from "../app/programImage";
 import {
   computeProgramDraftStats,
@@ -149,6 +151,7 @@ export type TrainerProgramBuilderViewProps = {
   onNoPlanDayCoverImageUpload?: (file: File) => void;
   onSaveNoPlanDayCover?: () => void;
   hasNoPlanDayCoverTemplate?: boolean;
+  noPlanDayCoverSaveStatus?: string | null;
   programsSubTabConditioningExtras?: ReactNode;
   cardioIntervalIntensity?: CardioIntensityLevel;
   cardioEquipmentId?: CardioEquipmentId;
@@ -203,6 +206,7 @@ export function TrainerProgramBuilderView({
   onNoPlanDayCoverImageUpload,
   onSaveNoPlanDayCover,
   hasNoPlanDayCoverTemplate = false,
+  noPlanDayCoverSaveStatus = null,
   programsSubTabConditioningExtras,
   cardioIntervalIntensity,
   cardioEquipmentId = "rowing",
@@ -210,7 +214,12 @@ export function TrainerProgramBuilderView({
 }: TrainerProgramBuilderViewProps) {
   const { pushToast } = useToast();
   const isActivityTab = isActivityTemplateSubTab(programsSubTab);
-  const noPlanCoverPreviewSrc = noPlanDayCoverImageUrl.trim() || NO_PLAN_DAY_COVER_IMAGE;
+  const noPlanCoverPreviewSrc = noPlanDayCoverImageUrl.trim()
+    ? resolveProgramCoverDisplayUrl(noPlanDayCoverImageUrl.trim())
+    : NO_PLAN_DAY_COVER_IMAGE;
+  const noPlanCoverPreviewStyle = noPlanDayCoverImageUrl.trim()
+    ? programCustomCoverImageStyle(noPlanDayCoverImageUrl)
+    : undefined;
   const [favoritesOnly, setFavoritesOnly] = useState(false);
   const [muscleFilter, setMuscleFilter] = useState<MuscleFilter>("all");
   const [categoryFilter, setCategoryFilter] = useState<"tab" | "all">("tab");
@@ -355,7 +364,13 @@ export function TrainerProgramBuilderView({
             </p>
           </div>
           <div className="motus-prog-builder-hero max-w-xl">
-            <img src={noPlanCoverPreviewSrc} alt="" className="motus-prog-builder-hero-img" loading="lazy" />
+            <img
+              src={noPlanCoverPreviewSrc}
+              alt=""
+              className={`motus-prog-builder-hero-img${noPlanDayCoverImageUrl.trim() ? " motus-member-program-cover--custom" : ""}`}
+              style={noPlanCoverPreviewStyle}
+              loading="lazy"
+            />
             <div className="motus-prog-builder-hero-overlay">
               <p className="rounded-lg bg-white/95 px-3 py-2 text-base font-semibold text-slate-900">
                 {NO_PLAN_DAY_TEMPLATE_TITLE}
@@ -378,6 +393,11 @@ export function TrainerProgramBuilderView({
             <GradientButton type="button" onClick={onSaveNoPlanDayCover}>
               {hasNoPlanDayCoverTemplate ? "Oppdater bilde" : "Lagre bilde"}
             </GradientButton>
+          ) : null}
+          {noPlanDayCoverSaveStatus ? (
+            <div className="rounded-xl border motus-brand-surface px-3 py-2 text-xs text-emerald-700">
+              {noPlanDayCoverSaveStatus}
+            </div>
           ) : null}
         </div>
       ) : null}

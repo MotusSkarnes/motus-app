@@ -43,6 +43,7 @@ import {
   clearMemberSessionCaches,
   readCachedMemberPeriodPlanRows,
   writeCachedMemberPeriodPlanRows,
+  writeCachedNoPlanDayCoverUrl,
 } from "./memberSessionCache";
 import {
   clearPausedWorkoutForProgram,
@@ -1214,6 +1215,9 @@ export function useAppState() {
         const periodPlanRows = hydratedMember.periodPlanRows ?? [];
         setRemoteMemberPeriodPlanRows(periodPlanRows);
         writeCachedMemberPeriodPlanRows(periodPlanRows);
+        if (hydratedMember.noPlanDayCoverImageUrl?.trim()) {
+          writeCachedNoPlanDayCoverUrl(hydratedMember.noPlanDayCoverImageUrl);
+        }
         if (hydratedMember.mealPlans?.length) {
           const aliasIds = hydratedMember.members.map((m) => m.id).filter(Boolean);
           let mealPlanChanged = false;
