@@ -7294,6 +7294,22 @@ html:has(.motus-trainer-app) {
   text-align: left;
 }
 
+.motus-training-program-card--stacked {
+  display: flex;
+  flex-direction: column;
+  height: auto;
+  border-radius: 1.25rem;
+  background: rgba(255, 255, 255, 0.92);
+}
+
+.motus-training-program-thumb {
+  background: #eef2f7;
+}
+
+.motus-training-program-thumb::after {
+  display: none;
+}
+
 .motus-training-program-cover {
   position: absolute;
   inset: 0;
@@ -7305,7 +7321,10 @@ html:has(.motus-trainer-app) {
 .motus-training-program-cover--fallback {
   position: absolute;
   inset: 0;
-  background: linear-gradient(135deg, #14b8a6, #d91278);
+  background:
+    radial-gradient(circle at 24% 22%, rgba(48, 227, 190, 0.34), transparent 34%),
+    radial-gradient(circle at 78% 82%, rgba(217, 18, 120, 0.24), transparent 36%),
+    linear-gradient(145deg, #dfe8ea 0%, #f7faf9 100%);
 }
 
 .motus-training-program-overlay {
@@ -7322,15 +7341,31 @@ html:has(.motus-trainer-app) {
   color: #fff;
 }
 
+.motus-training-program-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+  padding: 0.625rem 0.75rem 0.75rem;
+}
+
 .motus-training-program-title {
   font-size: 0.9375rem;
   font-weight: 800;
+}
+
+.motus-training-program-card--stacked .motus-training-program-title {
+  color: #0f172a;
+  line-height: 1.2;
 }
 
 .motus-training-program-meta {
   margin-top: 0.125rem;
   font-size: 0.75rem;
   color: rgba(255, 255, 255, 0.82);
+}
+
+.motus-training-program-card--stacked .motus-training-program-meta {
+  color: #64748b;
 }
 
 .motus-training-program-progress {

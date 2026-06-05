@@ -31,6 +31,8 @@ export type TrainingProgramPreview = {
   id: string;
   title: string;
   imageSrc: string | null;
+  coverImageStyle?: CSSProperties;
+  coverUsesPhotoStyle?: boolean;
   metaLabel: string;
   completedCount: number;
   onOpen: () => void;
@@ -292,14 +294,32 @@ export function MemberTrainingOverview({
           </div>
           <div className="motus-training-scroll-row scrollbar-none">
             {programs.map((program) => (
-              <button key={program.id} type="button" onClick={program.onOpen} className="motus-training-program-card motus-pressable">
-                {program.imageSrc ? (
-                  <img src={program.imageSrc} alt="" className="motus-training-program-cover motus-image-media" loading="lazy" />
-                ) : (
-                  <div className="motus-training-program-cover motus-training-program-cover--fallback" aria-hidden />
-                )}
-                <div className="motus-training-program-overlay" aria-hidden />
-                <div className="motus-training-program-content">
+              <button
+                key={program.id}
+                type="button"
+                onClick={program.onOpen}
+                className="motus-training-program-card motus-training-program-card--stacked motus-pressable"
+              >
+                <div className="motus-training-program-thumb motus-image-frame motus-image-frame--program-cover">
+                  {program.imageSrc ? (
+                    <img
+                      src={program.imageSrc}
+                      alt=""
+                      className={`motus-training-program-cover motus-image-media${
+                        program.coverUsesPhotoStyle
+                          ? " motus-member-program-cover--custom"
+                          : " motus-member-program-cover--exercise"
+                      }`}
+                      loading="lazy"
+                      style={
+                        program.coverImageStyle ?? { objectPosition: imageObjectPositionFromSrc(program.imageSrc) }
+                      }
+                    />
+                  ) : (
+                    <div className="motus-training-program-cover motus-training-program-cover--fallback" aria-hidden />
+                  )}
+                </div>
+                <div className="motus-training-program-body">
                   <div className="motus-training-program-title">{program.title}</div>
                   <div className="motus-training-program-meta">{program.metaLabel}</div>
                   <div className="motus-training-program-meta">{completedTimesLabel(program.completedCount)}</div>

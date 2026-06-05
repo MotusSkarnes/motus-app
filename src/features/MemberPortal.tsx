@@ -4735,6 +4735,7 @@ export function MemberPortal(props: MemberPortalProps) {
         const coverExercise = resolveFirstProgramCoverExercise(program, exercises);
         const programSubTab = getTrainingProgramSubTab(program, exerciseCategoryById, exercises);
         const imageSrc = resolveProgramImageSrc(program, coverExercise ?? null, { subTab: programSubTab });
+        const usesPhotoStyle = programCoverUsesPhotoStyle(program, imageSrc);
         const completedProgramLogs = completedLogs.filter(
           (log) => log.programTitle.trim().toLowerCase() === program.title.trim().toLowerCase(),
         ).length;
@@ -4742,6 +4743,10 @@ export function MemberPortal(props: MemberPortalProps) {
           id: program.id,
           title: program.title,
           imageSrc,
+          coverImageStyle: usesPhotoStyle
+            ? programCustomCoverImageStyle(program.imageUrl ?? imageSrc)
+            : { objectPosition: imageObjectPositionFromSrc(imageSrc) },
+          coverUsesPhotoStyle: usesPhotoStyle,
           metaLabel: `${program.exercises.length} ${program.exercises.length === 1 ? "øvelse" : "øvelser"}`,
           completedCount: completedProgramLogs,
         };
