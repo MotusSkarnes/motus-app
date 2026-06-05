@@ -46,6 +46,12 @@ describe("activityTemplate", () => {
     expect(activityTemplateMatchesPeriodEntry(group, "Gruppetime: Spinning")).toBe(false);
   });
 
+  it("recognises enriched templates after hydrate strips notes marker", () => {
+    const enriched = enrichProgramWithActivityTemplateKind(templateProgram("group", "Spinning"));
+    expect(listActivityTemplates([enriched])).toHaveLength(1);
+    expect(periodPlanEntryForActivityTemplate(enriched)).toBe("Gruppetime: Spinning");
+  });
+
   it("lists activity templates by kind", () => {
     const programs: TrainingProgram[] = [
       templateProgram("group", "A"),

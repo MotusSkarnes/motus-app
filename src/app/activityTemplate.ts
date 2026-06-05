@@ -6,14 +6,18 @@ export type ActivityTemplateKind = "group" | "activity";
 const TEMPLATE_KIND_PREFIX = /^__motusTemplateKind=(group|activity)(?:\r?\n|$)/;
 
 export function parseActivityTemplateKind(
-  program: Pick<TrainingProgram, "notes">,
+  program: Pick<TrainingProgram, "notes" | "activityTemplateKind">,
 ): ActivityTemplateKind | null {
+  const storedKind = program.activityTemplateKind;
+  if (storedKind === "group" || storedKind === "activity") return storedKind;
   const match = String(program.notes ?? "").match(TEMPLATE_KIND_PREFIX);
   if (!match) return null;
   return match[1] as ActivityTemplateKind;
 }
 
-export function isActivityTemplate(program: Pick<TrainingProgram, "notes" | "exercises">): boolean {
+export function isActivityTemplate(
+  program: Pick<TrainingProgram, "notes" | "exercises" | "activityTemplateKind">,
+): boolean {
   return parseActivityTemplateKind(program) !== null;
 }
 

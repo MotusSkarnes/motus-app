@@ -1,3 +1,4 @@
+import { enrichProgramWithActivityTemplateKind } from "../app/activityTemplate";
 import {
   activityWorkoutLogTitle,
   groupWorkoutLogTitle,
@@ -408,7 +409,7 @@ export function saveProgramInState(
       ...state,
       programs: state.programs.map((program) =>
         program.id === input.id
-          ? {
+          ? enrichProgramWithActivityTemplateKind({
               ...program,
               memberId: input.memberId,
               title: input.title.trim(),
@@ -423,14 +424,14 @@ export function saveProgramInState(
                     programCreatedByName: input.programCreatedByName?.trim() ?? "",
                   }
                 : {}),
-            }
+            })
           : program
       ),
     };
     }
   }
 
-  const newProgram: TrainingProgram = {
+  const newProgram = enrichProgramWithActivityTemplateKind({
     id: input.id?.trim() || uid("program"),
     memberId: input.memberId,
     title: input.title.trim(),
@@ -445,7 +446,7 @@ export function saveProgramInState(
           programCreatedByName: input.programCreatedByName?.trim() ?? "",
         }
       : {}),
-  };
+  });
 
   return { ...state, programs: [newProgram, ...state.programs] };
 }
