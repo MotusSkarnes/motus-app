@@ -178,10 +178,10 @@ export function MemberTrainingOverview({
   return (
     <div className="motus-training-overview motus-fade-in-up">
       <article className="motus-training-hero motus-training-hero--stacked">
-        <div className="motus-training-hero-thumb motus-image-frame motus-image-frame--program-cover">
+        <div className="motus-member-program-thumb motus-image-frame">
           {imageSrc ? (
             <img
-              className={`motus-training-hero-cover motus-image-media${
+              className={`motus-member-program-cover motus-image-media${
                 coverUsesPhotoStyle
                   ? " motus-member-program-cover--custom"
                   : " motus-member-program-cover--exercise"
@@ -194,7 +194,7 @@ export function MemberTrainingOverview({
               }
             />
           ) : (
-            <div className="motus-training-hero-cover motus-training-hero-cover--fallback" aria-hidden>
+            <div className="motus-member-program-thumb-fallback" aria-hidden>
               <Dumbbell className="h-10 w-10 text-slate-400" strokeWidth={1.5} />
             </div>
           )}
@@ -292,7 +292,7 @@ export function MemberTrainingOverview({
               <ChevronRight className="h-3.5 w-3.5" aria-hidden />
             </button>
           </div>
-          <div className="motus-training-scroll-row scrollbar-none">
+          <div className="motus-training-scroll-row motus-training-scroll-row--program-previews scrollbar-none">
             {programs.map((program) => (
               <button
                 key={program.id}
@@ -300,12 +300,12 @@ export function MemberTrainingOverview({
                 onClick={program.onOpen}
                 className="motus-training-program-card motus-training-program-card--stacked motus-pressable"
               >
-                <div className="motus-training-program-thumb motus-image-frame motus-image-frame--program-cover">
+                <div className="motus-member-program-thumb motus-image-frame">
                   {program.imageSrc ? (
                     <img
                       src={program.imageSrc}
                       alt=""
-                      className={`motus-training-program-cover motus-image-media${
+                      className={`motus-member-program-cover motus-image-media${
                         program.coverUsesPhotoStyle
                           ? " motus-member-program-cover--custom"
                           : " motus-member-program-cover--exercise"
@@ -316,7 +316,7 @@ export function MemberTrainingOverview({
                       }
                     />
                   ) : (
-                    <div className="motus-training-program-cover motus-training-program-cover--fallback" aria-hidden />
+                    <div className="motus-member-program-thumb-fallback" aria-hidden />
                   )}
                 </div>
                 <div className="motus-training-program-body">
