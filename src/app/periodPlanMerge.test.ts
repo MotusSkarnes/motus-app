@@ -22,6 +22,7 @@ import {
   resolvePeriodPlanPlannedDate,
   resolvePeriodPlanWeek,
   syncGradientMarkedWeekDays,
+  upsertPeriodPlanForMemberState,
   writeHiddenPeriodPlanIdsForMembers,
 } from "./periodPlanMerge";
 import type { PeriodSchedulePlan, TrainingProgram, WeeklySchedulePlan } from "./types";
@@ -539,5 +540,64 @@ describe("dedupePeriodPlansById", () => {
     expect(result).toHaveLength(1);
     expect(preferNewerPeriodPlan(older, newer).weeklyPlans[0]?.days.monday).toBe("Ny økt fra PT");
     expect(result[0]?.weeklyPlans[0]?.days.monday).toBe("Ny økt fra PT");
+  });
+});
+
+describe("upsertPeriodPlanForMemberState", () => {
+  it("updates one existing plan without dropping sibling period plans", () => {
+    const planA: PeriodSchedulePlan = {
+      ...makePlan([{ id: "w1", weekNumber: 1, days: { ...empty, monday: "Styrke A" } }]),
+      id: "plan-a",
+      title: "Sommerblokk",
+    };
+    const planB: PeriodSchedulePlan = {
+      ...makePlan([{ id: "w1", weekNumber: 1, days: { ...empty, monday: "Styrke B" } }]),
+      id: "plan-b",
+      title: "Hostblokk",
+    };
+    const updatedPlanB: PeriodSchedulePlan = {
+      ...planB,
+      notes: "Oppdatert",
+      trainerSavedAtIso: "2026-06-06T10:00:00.000Z",
+    };
+
+    const result = upsertPeriodPlanForMemberState({ "member-1": [planA, planB] }, "member-1", ["member-1"], updatedPlanB);
+
+    expect(result["member-1"].map((plan) => plan.id)).toEqual(["plan-a", "plan-b"]);
+    expect(result["member-1"].find((plan) => plan.id === "plan-a")).toBe(planA);
+    expect(result["member-1"].find((plan) => plan.id === "plan-b")?.notes).toBe("Oppdatert");
+  });
+
+  it("moves only the saved plan from related legacy member ids to canonical storage", () => {
+    const existingCanonical: PeriodSchedulePlan = {
+      ...makePlan([{ id: "w1", weekNumber: 1, days: { ...empty, monday: "Kanonisk plan" } }]),
+      id: "plan-a",
+      title: "Kanonisk",
+    };
+    const legacyPlan: PeriodSchedulePlan = {
+      ...makePlan([{ id: "w1", weekNumber: 1, days: { ...empty, tuesday: "Legacy plan" } }]),
+      id: "plan-b",
+      title: "Legacy",
+    };
+    const unrelatedLegacyPlan: PeriodSchedulePlan = {
+      ...makePlan([{ id: "w1", weekNumber: 1, days: { ...empty, wednesday: "Legacy sibling" } }]),
+      id: "plan-c",
+      title: "Legacy sibling",
+    };
+    const updatedLegacyPlan = { ...legacyPlan, notes: "Flyttet" };
+
+    const result = upsertPeriodPlanForMemberState(
+      {
+        "member-canonical": [existingCanonical],
+        m1: [legacyPlan, unrelatedLegacyPlan],
+      },
+      "member-canonical",
+      ["member-canonical", "m1"],
+      updatedLegacyPlan,
+    );
+
+    expect(result["member-canonical"].map((plan) => plan.id)).toEqual(["plan-a", "plan-b"]);
+    expect(result["member-canonical"].find((plan) => plan.id === "plan-b")?.notes).toBe("Flyttet");
+    expect(result.m1.map((plan) => plan.id)).toEqual(["plan-c"]);
   });
 });

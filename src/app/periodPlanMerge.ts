@@ -520,6 +520,33 @@ export function memberIdsForPeriodPlanMerge(relatedMemberIds: string[], canonica
   });
 }
 
+export function upsertPeriodPlanForMemberState(
+  previousByMemberId: Record<string, PeriodSchedulePlan[]>,
+  storageMemberId: string,
+  relatedMemberIds: string[],
+  plan: PeriodSchedulePlan,
+): Record<string, PeriodSchedulePlan[]> {
+  const applyToId = storageMemberId.trim();
+  const planId = plan.id.trim();
+  if (!applyToId || !planId) return previousByMemberId;
+
+  const next = { ...previousByMemberId };
+  const previousPlans = next[applyToId] ?? [];
+  next[applyToId] = previousPlans.some((existing) => existing.id === planId)
+    ? previousPlans.map((existing) => (existing.id === planId ? plan : existing))
+    : [...previousPlans.filter((existing) => existing.id !== planId), plan];
+
+  for (const memberId of relatedMemberIds) {
+    const relatedId = memberId.trim();
+    if (!relatedId || relatedId === applyToId) continue;
+    const relatedPlans = next[relatedId];
+    if (!relatedPlans?.length) continue;
+    next[relatedId] = relatedPlans.filter((existing) => existing.id !== planId);
+  }
+
+  return next;
+}
+
 function planStartTimeMs(plan: PeriodSchedulePlan): number {
   const value = plan.startDate?.trim() ?? "";
   if (!value) return 0;

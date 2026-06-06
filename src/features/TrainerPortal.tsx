@@ -224,6 +224,7 @@ import {
   pickCanonicalMemberIdForPeriodPlans,
   sortPeriodPlansByRecency,
   syncGradientMarkedWeekDays,
+  upsertPeriodPlanForMemberState,
 } from "../app/periodPlanMerge";
 import { buildDefaultStartWorkoutOptions } from "../app/buildStartWorkoutOptions";
 import { MemberMonthlyCheckInSummary } from "./MemberMonthlyCheckInSummary";
@@ -2597,9 +2598,6 @@ function pickFirstName(value: unknown): string {
       selectedPeriodPlans.find((plan) => plan.id === periodPlanDraftId) ?? selectedPeriodPlans[0] ?? null;
     const periodPlanId = periodPlanDraftId ?? existingPeriodPlan?.id ?? uid("period-plan");
     const isNewPlan = !selectedPeriodPlans.some((plan) => plan.id === periodPlanId);
-    const obsoletePeriodPlanIds = isNewPlan
-      ? []
-      : selectedPeriodPlans.map((plan) => plan.id).filter((planId) => planId && planId !== periodPlanId);
     const newPeriodPlan: PeriodSchedulePlan = {
       id: periodPlanId,
       title,
@@ -2615,26 +2613,9 @@ function pickFirstName(value: unknown): string {
     const storageMemberId =
       pickCanonicalMemberIdForPeriodPlans(selectedMemberRelatedIds, members) || selectedMemberId;
     setPeriodPlansByMemberId((prev) => {
-      const next = { ...prev };
-      const applyToId = storageMemberId.trim();
-      const previous = next[applyToId] ?? [];
-      next[applyToId] = isNewPlan
-        ? [...previous.filter((plan) => plan.id !== periodPlanId), newPeriodPlan]
-        : previous.some((plan) => plan.id === periodPlanId)
-            ? previous.map((plan) => (plan.id === periodPlanId ? newPeriodPlan : plan))
-            : [newPeriodPlan];
-      for (const memberId of selectedMemberRelatedIds) {
-        if (memberId === applyToId) continue;
-        const list = next[memberId];
-        if (!list?.length) continue;
-        next[memberId] = list.filter((plan) => plan.id !== periodPlanId);
-        }
-      return next;
+      return upsertPeriodPlanForMemberState(prev, storageMemberId, selectedMemberRelatedIds, newPeriodPlan);
     });
     if (isSupabaseConfigured && !isLocalDemoSession) {
-      obsoletePeriodPlanIds.forEach((planId) => {
-        void deleteMemberPeriodPlanByPlanId(planId);
-      });
       const persist = await upsertMemberPeriodPlansForTrainer(selectedMemberRelatedIds, newPeriodPlan, {
         targetEmail: selectedMember?.email,
       });
