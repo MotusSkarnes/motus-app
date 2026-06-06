@@ -17,6 +17,7 @@ import {
   readActivePeriodPlanIdForMembers,
   readHiddenPeriodPlanIdsForMembers,
   periodPlanWeekdayKeyForDate,
+  resolvePeriodPlanSaveTarget,
   resolvePeriodPlanWeekNumberForDate,
   writeActivePeriodPlanIdForMembers,
   resolvePeriodPlanPlannedDate,
@@ -599,5 +600,39 @@ describe("upsertPeriodPlanForMemberState", () => {
     expect(result["member-canonical"].map((plan) => plan.id)).toEqual(["plan-a", "plan-b"]);
     expect(result["member-canonical"].find((plan) => plan.id === "plan-b")?.notes).toBe("Flyttet");
     expect(result.m1.map((plan) => plan.id)).toEqual(["plan-c"]);
+  });
+});
+
+describe("resolvePeriodPlanSaveTarget", () => {
+  it("uses the selected draft id when updating an existing period plan", () => {
+    const existing: PeriodSchedulePlan = {
+      ...makePlan([{ id: "w1", weekNumber: 1, days: { ...empty, monday: "Styrke" } }]),
+      id: "plan-existing",
+      title: "Eksisterende",
+    };
+
+    const result = resolvePeriodPlanSaveTarget([existing], "plan-existing", false, "plan-new");
+
+    expect(result).toEqual({
+      periodPlanId: "plan-existing",
+      existingPeriodPlan: existing,
+      isNewPlan: false,
+    });
+  });
+
+  it("creates a fresh id when the trainer chooses to add a new period plan", () => {
+    const existing: PeriodSchedulePlan = {
+      ...makePlan([{ id: "w1", weekNumber: 1, days: { ...empty, monday: "Styrke" } }]),
+      id: "plan-existing",
+      title: "Eksisterende",
+    };
+
+    const result = resolvePeriodPlanSaveTarget([existing], null, true, "plan-new");
+
+    expect(result).toEqual({
+      periodPlanId: "plan-new",
+      existingPeriodPlan: null,
+      isNewPlan: true,
+    });
   });
 });

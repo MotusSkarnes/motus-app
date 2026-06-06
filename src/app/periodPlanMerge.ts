@@ -547,6 +547,25 @@ export function upsertPeriodPlanForMemberState(
   return next;
 }
 
+export function resolvePeriodPlanSaveTarget(
+  selectedPeriodPlans: PeriodSchedulePlan[],
+  periodPlanDraftId: string | null | undefined,
+  periodPlanCreatingNew: boolean,
+  newPeriodPlanId: string,
+): { periodPlanId: string; existingPeriodPlan: PeriodSchedulePlan | null; isNewPlan: boolean } {
+  const fallbackId = newPeriodPlanId.trim();
+  if (periodPlanCreatingNew) {
+    return { periodPlanId: fallbackId, existingPeriodPlan: null, isNewPlan: true };
+  }
+
+  const draftId = periodPlanDraftId?.trim() ?? "";
+  const existingPeriodPlan =
+    (draftId ? selectedPeriodPlans.find((plan) => plan.id === draftId) : undefined) ?? selectedPeriodPlans[0] ?? null;
+  const periodPlanId = draftId || existingPeriodPlan?.id || fallbackId;
+  const isNewPlan = !selectedPeriodPlans.some((plan) => plan.id === periodPlanId);
+  return { periodPlanId, existingPeriodPlan, isNewPlan };
+}
+
 function planStartTimeMs(plan: PeriodSchedulePlan): number {
   const value = plan.startDate?.trim() ?? "";
   if (!value) return 0;

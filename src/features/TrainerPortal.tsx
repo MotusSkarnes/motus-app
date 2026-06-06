@@ -222,6 +222,7 @@ import {
   dedupePeriodPlansById,
   memberIdsForPeriodPlanMerge,
   pickCanonicalMemberIdForPeriodPlans,
+  resolvePeriodPlanSaveTarget,
   sortPeriodPlansByRecency,
   syncGradientMarkedWeekDays,
   upsertPeriodPlanForMemberState,
@@ -2594,10 +2595,12 @@ function pickFirstName(value: unknown): string {
         weekNumber: index + 1,
       })),
     );
-    const existingPeriodPlan =
-      selectedPeriodPlans.find((plan) => plan.id === periodPlanDraftId) ?? selectedPeriodPlans[0] ?? null;
-    const periodPlanId = periodPlanDraftId ?? existingPeriodPlan?.id ?? uid("period-plan");
-    const isNewPlan = !selectedPeriodPlans.some((plan) => plan.id === periodPlanId);
+    const { periodPlanId, existingPeriodPlan, isNewPlan } = resolvePeriodPlanSaveTarget(
+      selectedPeriodPlans,
+      periodPlanDraftId,
+      periodPlanCreatingNew,
+      uid("period-plan"),
+    );
     const newPeriodPlan: PeriodSchedulePlan = {
       id: periodPlanId,
       title,
