@@ -520,6 +520,52 @@ export function memberIdsForPeriodPlanMerge(relatedMemberIds: string[], canonica
   });
 }
 
+export function upsertPeriodPlanForMemberState(
+  previousByMemberId: Record<string, PeriodSchedulePlan[]>,
+  storageMemberId: string,
+  relatedMemberIds: string[],
+  plan: PeriodSchedulePlan,
+): Record<string, PeriodSchedulePlan[]> {
+  const applyToId = storageMemberId.trim();
+  const planId = plan.id.trim();
+  if (!applyToId || !planId) return previousByMemberId;
+
+  const next = { ...previousByMemberId };
+  const previousPlans = next[applyToId] ?? [];
+  next[applyToId] = previousPlans.some((existing) => existing.id === planId)
+    ? previousPlans.map((existing) => (existing.id === planId ? plan : existing))
+    : [...previousPlans.filter((existing) => existing.id !== planId), plan];
+
+  for (const memberId of relatedMemberIds) {
+    const relatedId = memberId.trim();
+    if (!relatedId || relatedId === applyToId) continue;
+    const relatedPlans = next[relatedId];
+    if (!relatedPlans?.length) continue;
+    next[relatedId] = relatedPlans.filter((existing) => existing.id !== planId);
+  }
+
+  return next;
+}
+
+export function resolvePeriodPlanSaveTarget(
+  selectedPeriodPlans: PeriodSchedulePlan[],
+  periodPlanDraftId: string | null | undefined,
+  periodPlanCreatingNew: boolean,
+  newPeriodPlanId: string,
+): { periodPlanId: string; existingPeriodPlan: PeriodSchedulePlan | null; isNewPlan: boolean } {
+  const fallbackId = newPeriodPlanId.trim();
+  if (periodPlanCreatingNew) {
+    return { periodPlanId: fallbackId, existingPeriodPlan: null, isNewPlan: true };
+  }
+
+  const draftId = periodPlanDraftId?.trim() ?? "";
+  const existingPeriodPlan =
+    (draftId ? selectedPeriodPlans.find((plan) => plan.id === draftId) : undefined) ?? selectedPeriodPlans[0] ?? null;
+  const periodPlanId = draftId || existingPeriodPlan?.id || fallbackId;
+  const isNewPlan = !selectedPeriodPlans.some((plan) => plan.id === periodPlanId);
+  return { periodPlanId, existingPeriodPlan, isNewPlan };
+}
+
 function planStartTimeMs(plan: PeriodSchedulePlan): number {
   const value = plan.startDate?.trim() ?? "";
   if (!value) return 0;
