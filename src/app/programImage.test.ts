@@ -116,6 +116,12 @@ describe("resolveProgramImageSrc", () => {
     );
   });
 
+  it("can prefer conditioning default cover over first exercise", () => {
+    expect(resolveProgramImageSrc(program(), cardioExercise, { subTab: "conditioning", preferDefaultCover: true })).toBe(
+      CONDITIONING_TRAINING_COVER_IMAGE,
+    );
+  });
+
   it("uses runner strength cover for styrke løper-programmer", () => {
     expect(
       resolveProgramImageSrc(program(undefined, SUB60_PROGRAM_TITLES.strength), strengthExercise, {

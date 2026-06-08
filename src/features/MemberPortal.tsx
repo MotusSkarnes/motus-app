@@ -4844,6 +4844,7 @@ export function MemberPortal(props: MemberPortalProps) {
         const imageSrc = program
           ? resolveProgramImageSrc(program, coverExercise ?? null, {
               subTab: getTrainingProgramSubTab(program, exerciseCategoryById, exercises),
+              preferDefaultCover: true,
             })
           : null;
         const minutes = program ? Math.max(20, Math.round(estimateProgramMinutes(program) / 5) * 5) : 45;
@@ -4864,7 +4865,10 @@ export function MemberPortal(props: MemberPortalProps) {
       memberProgramsInActiveLibrary.slice(0, 8).map((program) => {
         const coverExercise = resolveFirstProgramCoverExercise(program, exercises);
         const programSubTab = getTrainingProgramSubTab(program, exerciseCategoryById, exercises);
-        const imageSrc = resolveProgramImageSrc(program, coverExercise ?? null, { subTab: programSubTab });
+        const imageSrc = resolveProgramImageSrc(program, coverExercise ?? null, {
+          subTab: programSubTab,
+          preferDefaultCover: true,
+        });
         const usesPhotoStyle = programCoverUsesPhotoStyle(program, imageSrc);
         const completedProgramLogs = completedLogs.filter(
           (log) => log.programTitle.trim().toLowerCase() === program.title.trim().toLowerCase(),
@@ -6782,7 +6786,10 @@ export function MemberPortal(props: MemberPortalProps) {
 	                    const programCategory = trainingProgramCategoryLabel(program, exerciseCategoryById, exercises);
 	                    const programSubTab = getTrainingProgramSubTab(program, exerciseCategoryById, exercises);
 	                    const programLevel = coverExercise?.level ?? "Nivå tilpasses";
-	                    const programCoverSrc = resolveProgramImageSrc(program, coverExercise, { subTab: programSubTab });
+	                    const programCoverSrc = resolveProgramImageSrc(program, coverExercise, {
+	                      subTab: programSubTab,
+	                      preferDefaultCover: true,
+	                    });
 	                    const programUsesCustomCover = programCoverUsesPhotoStyle(program, programCoverSrc);
 	                    const completedProgramLogs = completedLogs.filter((log) => log.programTitle.trim().toLowerCase() === program.title.trim().toLowerCase()).length;
 	                    const completedTimesLabel = completedProgramLogs === 0
