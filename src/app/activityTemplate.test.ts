@@ -2,9 +2,11 @@ import { describe, expect, it } from "vitest";
 import {
   activityTemplateMatchesPeriodEntry,
   buildActivityTemplateNotes,
+  dedupeSharedOrgActivityTemplates,
   enrichProgramWithActivityTemplateKind,
   findNoPlanDayCoverTemplate,
   isMemberSessionScopedProgram,
+  isSharedOrgActivityTemplate,
   listActivityTemplates,
   mergeMemberProgramsWithActivityTemplates,
   periodPlanEntryForActivityTemplate,
@@ -106,6 +108,12 @@ describe("activityTemplate", () => {
     expect(merged.find((program) => program.id === group.id)?.imageUrl).toBe("https://cdn.example/test.png");
   });
 
+  it("marks group, activity and no-plan templates as shared org templates", () => {
+    expect(isSharedOrgActivityTemplate(templateProgram("group", "Yoga"))).toBe(true);
+    expect(isSharedOrgActivityTemplate(templateProgram("activity", "Svømming"))).toBe(true);
+    expect(isSharedOrgActivityTemplate(templateProgram("no-plan", "Ingen plan i dag"))).toBe(true);
+  });
+
   it("lists activity templates by kind", () => {
     const programs: TrainingProgram[] = [
       templateProgram("group", "A"),
@@ -142,11 +150,13 @@ describe("activityTemplate", () => {
     expect(findNoPlanDayCoverTemplate([older, newer])?.imageUrl).toBe("https://cdn.example/new.png");
   });
 
-  it("prefers no-plan template with image and scopes by PT owner", () => {
+  it("uses the newest shared no-plan cover across PT owners", () => {
     const withoutImage = templateProgram("no-plan", "Ingen plan i dag");
     withoutImage.ownerUserId = "pt-a";
+    withoutImage.createdAt = "01.01.2025";
     const withImage = templateProgram("no-plan", "Ingen plan i dag");
     withImage.ownerUserId = "pt-b";
+    withImage.createdAt = "15.06.2025";
     withImage.imageUrl = "https://cdn.example/custom.png";
     expect(findNoPlanDayCoverTemplate([withoutImage, withImage])?.imageUrl).toBe(
       "https://cdn.example/custom.png",
@@ -154,6 +164,19 @@ describe("activityTemplate", () => {
     expect(findNoPlanDayCoverTemplate([withoutImage, withImage], "pt-a")?.imageUrl).toBe(
       "https://cdn.example/custom.png",
     );
+  });
+
+  it("dedupes shared org templates by kind and title", () => {
+    const older = templateProgram("group", "Yoga");
+    older.createdAt = "01.01.2024";
+    older.imageUrl = "https://cdn.example/old.png";
+    const newer = templateProgram("group", "Yoga");
+    newer.id = "tpl-group-yoga-new";
+    newer.createdAt = "15.06.2025";
+    newer.imageUrl = "https://cdn.example/new.png";
+    const deduped = dedupeSharedOrgActivityTemplates([older, newer, templateProgram("activity", "Svømming")]);
+    expect(deduped).toHaveLength(2);
+    expect(deduped.find((program) => program.title === "Yoga")?.imageUrl).toBe("https://cdn.example/new.png");
   });
 
   it("merges no-plan cover template into member programs", () => {

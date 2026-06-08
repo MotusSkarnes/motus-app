@@ -49,6 +49,35 @@ function nameFromEmail(email: string): string {
   return toFirstName(normalized);
 }
 
+const NO_PLAN_DAY_TEMPLATE_TITLE = "Ingen plan i dag";
+const TEMPLATE_KIND_PREFIX = /^__motusTemplateKind=(group|activity|no-plan)(?:\r?\n|$)/;
+
+function templateKindFromNotes(notes: string, title: string): string | null {
+  const match = String(notes ?? "").match(TEMPLATE_KIND_PREFIX);
+  if (match) return match[1];
+  if (title.trim() === NO_PLAN_DAY_TEMPLATE_TITLE) return "no-plan";
+  return null;
+}
+
+async function findExistingSharedOrgTemplateId(
+  adminClient: ReturnType<typeof createClient>,
+  title: string,
+  notes: string,
+): Promise<string | null> {
+  const saveKind = templateKindFromNotes(notes, title);
+  if (saveKind !== "group" && saveKind !== "activity" && saveKind !== "no-plan") return null;
+  const { data: rows } = await adminClient
+    .from("training_programs")
+    .select("id, notes, created_at")
+    .eq("member_id", "__template__")
+    .eq("title", title.trim())
+    .order("created_at", { ascending: false })
+    .limit(20);
+  const match = (rows ?? []).find((row) => templateKindFromNotes(String(row.notes ?? ""), title) === saveKind);
+  const id = String((match as { id?: string } | undefined)?.id ?? "").trim();
+  return id || null;
+}
+
 type JwtUser = {
   id: string;
   email?: string;
@@ -374,7 +403,8 @@ Deno.serve(async (req) => {
     if (role === "member") {
       return jsonResponse(403, { error: "Medlemmer kan ikke lagre treningsmaler." });
     }
-    const id = programId || crypto.randomUUID();
+    const existingSharedId = programId ? "" : await findExistingSharedOrgTemplateId(adminClient, title, notes);
+    const id = programId || existingSharedId || crypto.randomUUID();
     const { error } = await upsertTrainingProgramWithAuthorFallback(adminClient, {
       id,
       member_id: memberId,

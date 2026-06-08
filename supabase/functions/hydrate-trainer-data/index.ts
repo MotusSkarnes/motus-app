@@ -29,6 +29,56 @@ function uniqueById<T extends RowWithId>(rows: T[]): T[] {
   return Array.from(byId.values());
 }
 
+const NO_PLAN_DAY_TEMPLATE_TITLE = "Ingen plan i dag";
+const TEMPLATE_KIND_PREFIX = /^__motusTemplateKind=(group|activity|no-plan)(?:\r?\n|$)/;
+
+function rowTemplateKind(row: Record<string, unknown>): string | null {
+  const notes = String(row.notes ?? "");
+  const match = notes.match(TEMPLATE_KIND_PREFIX);
+  if (match) return match[1];
+  if (
+    String(row.member_id ?? "").trim() === "__template__" &&
+    String(row.title ?? "").trim() === NO_PLAN_DAY_TEMPLATE_TITLE
+  ) {
+    return "no-plan";
+  }
+  return null;
+}
+
+function rowIsSharedOrgActivityTemplate(row: Record<string, unknown>): boolean {
+  if (String(row.member_id ?? "").trim() !== "__template__") return false;
+  const kind = rowTemplateKind(row);
+  return kind === "group" || kind === "activity" || kind === "no-plan";
+}
+
+function rowCreatedAtMs(row: Record<string, unknown>): number {
+  const raw = String(row.created_at ?? "").trim();
+  if (!raw) return 0;
+  const parsed = Date.parse(raw);
+  return Number.isNaN(parsed) ? 0 : parsed;
+}
+
+function sharedOrgTemplateDedupeKey(row: Record<string, unknown>): string | null {
+  if (!rowIsSharedOrgActivityTemplate(row)) return null;
+  const kind = rowTemplateKind(row);
+  if (kind === "no-plan") return `no-plan:${NO_PLAN_DAY_TEMPLATE_TITLE.toLowerCase()}`;
+  const title = String(row.title ?? "").trim().toLowerCase();
+  return kind && title ? `${kind}:${title}` : null;
+}
+
+function dedupeSharedOrgActivityTemplateRows(rows: Array<Record<string, unknown>>): Array<Record<string, unknown>> {
+  const byKey = new Map<string, Record<string, unknown>>();
+  for (const row of rows) {
+    const key = sharedOrgTemplateDedupeKey(row);
+    if (!key) continue;
+    const existing = byKey.get(key);
+    if (!existing || rowCreatedAtMs(row) > rowCreatedAtMs(existing)) {
+      byKey.set(key, row);
+    }
+  }
+  return Array.from(byKey.values());
+}
+
 function isSharedMember(row: Record<string, unknown>): boolean {
   return (
     String(row.customer_type ?? "").trim().toLowerCase() === "medlem" &&
@@ -420,6 +470,39 @@ Deno.serve(async (req) => {
     .eq("owner_user_id", ownerUserId)
     .order("created_at", { ascending: false });
 
+  let sharedOrgActivityTemplateRows: Array<Record<string, unknown>> = [];
+  const [sharedByNotesResult, sharedByNoPlanTitleResult] = await Promise.all([
+    adminClient
+      .from("training_programs")
+      .select("id, member_id, title, goal, notes, exercises, created_at, owner_user_id, program_created_by, program_created_by_name, image_url, member_library_status")
+      .eq("member_id", "__template__")
+      .like("notes", "__motusTemplateKind=%"),
+    adminClient
+      .from("training_programs")
+      .select("id, member_id, title, goal, notes, exercises, created_at, owner_user_id, program_created_by, program_created_by_name, image_url, member_library_status")
+      .eq("member_id", "__template__")
+      .ilike("title", NO_PLAN_DAY_TEMPLATE_TITLE),
+  ]);
+  if (sharedByNotesResult.error) {
+    console.warn("hydrate-trainer-data: shared activity template query failed:", sharedByNotesResult.error.message);
+  }
+  if (sharedByNoPlanTitleResult.error) {
+    console.warn("hydrate-trainer-data: shared no-plan template query failed:", sharedByNoPlanTitleResult.error.message);
+  }
+  const sharedTemplateById = new Map<string, Record<string, unknown>>();
+  [...(sharedByNotesResult.data ?? []), ...(sharedByNoPlanTitleResult.data ?? [])].forEach((row) => {
+    const typedRow = row as Record<string, unknown>;
+    if (!rowIsSharedOrgActivityTemplate(typedRow)) return;
+    const id = String(typedRow.id ?? "").trim();
+    if (!id) return;
+    if (!sharedTemplateById.has(id)) sharedTemplateById.set(id, typedRow);
+  });
+  sharedOrgActivityTemplateRows = dedupeSharedOrgActivityTemplateRows(Array.from(sharedTemplateById.values()));
+
+  const programsByOwnerWithoutSharedTemplates = (programsByOwner ?? []).filter(
+    (row) => !rowIsSharedOrgActivityTemplate(row as Record<string, unknown>),
+  );
+
   const { data: logsByOwner, error: logsByOwnerError } = await adminClient
     .from("workout_logs")
     .select("id, member_id, owner_user_id, program_title, date, status, note, results, created_at")
@@ -493,7 +576,11 @@ Deno.serve(async (req) => {
       }));
   }
 
-  const mergedPrograms = uniqueById([...(programsByOwner ?? []), ...programsByMember]);
+  const mergedPrograms = uniqueById([
+    ...programsByOwnerWithoutSharedTemplates,
+    ...programsByMember,
+    ...sharedOrgActivityTemplateRows,
+  ]);
   const mergedLogs = uniqueById([...(logsByOwner ?? []), ...logsByMember]);
   const mergedMessages = uniqueById([...(messagesByOwner ?? []), ...messagesByMember]);
   const queryErrors = {

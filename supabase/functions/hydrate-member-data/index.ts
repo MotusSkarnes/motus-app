@@ -41,6 +41,60 @@ function nameFromEmail(email: string): string {
   return toFirstName(normalized);
 }
 
+const NO_PLAN_DAY_TEMPLATE_TITLE = "Ingen plan i dag";
+const TEMPLATE_KIND_PREFIX = /^__motusTemplateKind=(group|activity|no-plan)(?:\r?\n|$)/;
+
+function rowTemplateKind(row: Record<string, unknown>): string | null {
+  const notes = String(row.notes ?? "");
+  const match = notes.match(TEMPLATE_KIND_PREFIX);
+  if (match) return match[1];
+  if (
+    String(row.member_id ?? "").trim() === "__template__" &&
+    String(row.title ?? "").trim() === NO_PLAN_DAY_TEMPLATE_TITLE
+  ) {
+    return "no-plan";
+  }
+  return null;
+}
+
+function rowIsSharedOrgActivityTemplate(row: Record<string, unknown>): boolean {
+  if (String(row.member_id ?? "").trim() !== "__template__") return false;
+  const kind = rowTemplateKind(row);
+  return kind === "group" || kind === "activity" || kind === "no-plan";
+}
+
+function rowIsNoPlanCoverTemplate(row: Record<string, unknown>): boolean {
+  return rowTemplateKind(row) === "no-plan";
+}
+
+function sharedOrgTemplateRowCreatedAtMs(row: Record<string, unknown>): number {
+  const raw = String(row.created_at ?? "").trim();
+  if (!raw) return 0;
+  const parsed = Date.parse(raw);
+  return Number.isNaN(parsed) ? 0 : parsed;
+}
+
+function sharedOrgTemplateDedupeKey(row: Record<string, unknown>): string | null {
+  if (!rowIsSharedOrgActivityTemplate(row)) return null;
+  const kind = rowTemplateKind(row);
+  if (kind === "no-plan") return `no-plan:${NO_PLAN_DAY_TEMPLATE_TITLE.toLowerCase()}`;
+  const title = String(row.title ?? "").trim().toLowerCase();
+  return kind && title ? `${kind}:${title}` : null;
+}
+
+function dedupeSharedOrgActivityTemplateRows(rows: Array<Record<string, unknown>>): Array<Record<string, unknown>> {
+  const byKey = new Map<string, Record<string, unknown>>();
+  for (const row of rows) {
+    const key = sharedOrgTemplateDedupeKey(row);
+    if (!key) continue;
+    const existing = byKey.get(key);
+    if (!existing || sharedOrgTemplateRowCreatedAtMs(row) > sharedOrgTemplateRowCreatedAtMs(existing)) {
+      byKey.set(key, row);
+    }
+  }
+  return Array.from(byKey.values());
+}
+
 function scorePersonalGoalsBlob(value: string): number {
   const raw = value.trim();
   if (!raw) return 0;
@@ -513,55 +567,38 @@ Deno.serve(async (req) => {
     ]),
   );
 
-  const NO_PLAN_DAY_TEMPLATE_TITLE = "Ingen plan i dag";
   function rowIsActivityTemplate(row: Record<string, unknown>): boolean {
-    const notes = String(row.notes ?? "");
-    if (notes.includes("__motusTemplateKind=")) return true;
-    return (
-      String(row.member_id ?? "").trim() === "__template__" &&
-      String(row.title ?? "").trim() === NO_PLAN_DAY_TEMPLATE_TITLE
-    );
-  }
-  function rowIsNoPlanCoverTemplate(row: Record<string, unknown>): boolean {
-    const notes = String(row.notes ?? "");
-    if (notes.includes("__motusTemplateKind=no-plan")) return true;
-    return (
-      String(row.member_id ?? "").trim() === "__template__" &&
-      String(row.title ?? "").trim() === NO_PLAN_DAY_TEMPLATE_TITLE
-    );
+    return rowIsSharedOrgActivityTemplate(row);
   }
 
   let activityTemplateRows: Array<Record<string, unknown>> = [];
-  if (trainerOwnerIds.length > 0) {
-    const [byNotesResult, byTitleResult] = await Promise.all([
-      adminClient
-        .from("training_programs")
-        .select("*")
-        .eq("member_id", "__template__")
-        .like("notes", "__motusTemplateKind=%")
-        .in("owner_user_id", trainerOwnerIds),
-      adminClient
-        .from("training_programs")
-        .select("*")
-        .eq("member_id", "__template__")
-        .ilike("title", NO_PLAN_DAY_TEMPLATE_TITLE)
-        .in("owner_user_id", trainerOwnerIds),
-    ]);
-    if (byNotesResult.error) {
-      console.warn("hydrate-member-data: activity template query failed:", byNotesResult.error.message);
-    }
-    if (byTitleResult.error) {
-      console.warn("hydrate-member-data: no-plan title template query failed:", byTitleResult.error.message);
-    }
-    const templateById = new Map<string, Record<string, unknown>>();
-    [...(byNotesResult.data ?? []), ...(byTitleResult.data ?? [])].forEach((row) => {
-      const id = String((row as { id?: string }).id ?? "").trim();
-      if (!id) return;
-      if (!templateById.has(id)) templateById.set(id, row as Record<string, unknown>);
-    });
-    activityTemplateRows = Array.from(templateById.values());
+  const [byNotesResult, byTitleResult] = await Promise.all([
+    adminClient
+      .from("training_programs")
+      .select("*")
+      .eq("member_id", "__template__")
+      .like("notes", "__motusTemplateKind=%"),
+    adminClient
+      .from("training_programs")
+      .select("*")
+      .eq("member_id", "__template__")
+      .ilike("title", NO_PLAN_DAY_TEMPLATE_TITLE),
+  ]);
+  if (byNotesResult.error) {
+    console.warn("hydrate-member-data: activity template query failed:", byNotesResult.error.message);
   }
-  const trainerOwnerIdSet = new Set(trainerOwnerIds);
+  if (byTitleResult.error) {
+    console.warn("hydrate-member-data: no-plan title template query failed:", byTitleResult.error.message);
+  }
+  const templateById = new Map<string, Record<string, unknown>>();
+  [...(byNotesResult.data ?? []), ...(byTitleResult.data ?? [])].forEach((row) => {
+    const typedRow = row as Record<string, unknown>;
+    if (!rowIsSharedOrgActivityTemplate(typedRow)) return;
+    const id = String(typedRow.id ?? "").trim();
+    if (!id) return;
+    if (!templateById.has(id)) templateById.set(id, typedRow);
+  });
+  activityTemplateRows = dedupeSharedOrgActivityTemplateRows(Array.from(templateById.values()));
 
   const mergedProgramsById = new Map<string, Record<string, unknown>>();
   [...(programsByRequesterOwner ?? []), ...(programsRaw ?? []), ...activityTemplateRows].forEach((row) => {
@@ -604,7 +641,7 @@ Deno.serve(async (req) => {
     .filter((row) => {
       const memberId = String((row as { member_id?: string }).member_id ?? "").trim();
       const ownerUserId = String((row as { owner_user_id?: string }).owner_user_id ?? "").trim();
-      if (memberId === "__template__" && trainerOwnerIdSet.has(ownerUserId) && rowIsActivityTemplate(row)) {
+      if (memberId === "__template__" && rowIsSharedOrgActivityTemplate(row)) {
         return true;
       }
       return memberDataLookupIdSet.has(memberId) || (requesterUserId && ownerUserId === requesterUserId);
@@ -631,14 +668,11 @@ Deno.serve(async (req) => {
   }
 
   function pickNoPlanCoverUrlFromRows(rows: Array<Record<string, unknown>>): string | null {
-    const ownerSet = new Set(trainerOwnerIds);
     const noPlanRows = rows
       .filter((row) => rowIsNoPlanCoverTemplate(row))
       .sort((left, right) => rowCreatedAtMs(right) - rowCreatedAtMs(left));
-    const scoped = noPlanRows.filter((row) => ownerSet.has(String((row as { owner_user_id?: string }).owner_user_id ?? "").trim()));
-    const pool = scoped.length ? scoped : noPlanRows;
-    const withImage = pool.find((row) => String((row as { image_url?: string }).image_url ?? "").trim());
-    return String((withImage ?? pool[0])?.image_url ?? "").trim() || null;
+    const withImage = noPlanRows.find((row) => String((row as { image_url?: string }).image_url ?? "").trim());
+    return String((withImage ?? noPlanRows[0])?.image_url ?? "").trim() || null;
   }
 
   const noPlanCoverByOwner = new Map<string, string>();
@@ -657,7 +691,6 @@ Deno.serve(async (req) => {
       .select("*")
       .eq("member_id", "__template__")
       .ilike("title", NO_PLAN_DAY_TEMPLATE_TITLE)
-      .in("owner_user_id", ownerIdsForCoverLookup)
       .not("image_url", "is", null)
       .order("created_at", { ascending: false });
     if (coverRowsError) {
@@ -732,7 +765,7 @@ Deno.serve(async (req) => {
     return {
       ...row,
       assigned_trainer_name: trainerNameByOwnerId.get(ownerUserId) ?? "",
-      no_plan_day_cover_url: ownerUserId ? (noPlanCoverByOwner.get(ownerUserId) ?? "") : "",
+      no_plan_day_cover_url: noPlanDayCoverImageUrl ?? (ownerUserId ? (noPlanCoverByOwner.get(ownerUserId) ?? "") : ""),
     };
   });
 

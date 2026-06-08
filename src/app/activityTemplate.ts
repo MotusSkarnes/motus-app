@@ -72,6 +72,46 @@ export function isPeriodPlanActivityTemplate(
   return program.memberId === "__template__" && (kind === "group" || kind === "activity");
 }
 
+/** Gruppetrening-, aktivitet- og «Ingen plan i dag»-maler er felles på tvers av PT-er. */
+export function isSharedOrgActivityTemplate(
+  program: Pick<TrainingProgram, "memberId" | "title" | "notes" | "activityTemplateKind">,
+): boolean {
+  if (program.memberId !== "__template__") return false;
+  if (isNoPlanDayCoverProgram(program)) return true;
+  const kind = parseActivityTemplateKind(program);
+  return kind === "group" || kind === "activity";
+}
+
+export function sharedOrgActivityTemplateDedupeKey(
+  program: Pick<TrainingProgram, "memberId" | "title" | "notes" | "activityTemplateKind">,
+): string | null {
+  if (!isSharedOrgActivityTemplate(program)) return null;
+  if (isNoPlanDayCoverProgram(program)) {
+    return `no-plan:${NO_PLAN_DAY_TEMPLATE_TITLE.toLowerCase()}`;
+  }
+  const kind = parseActivityTemplateKind(program);
+  const title = program.title.trim().toLowerCase();
+  return kind && title ? `${kind}:${title}` : null;
+}
+
+/** Behold nyeste rad per felles mal (samme type + tittel). */
+export function dedupeSharedOrgActivityTemplates(programs: TrainingProgram[]): TrainingProgram[] {
+  const sharedByKey = new Map<string, TrainingProgram>();
+  const other: TrainingProgram[] = [];
+  for (const program of programs) {
+    const key = sharedOrgActivityTemplateDedupeKey(program);
+    if (!key) {
+      other.push(program);
+      continue;
+    }
+    const existing = sharedByKey.get(key);
+    if (!existing || programCreatedAtSortMs(program) > programCreatedAtSortMs(existing)) {
+      sharedByKey.set(key, program);
+    }
+  }
+  return [...other, ...Array.from(sharedByKey.values())];
+}
+
 /** «Ingen plan i dag»-mal — gjenkjennes via notes-markør eller fast tittel (eldre rader uten markør). */
 export function isNoPlanDayCoverProgram(
   program: Pick<TrainingProgram, "memberId" | "title" | "notes" | "activityTemplateKind">,
@@ -113,17 +153,9 @@ function pickNewestNoPlanCoverProgram(programs: TrainingProgram[]): TrainingProg
 
 export function findNoPlanDayCoverTemplate(
   programs: TrainingProgram[],
-  ownerUserId?: string | null,
+  _ownerUserId?: string | null,
 ): TrainingProgram | null {
   const candidates = programs.filter((program) => isNoPlanDayCoverProgram(program));
-  if (!candidates.length) return null;
-  const trimmedOwner = ownerUserId?.trim();
-  if (trimmedOwner) {
-    const scoped = candidates.filter((program) => program.ownerUserId?.trim() === trimmedOwner);
-    const scopedPick = pickNewestNoPlanCoverProgram(scoped);
-    if (scopedPick?.imageUrl?.trim()) return scopedPick;
-    return pickNewestNoPlanCoverProgram(candidates);
-  }
   return pickNewestNoPlanCoverProgram(candidates);
 }
 

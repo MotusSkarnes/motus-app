@@ -13,7 +13,13 @@ import type {
   WorkoutExerciseResult,
   WorkoutLog,
 } from "../app/types";
-import { enrichProgramWithActivityTemplateKind, findNoPlanDayCoverTemplate } from "../app/activityTemplate";
+import {
+  enrichProgramWithActivityTemplateKind,
+  findNoPlanDayCoverTemplate,
+  NO_PLAN_DAY_TEMPLATE_TITLE,
+  parseActivityTemplateKind,
+  type ActivityTemplateKind,
+} from "../app/activityTemplate";
 import { formatDateDdMmYyyy, formatDateTimeDdMmYyyy, normalizeStoredLogDate } from "../app/dateFormat";
 import { normalizeMemberGender } from "../app/memberGender";
 import { dedupePeriodPlansById } from "../app/periodPlanMerge";
@@ -859,16 +865,33 @@ async function persistProgramDirectTrainer(
   const isUuid = (value: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
   let programId = isUuid(normalizedProgramId) ? normalizedProgramId : "";
   if (!programId && memberId === "__template__" && input.title.trim()) {
-    const { data: existingTemplate } = await supabaseClient
+    const saveKind =
+      parseActivityTemplateKind({ notes: input.notes }) ??
+      (input.title.trim() === NO_PLAN_DAY_TEMPLATE_TITLE ? ("no-plan" as const) : null);
+    const sharedOrgTemplateSave =
+      saveKind === "group" || saveKind === "activity" || saveKind === "no-plan";
+    let lookupQuery = supabaseClient
       .from("training_programs")
-      .select("id")
+      .select("id, notes, created_at")
       .eq("member_id", "__template__")
-      .eq("owner_user_id", ownerUserId)
       .eq("title", input.title.trim())
       .order("created_at", { ascending: false })
-      .limit(1)
-      .maybeSingle();
-    const existingId = String((existingTemplate as { id?: string } | null)?.id ?? "").trim();
+      .limit(20);
+    if (!sharedOrgTemplateSave) {
+      lookupQuery = lookupQuery.eq("owner_user_id", ownerUserId);
+    }
+    const { data: existingRows } = await lookupQuery;
+    const resolveRowKind = (notes: string, title: string): ActivityTemplateKind | null => {
+      const parsed = parseActivityTemplateKind({ notes });
+      if (parsed) return parsed;
+      return title.trim() === NO_PLAN_DAY_TEMPLATE_TITLE ? "no-plan" : null;
+    };
+    const matchingRow = (existingRows ?? []).find((row) => {
+      if (!sharedOrgTemplateSave || !saveKind) return true;
+      const rowNotes = String((row as { notes?: string }).notes ?? "");
+      return resolveRowKind(rowNotes, input.title) === saveKind;
+    });
+    const existingId = String((matchingRow as { id?: string } | undefined)?.id ?? "").trim();
     if (isUuid(existingId)) programId = existingId;
   }
   if (!programId) programId = crypto.randomUUID();
