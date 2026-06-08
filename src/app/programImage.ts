@@ -177,16 +177,51 @@ export function resolveProgramCoverDisplayUrl(imageUrl: string): string {
 export function resolveProgramImageSrc(
   program: Pick<TrainingProgram, "imageUrl" | "title">,
   coverExercise?: Pick<Exercise, "id" | "imageUrl" | "category" | "group" | "name"> | null,
-  options?: { subTab?: TrainingSubTab },
+  options?: { subTab?: TrainingSubTab; preferDefaultCover?: boolean },
 ): string | null {
   const custom = program.imageUrl?.trim();
   if (custom) return resolveProgramCoverDisplayUrl(custom);
   const byTitle = program.title ? resolveProgramCoverImageByTitle(program.title) : null;
   if (byTitle) return byTitle;
+  const defaultCover =
+    options?.subTab === "strength"
+      ? STRENGTH_TRAINING_COVER_IMAGE
+      : options?.subTab === "conditioning" || options?.subTab === "group"
+        ? CONDITIONING_TRAINING_COVER_IMAGE
+        : options?.subTab === "mobility" || options?.subTab === "rehab" || options?.subTab === "activity"
+          ? MOBILITY_TRAINING_COVER_IMAGE
+          : null;
+  if (options?.preferDefaultCover && defaultCover) return defaultCover;
   if (coverExercise) return resolveExerciseImageSrc(coverExercise);
-  if (options?.subTab === "strength") return STRENGTH_TRAINING_COVER_IMAGE;
-  if (options?.subTab === "conditioning" || options?.subTab === "group") return CONDITIONING_TRAINING_COVER_IMAGE;
-  if (options?.subTab === "mobility" || options?.subTab === "rehab" || options?.subTab === "activity") {
+  if (defaultCover) return defaultCover;
+  return null;
+}
+
+export function resolveProgramDefaultCoverImage(
+  program: Pick<TrainingProgram, "imageUrl" | "title">,
+  options?: { subTab?: TrainingSubTab },
+): string | null {
+  return resolveProgramImageSrc(program, null, {
+    ...options,
+    preferDefaultCover: true,
+  });
+}
+
+function resolveProgramImageSrcForPeriodPlan(
+  program: Pick<TrainingProgram, "imageUrl" | "title">,
+  coverExercise?: Pick<Exercise, "id" | "imageUrl" | "category" | "group" | "name"> | null,
+  options?: { subTab?: TrainingSubTab },
+): string | null {
+  return resolveProgramImageSrc(program, coverExercise, {
+    ...options,
+    preferDefaultCover: true,
+  });
+}
+
+export function programSubTabDefaultCoverImage(subTab?: TrainingSubTab): string | null {
+  if (subTab === "strength") return STRENGTH_TRAINING_COVER_IMAGE;
+  if (subTab === "conditioning" || subTab === "group") return CONDITIONING_TRAINING_COVER_IMAGE;
+  if (subTab === "mobility" || subTab === "rehab" || subTab === "activity") {
     return MOBILITY_TRAINING_COVER_IMAGE;
   }
   return null;
@@ -256,7 +291,7 @@ export function resolvePeriodPlanEntryCoverImage(
   const program = findProgramForPeriodPlanEntry(entry, options.memberPrograms ?? []);
   if (program) {
     const coverExercise = resolveFirstProgramCoverExercise(program, options.exercises ?? []);
-    return resolveProgramImageSrc(program, coverExercise, {
+    return resolveProgramImageSrcForPeriodPlan(program, coverExercise, {
       subTab: getTrainingProgramSubTab(program, options.exerciseCategoryById ?? new Map(), options.exercises ?? []),
     });
   }

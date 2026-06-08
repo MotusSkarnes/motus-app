@@ -110,6 +110,12 @@ describe("resolveProgramImageSrc", () => {
     expect(resolveProgramImageSrc(program(), null, { subTab: "strength" })).toBe(STRENGTH_TRAINING_COVER_IMAGE);
   });
 
+  it("can prefer strength default cover over first exercise", () => {
+    expect(resolveProgramImageSrc(program(), strengthExercise, { subTab: "strength", preferDefaultCover: true })).toBe(
+      STRENGTH_TRAINING_COVER_IMAGE,
+    );
+  });
+
   it("uses runner strength cover for styrke løper-programmer", () => {
     expect(
       resolveProgramImageSrc(program(undefined, SUB60_PROGRAM_TITLES.strength), strengthExercise, {
@@ -172,6 +178,36 @@ describe("resolvePeriodPlanEntryCoverImage", () => {
     expect(resolvePeriodPlanEntryCoverImage("Gruppetime: Testgruppetime", { activityTemplates: [] })).toBe(
       CONDITIONING_TRAINING_COVER_IMAGE,
     );
+  });
+
+  it("uses program category cover instead of first exercise image for scheduled programs", () => {
+    const scheduledProgram: TrainingProgram = {
+      id: "program-1",
+      memberId: "member-1",
+      title: "Helkropp",
+      goal: "",
+      notes: "",
+      createdAt: "",
+      exercises: [
+        {
+          id: "row-1",
+          exerciseId: "e1",
+          exerciseName: "Benkpress",
+          sets: "3",
+          reps: "10",
+          weight: "",
+          restSeconds: "60",
+          notes: "",
+        } satisfies ProgramExercise,
+      ],
+    };
+
+    expect(
+      resolvePeriodPlanEntryCoverImage("Helkropp", {
+        memberPrograms: [scheduledProgram],
+        exercises: [strengthExercise],
+      }),
+    ).toBe(STRENGTH_TRAINING_COVER_IMAGE);
   });
 });
 
