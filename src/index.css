@@ -12923,7 +12923,19 @@ html:has(.motus-trainer-app) {
 }
 
 .motus-inspo-quote--bento {
-  min-height: 17.5rem;
+  min-height: 5.75rem;
+  padding: 14px 16px;
+  border-radius: 14px;
+}
+
+.motus-inspo-quote--bento .motus-inspo-quote-mark {
+  width: 24px;
+  height: 24px;
+}
+
+.motus-inspo-quote--bento .motus-inspo-quote-flame {
+  width: 18px;
+  height: 18px;
 }
 
 .motus-inspo-inspire-stack {
