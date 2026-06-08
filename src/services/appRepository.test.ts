@@ -12,6 +12,7 @@ import {
   removeCompletedPlanEntryLogInState,
   deleteWorkoutLogInState,
   removeWorkoutLogResultInState,
+  replaceWorkoutExerciseGroupInState,
   setWorkoutLogResultsInState,
   updateActivityWorkoutInState,
   startCustomWorkoutInState,
@@ -488,6 +489,109 @@ describe("appRepository workout log guards", () => {
       groupOrder.push(id);
     });
     expect(groupOrder).toEqual(["pex-b", "pex-a", "pex-c"]);
+  });
+
+  it("resets swapped strength exercise weight to 0 when member has no history for the replacement", () => {
+    const state = createBaseState();
+    state.exercises = [
+      { id: "ex-bench", name: "Benkpress", category: "Styrke", group: "Bryst", level: "Nybegynner", description: "", imageUrl: "" },
+      { id: "ex-row", name: "Sittende roing", category: "Styrke", group: "Rygg", level: "Nybegynner", description: "", imageUrl: "" },
+    ];
+    state.logs = [
+      {
+        id: "other-member-log",
+        memberId: "member-2",
+        programTitle: "Styrke A",
+        date: "02.06.2026",
+        status: "Fullført",
+        note: "",
+        results: [{ exerciseName: "Sittende roing", completed: true, performedWeight: "90", performedReps: "5" }],
+      },
+      {
+        id: "log-1",
+        memberId: "member-1",
+        programTitle: "Styrke A",
+        date: "01.06.2026",
+        status: "Fullført",
+        note: "",
+        results: [{ exerciseName: "Benkpress", completed: true, performedWeight: "60", performedReps: "8" }],
+      },
+    ];
+    state.workoutMode = {
+      programId: "program-1",
+      note: "",
+      results: [
+        {
+          exerciseId: "pex-a-set-1",
+          programExerciseId: "pex-a",
+          setNumber: 1,
+          exerciseName: "Benkpress",
+          plannedSets: "1",
+          plannedReps: "8",
+          plannedWeight: "60",
+          performedWeight: "60",
+          performedReps: "8",
+          completed: false,
+        },
+      ],
+    };
+
+    const next = replaceWorkoutExerciseGroupInState(state, {
+      programExerciseId: "pex-a",
+      nextExerciseName: "Sittende roing",
+    });
+
+    expect(next.workoutMode?.results[0]?.exerciseName).toBe("Sittende roing");
+    expect(next.workoutMode?.results[0]?.plannedWeight).toBe("0");
+    expect(next.workoutMode?.results[0]?.performedWeight).toBe("0");
+  });
+
+  it("uses replacement exercise history when swapping to a strength exercise member has done before", () => {
+    const state = createBaseState();
+    state.exercises = [
+      { id: "ex-bench", name: "Benkpress", category: "Styrke", group: "Bryst", level: "Nybegynner", description: "", imageUrl: "" },
+      { id: "ex-row", name: "Sittende roing", category: "Styrke", group: "Rygg", level: "Nybegynner", description: "", imageUrl: "" },
+    ];
+    state.logs = [
+      {
+        id: "log-1",
+        memberId: "member-1",
+        programTitle: "Styrke A",
+        date: "01.06.2026",
+        status: "Fullført",
+        note: "",
+        results: [
+          { exerciseName: "Sittende roing", completed: true, performedWeight: "37.5", performedReps: "10" },
+          { exerciseName: "Sittende roing", completed: true, performedWeight: "40", performedReps: "8" },
+        ],
+      },
+    ];
+    state.workoutMode = {
+      programId: "program-1",
+      note: "",
+      results: [
+        {
+          exerciseId: "pex-a-set-1",
+          programExerciseId: "pex-a",
+          setNumber: 1,
+          exerciseName: "Benkpress",
+          plannedSets: "1",
+          plannedReps: "8",
+          plannedWeight: "60",
+          performedWeight: "60",
+          performedReps: "8",
+          completed: false,
+        },
+      ],
+    };
+
+    const next = replaceWorkoutExerciseGroupInState(state, {
+      programExerciseId: "pex-a",
+      nextExerciseName: "Sittende roing",
+    });
+
+    expect(next.workoutMode?.results[0]?.plannedWeight).toBe("40");
+    expect(next.workoutMode?.results[0]?.performedWeight).toBe("40");
   });
 
   it("keeps an already-deferred exercise as next when deferring another exercise", () => {

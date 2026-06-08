@@ -24,6 +24,7 @@ import {
   formatWorkoutPlanLabelFromProgramExercise,
   lookupFrozenWorkoutPlanLabel,
 } from "../app/programExercisePresentation";
+import { findMaxPerformedLoadFromLastExerciseSession } from "../app/suggestedWorkoutWeight";
 import { uid } from "../app/storage";
 import { toggleReactionInState, type ChatReactionActor, type ChatReactionEmoji } from "../app/chatReactions";
 import type {
@@ -770,6 +771,15 @@ export function replaceWorkoutExerciseGroupInState(state: AppState, input: Repla
   const replacementExercise = state.exercises.find(
     (exercise) => exercise.name.trim().toLowerCase() === normalizedName.toLowerCase(),
   );
+  const isKgBasedReplacement = !replacementExercise || !isHoldBasedExerciseCategory(replacementExercise.category);
+  const historyMemberId =
+    state.workoutMode.memberId?.trim() || state.selectedMemberId?.trim() || state.memberViewId?.trim() || "";
+  const historyLogs = historyMemberId
+    ? state.logs.filter((log) => log.memberId.trim() === historyMemberId)
+    : state.logs;
+  const suggestedWeight = isKgBasedReplacement
+    ? findMaxPerformedLoadFromLastExerciseSession(historyLogs, normalizedName).trim() || "0"
+    : "";
   return {
     ...state,
     workoutMode: {
@@ -779,6 +789,14 @@ export function replaceWorkoutExerciseGroupInState(state: AppState, input: Repla
           ? {
               ...result,
               exerciseName: normalizedName,
+              ...(isKgBasedReplacement
+                ? {
+                    plannedWeight: suggestedWeight,
+                    performedWeight: suggestedWeight,
+                    plannedWeightUnit: "kg" as const,
+                    performedLoadUnit: "kg" as const,
+                  }
+                : {}),
               ...(replacementExercise
                 ? { exerciseCategory: replacementExercise.category, exerciseEquipment: replacementExercise.equipment }
                 : {}),
@@ -1329,7 +1347,7 @@ export function logIntervalWorkoutInState(state: AppState, input: LogIntervalWor
 export function logCompletedPlanEntryInState(state: AppState, input: LogCompletedPlanEntryInput): AppState {
   const memberId = input.memberId.trim();
   const programTitle = input.programTitle.trim();
-  const date = resolveWorkoutLogDateTime(input.date);
+  const date = input.date.trim() ? normalizeStoredLogDate(input.date) : normalizeStoredLogDate(resolveWorkoutLogDateTime());
   if (!memberId || !programTitle) return state;
   const normalizedTitle = programTitle.toLowerCase();
   const duplicateExists = state.logs.some(
