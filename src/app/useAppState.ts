@@ -1097,10 +1097,78 @@ export function useAppState() {
 
       const isTrainerSession = sessionRole === "trainer";
       const isMemberLikeSession = Boolean(sessionUser) && !isTrainerSession;
+      function applyEarlyMemberHydrate(hydratedMember: HydratedMemberData | null, sessionEmail: string) {
+        if (!hydratedMember || !sessionEmail || cancelled) return;
+        const edgeMembers = hydratedMember.members ?? [];
+        const edgePrograms = hydratedMember.programs ?? [];
+        const edgeLogs = hydratedMember.logs ?? [];
+        const periodPlanRows = hydratedMember.periodPlanRows ?? [];
+        if (!edgeMembers.length && !edgePrograms.length && !edgeLogs.length && !periodPlanRows.length) return;
+
+        setRemoteMemberPeriodPlanRows(periodPlanRows);
+        writeCachedMemberPeriodPlanRows(periodPlanRows);
+        syncMemberNoPlanCoverFromHydrate(hydratedMember);
+
+        let applied = false;
+        setAppState((prev) => {
+          const prevStripped = stripDemoSeedCatalog(prev);
+          if (prevStripped.currentUser?.role !== "member") return prev;
+          applied = true;
+          const next = { ...prevStripped };
+          const localForEmail = filterMembersForSessionEmail(prevStripped.members, sessionEmail);
+          const remoteForEmail = filterMembersForSessionEmail(edgeMembers, sessionEmail);
+          const sessionMembers = remoteForEmail.length > 0 ? remoteForEmail : (edgeMembers.length > 0 ? edgeMembers : localForEmail);
+          if (sessionMembers.length > 0) {
+            next.members = sessionMembers.map((member) => enrichMemberWithBestProfile(member, sessionMembers));
+          }
+          const memberIds = memberIdsForSessionEmail(next.members, sessionEmail);
+          const authUserId = String(prevStripped.currentUser.id ?? sessionUser?.id ?? "").trim();
+          [prevStripped.currentUser.memberId, authUserId, authUserId ? `auth-${authUserId}` : "", sessionEmail]
+            .map((id) => String(id ?? "").trim())
+            .filter(Boolean)
+            .forEach((id) => memberIds.add(id));
+          if (edgePrograms.length > 0) {
+            let programs = filterProgramsHiddenFromCloudViews(edgePrograms);
+            const memberOwnerUserId = next.members.map((member) => member.ownerUserId?.trim() ?? "").find(Boolean) ?? "";
+            const noPlanCoverUrl =
+              hydratedMember.noPlanDayCoverImageUrl?.trim() ||
+              findNoPlanDayCoverTemplate(programs, memberOwnerUserId || undefined)?.imageUrl?.trim() ||
+              "";
+            if (noPlanCoverUrl) {
+              programs = ensureNoPlanCoverProgramInList(programs, noPlanCoverUrl, memberOwnerUserId || undefined);
+            }
+            next.programs = mergeMemberProgramsWithLocalEphemeral(
+              programs,
+              prevStripped.programs,
+              memberIds,
+              prevStripped.workoutMode?.programId,
+            );
+          }
+          if (edgeLogs.length > 0) {
+            const remoteForMember = filterLogsForMembers(edgeLogs, memberIds);
+            const localForMember = filterLogsForMembers(prev.logs, memberIds);
+            const otherLogs = prev.logs.filter((log) => !memberIds.has(log.memberId.trim()));
+            next.logs = [...mergeMemberWorkoutLogsWithRemote(remoteForMember, localForMember), ...otherLogs];
+          }
+          next.members = filterMembersForSessionEmail(next.members, sessionEmail);
+          if (next.members.length === 1) {
+            next.memberViewId = next.members[0]!.id;
+            next.selectedMemberId = next.members[0]!.id;
+          }
+          next.programs = normalizeProgramsLegacyCooldownNames(next.programs);
+          return syncExercisesWithPrograms(stripDemoSeedCatalog(next));
+        });
+        if (applied) setMemberRemoteHydrated(true);
+      }
       const hydratedTrainer = isTrainerSession && ownerUserId ? await fetchHydratedTrainerData(ownerUserId) : null;
       const [hydratedMember, directMemberPrograms, directMemberLogs, directTrainerPrograms, directMemberMembers] =
         await Promise.all([
-          isMemberLikeSession ? fetchHydratedMemberData() : Promise.resolve(null),
+          isMemberLikeSession
+            ? fetchHydratedMemberData().then((data) => {
+                applyEarlyMemberHydrate(data, sessionUser?.email?.trim().toLowerCase() ?? "");
+                return data;
+              })
+            : Promise.resolve(null),
           isMemberLikeSession ? fetchProgramsFromSupabase() : Promise.resolve(null),
           isMemberLikeSession ? fetchLogsFromSupabase() : Promise.resolve(null),
           isTrainerSession ? fetchProgramsFromSupabase() : Promise.resolve(null),
