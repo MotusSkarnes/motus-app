@@ -2483,6 +2483,14 @@ button.motus-progress-status-banner {
   color: rgba(255, 255, 255, 0.68);
 }
 
+.motus-progress-level-summary-note {
+  margin-top: 0.25rem;
+  max-width: 28rem;
+  font-size: 0.72rem;
+  line-height: 1.35;
+  color: rgba(255, 255, 255, 0.66);
+}
+
 .motus-progress-level-summary-track {
   margin-top: 0.375rem;
   height: 0.25rem;

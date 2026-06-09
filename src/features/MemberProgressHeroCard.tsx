@@ -1,8 +1,7 @@
 import { useEffect, useId, useRef, useState, type ReactNode } from "react";
-import { ChevronDown, Shield, Target } from "lucide-react";
+import { Shield, Target } from "lucide-react";
 import { MOTUS } from "../app/data";
 import type { MemberProgressScores } from "../app/memberMomentumScores";
-import { getXpLevelLabel } from "../app/memberMomentumScores";
 
 type MemberProgressHeroCardProps = {
   scores: MemberProgressScores;
@@ -192,7 +191,7 @@ function ConfettiBurst({ active }: { active: boolean }) {
   );
 }
 
-function XpExplainerPanel({
+function _XpExplainerPanel({
   id,
   totalXp,
   breakdown,
@@ -286,15 +285,25 @@ function XpExplainerPanel({
 
 export function MemberProgressHeroCard({ scores, memberFirstName, xpBreakdown }: MemberProgressHeroCardProps) {
   const { momentum, consistency, weekly, recovery, xp } = scores;
-  const [isXpInfoOpen, setIsXpInfoOpen] = useState(false);
   const animatedMomentum = useCountUpNumber(momentum.pct);
-  const animatedXpInLevel = useCountUpNumber(xp.xpInLevel, 1100);
   const animatedConsistency = useCountUpNumber(consistency.pct);
   const animatedRecovery = useCountUpNumber(recovery.pct ?? 0);
   const animatedWeeklyScore = useCountUpNumber(weekly.score);
-
-  const nextLevel = xp.level + 1;
-  const nextLevelLabel = getXpLevelLabel(nextLevel);
+  const completedSessions = xpBreakdown?.completedSessions ?? 0;
+  const rhythmWeeks = xpBreakdown?.streakWeeks ?? 0;
+  const rhythmTitle = rhythmWeeks >= 4 ? "Status: God rytme" : completedSessions > 0 ? "Status: I gang" : "Status: Klar for start";
+  const rhythmSubline =
+    rhythmWeeks > 0
+      ? `${rhythmWeeks} ${rhythmWeeks === 1 ? "uke" : "uker"} med aktivitet. Små økter over tid bygger formen.`
+      : completedSessions > 0
+        ? "Du har startet. Jevn rytme over tid bygger formen."
+        : "Start rolig og bygg rytmen uke for uke.";
+  const momentumSubline =
+    momentum.pct >= 100
+      ? "Du holder en god treningsrytme."
+      : momentum.pct > 0
+        ? "Du er i gang. Jevn innsats over tid gir fremgang."
+        : "Start rolig og bygg flyt med neste økt.";
 
   const milestoneRef = useRef<{ level: number; momentum: number }>({ level: xp.level, momentum: momentum.pct });
   const [confettiActive, setConfettiActive] = useState(false);
@@ -334,7 +343,7 @@ export function MemberProgressHeroCard({ scores, memberFirstName, xpBreakdown }:
                 <span className="motus-progress-momentum-hero-percent">%</span>
               </p>
             </div>
-            <p className="motus-progress-momentum-hero-subline">{momentum.subline}</p>
+            <p className="motus-progress-momentum-hero-subline">{momentumSubline}</p>
           </div>
 
           <MomentumRing pct={momentum.pct} animatedPct={animatedMomentum} />
@@ -347,48 +356,21 @@ export function MemberProgressHeroCard({ scores, memberFirstName, xpBreakdown }:
             </span>
             <div className="min-w-0 flex-1">
               <p className="motus-progress-level-summary-title">
-                Level {xp.level}: {xp.levelLabel}
+                {rhythmTitle}
               </p>
               <p className="motus-progress-level-summary-xp">
-                <span className="tabular-nums">{animatedXpInLevel.toLocaleString("nb-NO")}</span>
-                {" / "}
-                <span className="tabular-nums">{xp.xpForNextLevel.toLocaleString("nb-NO")}</span>
-                {" XP til neste nivå"}
+                <span className="tabular-nums">{completedSessions.toLocaleString("nb-NO")}</span>
+                {" "}
+                {completedSessions === 1 ? "fullført økt" : "fullførte økter"}
               </p>
+              <p className="motus-progress-level-summary-note">{rhythmSubline}</p>
               <div className="motus-progress-level-summary-track">
-                <div className="motus-progress-level-summary-fill" style={{ width: `${xp.pctToNext}%` }} />
+                <div className="motus-progress-level-summary-fill" style={{ width: `${Math.max(8, Math.min(100, momentum.pct))}%` }} />
               </div>
             </div>
           </div>
-          <button
-            type="button"
-            onClick={() => setIsXpInfoOpen((open) => !open)}
-            className="motus-progress-level-summary-info"
-            aria-expanded={isXpInfoOpen}
-            aria-controls="motus-progress-xp-explainer"
-          >
-            XP
-            <ChevronDown
-              className={`h-3 w-3 transition-transform ${isXpInfoOpen ? "rotate-180" : ""}`}
-              strokeWidth={2.4}
-              aria-hidden
-            />
-          </button>
         </div>
       </div>
-
-      {isXpInfoOpen ? (
-        <XpExplainerPanel
-          id="motus-progress-xp-explainer"
-          totalXp={xp.totalXp}
-          breakdown={xpBreakdown}
-          xpInLevel={xp.xpInLevel}
-          xpForNextLevel={xp.xpForNextLevel}
-          nextLevelLabel={nextLevelLabel}
-          currentLevel={xp.level}
-          currentLevelLabel={xp.levelLabel}
-        />
-      ) : null}
 
       <div className="motus-progress-status-grid">
         <h3 className="motus-progress-status-grid-title">Din status</h3>
