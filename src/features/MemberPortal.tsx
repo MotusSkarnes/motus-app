@@ -41,6 +41,7 @@ import {
   findNoPlanDayCoverTemplate,
   listActivityTemplates,
   NO_PLAN_DAY_TEMPLATE_TITLE,
+  parseActivityTemplateKind,
 } from "../app/activityTemplate";
 import { imageObjectPositionFromSrc, programCustomCoverImageStyle } from "../app/imageFocalPoint";
 import {
@@ -4826,6 +4827,12 @@ export function MemberPortal(props: MemberPortalProps) {
       const coverTemplate = todayActivityTemplate ?? noPlanDayCoverTemplate;
       const templateImageUrl = coverTemplate?.imageUrl?.trim();
       if (templateImageUrl && isUploadedProgramCoverSrc(templateImageUrl)) {
+        if (coverTemplate && parseActivityTemplateKind(coverTemplate) === "activity") {
+          return {
+            style: { objectPosition: imageObjectPositionFromSrc(templateImageUrl) },
+            usesPhotoStyle: false,
+          };
+        }
         return {
           style: programCustomCoverImageStyle(templateImageUrl),
           usesPhotoStyle: programCoverUsesPhotoStyle(coverTemplate!, templateImageUrl),
