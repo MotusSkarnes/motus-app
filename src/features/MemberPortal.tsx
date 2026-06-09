@@ -1163,10 +1163,14 @@ export function MemberPortal(props: MemberPortalProps) {
   const [isSendingMemberMessage, setIsSendingMemberMessage] = useState(false);
   const [trainingSection, setTrainingSection] = useState<"today" | "programs" | "custom" | "period" | "history">("today");
   const previousMemberTabRef = useRef(memberTab);
+  const pendingOpenPeriodPlanRef = useRef(false);
   useEffect(() => {
     const previous = previousMemberTabRef.current;
     if (memberTab === "programs" && previous !== "programs") {
-      setTrainingSection("today");
+      const storedOpenPeriodPlan =
+        typeof window !== "undefined" && window.sessionStorage.getItem("motus.member.openPeriodPlanOnPrograms") === "1";
+      setTrainingSection(pendingOpenPeriodPlanRef.current || storedOpenPeriodPlan ? "period" : "today");
+      pendingOpenPeriodPlanRef.current = false;
     }
     previousMemberTabRef.current = memberTab;
   }, [memberTab]);
@@ -3726,6 +3730,7 @@ export function MemberPortal(props: MemberPortalProps) {
   }, [memberTab]);
 
   function openProgramsWithPeriodPlan() {
+    pendingOpenPeriodPlanRef.current = true;
     setTrainingSection("period");
     setShowPeriodPlanPanel(true);
     setMemberTab("programs");
