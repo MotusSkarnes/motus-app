@@ -52,6 +52,12 @@ export function groupWorkoutLogTitle(className: string): string {
   return `Gruppetime: ${trimmed}`;
 }
 
+export function activityPeriodPlanEntryTitle(entry: string): string {
+  const trimmed = entry.trim();
+  if (!trimmed.toLowerCase().startsWith("aktivitet:")) return trimmed;
+  return trimmed.slice("aktivitet:".length).trim() || trimmed;
+}
+
 function normalizePlanEntryLabel(value: string): string {
   return value
     .trim()
@@ -190,7 +196,7 @@ export function getPeriodPlanDayListLabel(entry: string, action: PeriodPlanEntry
   if (!trimmed) return "Ingen plan";
   if (action.kind === "log-group") return groupWorkoutLogTitle(action.className);
   if (action.kind === "start-program") return action.program.title.trim() || "Økt planlagt";
-  if (action.kind === "log-generic") return "Planlagt aktivitet";
+  if (action.kind === "log-generic") return activityPeriodPlanEntryTitle(action.title) || "Planlagt aktivitet";
   const normalized = trimmed.toLowerCase();
   if (normalized.includes("aktiv restitusjon")) return "Aktiv restitusjon";
   if (normalized.includes("hvile")) return "Hvile";

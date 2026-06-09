@@ -21,6 +21,7 @@ type PeriodPlanActiveViewProps = {
   resolveEntryDate: (plan: PeriodSchedulePlan, weekNumber: number, day: WeekdayPlanKey) => string | null;
   memberPrograms: TrainingProgram[];
   activityTemplates?: TrainingProgram[];
+  noPlanDayCoverSrc?: string | null;
   actionStatus: string | null;
   isEntryCompleted: (planId: string, weekNumber: number, day: WeekdayPlanKey) => boolean;
   onToggleCompleted: (input: {
@@ -54,6 +55,7 @@ export function PeriodPlanActiveView({
   resolveEntryDate,
   memberPrograms,
   activityTemplates,
+  noPlanDayCoverSrc,
   actionStatus,
   isEntryCompleted,
   onToggleCompleted,
@@ -105,6 +107,7 @@ export function PeriodPlanActiveView({
           swapsByPlan={swapsByPlan}
           memberPrograms={memberPrograms}
           activityTemplates={activityTemplates}
+          noPlanDayCoverSrc={noPlanDayCoverSrc}
           actionStatus={actionStatus}
           isEntryCompleted={isEntryCompleted}
           onToggleCompleted={onToggleCompleted}

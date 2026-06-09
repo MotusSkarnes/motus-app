@@ -4741,6 +4741,10 @@ export function MemberPortal(props: MemberPortalProps) {
     }
     return null;
   }, [cachedHomeWorkout, memberNoPlanCoverImageUrl, memberRemoteHydrated]);
+  const periodPlanNoPlanCoverSrc = useMemo(
+    () => resolveNoPlanDayCoverImage(programs, cachedNoPlanCoverFallback, memberPtOwnerUserId || undefined),
+    [programs, cachedNoPlanCoverFallback, memberPtOwnerUserId],
+  );
   const homeWorkoutCoverSrc = useMemo(() => {
     if (isNoPlanHomeDay) {
       const directUrl =
@@ -7357,6 +7361,7 @@ export function MemberPortal(props: MemberPortalProps) {
                         resolveEntryDate={resolvePeriodPlanEntryDate}
                               memberPrograms={memberProgramsForPeriodPlan}
                               activityTemplates={activityTemplatesForPeriodPlan}
+                              noPlanDayCoverSrc={periodPlanNoPlanCoverSrc}
                               actionStatus={periodPlanActionStatus}
                               isEntryCompleted={isPeriodPlanEntryCompleted}
                               onToggleCompleted={togglePeriodPlanEntryCompleted}

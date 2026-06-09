@@ -16,7 +16,7 @@ import {
   type PeriodPlanSwapsByPlan,
 } from "../app/periodPlanSwaps";
 import { listActivityTemplates } from "../app/activityTemplate";
-import { resolvePeriodPlanEntryCoverImage } from "../app/programImage";
+import { resolveNoPlanDayCoverImage, resolvePeriodPlanEntryCoverImage } from "../app/programImage";
 import { buildExerciseCategoryById } from "../app/trainingProgramKind";
 import { GradientButton, OutlineButton } from "../app/ui";
 import type { Exercise, PeriodSchedulePlan, TrainingProgram, WeekdayPlanKey, WeeklySchedulePlan } from "../app/types";
@@ -47,6 +47,7 @@ type PeriodPlanWeekViewProps = {
   swapsByPlan: PeriodPlanSwapsByPlan;
   memberPrograms: TrainingProgram[];
   activityTemplates?: TrainingProgram[];
+  noPlanDayCoverSrc?: string | null;
   actionStatus: string | null;
   isEntryCompleted: (planId: string, weekNumber: number, day: WeekdayPlanKey) => boolean;
   onToggleCompleted: (input: {
@@ -80,6 +81,7 @@ export function PeriodPlanWeekView({
   swapsByPlan,
   memberPrograms,
   activityTemplates = [],
+  noPlanDayCoverSrc,
   actionStatus,
   isEntryCompleted,
   onToggleCompleted,
@@ -199,6 +201,14 @@ export function PeriodPlanWeekView({
           const entryAction = visibleEntry ? resolvePeriodPlanEntryAction(visibleEntry, memberPrograms) : { kind: "none" as const };
           const previewProgramForEntry = visibleEntry ? findProgramForPeriodPlanEntry(visibleEntry, memberPrograms) : null;
           const listLabel = getPeriodPlanDayListLabel(visibleEntry, entryAction);
+          const coverImageSrc = visibleEntry.trim()
+            ? resolvePeriodPlanEntryCoverImage(visibleEntry, {
+                activityTemplates: resolvedActivityTemplates,
+                memberPrograms,
+                exercises: exerciseLibrary,
+                exerciseCategoryById,
+              })
+            : noPlanDayCoverSrc || resolveNoPlanDayCoverImage();
           const completed = isEntryCompleted(plan.id, week.weekNumber, dayKey);
           const status = resolveDayStatus(visibleEntry, completed);
           const isFutureDate = isPeriodPlanEntryDateInFuture(plannedDate);
@@ -246,15 +256,10 @@ export function PeriodPlanWeekView({
                     className={`motus-period-plan-day-main ${canOpenPreview ? "motus-period-plan-day-main--clickable" : ""}`}
                     aria-label={canOpenPreview ? `Se økt for ${dayLabel}` : undefined}
                   >
-                    {visibleEntry.trim() ? (
+                    {coverImageSrc ? (
                       <div className="motus-period-plan-day-cover motus-image-frame" aria-hidden>
                         <img
-                          src={resolvePeriodPlanEntryCoverImage(visibleEntry, {
-                            activityTemplates: resolvedActivityTemplates,
-                            memberPrograms,
-                            exercises: exerciseLibrary,
-                            exerciseCategoryById,
-                          })}
+                          src={coverImageSrc}
                           alt=""
                           className="motus-image-media"
                           loading="lazy"
@@ -270,7 +275,7 @@ export function PeriodPlanWeekView({
                       {completed ? (
                         <span className="motus-period-plan-day-status motus-period-plan-day-status--completed">Fullført</span>
                       ) : status === "rest" ? (
-                        <span className="motus-period-plan-day-status motus-period-plan-day-status--rest">Hviledag</span>
+                        <span className="motus-period-plan-day-status motus-period-plan-day-status--rest">Restitusjon</span>
                       ) : visibleEntry ? (
                         <span className="motus-period-plan-day-status motus-period-plan-day-status--planned">Planlagt</span>
                       ) : null}

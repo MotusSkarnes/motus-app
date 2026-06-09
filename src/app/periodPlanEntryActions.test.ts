@@ -83,6 +83,9 @@ describe("periodPlanEntryActions", () => {
     expect(getPeriodPlanDayListLabel("Hvile / restitusjon", resolvePeriodPlanEntryAction("Hvile / restitusjon", programs))).toBe(
       "Hvile",
     );
+    expect(
+      getPeriodPlanDayListLabel("Aktivitet: Aktiv Hviledag", resolvePeriodPlanEntryAction("Aktivitet: Aktiv Hviledag", programs)),
+    ).toBe("Aktiv Hviledag");
   });
 
   it("builds linked program ids from period plan entries", () => {
