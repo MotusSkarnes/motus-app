@@ -9549,11 +9549,12 @@ html:has(.motus-trainer-app) {
 }
 
 .motus-period-plan-day-cover {
-  margin: -0.875rem -2.25rem 0.75rem -1rem;
-  width: calc(100% + 3.25rem);
-  height: 118px;
-  aspect-ratio: auto !important;
+  margin: 0;
   overflow: hidden;
+}
+
+.motus-period-plan-day-cover::after {
+  display: none;
 }
 
 .motus-period-plan-day-cover .motus-image-media {
@@ -9566,13 +9567,14 @@ html:has(.motus-trainer-app) {
   position: relative;
   display: block;
   width: 100%;
-  padding: 0.875rem 2.25rem 0.75rem 1rem;
+  padding: 0;
   text-align: left;
   transition: background-color 160ms ease;
 }
 
-.motus-period-plan-day-main:has(.motus-period-plan-day-cover) {
-  padding-top: 0;
+.motus-period-plan-day-body {
+  position: relative;
+  padding: 0.875rem 2.25rem 0.75rem 1rem;
 }
 
 .motus-period-plan-day-main--clickable:hover {

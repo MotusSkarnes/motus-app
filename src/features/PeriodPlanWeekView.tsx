@@ -273,7 +273,7 @@ export function PeriodPlanWeekView({
                     aria-label={canOpenPreview ? `Se økt for ${dayLabel}` : undefined}
                   >
                     {coverImageSrc ? (
-                      <div className="motus-period-plan-day-cover motus-image-frame" aria-hidden>
+                      <div className="motus-period-plan-day-cover motus-member-program-thumb motus-image-frame" aria-hidden>
                         <img
                           src={coverImageSrc}
                           alt=""
@@ -287,6 +287,7 @@ export function PeriodPlanWeekView({
                         />
                       </div>
                     ) : null}
+                    <div className="motus-period-plan-day-body">
                     <p className="motus-period-plan-day-title">{listLabel}</p>
                     <div className="motus-period-plan-day-meta">
                       <span className="motus-period-plan-day-date">
@@ -307,6 +308,7 @@ export function PeriodPlanWeekView({
                       <p className="motus-period-plan-day-sub">Flyttet fra {WEEKDAY_PLAN_LABELS[sourceDay].toLowerCase()}</p>
                     ) : null}
                     {canOpenPreview ? <ChevronRight className="motus-period-plan-day-chevron" aria-hidden /> : null}
+                    </div>
                   </button>
 
                   {visibleEntry && status !== "rest" ? (
