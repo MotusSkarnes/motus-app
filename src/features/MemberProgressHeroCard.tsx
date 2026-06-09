@@ -285,12 +285,40 @@ function _XpExplainerPanel({
 
 export function MemberProgressHeroCard({ scores, memberFirstName, xpBreakdown }: MemberProgressHeroCardProps) {
   const { momentum, consistency, weekly, recovery, xp } = scores;
-  const animatedMomentum = useCountUpNumber(momentum.pct);
+  const planStatusPct = weekly.maxScore ? weekly.pct : 0;
+  const animatedPlanStatusPct = useCountUpNumber(planStatusPct);
   const animatedConsistency = useCountUpNumber(consistency.pct);
   const animatedRecovery = useCountUpNumber(recovery.pct ?? 0);
   const animatedWeeklyScore = useCountUpNumber(weekly.score);
   const completedSessions = xpBreakdown?.completedSessions ?? 0;
   const rhythmWeeks = xpBreakdown?.streakWeeks ?? 0;
+  const plannedSessions = weekly.maxScore ?? 0;
+  const completedPlanSessions = weekly.score;
+  const remainingPlanSessions = Math.max(0, plannedSessions - completedPlanSessions);
+  const extraPlanSessions = Math.max(0, completedPlanSessions - plannedSessions);
+  const planWord = weekly.source === "profile" ? "ukemålet" : "planen";
+  const planStatusTitle =
+    !plannedSessions
+      ? "Ingen plan"
+      : extraPlanSessions > 0
+        ? "Foran planen"
+        : remainingPlanSessions === 0
+          ? "I rute"
+          : remainingPlanSessions === 1
+            ? "Nesten i rute"
+            : completedPlanSessions > 0
+              ? "På vei"
+              : "Bak planen";
+  const planStatusSubline =
+    !plannedSessions
+      ? "Ingen aktiv plan denne uken. Sett et ukemål eller avtal plan med PT."
+      : extraPlanSessions > 0
+        ? `Du ligger foran ${planWord} med ${extraPlanSessions} ekstra ${extraPlanSessions === 1 ? "økt" : "økter"}.`
+        : remainingPlanSessions === 0
+          ? `Du har fulgt ${planWord} de siste 7 dagene.`
+          : remainingPlanSessions === 1
+            ? `Du har fullført ${completedPlanSessions} av ${plannedSessions} planlagte økter. Én økt gjenstår.`
+            : `Du har fullført ${completedPlanSessions} av ${plannedSessions} planlagte økter.`;
   const rhythmTitle = rhythmWeeks >= 4 ? "Status: God rytme" : completedSessions > 0 ? "Status: I gang" : "Status: Klar for start";
   const rhythmSubline =
     rhythmWeeks > 0
@@ -298,28 +326,22 @@ export function MemberProgressHeroCard({ scores, memberFirstName, xpBreakdown }:
       : completedSessions > 0
         ? "Du har startet. Jevn rytme over tid bygger formen."
         : "Start rolig og bygg rytmen uke for uke.";
-  const momentumSubline =
-    momentum.pct >= 100
-      ? "Du holder en god treningsrytme."
-      : momentum.pct > 0
-        ? "Du er i gang. Jevn innsats over tid gir fremgang."
-        : "Start rolig og bygg flyt med neste økt.";
 
   const milestoneRef = useRef<{ level: number; momentum: number }>({ level: xp.level, momentum: momentum.pct });
   const [confettiActive, setConfettiActive] = useState(false);
   useEffect(() => {
     const prev = milestoneRef.current;
     const leveledUp = xp.level > prev.level;
-    const flowMilestone = momentum.pct >= 100 && prev.momentum < 100;
+    const flowMilestone = planStatusPct >= 100 && prev.momentum < 100;
     if (leveledUp || flowMilestone) {
       setConfettiActive(true);
       const timer = window.setTimeout(() => setConfettiActive(false), 1800);
-      milestoneRef.current = { level: xp.level, momentum: momentum.pct };
+      milestoneRef.current = { level: xp.level, momentum: planStatusPct };
       return () => window.clearTimeout(timer);
     }
-    milestoneRef.current = { level: xp.level, momentum: momentum.pct };
+    milestoneRef.current = { level: xp.level, momentum: planStatusPct };
     return undefined;
-  }, [xp.level, momentum.pct]);
+  }, [xp.level, planStatusPct]);
 
   return (
     <section className="motus-progress-hero motus-fade-in-up">
@@ -335,18 +357,15 @@ export function MemberProgressHeroCard({ scores, memberFirstName, xpBreakdown }:
         <div className="motus-progress-hero-dark-top motus-progress-hero-dark-top--simple">
           <div className="motus-progress-momentum-hero">
             <div className="motus-progress-momentum-hero-row">
-              <p className="motus-progress-momentum-hero-eyebrow">Flyt</p>
+              <p className="motus-progress-momentum-hero-eyebrow">Planstatus</p>
             </div>
             <div className="motus-progress-momentum-hero-value-row">
-              <p className="motus-progress-momentum-hero-value">
-                <span className="tabular-nums">{animatedMomentum}</span>
-                <span className="motus-progress-momentum-hero-percent">%</span>
-              </p>
+              <p className="motus-progress-momentum-hero-value motus-progress-momentum-hero-value--status">{planStatusTitle}</p>
             </div>
-            <p className="motus-progress-momentum-hero-subline">{momentumSubline}</p>
+            <p className="motus-progress-momentum-hero-subline">{planStatusSubline}</p>
           </div>
 
-          <MomentumRing pct={momentum.pct} animatedPct={animatedMomentum} />
+          <MomentumRing pct={planStatusPct} animatedPct={animatedPlanStatusPct} />
         </div>
 
         <div className="motus-progress-level-summary">
@@ -365,7 +384,7 @@ export function MemberProgressHeroCard({ scores, memberFirstName, xpBreakdown }:
               </p>
               <p className="motus-progress-level-summary-note">{rhythmSubline}</p>
               <div className="motus-progress-level-summary-track">
-                <div className="motus-progress-level-summary-fill" style={{ width: `${Math.max(8, Math.min(100, momentum.pct))}%` }} />
+                <div className="motus-progress-level-summary-fill" style={{ width: `${Math.max(8, Math.min(100, planStatusPct))}%` }} />
               </div>
             </div>
           </div>

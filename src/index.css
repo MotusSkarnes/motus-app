@@ -2177,9 +2177,20 @@ button.motus-progress-status-banner {
   font-variant-numeric: tabular-nums;
 }
 
+.motus-progress-momentum-hero-value--status {
+  max-width: 100%;
+  font-size: 2rem;
+  line-height: 1.05;
+  letter-spacing: 0;
+}
+
 @media (min-width: 640px) {
   .motus-progress-momentum-hero-value {
     font-size: 3rem;
+  }
+
+  .motus-progress-momentum-hero-value--status {
+    font-size: 2.45rem;
   }
 }
 
