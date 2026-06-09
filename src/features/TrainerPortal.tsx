@@ -1387,6 +1387,12 @@ function pickFirstName(value: unknown): string {
       return a.name.localeCompare(b.name, "no");
     });
   }, [filteredMembers, memberSort, members, logs, unreadMessagesByIdentityKey, customerSubTab]);
+  const showMemberSearchRecovery = Boolean(
+    memberSearchRecovery &&
+      (sortedMembers.length === 0 ||
+        memberSearchRecovery.hiddenMatches.length > 0 ||
+        memberSearchRecovery.inactiveMatches.length > 0),
+  );
   const findNewestPendingMemberByEmail = useCallback((email: string): Member | null => {
     const normalizedEmail = email.trim().toLowerCase();
     const matches = members.filter((member) => member.email.trim().toLowerCase() === normalizedEmail);
@@ -5525,46 +5531,46 @@ function pickFirstName(value: unknown): string {
                   })}
                 </div>
               ) : null}
+              {showMemberSearchRecovery && memberSearchRecovery ? (
+                <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950">
+                  <p className="font-semibold">Fant klient i systemet, men ikke i listen</p>
+                  <p className="mt-1 text-xs text-amber-900">
+                    {memberSearchRecovery.rawMatches.length === 1
+                      ? `${memberSearchRecovery.rawMatches[0]?.name || "Ukjent navn"} (${memberSearchRecovery.primaryEmail || "uten e-post"})`
+                      : `${memberSearchRecovery.rawMatches.length} rader matcher søket.`}
+                    {memberSearchRecovery.inactiveMatches.length
+                      ? " Minst en rad er markert inaktiv (ofte etter duplikatopprydding)."
+                      : " Raden kan være skjult av filter eller manglende PT-kobling."}
+                  </p>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    <OutlineButton type="button" onClick={() => setShowInactiveMembers(true)} className="text-xs">
+                      Vis inaktive
+                    </OutlineButton>
+                    {memberSearchRecovery.primaryEmail ? (
+                      <GradientButton
+                        type="button"
+                        disabled={isRestoringMember}
+                        onClick={() => void handleRestoreMember(memberSearchRecovery.primaryEmail)}
+                        className="text-xs"
+                      >
+                        {isRestoringMember ? "Gjenoppretter..." : "Gjenopprett klient"}
+                      </GradientButton>
+                    ) : null}
+                  </div>
+                  {restoreStatus ? (
+                    <StatusMessage
+                      message={restoreStatus}
+                      tone={restoreStatus.toLowerCase().includes("feilet") || restoreStatus.toLowerCase().includes("fant ingen") ? "error" : "success"}
+                      className="mt-3 !rounded-xl !px-3 !py-2 !text-xs"
+                    />
+                  ) : null}
+                </div>
+              ) : null}
               {sortedMembers.length === 0 ? (
                 <div className="space-y-3">
                   <div className="rounded-xl border border-dashed bg-slate-50 p-4 text-center text-sm text-slate-500">
                     Ingen kunder matcher søk/filter. Prøv et enklere søk eller bytt filter.
                   </div>
-                  {memberSearchRecovery ? (
-                    <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950">
-                      <p className="font-semibold">Fant klient i systemet, men ikke i listen</p>
-                      <p className="mt-1 text-xs text-amber-900">
-                        {memberSearchRecovery.rawMatches.length === 1
-                          ? `${memberSearchRecovery.rawMatches[0]?.name || "Ukjent navn"} (${memberSearchRecovery.primaryEmail || "uten e-post"})`
-                          : `${memberSearchRecovery.rawMatches.length} rader matcher søket.`}
-                        {memberSearchRecovery.inactiveMatches.length
-                          ? " Minst en rad er markert inaktiv (ofte etter duplikatopprydding)."
-                          : " Raden kan være skjult av filter."}
-                      </p>
-                      <div className="mt-3 flex flex-wrap gap-2">
-                        <OutlineButton type="button" onClick={() => setShowInactiveMembers(true)} className="text-xs">
-                          Vis inaktive
-                        </OutlineButton>
-                        {memberSearchRecovery.primaryEmail ? (
-                          <GradientButton
-                            type="button"
-                            disabled={isRestoringMember}
-                            onClick={() => void handleRestoreMember(memberSearchRecovery.primaryEmail)}
-                            className="text-xs"
-                          >
-                            {isRestoringMember ? "Gjenoppretter..." : "Gjenopprett klient"}
-                          </GradientButton>
-                        ) : null}
-                      </div>
-                      {restoreStatus ? (
-                        <StatusMessage
-                          message={restoreStatus}
-                          tone={restoreStatus.toLowerCase().includes("feilet") || restoreStatus.toLowerCase().includes("fant ingen") ? "error" : "success"}
-                          className="mt-3 !rounded-xl !px-3 !py-2 !text-xs"
-                        />
-                      ) : null}
-                    </div>
-                  ) : null}
                   {!memberSearchRecovery && isLookingUpEmail ? (
                     <p className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-center text-xs text-slate-600">
                       Søker i databasen etter e-post...
