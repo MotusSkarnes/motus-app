@@ -374,7 +374,7 @@ export function MemberTrainingHistoryView({
                 <Flame className="h-5 w-5" strokeWidth={2.25} />
               </span>
               <p className="motus-member-history-consistency-banner-text">
-                Du har en streak på {streakLabel}! Utrolig innsats – hold på! 💪
+                Du har en streak på {streakLabel}! Utrolig innsats – fortsett sånn! 💪
               </p>
             </div>
           ) : null}
