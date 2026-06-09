@@ -1,7 +1,7 @@
 import { useEffect, useId, useRef, useState, type ReactNode } from "react";
-import { ArrowDownRight, ArrowUpRight, ChevronDown, Crown, Flame, Info, Shield, Sparkles, Target } from "lucide-react";
+import { ChevronDown, Shield, Target } from "lucide-react";
 import { MOTUS } from "../app/data";
-import type { ScoreTrend, MemberProgressScores } from "../app/memberMomentumScores";
+import type { MemberProgressScores } from "../app/memberMomentumScores";
 import { getXpLevelLabel } from "../app/memberMomentumScores";
 
 type MemberProgressHeroCardProps = {
@@ -51,15 +51,6 @@ function useCountUpNumber(target: number, durationMs = 800): number {
   }, [target, durationMs]);
 
   return value;
-}
-
-function computeMomentumDeltaPct(sparkPoints: number[]): number | null {
-  if (sparkPoints.length < 2) return null;
-  const current = sparkPoints[sparkPoints.length - 1];
-  const previous = sparkPoints[sparkPoints.length - 2];
-  if (previous <= 0 && current <= 0) return null;
-  if (previous <= 0) return 100;
-  return Math.round(((current - previous) / previous) * 100);
 }
 
 function MomentumRing({ pct, animatedPct }: { pct: number; animatedPct: number }) {
@@ -113,32 +104,7 @@ function MomentumRing({ pct, animatedPct }: { pct: number; animatedPct: number }
           </>
         ) : null}
       </svg>
-      <span className="motus-progress-momentum-ring-spark motus-progress-momentum-ring-spark--one" aria-hidden>
-        <Sparkles className="h-3.5 w-3.5" strokeWidth={2.5} />
-      </span>
-      <span className="motus-progress-momentum-ring-spark motus-progress-momentum-ring-spark--two" aria-hidden>
-        <Sparkles className="h-3 w-3" strokeWidth={2.5} />
-      </span>
     </div>
-  );
-}
-
-function MomentumDeltaPill({ delta, trend }: { delta: number | null; trend: ScoreTrend }) {
-  if (delta === null || delta === 0) {
-    if (trend === "flat") return null;
-  }
-  if (delta === null) return null;
-
-  const positive = delta > 0;
-  const Arrow = positive ? ArrowUpRight : ArrowDownRight;
-  const sign = positive ? "+" : "";
-
-  return (
-    <span className={`motus-progress-momentum-delta ${positive ? "is-up" : "is-down"}`}>
-      <Arrow className="h-3.5 w-3.5" strokeWidth={2.5} aria-hidden />
-      {sign}
-      {delta}%
-    </span>
   );
 }
 
@@ -318,22 +284,17 @@ function XpExplainerPanel({
   );
 }
 
-export function MemberProgressHeroCard({ scores, memberFirstName, streakWeeks, xpBreakdown }: MemberProgressHeroCardProps) {
+export function MemberProgressHeroCard({ scores, memberFirstName, xpBreakdown }: MemberProgressHeroCardProps) {
   const { momentum, consistency, weekly, recovery, xp } = scores;
   const [isXpInfoOpen, setIsXpInfoOpen] = useState(false);
   const animatedMomentum = useCountUpNumber(momentum.pct);
-  const animatedXp = useCountUpNumber(xp.totalXp, 1100);
   const animatedXpInLevel = useCountUpNumber(xp.xpInLevel, 1100);
   const animatedConsistency = useCountUpNumber(consistency.pct);
   const animatedRecovery = useCountUpNumber(recovery.pct ?? 0);
   const animatedWeeklyScore = useCountUpNumber(weekly.score);
 
-  const deltaPct = computeMomentumDeltaPct(momentum.sparkPoints);
   const nextLevel = xp.level + 1;
   const nextLevelLabel = getXpLevelLabel(nextLevel);
-
-  const flowEmoji = momentum.pct >= 80 ? "🚀" : momentum.pct >= 60 ? "💪" : momentum.pct >= 30 ? "🔥" : "✨";
-  const flowLine = momentum.pct >= 60 ? "Du er i flyt!" : momentum.pct >= 30 ? "Du bygger rutiner." : "Start dagens økt.";
 
   const milestoneRef = useRef<{ level: number; momentum: number }>({ level: xp.level, momentum: momentum.pct });
   const [confettiActive, setConfettiActive] = useState(false);
@@ -351,8 +312,6 @@ export function MemberProgressHeroCard({ scores, memberFirstName, streakWeeks, x
     return undefined;
   }, [xp.level, momentum.pct]);
 
-  const streakChipText = streakWeeks > 0 ? (streakWeeks === 1 ? "1 uke på rad" : `${streakWeeks} uker på rad`) : "Start streak";
-
   return (
     <section className="motus-progress-hero motus-fade-in-up">
       <div className="motus-progress-hero-header">
@@ -364,98 +323,57 @@ export function MemberProgressHeroCard({ scores, memberFirstName, streakWeeks, x
         <div className="motus-progress-hero-dark-wave" aria-hidden />
         <ConfettiBurst active={confettiActive} />
 
-        <div className="motus-progress-hero-dark-top">
-          <div className="motus-progress-level-badge">
-            <Shield className="h-6 w-6 text-white/95" strokeWidth={2.25} aria-hidden />
-            <span className="motus-progress-level-badge-eyebrow">Level {xp.level}</span>
-            <span className="motus-progress-level-badge-label">{xp.levelLabel}</span>
-            <span className="motus-progress-level-badge-xp">
-              <span className="tabular-nums">{animatedXp.toLocaleString("nb-NO")}</span>
-              {" / "}
-              <span className="tabular-nums">{(xp.totalXp - xp.xpInLevel + xp.xpForNextLevel).toLocaleString("nb-NO")}</span>
-              {" XP"}
-            </span>
-            <div className="motus-progress-level-badge-track">
-              <div className="motus-progress-level-badge-fill" style={{ width: `${xp.pctToNext}%` }} />
-            </div>
-            <button
-              type="button"
-              onClick={() => setIsXpInfoOpen((open) => !open)}
-              className="motus-progress-level-badge-info"
-              aria-expanded={isXpInfoOpen}
-              aria-controls="motus-progress-xp-explainer"
-            >
-              <Info className="h-3 w-3" strokeWidth={2.4} aria-hidden />
-              Slik fungerer XP
-              <ChevronDown
-                className={`h-3 w-3 transition-transform ${isXpInfoOpen ? "rotate-180" : ""}`}
-                strokeWidth={2.4}
-                aria-hidden
-              />
-            </button>
-          </div>
-
+        <div className="motus-progress-hero-dark-top motus-progress-hero-dark-top--simple">
           <div className="motus-progress-momentum-hero">
             <div className="motus-progress-momentum-hero-row">
               <p className="motus-progress-momentum-hero-eyebrow">Flyt</p>
-              <span className="motus-progress-momentum-info" aria-hidden>
-                <span className="motus-progress-momentum-info-dot" />
-              </span>
             </div>
             <div className="motus-progress-momentum-hero-value-row">
               <p className="motus-progress-momentum-hero-value">
                 <span className="tabular-nums">{animatedMomentum}</span>
                 <span className="motus-progress-momentum-hero-percent">%</span>
               </p>
-              <MomentumDeltaPill delta={deltaPct} trend={momentum.trend} />
             </div>
             <p className="motus-progress-momentum-hero-subline">{momentum.subline}</p>
-            <p className="motus-progress-momentum-hero-tagline">
-              {flowLine} <span aria-hidden>{flowEmoji}</span>
-            </p>
           </div>
 
           <MomentumRing pct={momentum.pct} animatedPct={animatedMomentum} />
         </div>
 
-        <div className="motus-progress-hero-dark-bottom">
-          <div className="motus-progress-hero-bottom-card">
-            <span className="motus-progress-hero-bottom-icon motus-progress-hero-bottom-icon--flame" aria-hidden>
-              <Flame className="h-4 w-4" strokeWidth={2.5} />
+        <div className="motus-progress-level-summary">
+          <div className="motus-progress-level-summary-main">
+            <span className="motus-progress-level-summary-icon" aria-hidden>
+              <Shield className="h-4 w-4" strokeWidth={2.25} />
             </span>
-            <div className="min-w-0">
-              <p className="motus-progress-hero-bottom-value">{streakChipText}</p>
-              <p className="motus-progress-hero-bottom-sub">
-                {streakWeeks > 0 ? "Hold streaken i live!" : "Logg første økt"}
-              </p>
-            </div>
-          </div>
-
-          <div className="motus-progress-hero-bottom-card motus-progress-hero-bottom-card--xp">
             <div className="min-w-0 flex-1">
-              <p className="motus-progress-hero-bottom-label">XP til neste nivå</p>
-              <p className="motus-progress-hero-bottom-value motus-progress-hero-bottom-value--xp">
-                <span className="tabular-nums">{animatedXpInLevel.toLocaleString("nb-NO")}</span>
-                <span className="motus-progress-hero-bottom-value-divider"> / </span>
-                <span className="tabular-nums">{xp.xpForNextLevel.toLocaleString("nb-NO")}</span>
-                <span className="motus-progress-hero-bottom-value-unit"> XP</span>
+              <p className="motus-progress-level-summary-title">
+                Level {xp.level}: {xp.levelLabel}
               </p>
-              <div className="motus-progress-hero-bottom-track">
-                <div className="motus-progress-hero-bottom-fill" style={{ width: `${xp.pctToNext}%` }} />
+              <p className="motus-progress-level-summary-xp">
+                <span className="tabular-nums">{animatedXpInLevel.toLocaleString("nb-NO")}</span>
+                {" / "}
+                <span className="tabular-nums">{xp.xpForNextLevel.toLocaleString("nb-NO")}</span>
+                {" XP til neste nivå"}
+              </p>
+              <div className="motus-progress-level-summary-track">
+                <div className="motus-progress-level-summary-fill" style={{ width: `${xp.pctToNext}%` }} />
               </div>
             </div>
           </div>
-
-          <div className="motus-progress-hero-bottom-card">
-            <span className="motus-progress-hero-bottom-icon motus-progress-hero-bottom-icon--crown" aria-hidden>
-              <Crown className="h-4 w-4" strokeWidth={2.5} />
-            </span>
-            <div className="min-w-0">
-              <p className="motus-progress-hero-bottom-label">Neste nivå</p>
-              <p className="motus-progress-hero-bottom-value motus-progress-hero-bottom-value--level">{nextLevelLabel}</p>
-              <p className="motus-progress-hero-bottom-sub">Nivå {nextLevel}</p>
-            </div>
-          </div>
+          <button
+            type="button"
+            onClick={() => setIsXpInfoOpen((open) => !open)}
+            className="motus-progress-level-summary-info"
+            aria-expanded={isXpInfoOpen}
+            aria-controls="motus-progress-xp-explainer"
+          >
+            XP
+            <ChevronDown
+              className={`h-3 w-3 transition-transform ${isXpInfoOpen ? "rotate-180" : ""}`}
+              strokeWidth={2.4}
+              aria-hidden
+            />
+          </button>
         </div>
       </div>
 
@@ -486,7 +404,6 @@ export function MemberProgressHeroCard({ scores, memberFirstName, streakWeeks, x
           value={`${animatedWeeklyScore}/${weekly.maxScore}`}
           subline={weekly.subline}
           icon={<Target className="h-3.5 w-3.5 sm:h-4 sm:w-4" strokeWidth={2} />}
-          badge={weekly.pct >= 100 ? "Mål nådd" : "Hovedmål"}
         />
         <ScoreRing
           label="Recovery"

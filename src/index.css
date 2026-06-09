@@ -1410,6 +1410,12 @@ button {
   align-items: stretch;
 }
 
+.motus-progress-hero-dark-top--simple {
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.875rem;
+}
+
 @media (max-width: 480px) {
   .motus-progress-hero-dark-top {
     grid-template-columns: minmax(0, 1fr) auto;
@@ -1426,6 +1432,16 @@ button {
   .motus-progress-hero-dark-top > .motus-progress-momentum-ring {
     grid-column: 2;
     grid-row: 2;
+  }
+
+  .motus-progress-hero-dark-top--simple {
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-rows: auto;
+  }
+
+  .motus-progress-hero-dark-top--simple > .motus-progress-momentum-hero,
+  .motus-progress-hero-dark-top--simple > .motus-progress-momentum-ring {
+    grid-row: 1;
   }
 }
 
@@ -2418,6 +2434,85 @@ button.motus-progress-status-banner {
   background: linear-gradient(90deg, #30e3be 0%, #ff6bbb 80%, #d91278 100%);
   box-shadow: 0 0 10px rgba(255, 107, 187, 0.45);
   transition: width 900ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.motus-progress-level-summary {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-top: 0.875rem;
+  border-radius: 0.875rem;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.06);
+  padding: 0.75rem;
+}
+
+.motus-progress-level-summary-main {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  align-items: center;
+  gap: 0.625rem;
+}
+
+.motus-progress-level-summary-icon {
+  display: inline-flex;
+  height: 2rem;
+  width: 2rem;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0.75rem;
+  background: rgba(48, 227, 190, 0.14);
+  color: rgba(255, 255, 255, 0.92);
+}
+
+.motus-progress-level-summary-title {
+  font-size: 0.78rem;
+  font-weight: 800;
+  line-height: 1.15;
+  color: #ffffff;
+}
+
+.motus-progress-level-summary-xp {
+  margin-top: 0.125rem;
+  font-size: 0.68rem;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.68);
+}
+
+.motus-progress-level-summary-track {
+  margin-top: 0.375rem;
+  height: 0.25rem;
+  overflow: hidden;
+  border-radius: 9999px;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.motus-progress-level-summary-fill {
+  height: 100%;
+  border-radius: 9999px;
+  background: linear-gradient(90deg, #30e3be 0%, #ff6bbb 80%, #d91278 100%);
+  transition: width 900ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.motus-progress-level-summary-info {
+  display: inline-flex;
+  height: 2rem;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  gap: 0.25rem;
+  border-radius: 9999px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.07);
+  padding: 0 0.625rem;
+  color: rgba(255, 255, 255, 0.78);
+  font-size: 0.68rem;
+  font-weight: 800;
+  cursor: pointer;
 }
 
 .motus-progress-confetti {
