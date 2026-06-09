@@ -7614,12 +7614,6 @@ export function MemberPortal(props: MemberPortalProps) {
                 completedLogs={completedLogs}
                 nowTimestamp={nowTimestamp}
               />
-              <MemberBodyMetricsSection
-                personalGoals={editableMember?.personalGoals}
-                targetWeight={profileTargetWeight}
-                onLog={persistBodyMetric}
-                isSaving={isSavingBodyMetric}
-              />
               <MemberProgressHighlightRow
                 streakWeeks={streakWeeks}
                 recentStreakWeeks={recentStreakWeeks}
@@ -7723,56 +7717,64 @@ export function MemberPortal(props: MemberPortalProps) {
 
           {memberTab === "profile" ? (
             editableMember ? (
-              <MemberProfileDashboard
-                memberFirstName={homeFirstName}
-                memberAvatarUrl={memberAvatarUrl}
-                onAvatarFileSelected={handleAvatarFileSelected}
-                onRemoveAvatar={() => setMemberAvatarUrl("")}
-                customerStatusLabel={customerStatusLabel}
-                latestCompletedLog={latestCompletedLog}
-                memberNameDraft={memberNameDraft}
-                setMemberNameDraft={setMemberNameDraft}
-                memberEmailDraft={memberEmailDraft}
-                setMemberEmailDraft={setMemberEmailDraft}
-                memberPhoneDraft={memberPhoneDraft}
-                setMemberPhoneDraft={setMemberPhoneDraft}
-                memberBirthDateDraft={memberBirthDateDraft}
-                setMemberBirthDateDraft={setMemberBirthDateDraft}
-                memberGoalDraft={memberGoalDraft}
-                setMemberGoalDraft={setMemberGoalDraft}
-                memberInjuriesDraft={memberInjuriesDraft}
-                setMemberInjuriesDraft={setMemberInjuriesDraft}
-                streakWeeks={streakWeeks}
-                streakSubline={streakSubline}
-                totalWorkouts={completedLogs.length}
-                memberSince={editableMember.invitedAt ?? ""}
-                onOpenProgress={() => setMemberTab("progress")}
-                onSaveProfile={saveProfile}
-                profileSaveInfo={profileSaveInfo}
-                isMemberLimited={isMemberLimited}
-                onOpenOnboarding={onOpenOnboarding}
-                showOnboardingHomePrompt={showOnboardingHomePrompt}
-                onboardingSubstantivelyComplete={onboardingSubstantivelyComplete}
-                ptChangeReason={ptChangeReason}
-                setPtChangeReason={(value) => {
-                  setPtChangeReason(value);
-                            if (ptChangeRequestStatus) setPtChangeRequestStatus(null);
-                          }}
-                onRequestPtChange={() => void handleRequestPtChange()}
-                isSendingMemberMessage={isSendingMemberMessage}
-                ptChangeRequestStatus={ptChangeRequestStatus}
-                onOpenMessages={() => setMemberTab("messages")}
-                restCountdownEnabled={restCountdownEnabled}
-                setRestCountdownEnabled={setRestCountdownEnabled}
-                microCelebrationsEnabled={microCelebrationsEnabled}
-                setMicroCelebrationsEnabled={setMicroCelebrationsEnabled}
-                celebrationSoundEnabled={celebrationSoundEnabled}
-                setCelebrationSoundEnabled={setCelebrationSoundEnabled}
-                showWebPushSettings={!isMemberLimited && Boolean(supabaseClient) && isWebPushConfigurable()}
-                onRegisterWebPush={() => void handleRegisterWebPush()}
-                pushRegisterBusy={pushRegisterBusy}
-                pushRegisterStatus={pushRegisterStatus}
-              />
+              <div className="space-y-4">
+                <MemberProfileDashboard
+                  memberFirstName={homeFirstName}
+                  memberAvatarUrl={memberAvatarUrl}
+                  onAvatarFileSelected={handleAvatarFileSelected}
+                  onRemoveAvatar={() => setMemberAvatarUrl("")}
+                  customerStatusLabel={customerStatusLabel}
+                  latestCompletedLog={latestCompletedLog}
+                  memberNameDraft={memberNameDraft}
+                  setMemberNameDraft={setMemberNameDraft}
+                  memberEmailDraft={memberEmailDraft}
+                  setMemberEmailDraft={setMemberEmailDraft}
+                  memberPhoneDraft={memberPhoneDraft}
+                  setMemberPhoneDraft={setMemberPhoneDraft}
+                  memberBirthDateDraft={memberBirthDateDraft}
+                  setMemberBirthDateDraft={setMemberBirthDateDraft}
+                  memberGoalDraft={memberGoalDraft}
+                  setMemberGoalDraft={setMemberGoalDraft}
+                  memberInjuriesDraft={memberInjuriesDraft}
+                  setMemberInjuriesDraft={setMemberInjuriesDraft}
+                  streakWeeks={streakWeeks}
+                  streakSubline={streakSubline}
+                  totalWorkouts={completedLogs.length}
+                  memberSince={editableMember.invitedAt ?? ""}
+                  onOpenProgress={() => setMemberTab("progress")}
+                  onSaveProfile={saveProfile}
+                  profileSaveInfo={profileSaveInfo}
+                  isMemberLimited={isMemberLimited}
+                  onOpenOnboarding={onOpenOnboarding}
+                  showOnboardingHomePrompt={showOnboardingHomePrompt}
+                  onboardingSubstantivelyComplete={onboardingSubstantivelyComplete}
+                  ptChangeReason={ptChangeReason}
+                  setPtChangeReason={(value) => {
+                    setPtChangeReason(value);
+                    if (ptChangeRequestStatus) setPtChangeRequestStatus(null);
+                  }}
+                  onRequestPtChange={() => void handleRequestPtChange()}
+                  isSendingMemberMessage={isSendingMemberMessage}
+                  ptChangeRequestStatus={ptChangeRequestStatus}
+                  onOpenMessages={() => setMemberTab("messages")}
+                  restCountdownEnabled={restCountdownEnabled}
+                  setRestCountdownEnabled={setRestCountdownEnabled}
+                  microCelebrationsEnabled={microCelebrationsEnabled}
+                  setMicroCelebrationsEnabled={setMicroCelebrationsEnabled}
+                  celebrationSoundEnabled={celebrationSoundEnabled}
+                  setCelebrationSoundEnabled={setCelebrationSoundEnabled}
+                  showWebPushSettings={!isMemberLimited && Boolean(supabaseClient) && isWebPushConfigurable()}
+                  onRegisterWebPush={() => void handleRegisterWebPush()}
+                  pushRegisterBusy={pushRegisterBusy}
+                  pushRegisterStatus={pushRegisterStatus}
+                />
+                <MemberBodyMetricsSection
+                  personalGoals={editableMember?.personalGoals}
+                  targetWeight={profileTargetWeight}
+                  onLog={persistBodyMetric}
+                  isSaving={isSavingBodyMetric}
+                />
+              </div>
             ) : (
               <Card className="p-5">
                 <EmptyState
