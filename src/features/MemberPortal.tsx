@@ -2370,21 +2370,75 @@ export function MemberPortal(props: MemberPortalProps) {
       return day.getTime() >= prevStart.getTime() && day.getTime() < weekStart.getTime();
     }).length;
   }, [nowTimestamp, completedLogDates]);
+  const calendarLogsByDateKey = useMemo(() => {
+    const byKey = new Map<string, WorkoutLog[]>();
+    completedLogs.forEach((log) => {
+      const parsed = parseLogDate(log.date);
+      if (!parsed) return;
+      const key = toIsoDateInputValue(parsed);
+      const previous = byKey.get(key) ?? [];
+      byKey.set(key, [...previous, log]);
+    });
+    return byKey;
+  }, [completedLogs]);
   const homeWeeklySummary = useMemo(() => {
     const today = getStartOfDay(new Date(nowTimestamp));
     const mondayOffset = (today.getDay() + 6) % 7;
     const weekStart = new Date(today.getFullYear(), today.getMonth(), today.getDate() - mondayOffset);
     const weekEnd = new Date(weekStart.getFullYear(), weekStart.getMonth(), weekStart.getDate() + 7);
-    const completedThisWeek = completedLogDates.filter((date) => {
+    const completedLogsThisWeek = completedLogDates.filter((date) => {
       const day = getStartOfDay(date);
       return day.getTime() >= weekStart.getTime() && day.getTime() < weekEnd.getTime();
     }).length;
-    const plannedThisWeek = activeWeeklyPlanEffectiveDays
-      ? Object.values(activeWeeklyPlanEffectiveDays).filter((entry) => entry.trim().length > 0).length
-      : 0;
+
+    const plannedEntries =
+      activePeriodPlan && activeWeeklyPlan && activeWeeklyPlanEffectiveDays
+        ? WEEKDAY_PLAN_ORDER.map((day) => ({
+            day,
+            entry: activeWeeklyPlanEffectiveDays[day]?.trim() ?? "",
+            plannedDate: resolvePeriodPlanPlannedDate(activePeriodPlan, activeWeeklyPlan.weekNumber, day),
+          })).filter((item) => item.entry && !isPassivePeriodPlanEntry(item.entry))
+        : [];
+
+    const plannedThisWeek = plannedEntries.length;
+    const completedPeriodPlanEntries = plannedEntries.filter((item) => {
+      if (item.plannedDate && getStartOfDay(item.plannedDate).getTime() > today.getTime()) return false;
+      const logsForDate = item.plannedDate
+        ? calendarLogsByDateKey.get(toCalendarDateKey(item.plannedDate)) ?? []
+        : calendarLogsByDateKey.get(toCalendarDateKey(today)) ?? [];
+      const entryAction = resolvePeriodPlanEntryAction(item.entry, memberProgramsForPeriodPlan);
+      if (
+        entryAction.kind === "start-program" &&
+        logsForDate.some((log) => completedLogMatchesProgramForPeriodEntry(log, entryAction.program, item.entry))
+      ) {
+        return true;
+      }
+      return isPeriodPlanDayComplete({
+        planId: activePeriodPlan!.id,
+        weekNumber: activeWeeklyPlan!.weekNumber,
+        day: item.day,
+        entry: item.entry,
+        completedKeys: completedPeriodPlanEntryKeys,
+        dismissedKeys: dismissedPeriodPlanEntryKeys,
+        programs: memberProgramsForPeriodPlan,
+        logsForDate,
+      });
+    }).length;
+
+    const completedThisWeek = plannedThisWeek > 0 ? completedPeriodPlanEntries : completedLogsThisWeek;
     const completionRate = plannedThisWeek > 0 ? Math.min(100, Math.round((completedThisWeek / plannedThisWeek) * 100)) : 0;
     return { completedThisWeek, plannedThisWeek, completionRate };
-  }, [nowTimestamp, completedLogDates, activeWeeklyPlanEffectiveDays]);
+  }, [
+    nowTimestamp,
+    completedLogDates,
+    activePeriodPlan,
+    activeWeeklyPlan,
+    activeWeeklyPlanEffectiveDays,
+    calendarLogsByDateKey,
+    completedPeriodPlanEntryKeys,
+    dismissedPeriodPlanEntryKeys,
+    memberProgramsForPeriodPlan,
+  ]);
   const recentWorkoutReflections = useMemo(
     () =>
       completedLogs
@@ -2456,18 +2510,6 @@ export function MemberPortal(props: MemberPortalProps) {
     });
     return byKey;
   }, [completedLogDates]);
-  const calendarLogsByDateKey = useMemo(() => {
-    const byKey = new Map<string, WorkoutLog[]>();
-    completedLogs.forEach((log) => {
-      const parsed = parseLogDate(log.date);
-      if (!parsed) return;
-      const key = toIsoDateInputValue(parsed);
-      const previous = byKey.get(key) ?? [];
-      byKey.set(key, [...previous, log]);
-    });
-    return byKey;
-  }, [completedLogs]);
-
   function completedLogMatchesProgramForPeriodEntry(log: WorkoutLog, program: TrainingProgram, entry: string): boolean {
     if (log.status !== "Fullført") return false;
     if (periodPlanEntryMatchesCompletedProgram(entry, log.programTitle, memberProgramsForPeriodPlan, program.id)) return true;
