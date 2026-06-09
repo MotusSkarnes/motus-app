@@ -228,7 +228,6 @@ import { MemberWeeklySummaryCard } from "./MemberWeeklySummaryCard";
 import { MemberProgressStatusBanner } from "./MemberProgressStatusBanner";
 import { MemberConsistencyWeekCard } from "./MemberConsistencyWeekCard";
 import { MemberProgressHighlightRow } from "./MemberProgressHighlightRow";
-import { MemberNextWorkoutCard } from "./MemberNextWorkoutCard";
 import { MemberTrainingHistoryView } from "./MemberTrainingHistoryView";
 import { MemberTrainingOverview } from "./MemberTrainingOverview";
 import { MemberTrainingQuickActions } from "./MemberTrainingQuickActions";
@@ -7604,36 +7603,6 @@ export function MemberPortal(props: MemberPortalProps) {
                 recentStreakWeeks={recentStreakWeeks}
                 personalRecordsCount={personalRecords.length}
               />
-              <MemberNextWorkoutCard
-                title={
-                  todayPlanEntry.trim() ||
-                  homeWorkoutProgram?.title ||
-                  null
-                }
-                subline={
-                  todayPlanEntry.trim() && homeWorkoutProgram?.title && homeWorkoutProgram.title !== todayPlanEntry.trim()
-                    ? `Program: ${homeWorkoutProgram.title}`
-                    : homeWorkoutProgram?.goal?.trim() || homeWorkoutProgram?.notes?.trim() || null
-                }
-                source={
-                  todayPlanEntry.trim()
-                    ? "plan"
-                    : homeWorkoutProgram
-                      ? "library"
-                      : "empty"
-                }
-                programId={homeWorkoutProgram?.id ?? null}
-                coverSrc={homeDisplayCoverSrc}
-                journeyStep={achievementLevel ?? null}
-                journeyStepLabel={memberProgress.stepLabel ?? null}
-                journeyNextStepLabel={memberProgress.nextStepLabel ?? null}
-                onStart={(programId) => {
-                  const program = memberPrograms.find((p) => p.id === programId);
-                  if (!program) return;
-                  startMemberProgram(program);
-                }}
-              />
-
               <MemberPersonalRecordsSection
                 records={personalRecords}
                 previewRecords={personalRecordsPreview}
