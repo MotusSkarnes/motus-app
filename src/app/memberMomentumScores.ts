@@ -18,9 +18,10 @@ export type ConsistencyScore = {
 
 export type WeeklyScore = {
   score: number;
-  maxScore: number;
+  maxScore: number | null;
   pct: number;
   subline: string;
+  source: "program" | "profile" | "missing";
 };
 
 export type RecoveryScore = {
@@ -170,20 +171,30 @@ export function computeWeeklyScore(
   completedLogDates: Date[],
   nowDate: Date,
   sessionsPerWeekTarget?: number,
+  plannedThisWeek?: number,
 ): WeeklyScore {
   const weekStart = getWeekStart(nowDate);
   const weekEnd = new Date(weekStart);
   weekEnd.setDate(weekEnd.getDate() + 7);
   const score = countWorkoutsBetween(completedLogDates, weekStart, weekEnd);
-  const maxScore = Math.max(2, Number(sessionsPerWeekTarget) || 3);
+  const programTarget = Math.max(0, Math.floor(Number(plannedThisWeek) || 0));
+  const profileTarget = Math.max(0, Math.floor(Number(sessionsPerWeekTarget) || 0));
+  const maxScore = programTarget > 0 ? programTarget : profileTarget > 0 ? profileTarget : null;
+  const source: WeeklyScore["source"] = programTarget > 0 ? "program" : profileTarget > 0 ? "profile" : "missing";
+
+  if (!maxScore) {
+    return { score, maxScore: null, pct: 0, subline: "Sett ukemål i profilen", source };
+  }
+
   const pct = Math.min(100, Math.round((score / maxScore) * 100));
   const remaining = Math.max(0, maxScore - score);
 
-  let subline = `${remaining} økter unna ukesmålet`;
-  if (remaining === 0) subline = "Ukesmål nådd 🎯";
-  else if (remaining === 1) subline = "1 økt unna ukesmålet";
+  const targetLabel = source === "program" ? "PT-planen" : "eget ukemål";
+  let subline = `${remaining} økter igjen i ${targetLabel}`;
+  if (remaining === 0) subline = source === "program" ? "PT-planen er fullført" : "Ukesmål nådd";
+  else if (remaining === 1) subline = `1 økt igjen i ${targetLabel}`;
 
-  return { score, maxScore, pct, subline };
+  return { score, maxScore, pct, subline, source };
 }
 
 export function computeRecoveryScore(reflections: WorkoutReflection[]): RecoveryScore {
@@ -257,7 +268,12 @@ export function computeMemberProgressScores(input: {
       sessionsPerWeekTarget: input.sessionsPerWeekTarget,
     }),
     consistency: computeConsistencyScore(input.streakWeeks, input.recentStreakWeeks),
-    weekly: computeWeeklyScore(input.completedLogDates, input.nowDate, input.sessionsPerWeekTarget),
+    weekly: computeWeeklyScore(
+      input.completedLogDates,
+      input.nowDate,
+      input.sessionsPerWeekTarget,
+      input.plannedThisWeek,
+    ),
     recovery: computeRecoveryScore(input.recentReflections ?? []),
     xp: computeMemberXpState(input.completedSessions, input.streakWeeks, input.achievedLevel),
   };

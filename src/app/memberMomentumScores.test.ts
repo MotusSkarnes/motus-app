@@ -34,6 +34,23 @@ describe("memberMomentumScores", () => {
     expect(weekly.subline).toContain("1 økt");
   });
 
+  it("uses the PT plan as the weekly target when available", () => {
+    const now = new Date("2026-05-16T12:00:00");
+    const dates = [new Date("2026-05-14")];
+    const weekly = computeWeeklyScore(dates, now, 5, 2);
+    expect(weekly.maxScore).toBe(2);
+    expect(weekly.source).toBe("program");
+    expect(weekly.subline).toContain("PT-planen");
+  });
+
+  it("does not invent a default weekly target when no plan or profile goal exists", () => {
+    const now = new Date("2026-05-16T12:00:00");
+    const weekly = computeWeeklyScore([], now);
+    expect(weekly.maxScore).toBeNull();
+    expect(weekly.source).toBe("missing");
+    expect(weekly.subline).toContain("Sett ukemål");
+  });
+
   it("derives consistency from streak and recent weeks", () => {
     const score = computeConsistencyScore(4, [
       { trained: true },

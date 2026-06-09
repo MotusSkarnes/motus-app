@@ -401,7 +401,7 @@ export function MemberProgressHeroCard({ scores, memberFirstName, xpBreakdown }:
         />
         <StatHighlight
           label="Uke-score"
-          value={`${animatedWeeklyScore}/${weekly.maxScore}`}
+          value={weekly.maxScore ? `${animatedWeeklyScore}/${weekly.maxScore}` : "Sett mål"}
           subline={weekly.subline}
           icon={<Target className="h-3.5 w-3.5 sm:h-4 sm:w-4" strokeWidth={2} />}
         />
