@@ -172,12 +172,16 @@ export function computeWeeklyScore(
   nowDate: Date,
   sessionsPerWeekTarget?: number,
   plannedThisWeek?: number,
+  completedThisWeek?: number,
 ): WeeklyScore {
   const weekStart = getWeekStart(nowDate);
   const weekEnd = new Date(weekStart);
   weekEnd.setDate(weekEnd.getDate() + 7);
-  const score = countWorkoutsBetween(completedLogDates, weekStart, weekEnd);
   const programTarget = Math.max(0, Math.floor(Number(plannedThisWeek) || 0));
+  const score =
+    programTarget > 0 && completedThisWeek !== undefined
+      ? Math.max(0, Math.floor(Number(completedThisWeek) || 0))
+      : countWorkoutsBetween(completedLogDates, weekStart, weekEnd);
   const profileTarget = Math.max(0, Math.floor(Number(sessionsPerWeekTarget) || 0));
   const maxScore = programTarget > 0 ? programTarget : profileTarget > 0 ? profileTarget : null;
   const source: WeeklyScore["source"] = programTarget > 0 ? "program" : profileTarget > 0 ? "profile" : "missing";
@@ -273,6 +277,7 @@ export function computeMemberProgressScores(input: {
       input.nowDate,
       input.sessionsPerWeekTarget,
       input.plannedThisWeek,
+      input.completedThisWeek,
     ),
     recovery: computeRecoveryScore(input.recentReflections ?? []),
     xp: computeMemberXpState(input.completedSessions, input.streakWeeks, input.achievedLevel),

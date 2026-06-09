@@ -43,6 +43,15 @@ describe("memberMomentumScores", () => {
     expect(weekly.subline).toContain("PT-planen");
   });
 
+  it("uses completed period plan sessions for the weekly score numerator", () => {
+    const now = new Date("2026-05-16T12:00:00");
+    const weekly = computeWeeklyScore([new Date("2026-05-14")], now, 3, 5, 2);
+    expect(weekly.score).toBe(2);
+    expect(weekly.maxScore).toBe(5);
+    expect(weekly.subline).toContain("3");
+    expect(weekly.subline).toContain("PT-planen");
+  });
+
   it("does not invent a default weekly target when no plan or profile goal exists", () => {
     const now = new Date("2026-05-16T12:00:00");
     const weekly = computeWeeklyScore([], now);
