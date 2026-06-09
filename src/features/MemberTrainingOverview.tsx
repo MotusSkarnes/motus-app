@@ -1,9 +1,8 @@
 import type { CSSProperties } from "react";
-import { Check, ChevronRight, Dumbbell, Flame, Play, Trophy, Zap } from "lucide-react";
+import { CalendarCheck, Check, ChevronRight, Dumbbell, Flame, Play, Target, Zap } from "lucide-react";
 import { MOTUS } from "../app/data";
 import { resolveExerciseImageSrc } from "../app/exerciseIllustrations";
 import { imageObjectPositionFromSrc } from "../app/imageFocalPoint";
-import type { DailyWeekProgressPoint } from "../app/memberTrainingWeekChart";
 import { STRENGTH_TRAINING_COVER_IMAGE } from "../app/programImage";
 import { resolveProgressExerciseDisplayName, resolveProgressPersonalRecordImage } from "../app/progressImagery";
 import type { Exercise } from "../app/types";
@@ -58,9 +57,9 @@ type MemberTrainingOverviewProps = {
   momentumPct: number;
   streakWeeks: number;
   pausedWorkouts: TrainingPausedCard[];
-  weeklyPoints: DailyWeekProgressPoint[];
-  weeklyProgressPct: number;
-  weeklyDeltaLabel: string | null;
+  weeklyCompletedSessions: number;
+  weeklyPlannedSessions: number;
+  weeklyTarget?: number;
   programs: TrainingProgramPreview[];
   onViewAllPrograms: () => void;
   records: PersonalRecordEntry[];
@@ -84,67 +83,65 @@ function resolveRecordImage(name: string, exercises: Exercise[]): string {
   return STRENGTH_TRAINING_COVER_IMAGE;
 }
 
-function WeeklyProgressChart({ points, currentPct }: { points: DailyWeekProgressPoint[]; currentPct: number }) {
-  if (points.length === 0) return null;
-  const width = 280;
-  const height = 88;
-  const paddingX = 8;
-  const paddingY = 10;
-  const chartWidth = width - paddingX * 2;
-  const chartHeight = height - paddingY * 2;
-  const step = points.length > 1 ? chartWidth / (points.length - 1) : chartWidth;
+function sessionWord(count: number): string {
+  return count === 1 ? "økt" : "økter";
+}
 
-  const coordinates = points.map((point, index) => {
-    const x = paddingX + index * step;
-    const y = paddingY + chartHeight - (point.pct / 100) * chartHeight;
-    return { x, y, label: point.label };
-  });
-  const linePoints = coordinates.map((point) => `${point.x},${point.y}`).join(" ");
-  const areaPoints = `${paddingX},${paddingY + chartHeight} ${linePoints} ${paddingX + chartWidth},${paddingY + chartHeight}`;
+function WeeklyPlanStatusCard({
+  completed,
+  planned,
+  weeklyTarget,
+}: {
+  completed: number;
+  planned: number;
+  weeklyTarget?: number;
+}) {
+  const target = planned > 0 ? planned : weeklyTarget ?? 0;
+  const remaining = Math.max(0, target - completed);
+  const hasPtPlan = planned > 0;
+  const hasTarget = target > 0;
+  const Icon = hasPtPlan ? CalendarCheck : Target;
+
+  let title = "Sett et ukemål";
+  let statValue = "Mål";
+  let statLabel = "ikke satt";
+  let subline = "Ingen PT-plan er satt for uken. Sett et eget ukemål for å få en tydelig ukeoversikt.";
+  let note = "Når PT legger inn en plan, bruker vi den automatisk som ukemål.";
+
+  if (hasTarget) {
+    statValue = `${completed}/${target}`;
+    statLabel = "økter fullført";
+    if (remaining === 0) {
+      title = hasPtPlan ? "Du har fulgt PT-planen denne uken" : "Ukemålet er nådd";
+      subline = hasPtPlan ? "Alle planlagte økter er fullført." : "Alle øktene i ukemålet er fullført.";
+      note = "Fortsett sånn, og bruk neste økt til å holde rytmen videre.";
+    } else if (completed === 0) {
+      title = hasPtPlan ? "PT-planen er klar for uken" : "Ukemålet er klart";
+      subline = `${remaining} ${sessionWord(remaining)} igjen ${hasPtPlan ? "i PT-planen" : "i ukemålet"} denne uken.`;
+      note = "Start med neste planlagte økt når det passer.";
+    } else {
+      title = hasPtPlan ? "Du er i gang med PT-planen" : "Du er i gang med ukemålet";
+      subline = `${remaining} ${sessionWord(remaining)} igjen ${hasPtPlan ? "i PT-planen" : "i ukemålet"} denne uken.`;
+      note = "Fortsett med neste økt i planen.";
+    }
+  }
 
   return (
-    <div className="motus-training-week-chart">
-      <div className="motus-training-week-chart-wrap">
-        <svg viewBox={`0 0 ${width} ${height}`} className="motus-training-week-chart-svg" aria-hidden>
-          <defs>
-            <linearGradient id="motusTrainingWeekFill" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor={MOTUS.turquoise} stopOpacity="0.35" />
-              <stop offset="100%" stopColor={MOTUS.turquoise} stopOpacity="0.02" />
-            </linearGradient>
-          </defs>
-          {[0, 0.5, 1].map((ratio) => (
-            <line
-              key={ratio}
-              x1={paddingX}
-              x2={width - paddingX}
-              y1={paddingY + chartHeight * ratio}
-              y2={paddingY + chartHeight * ratio}
-              stroke="rgba(148,163,184,0.18)"
-              strokeWidth="1"
-            />
-          ))}
-          <polygon points={areaPoints} fill="url(#motusTrainingWeekFill)" />
-          <polyline
-            fill="none"
-            stroke={MOTUS.turquoise}
-            strokeWidth="2.5"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            points={linePoints}
-          />
-          {coordinates.map((point) => (
-            <circle key={point.label} cx={point.x} cy={point.y} r="3.5" fill="#fff" stroke={MOTUS.turquoise} strokeWidth="2" />
-          ))}
-        </svg>
-        <div className="motus-training-week-chart-labels">
-          {points.map((point) => (
-            <span key={point.label}>{point.label}</span>
-          ))}
+    <div className="motus-training-week-status">
+      <div className="motus-training-week-status-main">
+        <span className="motus-training-week-status-icon" aria-hidden>
+          <Icon className="h-5 w-5" />
+        </span>
+        <div className="min-w-0">
+          <div className="motus-training-week-status-title">{title}</div>
+          <div className="motus-training-week-status-copy">{subline}</div>
         </div>
       </div>
-      <div className="motus-training-week-chart-side">
-        <span className="motus-training-week-chart-badge">{currentPct}%</span>
+      <div className="motus-training-week-status-stat" aria-label={`${statValue} ${statLabel}`}>
+        <span className="motus-training-week-status-value">{statValue}</span>
+        <span className="motus-training-week-status-label">{statLabel}</span>
       </div>
+      <div className="motus-training-week-status-note">{note}</div>
     </div>
   );
 }
@@ -163,9 +160,9 @@ export function MemberTrainingOverview({
   momentumPct,
   streakWeeks,
   pausedWorkouts,
-  weeklyPoints,
-  weeklyProgressPct,
-  weeklyDeltaLabel,
+  weeklyCompletedSessions,
+  weeklyPlannedSessions,
+  weeklyTarget,
   programs,
   onViewAllPrograms,
   records,
@@ -332,21 +329,14 @@ export function MemberTrainingOverview({
 
       <section className="motus-training-section">
         <div className="motus-training-section-head">
-          <h3 className="motus-training-section-title">Ukens progresjon</h3>
+          <h3 className="motus-training-section-title">Denne uken</h3>
         </div>
         <div className="motus-training-week-panel">
-          <WeeklyProgressChart points={weeklyPoints} currentPct={weeklyProgressPct} />
-          {weeklyDeltaLabel ? (
-            <div className="motus-training-week-insight">
-              <span className="motus-training-week-insight-icon" aria-hidden>
-                <Trophy className="h-4 w-4" />
-              </span>
-              <div>
-                <div className="motus-training-week-insight-title">Kjør på!</div>
-                <div className="motus-training-week-insight-copy">{weeklyDeltaLabel}</div>
-              </div>
-            </div>
-          ) : null}
+          <WeeklyPlanStatusCard
+            completed={weeklyCompletedSessions}
+            planned={weeklyPlannedSessions}
+            weeklyTarget={weeklyTarget}
+          />
         </div>
       </section>
 

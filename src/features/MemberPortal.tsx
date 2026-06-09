@@ -229,11 +229,6 @@ import { MemberProgressStatusBanner } from "./MemberProgressStatusBanner";
 import { MemberConsistencyWeekCard } from "./MemberConsistencyWeekCard";
 import { MemberProgressHighlightRow } from "./MemberProgressHighlightRow";
 import { MemberNextWorkoutCard } from "./MemberNextWorkoutCard";
-import {
-  computeDailyWeekProgress,
-  computeWeeklyProgressDelta,
-  computeWeeklyProgressPct,
-} from "../app/memberTrainingWeekChart";
 import { MemberTrainingHistoryView } from "./MemberTrainingHistoryView";
 import { MemberTrainingOverview } from "./MemberTrainingOverview";
 import { MemberTrainingQuickActions } from "./MemberTrainingQuickActions";
@@ -4870,21 +4865,6 @@ export function MemberPortal(props: MemberPortalProps) {
       ),
     [homeWeeklySummary.completedThisWeek, homeWeeklySummary.plannedThisWeek, profileSessionsPerWeekTarget],
   );
-  const trainingWeeklyPoints = useMemo(
-    () => computeDailyWeekProgress(completedLogDates, nowTimestamp),
-    [completedLogDates, nowTimestamp],
-  );
-  const trainingWeeklyProgressPct = useMemo(
-    () => computeWeeklyProgressPct(trainingWeeklyPoints, nowTimestamp),
-    [trainingWeeklyPoints, nowTimestamp],
-  );
-  const trainingWeeklyDeltaLabel = useMemo(() => {
-    const delta = computeWeeklyProgressDelta(completedLogDates, nowTimestamp);
-    if (delta === null) return null;
-    if (delta === 0) return "Samme nivå som forrige uke";
-    const sign = delta > 0 ? "+" : "";
-    return `${sign}${delta}% vs. forrige uke`;
-  }, [completedLogDates, nowTimestamp]);
   const trainingPausedCards = useMemo(
     () =>
       pausedWorkouts.map((draft) => {
@@ -6669,9 +6649,9 @@ export function MemberPortal(props: MemberPortalProps) {
                   momentumPct={homeMomentumPct}
                   streakWeeks={streakWeeks}
                   pausedWorkouts={trainingPausedCards}
-                  weeklyPoints={trainingWeeklyPoints}
-                  weeklyProgressPct={trainingWeeklyProgressPct}
-                  weeklyDeltaLabel={trainingWeeklyDeltaLabel}
+                  weeklyCompletedSessions={homeWeeklySummary.completedThisWeek}
+                  weeklyPlannedSessions={homeWeeklySummary.plannedThisWeek}
+                  weeklyTarget={Number(profileSessionsPerWeekTarget) || undefined}
                   programs={trainingProgramPreviews.map((program) => ({
                     ...program,
                     onOpen: () => {
