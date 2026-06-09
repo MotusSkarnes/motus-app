@@ -1,5 +1,5 @@
 import type { CSSProperties } from "react";
-import { CalendarCheck, Check, ChevronRight, Dumbbell, Flame, Play, Target } from "lucide-react";
+import { CalendarCheck, Check, ChevronRight, Dumbbell, Flame, Play } from "lucide-react";
 import { MOTUS } from "../app/data";
 import { resolveExerciseImageSrc } from "../app/exerciseIllustrations";
 import { imageObjectPositionFromSrc } from "../app/imageFocalPoint";
@@ -80,69 +80,6 @@ function resolveRecordImage(name: string, exercises: Exercise[]): string {
   const match = exercises.find((exercise) => exercise.name.trim().toLowerCase() === normalized);
   if (match) return resolveExerciseImageSrc(match);
   return STRENGTH_TRAINING_COVER_IMAGE;
-}
-
-function sessionWord(count: number): string {
-  return count === 1 ? "økt" : "økter";
-}
-
-function WeeklyPlanStatusCard({
-  completed,
-  planned,
-  weeklyTarget,
-}: {
-  completed: number;
-  planned: number;
-  weeklyTarget?: number;
-}) {
-  const target = planned > 0 ? planned : weeklyTarget ?? 0;
-  const remaining = Math.max(0, target - completed);
-  const hasPtPlan = planned > 0;
-  const hasTarget = target > 0;
-  const Icon = hasPtPlan ? CalendarCheck : Target;
-
-  let title = "Sett et ukemål";
-  let statValue = "Mål";
-  let statLabel = "ikke satt";
-  let subline = "Ingen PT-plan er satt for uken. Sett et eget ukemål for å få en tydelig ukeoversikt.";
-  let note = "Når PT legger inn en plan, bruker vi den automatisk som ukemål.";
-
-  if (hasTarget) {
-    statValue = `${completed}/${target}`;
-    statLabel = "økter fullført";
-    if (remaining === 0) {
-      title = hasPtPlan ? "Du har fulgt PT-planen denne uken" : "Ukemålet er nådd";
-      subline = hasPtPlan ? "Alle planlagte økter er fullført." : "Alle øktene i ukemålet er fullført.";
-      note = "Fortsett sånn, og bruk neste økt til å holde rytmen videre.";
-    } else if (completed === 0) {
-      title = hasPtPlan ? "PT-planen er klar for uken" : "Ukemålet er klart";
-      subline = `${remaining} ${sessionWord(remaining)} igjen ${hasPtPlan ? "i PT-planen" : "i ukemålet"} denne uken.`;
-      note = "Start med neste planlagte økt når det passer.";
-    } else {
-      title = hasPtPlan ? "Du er i gang med PT-planen" : "Du er i gang med ukemålet";
-      subline = `${remaining} ${sessionWord(remaining)} igjen ${hasPtPlan ? "i PT-planen" : "i ukemålet"} denne uken.`;
-      note = "Fortsett med neste økt i planen.";
-    }
-  }
-
-  return (
-    <div className="motus-training-week-status">
-      <div className="motus-training-week-status-main">
-        <span className="motus-training-week-status-icon" aria-hidden>
-          <Icon className="h-5 w-5" />
-        </span>
-        <div className="min-w-0">
-          <div className="motus-training-week-status-title">{title}</div>
-          <div className="motus-training-week-status-copy">{subline}</div>
-        </div>
-      </div>
-      <div className="motus-training-week-status-stat" aria-label={`${statValue} ${statLabel}`}>
-        <span className="motus-training-week-status-value">{statValue}</span>
-        <span className="motus-training-week-status-label">{statLabel}</span>
-      </div>
-      <div className="motus-training-week-status-note">{note}</div>
-    </div>
-  );
 }
 
 export function MemberTrainingOverview({
@@ -327,19 +264,6 @@ export function MemberTrainingOverview({
           </div>
         </section>
       ) : null}
-
-      <section className="motus-training-section">
-        <div className="motus-training-section-head">
-          <h3 className="motus-training-section-title">Denne uken</h3>
-        </div>
-        <div className="motus-training-week-panel">
-          <WeeklyPlanStatusCard
-            completed={weeklyCompletedSessions}
-            planned={weeklyPlannedSessions}
-            weeklyTarget={weeklyTarget}
-          />
-        </div>
-      </section>
 
       {records.length > 0 ? (
         <section className="motus-training-section">
