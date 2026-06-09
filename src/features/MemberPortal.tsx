@@ -1172,6 +1172,7 @@ export function MemberPortal(props: MemberPortalProps) {
   }, [memberTab]);
   useEffect(() => {
     if (trainingHomeResetKey <= 0 || memberTab !== "programs") return;
+    if (pendingOpenPeriodPlanRef.current) return;
     setTrainingSection("today");
   }, [trainingHomeResetKey, memberTab]);
   useEffect(() => {
