@@ -62,8 +62,21 @@ describe("resolvePeriodPlanPlannedDate", () => {
     plan.startDate = "2026-05-22";
     expect(resolvePeriodPlanPlannedDate(plan, 1, "friday")?.toLocaleDateString("sv-SE")).toBe("2026-05-22");
     expect(resolvePeriodPlanPlannedDate(plan, 1, "sunday")?.toLocaleDateString("sv-SE")).toBe("2026-05-24");
-    expect(resolvePeriodPlanPlannedDate(plan, 1, "monday")?.toLocaleDateString("sv-SE")).toBe("2026-05-25");
-    expect(resolvePeriodPlanPlannedDate(plan, 2, "monday")?.toLocaleDateString("sv-SE")).toBe("2026-06-01");
+    expect(resolvePeriodPlanPlannedDate(plan, 1, "monday")).toBeNull();
+    expect(resolvePeriodPlanPlannedDate(plan, 2, "monday")?.toLocaleDateString("sv-SE")).toBe("2026-05-25");
+  });
+
+  it("does not move days before a mid-week start into the next week", () => {
+    const plan = makePlan([
+      { id: "w1", weekNumber: 1, days: { ...empty, monday: "A", tuesday: "B", wednesday: "C" } },
+      { id: "w2", weekNumber: 2, days: { ...empty, monday: "D", tuesday: "E" } },
+    ]);
+    plan.startDate = "2026-06-10";
+    expect(resolvePeriodPlanPlannedDate(plan, 1, "monday")).toBeNull();
+    expect(resolvePeriodPlanPlannedDate(plan, 1, "tuesday")).toBeNull();
+    expect(resolvePeriodPlanPlannedDate(plan, 1, "wednesday")?.toLocaleDateString("sv-SE")).toBe("2026-06-10");
+    expect(resolvePeriodPlanPlannedDate(plan, 2, "monday")?.toLocaleDateString("sv-SE")).toBe("2026-06-15");
+    expect(resolvePeriodPlanPlannedDate(plan, 2, "tuesday")?.toLocaleDateString("sv-SE")).toBe("2026-06-16");
   });
 });
 
@@ -76,6 +89,18 @@ describe("resolvePeriodPlanWeekNumberForDate", () => {
     plan.startDate = "2026-05-19";
     const week = resolvePeriodPlanWeekNumberForDate(plan, new Date(2026, 4, 26));
     expect(week).toBe(2);
+  });
+
+  it("uses the next calendar week as week 2 when a plan starts mid-week", () => {
+    const plan = makePlan([
+      { id: "w1", weekNumber: 1, days: { ...empty, wednesday: "A" } },
+      { id: "w2", weekNumber: 2, days: { ...empty, monday: "B" } },
+    ]);
+    plan.startDate = "2026-06-10";
+    expect(resolvePeriodPlanWeekNumberForDate(plan, new Date(2026, 5, 10))).toBe(1);
+    expect(resolvePeriodPlanWeekNumberForDate(plan, new Date(2026, 5, 14))).toBe(1);
+    expect(resolvePeriodPlanWeekNumberForDate(plan, new Date(2026, 5, 15))).toBe(2);
+    expect(resolvePeriodPlanWeekNumberForDate(plan, new Date(2026, 5, 16))).toBe(2);
   });
 });
 
@@ -174,10 +199,10 @@ describe("findPeriodPlanEntryForCalendarDate", () => {
       { id: "w2", weekNumber: 2, days: { ...empty, monday: "Uke 2 mandag" } },
     ]);
     plan.startDate = "14.05.2026";
-    const match = findPeriodPlanEntryForCalendarDate(plan, new Date(2026, 4, 20));
-    expect(match?.entry).toBe("Onsdag i uke 1");
-    expect(match?.weekNumber).toBe(1);
-    expect(match?.day).toBe("wednesday");
+    const match = findPeriodPlanEntryForCalendarDate(plan, new Date(2026, 4, 18));
+    expect(match?.entry).toBe("Uke 2 mandag");
+    expect(match?.weekNumber).toBe(2);
+    expect(match?.day).toBe("monday");
   });
 
   it("applies day swaps before returning entry", () => {
@@ -370,19 +395,19 @@ describe("period plan auto-complete", () => {
   });
 
   it("matches by program id when log title differs from plan entry", () => {
-    const plan = makePlan([{ id: "w1", weekNumber: 1, days: { ...empty, monday: "Styrke A" } }]);
+    const plan = makePlan([{ id: "w1", weekNumber: 1, days: { ...empty, tuesday: "Styrke A" } }]);
     plan.startDate = "2026-05-19";
-    const mondayDate = resolvePeriodPlanPlannedDate(plan, 1, "monday");
-    expect(mondayDate).not.toBeNull();
+    const tuesdayDate = resolvePeriodPlanPlannedDate(plan, 1, "tuesday");
+    expect(tuesdayDate).not.toBeNull();
     const targets = findPeriodPlanAutoCompleteTargets({
       plans: [plan],
       swapsByPlan: {},
       programTitle: "Styrke A (kopi)",
       programId: "p1",
       programs,
-      completedAt: mondayDate!,
+      completedAt: tuesdayDate!,
     });
-    expect(targets).toEqual([{ planId: "plan-1", weekNumber: 1, day: "monday" }]);
+    expect(targets).toEqual([{ planId: "plan-1", weekNumber: 1, day: "tuesday" }]);
   });
 
   it("falls back to calendar weekday when start-date row does not match completed program", () => {

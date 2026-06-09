@@ -2035,12 +2035,12 @@ export function MemberPortal(props: MemberPortalProps) {
   const activePeriodPlanStartDate = activePeriodPlan ? parsePeriodPlanStartDate(activePeriodPlan) : null;
   const activePeriodWeekIndex = useMemo(() => {
     if (!activePeriodPlan || !activePeriodPlanStartDate) return null;
-    const daysSinceStart = Math.floor((getStartOfDay(new Date(nowTimestamp)).getTime() - getStartOfDay(activePeriodPlanStartDate).getTime()) / (24 * 60 * 60 * 1000));
-    if (daysSinceStart < 0) return 0;
-    const weekIndex = Math.floor(daysSinceStart / 7);
+    const today = getStartOfDay(new Date(nowTimestamp));
+    if (today.getTime() < getStartOfDay(activePeriodPlanStartDate).getTime()) return 0;
     const planWeekCount = periodPlanSelectableWeekCount(activePeriodPlan);
-    if (weekIndex >= planWeekCount) return null;
-    return weekIndex;
+    const planEnd = resolvePeriodPlanPlannedDate(activePeriodPlan, planWeekCount, "sunday");
+    if (planEnd && today.getTime() > getStartOfDay(planEnd).getTime()) return null;
+    return resolvePeriodPlanWeekNumberForDate(activePeriodPlan, today) - 1;
   }, [activePeriodPlan, activePeriodPlanStartDate, nowTimestamp]);
   const activeWeeklyPlan = useMemo(() => {
     if (!activePeriodPlan || activePeriodWeekIndex === null) return null;
@@ -6645,12 +6645,7 @@ export function MemberPortal(props: MemberPortalProps) {
                         : undefined
                   }
                   completedHint={todayPeriodPlanCompleted ? "Dagens økt er logget" : null}
-                  completedSessions={homeWeeklySummary.completedThisWeek}
-                  streakWeeks={streakWeeks}
                   pausedWorkouts={trainingPausedCards}
-                  weeklyCompletedSessions={homeWeeklySummary.completedThisWeek}
-                  weeklyPlannedSessions={homeWeeklySummary.plannedThisWeek}
-                  weeklyTarget={Number(profileSessionsPerWeekTarget) || undefined}
                   programs={trainingProgramPreviews.map((program) => ({
                     ...program,
                     onOpen: () => {

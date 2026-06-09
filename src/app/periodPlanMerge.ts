@@ -58,9 +58,9 @@ export function resolvePeriodPlanPlannedDate(plan: PeriodSchedulePlan, weekNumbe
   const start = parsePeriodPlanStartDate(plan);
   if (!start) return null;
   const weekIndex = Math.max(0, Math.floor(Number(weekNumber) || 1) - 1);
-  const startWeekdayIndex = localMondayBasedWeekdayIndex(start);
-  const dayOffset = weekIndex * 7 + ((WEEKDAY_INDEX[day] - startWeekdayIndex + 7) % 7);
-  return new Date(start.getFullYear(), start.getMonth(), start.getDate() + dayOffset);
+  const startWeekMonday = new Date(start.getFullYear(), start.getMonth(), start.getDate() - localMondayBasedWeekdayIndex(start));
+  const plannedDate = new Date(startWeekMonday.getFullYear(), startWeekMonday.getMonth(), startWeekMonday.getDate() + weekIndex * 7 + WEEKDAY_INDEX[day]);
+  return startOfLocalDay(plannedDate).getTime() < startOfLocalDay(start).getTime() ? null : plannedDate;
 }
 
 /** Finn økt for en kalenderdag — samme dato-beregning som vises i periodeplan-radene. */
@@ -636,9 +636,11 @@ export function resolvePeriodPlanWeekNumberForDate(plan: PeriodSchedulePlan, tar
   const start = parsePeriodPlanStartDate(plan);
   const planWeekCount = Math.max(1, periodPlanSelectableWeekCount(plan));
   if (!start) return 1;
-  const daysSinceStart = periodPlanDaysSinceStart(start, targetDate);
-  if (daysSinceStart < 0) return 1;
-  const weekIndex = Math.floor(daysSinceStart / 7);
+  const target = startOfLocalDay(targetDate);
+  if (target.getTime() < startOfLocalDay(start).getTime()) return 1;
+  const startWeekMonday = new Date(start.getFullYear(), start.getMonth(), start.getDate() - localMondayBasedWeekdayIndex(start));
+  const daysSinceStartWeek = Math.floor((target.getTime() - startOfLocalDay(startWeekMonday).getTime()) / MS_PER_DAY);
+  const weekIndex = Math.floor(daysSinceStartWeek / 7);
   return Math.min(planWeekCount, weekIndex + 1);
 }
 

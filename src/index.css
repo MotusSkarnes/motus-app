@@ -7035,69 +7035,6 @@ html:has(.motus-trainer-app) {
   color: #64748b;
 }
 
-.motus-training-stat-grid {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 0.625rem;
-}
-
-.motus-training-stat-card {
-  display: flex;
-  min-height: 5.75rem;
-  flex-direction: column;
-  align-items: flex-start;
-  justify-content: center;
-  gap: 0.25rem;
-  border-radius: 1.5rem;
-  border: 1px solid rgba(0, 0, 0, 0.04);
-  background: #fff;
-  padding: 0.75rem;
-  box-shadow: 0 10px 30px rgba(16, 24, 40, 0.06);
-}
-
-.motus-training-stat-icon {
-  display: inline-flex;
-  height: 2rem;
-  width: 2rem;
-  align-items: center;
-  justify-content: center;
-  border-radius: 999px;
-  color: #fff;
-}
-
-.motus-training-stat-icon--teal {
-  background: linear-gradient(135deg, #6cf0d6 0%, #30E3BE 100%);
-  box-shadow: 0 6px 16px -6px rgba(48, 227, 190, 0.55);
-}
-
-.motus-training-stat-icon--pink {
-  background: linear-gradient(135deg, #f472b6, #d91278);
-}
-
-.motus-training-stat-icon--violet {
-  background: linear-gradient(135deg, #a78bfa, #7c3aed);
-}
-
-.motus-training-stat-icon--streak {
-  background: linear-gradient(135deg, #fbcfe8 0%, #d91278 100%);
-  box-shadow: 0 6px 16px -6px rgba(217, 18, 120, 0.55);
-}
-
-.motus-training-stat-value {
-  font-size: 1.125rem;
-  font-weight: 650;
-  line-height: 1.15;
-  letter-spacing: -0.01em;
-  color: #0f172a;
-}
-
-.motus-training-stat-label {
-  font-size: 0.6875rem;
-  font-weight: 500;
-  color: #94a3b8;
-  text-transform: capitalize;
-}
-
 .motus-training-section {
   display: flex;
   flex-direction: column;

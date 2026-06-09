@@ -1,5 +1,5 @@
 import type { CSSProperties } from "react";
-import { CalendarCheck, Check, ChevronRight, Dumbbell, Flame, Play } from "lucide-react";
+import { Check, ChevronRight, Dumbbell, Play } from "lucide-react";
 import { MOTUS } from "../app/data";
 import { resolveExerciseImageSrc } from "../app/exerciseIllustrations";
 import { imageObjectPositionFromSrc } from "../app/imageFocalPoint";
@@ -53,12 +53,7 @@ type MemberTrainingOverviewProps = {
   exerciseCountLabel: string | null;
   primaryAction?: TrainingHeroAction;
   completedHint?: string | null;
-  completedSessions: number;
-  streakWeeks: number;
   pausedWorkouts: TrainingPausedCard[];
-  weeklyCompletedSessions: number;
-  weeklyPlannedSessions: number;
-  weeklyTarget?: number;
   programs: TrainingProgramPreview[];
   onViewAllPrograms: () => void;
   records: PersonalRecordEntry[];
@@ -66,12 +61,6 @@ type MemberTrainingOverviewProps = {
   onViewAllRecords: () => void;
   onOpenRecord: (name: string) => void;
 };
-
-function streakLabel(weeks: number): string {
-  if (weeks <= 0) return "0 uker";
-  if (weeks === 1) return "1 uke";
-  return `${weeks} uker`;
-}
 
 function resolveRecordImage(name: string, exercises: Exercise[]): string {
   const progressPhoto = resolveProgressPersonalRecordImage(name);
@@ -92,12 +81,7 @@ export function MemberTrainingOverview({
   exerciseCountLabel,
   primaryAction,
   completedHint,
-  completedSessions,
-  streakWeeks,
   pausedWorkouts,
-  weeklyCompletedSessions,
-  weeklyPlannedSessions,
-  weeklyTarget,
   programs,
   onViewAllPrograms,
   records,
@@ -106,9 +90,6 @@ export function MemberTrainingOverview({
   onOpenRecord,
 }: MemberTrainingOverviewProps) {
   const heroMeta = [durationLabel, exerciseCountLabel, zoneLabel].filter(Boolean);
-  const weeklyStatTarget = weeklyPlannedSessions > 0 ? weeklyPlannedSessions : weeklyTarget ?? 0;
-  const weeklyStatValue = weeklyStatTarget > 0 ? `${weeklyCompletedSessions}/${weeklyStatTarget}` : "Sett";
-  const weeklyStatLabel = weeklyPlannedSessions > 0 ? "Plan" : "Ukemål";
 
   return (
     <div className="motus-training-overview motus-fade-in-up">
@@ -161,30 +142,6 @@ export function MemberTrainingOverview({
           ) : null}
         </div>
       </article>
-
-      <section className="motus-training-stat-grid" aria-label="Ukeoversikt">
-        <div className="motus-training-stat-card">
-          <span className="motus-training-stat-icon motus-training-stat-icon--pink">
-            <Flame className="h-4 w-4" aria-hidden />
-          </span>
-          <span className="motus-training-stat-value">{completedSessions}</span>
-          <span className="motus-training-stat-label">Økter</span>
-        </div>
-        <div className="motus-training-stat-card">
-          <span className="motus-training-stat-icon motus-training-stat-icon--teal">
-            <CalendarCheck className="h-4 w-4" aria-hidden />
-          </span>
-          <span className="motus-training-stat-value">{weeklyStatValue}</span>
-          <span className="motus-training-stat-label">{weeklyStatLabel}</span>
-        </div>
-        <div className="motus-training-stat-card">
-          <span className="motus-training-stat-icon motus-training-stat-icon--pink">
-            <Flame className="h-4 w-4" strokeWidth={2.25} aria-hidden />
-          </span>
-          <span className="motus-training-stat-value">{streakLabel(streakWeeks)}</span>
-          <span className="motus-training-stat-label">Streak</span>
-        </div>
-      </section>
 
       {pausedWorkouts.length > 0 ? (
         <section className="motus-training-section">
