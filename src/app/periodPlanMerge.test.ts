@@ -14,6 +14,7 @@ import {
   dedupePeriodPlansById,
   preferNewerPeriodPlan,
   periodPlanEntryMatchesCompletedProgram,
+  computePeriodPlanSessionProgress,
   readActivePeriodPlanIdForMembers,
   readHiddenPeriodPlanIdsForMembers,
   periodPlanWeekdayKeyForDate,
@@ -101,6 +102,29 @@ describe("resolvePeriodPlanWeekNumberForDate", () => {
     expect(resolvePeriodPlanWeekNumberForDate(plan, new Date(2026, 5, 14))).toBe(1);
     expect(resolvePeriodPlanWeekNumberForDate(plan, new Date(2026, 5, 15))).toBe(2);
     expect(resolvePeriodPlanWeekNumberForDate(plan, new Date(2026, 5, 16))).toBe(2);
+  });
+});
+
+describe("computePeriodPlanSessionProgress", () => {
+  it("does not count week-one sessions before a mid-week start", () => {
+    const fullWeek = {
+      monday: "A",
+      tuesday: "B",
+      wednesday: "C",
+      thursday: "D",
+      friday: "E",
+      saturday: "F",
+      sunday: "G",
+    };
+    const plan = makePlan([
+      { id: "w1", weekNumber: 1, days: { ...fullWeek } },
+      { id: "w2", weekNumber: 2, days: { ...fullWeek } },
+    ]);
+    plan.startDate = "2026-06-10";
+
+    const progress = computePeriodPlanSessionProgress(plan, {}, () => false);
+    expect(progress.total).toBe(12);
+    expect(progress.completed).toBe(0);
   });
 });
 

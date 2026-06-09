@@ -821,6 +821,7 @@ export function computePeriodPlanSessionProgress(
     for (const dayKey of WEEKDAY_PLAN_ORDER) {
       const entry = days[dayKey]?.trim() ?? "";
       if (!entry || isPassivePeriodPlanEntry(entry)) continue;
+      if (!resolvePeriodPlanPlannedDate(plan, week.weekNumber, dayKey)) continue;
       total += 1;
       if (isEntryCompleted(plan.id, week.weekNumber, dayKey)) completed += 1;
     }

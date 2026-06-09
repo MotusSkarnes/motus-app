@@ -195,11 +195,12 @@ export function PeriodPlanWeekView({
           const entry = effectiveDays[dayKey]?.trim() ?? "";
           const sourceDay = periodPlanSourceDay(dayKey, week.days, effectiveDays);
           const plannedDate = resolveEntryDate(plan, week.weekNumber, dayKey);
-          const entryAction = entry ? resolvePeriodPlanEntryAction(entry, memberPrograms) : { kind: "none" as const };
-          const previewProgramForEntry = entry ? findProgramForPeriodPlanEntry(entry, memberPrograms) : null;
-          const listLabel = getPeriodPlanDayListLabel(entry, entryAction);
+          const visibleEntry = plannedDate ? entry : "";
+          const entryAction = visibleEntry ? resolvePeriodPlanEntryAction(visibleEntry, memberPrograms) : { kind: "none" as const };
+          const previewProgramForEntry = visibleEntry ? findProgramForPeriodPlanEntry(visibleEntry, memberPrograms) : null;
+          const listLabel = getPeriodPlanDayListLabel(visibleEntry, entryAction);
           const completed = isEntryCompleted(plan.id, week.weekNumber, dayKey);
-          const status = resolveDayStatus(entry, completed);
+          const status = resolveDayStatus(visibleEntry, completed);
           const isFutureDate = isPeriodPlanEntryDateInFuture(plannedDate);
           const canMarkCompleted = completed || !isFutureDate;
           const isSwapSource = swapFromDay === dayKey;
@@ -238,17 +239,17 @@ export function PeriodPlanWeekView({
                           planId: plan.id,
                           weekNumber: week.weekNumber,
                           day: dayKey,
-                          entry,
+                          entry: visibleEntry,
                         });
                       }
                     }}
                     className={`motus-period-plan-day-main ${canOpenPreview ? "motus-period-plan-day-main--clickable" : ""}`}
                     aria-label={canOpenPreview ? `Se økt for ${dayLabel}` : undefined}
                   >
-                    {entry.trim() ? (
+                    {visibleEntry.trim() ? (
                       <div className="motus-period-plan-day-cover motus-image-frame" aria-hidden>
                         <img
-                          src={resolvePeriodPlanEntryCoverImage(entry, {
+                          src={resolvePeriodPlanEntryCoverImage(visibleEntry, {
                             activityTemplates: resolvedActivityTemplates,
                             memberPrograms,
                             exercises: exerciseLibrary,
@@ -270,7 +271,7 @@ export function PeriodPlanWeekView({
                         <span className="motus-period-plan-day-status motus-period-plan-day-status--completed">Fullført</span>
                       ) : status === "rest" ? (
                         <span className="motus-period-plan-day-status motus-period-plan-day-status--rest">Hviledag</span>
-                      ) : entry ? (
+                      ) : visibleEntry ? (
                         <span className="motus-period-plan-day-status motus-period-plan-day-status--planned">Planlagt</span>
                       ) : null}
                     </div>
@@ -282,7 +283,7 @@ export function PeriodPlanWeekView({
                     {canOpenPreview ? <ChevronRight className="motus-period-plan-day-chevron" aria-hidden /> : null}
                   </button>
 
-                  {entry && status !== "rest" ? (
+                  {visibleEntry && status !== "rest" ? (
                     <div className="motus-period-plan-day-footer">
                       {entryAction.kind === "start-program" && !completed && !isFutureDate ? (
                         <button
@@ -292,7 +293,7 @@ export function PeriodPlanWeekView({
                               planId: plan.id,
                               weekNumber: week.weekNumber,
                               day: dayKey,
-                              entry,
+                              entry: visibleEntry,
                             })
                           }
                           className="motus-period-plan-day-primary motus-period-plan-day-primary--start"
@@ -311,7 +312,7 @@ export function PeriodPlanWeekView({
                               planId: plan.id,
                               weekNumber: week.weekNumber,
                               day: dayKey,
-                              entry: effectiveDays[dayKey],
+                              entry: visibleEntry,
                               plannedDate,
                             });
                           }}

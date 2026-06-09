@@ -2398,7 +2398,7 @@ export function MemberPortal(props: MemberPortalProps) {
             day,
             entry: activeWeeklyPlanEffectiveDays[day]?.trim() ?? "",
             plannedDate: resolvePeriodPlanPlannedDate(activePeriodPlan, activeWeeklyPlan.weekNumber, day),
-          })).filter((item) => item.entry && !isPassivePeriodPlanEntry(item.entry))
+          })).filter((item) => item.plannedDate && item.entry && !isPassivePeriodPlanEntry(item.entry))
         : [];
 
     const plannedThisWeek = plannedEntries.length;
