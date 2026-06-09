@@ -6646,7 +6646,6 @@ export function MemberPortal(props: MemberPortalProps) {
                   }
                   completedHint={todayPeriodPlanCompleted ? "Dagens økt er logget" : null}
                   completedSessions={homeWeeklySummary.completedThisWeek}
-                  momentumPct={homeMomentumPct}
                   streakWeeks={streakWeeks}
                   pausedWorkouts={trainingPausedCards}
                   weeklyCompletedSessions={homeWeeklySummary.completedThisWeek}

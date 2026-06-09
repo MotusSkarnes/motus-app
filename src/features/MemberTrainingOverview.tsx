@@ -1,5 +1,5 @@
 import type { CSSProperties } from "react";
-import { CalendarCheck, Check, ChevronRight, Dumbbell, Flame, Play, Target, Zap } from "lucide-react";
+import { CalendarCheck, Check, ChevronRight, Dumbbell, Flame, Play, Target } from "lucide-react";
 import { MOTUS } from "../app/data";
 import { resolveExerciseImageSrc } from "../app/exerciseIllustrations";
 import { imageObjectPositionFromSrc } from "../app/imageFocalPoint";
@@ -54,7 +54,6 @@ type MemberTrainingOverviewProps = {
   primaryAction?: TrainingHeroAction;
   completedHint?: string | null;
   completedSessions: number;
-  momentumPct: number;
   streakWeeks: number;
   pausedWorkouts: TrainingPausedCard[];
   weeklyCompletedSessions: number;
@@ -157,7 +156,6 @@ export function MemberTrainingOverview({
   primaryAction,
   completedHint,
   completedSessions,
-  momentumPct,
   streakWeeks,
   pausedWorkouts,
   weeklyCompletedSessions,
@@ -171,6 +169,9 @@ export function MemberTrainingOverview({
   onOpenRecord,
 }: MemberTrainingOverviewProps) {
   const heroMeta = [durationLabel, exerciseCountLabel, zoneLabel].filter(Boolean);
+  const weeklyStatTarget = weeklyPlannedSessions > 0 ? weeklyPlannedSessions : weeklyTarget ?? 0;
+  const weeklyStatValue = weeklyStatTarget > 0 ? `${weeklyCompletedSessions}/${weeklyStatTarget}` : "Sett";
+  const weeklyStatLabel = weeklyPlannedSessions > 0 ? "Plan" : "Ukemål";
 
   return (
     <div className="motus-training-overview motus-fade-in-up">
@@ -234,10 +235,10 @@ export function MemberTrainingOverview({
         </div>
         <div className="motus-training-stat-card">
           <span className="motus-training-stat-icon motus-training-stat-icon--teal">
-            <Zap className="h-4 w-4" aria-hidden />
+            <CalendarCheck className="h-4 w-4" aria-hidden />
           </span>
-          <span className="motus-training-stat-value">{momentumPct}%</span>
-          <span className="motus-training-stat-label">Flyt</span>
+          <span className="motus-training-stat-value">{weeklyStatValue}</span>
+          <span className="motus-training-stat-label">{weeklyStatLabel}</span>
         </div>
         <div className="motus-training-stat-card">
           <span className="motus-training-stat-icon motus-training-stat-icon--pink">
