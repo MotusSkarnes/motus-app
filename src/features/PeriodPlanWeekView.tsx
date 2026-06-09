@@ -15,8 +15,14 @@ import {
   WEEKDAY_PLAN_ORDER,
   type PeriodPlanSwapsByPlan,
 } from "../app/periodPlanSwaps";
-import { listActivityTemplates } from "../app/activityTemplate";
-import { resolveNoPlanDayCoverImage, resolvePeriodPlanEntryCoverImage } from "../app/programImage";
+import { activityTemplateMatchesPeriodEntry, listActivityTemplates } from "../app/activityTemplate";
+import { imageObjectPositionFromSrc, programCustomCoverImageStyle } from "../app/imageFocalPoint";
+import {
+  isUploadedProgramCoverSrc,
+  programCoverUsesPhotoStyle,
+  resolveNoPlanDayCoverImage,
+  resolvePeriodPlanEntryCoverImage,
+} from "../app/programImage";
 import { buildExerciseCategoryById } from "../app/trainingProgramKind";
 import { GradientButton, OutlineButton } from "../app/ui";
 import type { Exercise, PeriodSchedulePlan, TrainingProgram, WeekdayPlanKey, WeeklySchedulePlan } from "../app/types";
@@ -200,6 +206,9 @@ export function PeriodPlanWeekView({
           const visibleEntry = plannedDate ? entry : "";
           const entryAction = visibleEntry ? resolvePeriodPlanEntryAction(visibleEntry, memberPrograms) : { kind: "none" as const };
           const previewProgramForEntry = visibleEntry ? findProgramForPeriodPlanEntry(visibleEntry, memberPrograms) : null;
+          const activityTemplateForEntry = visibleEntry
+            ? resolvedActivityTemplates.find((template) => activityTemplateMatchesPeriodEntry(template, visibleEntry)) ?? null
+            : null;
           const listLabel = getPeriodPlanDayListLabel(visibleEntry, entryAction);
           const coverImageSrc = visibleEntry.trim()
             ? resolvePeriodPlanEntryCoverImage(visibleEntry, {
@@ -209,6 +218,13 @@ export function PeriodPlanWeekView({
                 exerciseCategoryById,
               })
             : noPlanDayCoverSrc || resolveNoPlanDayCoverImage();
+          const coverProgramForPresentation = activityTemplateForEntry ?? previewProgramForEntry;
+          const coverUsesPhotoStyle = coverProgramForPresentation
+            ? programCoverUsesPhotoStyle(coverProgramForPresentation, coverImageSrc)
+            : isUploadedProgramCoverSrc(coverImageSrc);
+          const coverImageStyle = coverUsesPhotoStyle
+            ? programCustomCoverImageStyle(coverProgramForPresentation?.imageUrl ?? coverImageSrc)
+            : { objectPosition: imageObjectPositionFromSrc(coverImageSrc) };
           const completed = isEntryCompleted(plan.id, week.weekNumber, dayKey);
           const status = resolveDayStatus(visibleEntry, completed);
           const isFutureDate = isPeriodPlanEntryDateInFuture(plannedDate);
@@ -261,7 +277,12 @@ export function PeriodPlanWeekView({
                         <img
                           src={coverImageSrc}
                           alt=""
-                          className="motus-image-media"
+                          className={`motus-member-program-cover motus-image-media${
+                            coverUsesPhotoStyle
+                              ? " motus-member-program-cover--custom"
+                              : " motus-member-program-cover--exercise"
+                          }`}
+                          style={coverImageStyle}
                           loading="lazy"
                         />
                       </div>

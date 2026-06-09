@@ -4831,6 +4831,12 @@ export function MemberPortal(props: MemberPortalProps) {
           usesPhotoStyle: programCoverUsesPhotoStyle(coverTemplate!, templateImageUrl),
         };
       }
+      if (isUploadedProgramCoverSrc(src)) {
+        return {
+          style: programCustomCoverImageStyle(src),
+          usesPhotoStyle: true,
+        };
+      }
       return { style: { objectPosition: imageObjectPositionFromSrc(src) }, usesPhotoStyle: false };
     }
     const usesPhotoStyle = programCoverUsesPhotoStyle(homeWorkoutProgram, homeDisplayCoverSrc);
