@@ -9549,10 +9549,9 @@ html:has(.motus-trainer-app) {
 }
 
 .motus-period-plan-day-cover {
-  margin: -0.875rem -2.25rem 0.75rem -1rem;
-  width: calc(100% + 3.25rem);
-  height: 118px;
-  aspect-ratio: auto !important;
+  margin: -0.875rem 0 0.75rem -1rem;
+  width: min(calc(100% + 1rem), 390px);
+  aspect-ratio: 390 / 118;
   overflow: hidden;
 }
 
