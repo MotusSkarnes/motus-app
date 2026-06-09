@@ -204,6 +204,7 @@ export function MemberLayout({
 }: MemberLayoutProps) {
   const [onboardingGateOpen, setOnboardingGateOpen] = useState(false);
   const [welcomeModalOpen, setWelcomeModalOpen] = useState(false);
+  const [trainingHomeResetKey, setTrainingHomeResetKey] = useState(0);
   const memberAccessBlocked = useMemo(() => {
     const email = appState.currentUser?.email ?? "";
     if (!email) return false;
@@ -464,6 +465,12 @@ export function MemberLayout({
   }, [appState.currentUser, appState.members, appState.memberViewId]);
   const hasNutritionAccess = memberHasNutritionAccess(activeMember);
 
+  function handleMemberNavSelect(tab: MemberTab) {
+    if (tab === "programs") {
+      setTrainingHomeResetKey((value) => value + 1);
+    }
+  }
+
   const memberPortalProps: ComponentProps<typeof MemberPortal> = {
     members: appState.members,
     currentUserRole: appState.currentUser!.role,
@@ -476,6 +483,7 @@ export function MemberLayout({
     memberViewId: appState.memberViewId,
     memberTab,
     setMemberTab,
+    trainingHomeResetKey,
     updateMember,
     memberAvatarUrl: currentMemberAvatarUrl,
     setMemberAvatarUrl: setCurrentMemberAvatarUrl,
@@ -616,6 +624,7 @@ export function MemberLayout({
         <MemberDesktopTabNav
           memberTab={memberTab}
           setMemberTab={setMemberTab}
+          onSelectTab={handleMemberNavSelect}
           isMemberLimited={isMemberLimited}
           hasNutritionAccess={hasNutritionAccess}
         />
@@ -660,6 +669,7 @@ export function MemberLayout({
         <MemberMobileTabNav
           memberTab={memberTab}
           setMemberTab={setMemberTab}
+          onSelectTab={handleMemberNavSelect}
           isMemberLimited={isMemberLimited}
           hasNutritionAccess={hasNutritionAccess}
         />

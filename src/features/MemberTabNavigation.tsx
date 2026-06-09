@@ -20,6 +20,7 @@ export function memberNavTabs(_isMemberLimited: boolean, _hasNutritionAccess = f
 type MemberTabNavigationProps = {
   memberTab: MemberTab;
   setMemberTab: (tab: MemberTab) => void;
+  onSelectTab?: (tab: MemberTab) => void;
   isMemberLimited: boolean;
   hasNutritionAccess?: boolean;
 };
@@ -27,6 +28,7 @@ type MemberTabNavigationProps = {
 export function MemberDesktopTabNav({
   memberTab,
   setMemberTab,
+  onSelectTab,
   isMemberLimited,
   hasNutritionAccess = false,
 }: MemberTabNavigationProps) {
@@ -40,7 +42,10 @@ export function MemberDesktopTabNav({
             <button
               key={tab.id}
               type="button"
-              onClick={() => setMemberTab(tab.id)}
+              onClick={() => {
+                onSelectTab?.(tab.id);
+                setMemberTab(tab.id);
+              }}
               className={`shrink-0 rounded-xl px-4 py-2 text-sm font-semibold transition ${
                 isActive ? "bg-white text-slate-900 shadow-sm" : "text-slate-600 hover:bg-white/60 hover:text-slate-900"
               }`}
@@ -58,11 +63,13 @@ function MemberMobileTabButton({
   tab,
   memberTab,
   setMemberTab,
+  onSelectTab,
   className,
 }: {
   tab: MemberTabNavItem;
   memberTab: MemberTab;
   setMemberTab: (tab: MemberTab) => void;
+  onSelectTab?: (tab: MemberTab) => void;
   className: string;
 }) {
   const Icon = tab.icon;
@@ -72,6 +79,7 @@ function MemberMobileTabButton({
       type="button"
       onClick={() => {
         if (memberTab !== tab.id) motusHaptic("light");
+        onSelectTab?.(tab.id);
         setMemberTab(tab.id);
       }}
       className={`${className} ${isActive ? "motus-mobile-tab-active rounded-xl bg-white/70 shadow-[0_1px_4px_-2px_rgba(15,23,42,0.12)]" : "text-slate-500"}`}
@@ -94,6 +102,7 @@ function MemberMobileTabButton({
 export function MemberMobileTabNav({
   memberTab,
   setMemberTab,
+  onSelectTab,
   isMemberLimited,
   hasNutritionAccess = false,
 }: MemberTabNavigationProps) {
@@ -108,6 +117,7 @@ export function MemberMobileTabNav({
             tab={tab}
             memberTab={memberTab}
             setMemberTab={setMemberTab}
+            onSelectTab={onSelectTab}
             className="flex min-w-0 flex-1 flex-col items-center justify-center gap-0.5 rounded-lg px-1 py-1.5 text-[10px] font-semibold transition"
           />
         ))}

@@ -322,6 +322,7 @@ type MemberPortalProps = {
   memberViewId: string;
   memberTab: MemberTab;
   setMemberTab: (tab: MemberTab) => void;
+  trainingHomeResetKey?: number;
   updateMember: (input: UpdateMemberInput) => void;
   memberAvatarUrl: string;
   setMemberAvatarUrl: (url: string) => void;
@@ -1100,6 +1101,7 @@ export function MemberPortal(props: MemberPortalProps) {
     memberViewId,
     memberTab,
     setMemberTab,
+    trainingHomeResetKey = 0,
     updateMember,
     memberAvatarUrl,
     setMemberAvatarUrl,
@@ -1174,6 +1176,10 @@ export function MemberPortal(props: MemberPortalProps) {
     }
     previousMemberTabRef.current = memberTab;
   }, [memberTab]);
+  useEffect(() => {
+    if (trainingHomeResetKey <= 0 || memberTab !== "programs") return;
+    setTrainingSection("today");
+  }, [trainingHomeResetKey, memberTab]);
   useEffect(() => {
     if (trainingSection !== "history" || !refreshRemoteHydration) return;
     void refreshRemoteHydration();
