@@ -67,6 +67,7 @@ import {
 import {
   buildConditioningProgramNotes,
   parseConditioningDeliveryMode,
+  serializeConditioningProgramNotes,
   stripConditioningModeMarker,
   type ConditioningDeliveryMode,
 } from "../app/conditioningProgramMode";
@@ -2935,7 +2936,7 @@ function pickFirstName(value: unknown): string {
       saveProgramForMember({
         title: template.title,
         goal: template.goal,
-        notes: template.notes,
+        notes: serializeConditioningProgramNotes(template),
         memberId,
         exercises: template.exercises.map((exercise) => ({ ...exercise, id: uid("prog-ex") })),
         imageUrl: template.imageUrl,
@@ -3156,7 +3157,7 @@ function pickFirstName(value: unknown): string {
         saveProgramForMember({
           title,
           goal: program.goal,
-          notes: program.notes,
+          notes: serializeConditioningProgramNotes(program),
           memberId: "__template__",
           exercises: program.exercises.map((exercise) => ({ ...exercise, id: uid("template-ex") })),
           imageUrl: program.imageUrl,
@@ -7376,8 +7377,8 @@ function pickFirstName(value: unknown): string {
                   <div className="rounded-xl border bg-white p-3 space-y-2" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
                     <div className="text-sm font-semibold text-slate-700">Loggfelt etter økt</div>
                     <p className="text-xs text-slate-500 leading-relaxed">
-                      Legg til øvelser fra listen til høyre. Utvid hver øvelse for å velge hvilke verdier kunden skal logge (distanse, tid, puls m.m.).
-                      Fyll inn mål eller eksempelverdier — kunden fører inn det som ble utført.
+                      Legg til øvelser fra listen til høyre. Klikk blyant-ikonet ved hver øvelse for å velge loggfelt
+                      (distanse, tid, puls m.m.) og fylle inn mål/eksempelverdier. Kunden fører inn det som ble utført — uten nedtelling.
                     </p>
                   </div>
                 )}

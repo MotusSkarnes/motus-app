@@ -36,7 +36,7 @@ export function isMemberIntervalWorkoutProgram(
     return hasIntervalStepStructure(program);
   }
   const title = program.title?.trim() ?? "";
-  if (INTERVAL_TITLE_PATTERN.test(title)) {
+  if (INTERVAL_TITLE_PATTERN.test(title) && hasIntervalStepStructure(program)) {
     return true;
   }
   return program.exercises.some((exercise) => {

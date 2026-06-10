@@ -73,6 +73,32 @@ describe("isMemberIntervalWorkoutProgram", () => {
     expect(isMemberIntervalWorkoutProgram(program, categories, exercises)).toBe(true);
   });
 
+  it("does not treat conditioning title alone as interval without timed steps", () => {
+    const program: TrainingProgram = {
+      id: "p-title",
+      memberId: "m1",
+      title: "Kondisjon løping",
+      goal: "",
+      notes: "",
+      createdAt: "",
+      exercises: [
+        {
+          id: "x1",
+          exerciseId: "e2",
+          exerciseName: "Løping",
+          sets: "1",
+          reps: "",
+          weight: "",
+          durationMinutes: "",
+          holdSeconds: "",
+          restSeconds: "",
+          notes: "",
+        },
+      ],
+    };
+    expect(isMemberIntervalWorkoutProgram(program, categories, exercises)).toBe(false);
+  });
+
   it("does not treat pure strength programs as interval", () => {
     const program: TrainingProgram = {
       id: "p-strength",

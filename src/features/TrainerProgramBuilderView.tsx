@@ -696,6 +696,11 @@ export function TrainerProgramBuilderView({
                     <div className="motus-prog-builder-row-edit">
                       <ProgramExerciseBlockActions exercises={programExercisesDraft} index={index} onChange={onProgramExercisesDraftChange} />
                       {isLogAfterConditioning ? (
+                        <p className="mb-2 text-xs text-slate-500">
+                          Velg hvilke verdier kunden skal logge etter økten:
+                        </p>
+                      ) : null}
+                      {isLogAfterConditioning ? (
                         <ExercisePrescriptionFieldsEditor
                           value={item.logFieldKeys?.length ? item.logFieldKeys : defaultLogAfterPrescriptionFields()}
                           onChange={(next) =>

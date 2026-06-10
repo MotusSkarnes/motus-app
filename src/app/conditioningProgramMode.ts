@@ -46,3 +46,13 @@ export function isConditioningIntervalProgram(
 ): boolean {
   return parseConditioningDeliveryMode(program) === "interval";
 }
+
+/** Bygg notes for lagring/sync når modus ligger i minnet men er strippet fra notes. */
+export function serializeConditioningProgramNotes(
+  program: Pick<TrainingProgram, "notes" | "conditioningDeliveryMode">,
+): string {
+  const mode = parseConditioningDeliveryMode(program);
+  const body = stripConditioningModeMarker(program.notes);
+  if (!mode) return body;
+  return buildConditioningProgramNotes(mode, body);
+}

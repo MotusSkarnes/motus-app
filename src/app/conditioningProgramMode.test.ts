@@ -4,6 +4,7 @@ import {
   enrichProgramWithConditioningMode,
   isConditioningLogAfterProgram,
   parseConditioningDeliveryMode,
+  serializeConditioningProgramNotes,
   stripConditioningModeMarker,
 } from "./conditioningProgramMode";
 import type { TrainingProgram } from "./types";
@@ -33,5 +34,12 @@ describe("conditioningProgramMode", () => {
   it("detects log-after programs", () => {
     expect(isConditioningLogAfterProgram(program(buildConditioningProgramNotes("logAfter", "")))).toBe(true);
     expect(isConditioningLogAfterProgram({ notes: "", conditioningDeliveryMode: "interval" })).toBe(false);
+  });
+
+  it("serializes mode back into notes after enrich stripped the marker", () => {
+    const enriched = enrichProgramWithConditioningMode(program(buildConditioningProgramNotes("logAfter", "Løpetur")));
+    expect(enriched.notes).toBe("Løpetur");
+    expect(enriched.conditioningDeliveryMode).toBe("logAfter");
+    expect(serializeConditioningProgramNotes(enriched)).toBe("__motusConditioningMode=logAfter\nLøpetur");
   });
 });

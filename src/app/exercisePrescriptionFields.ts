@@ -87,6 +87,11 @@ export function buildProgramExerciseFromBankForLogAfter(exercise: Exercise): Pro
     ...row,
     sets: "1",
     logFieldKeys: defaultLogAfterPrescriptionFields(),
+    durationMinutes: "",
+    holdSeconds: "",
+    speed: "",
+    incline: "",
+    restSeconds: "",
     customField1: "",
     customField2: "",
   };

@@ -19,6 +19,7 @@ import {
   parseActivityTemplateKind,
   type ActivityTemplateKind,
 } from "../app/activityTemplate";
+import { serializeConditioningProgramNotes } from "../app/conditioningProgramMode";
 import { enrichTrainingProgram } from "../app/programEnrichment";
 import { formatDateDdMmYyyy, formatDateTimeDdMmYyyy, normalizeStoredLogDate } from "../app/dateFormat";
 import { normalizeMemberGender } from "../app/memberGender";
@@ -1338,7 +1339,7 @@ export async function syncMemberLocalCatalogToSupabase(state: AppState): Promise
       id: program.id,
       title: program.title,
       goal: program.goal,
-      notes: program.notes,
+      notes: serializeConditioningProgramNotes(program),
       memberId: canonicalMemberId,
       exercises: program.exercises,
       imageUrl: program.imageUrl,
