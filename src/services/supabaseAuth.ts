@@ -1,11 +1,10 @@
-import type { AuthBootstrapParams } from "../app/supabaseAuthBootstrap";
 import {
   buildMemberInviteRedirectUrl,
   readAuthParamsFromLocation,
   readPersistedAuthBootstrapParams,
   type AuthBootstrapParams,
 } from "../app/supabaseAuthBootstrap";
-import { configuredSupabaseAnonKey, configuredSupabaseUrl } from "./supabaseClient";
+import { configuredSupabaseAnonKey, configuredSupabaseProjectRef, configuredSupabaseUrl } from "./supabaseClient";
 import {
   emptyTrainerProfile,
   serializeTrainerProfile,
@@ -213,14 +212,63 @@ export async function verifyEmailOtpSignIn(email: string, token: string): Promis
   return { ok: true, user: mapSupabaseUserToAuthUser(data.user) };
 }
 
+const SESSION_LOOKUP_TIMEOUT_MS = 8_000;
+
+async function promiseWithTimeout<T>(promise: Promise<T>, timeoutMs: number, timeoutMessage: string): Promise<T> {
+  let timeoutId: ReturnType<typeof setTimeout> | undefined;
+  try {
+    return await Promise.race([
+      promise,
+      new Promise<T>((_, reject) => {
+        timeoutId = setTimeout(() => reject(new Error(timeoutMessage)), timeoutMs);
+      }),
+    ]);
+  } finally {
+    if (timeoutId) clearTimeout(timeoutId);
+  }
+}
+
+/** Fjerner hengende Supabase-auth fra localStorage (vanlig årsak til at getSession aldri returnerer). */
+export function clearSupabaseAuthStorage(): void {
+  if (typeof window === "undefined") return;
+  try {
+    const prefix = configuredSupabaseProjectRef ? `sb-${configuredSupabaseProjectRef}-` : "sb-";
+    for (let index = window.localStorage.length - 1; index >= 0; index -= 1) {
+      const key = window.localStorage.key(index);
+      if (!key?.startsWith(prefix)) continue;
+      if (key.includes("auth")) window.localStorage.removeItem(key);
+    }
+  } catch {
+    // ignore quota / private mode
+  }
+}
+
 export async function getSupabaseSessionUser(): Promise<AuthUser | null> {
   if (!supabaseClient) return null;
-  const {
-    data: { session },
-    error,
-  } = await supabaseClient.auth.getSession();
-  if (error || !session?.user) return null;
-  return mapSupabaseUserToAuthUser(session.user);
+  try {
+    const {
+      data: { session },
+      error,
+    } = await promiseWithTimeout(
+      supabaseClient.auth.getSession(),
+      SESSION_LOOKUP_TIMEOUT_MS,
+      "SESSION_LOOKUP_TIMEOUT",
+    );
+    if (error || !session?.user) return null;
+    return mapSupabaseUserToAuthUser(session.user);
+  } catch (error) {
+    if (error instanceof Error && error.message === "SESSION_LOOKUP_TIMEOUT") {
+      console.warn("Supabase getSession timed out — clearing stale auth storage");
+      clearSupabaseAuthStorage();
+      try {
+        await supabaseClient.auth.signOut({ scope: "local" });
+      } catch {
+        // ignore
+      }
+      return null;
+    }
+    throw error;
+  }
 }
 
 export async function refreshSupabaseSessionUser(): Promise<AuthUser | null> {

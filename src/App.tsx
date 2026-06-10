@@ -15,8 +15,11 @@ export default function App() {
     <AppErrorBoundary>
       <AppShell>
       {isAuthSessionLoading && !isRecoveryMode ? (
-        <div className="rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-600 shadow-sm">
-          Sjekker innlogging...
+        <div className="rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-600 shadow-sm space-y-2">
+          <div>Sjekker innlogging...</div>
+          <div className="text-xs text-slate-500">
+            Hvis dette henger, last siden på nytt. Vedvarende problem: logg ut i nettleseren og tøm cache for Motus.
+          </div>
         </div>
       ) : !appState.currentUser || isRecoveryMode ? (
         <LoginScreen {...loginScreenProps} />

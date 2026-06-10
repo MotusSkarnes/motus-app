@@ -1635,7 +1635,14 @@ export function useAppState() {
   }, []);
 
   useEffect(() => {
-    if (!isSupabaseConfigured || isRecoveryMode) return;
+    if (!isSupabaseConfigured) {
+      setIsAuthSessionLoading(false);
+      return;
+    }
+    if (isRecoveryMode) {
+      setIsAuthSessionLoading(false);
+      return;
+    }
     let cancelled = false;
 
     async function hydrateSession() {
@@ -1672,7 +1679,6 @@ export function useAppState() {
       if (!user) {
         setIsLocalDemoSession(false);
         setAppState((prev) => ({ ...prev, currentUser: null, role: "trainer" }));
-        setIsAuthSessionLoading(false);
         return;
       }
       if (isPendingInvitePasswordRequired()) {
@@ -1682,7 +1688,6 @@ export function useAppState() {
         setRecoveryInfo("Velg et passord for kontoen din før du bruker appen.");
         setIsLocalDemoSession(false);
         setAppState((prev) => ({ ...prev, currentUser: null, role: "trainer" }));
-        setIsAuthSessionLoading(false);
         return;
       }
       setIsLocalDemoSession(false);
@@ -1715,7 +1720,6 @@ export function useAppState() {
           memberViewId: resolvedMemberViewId,
         };
       });
-      setIsAuthSessionLoading(false);
       if (user.role === "member") {
         void linkActiveMemberSession(user);
       }
@@ -1724,7 +1728,11 @@ export function useAppState() {
         if (cancelled) return;
         setIsLocalDemoSession(false);
         setAppState((prev) => ({ ...prev, currentUser: null, role: "trainer" }));
-        setIsAuthSessionLoading(false);
+        setLoginError("Kunne ikke sjekke innlogging. Prøv å laste siden på nytt.");
+      } finally {
+        if (!cancelled) {
+          setIsAuthSessionLoading(false);
+        }
       }
     }
 
