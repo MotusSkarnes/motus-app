@@ -1,5 +1,7 @@
--- Arkiverte kunder skal ikke lese egen rad via medlemsinnlogging (e-post / member_id).
--- PT ser fortsatt inaktive kunder via owner_user_id og delt Medlem-regel.
+-- Fjerner user_metadata fra members_select_own (brukere kan endre det selv).
+-- Medlem: JWT e-post eller app_metadata.member_id (serverstyrt).
+-- PT ser egne kunder (owner_user_id) + delte Medlem-rader (app_metadata.role eller @motus-skarnes.no).
+-- Kjør i Supabase SQL Editor.
 
 drop policy if exists "members_select_own" on public.members;
 

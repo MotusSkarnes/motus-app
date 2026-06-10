@@ -28,7 +28,13 @@ create policy "chat_messages_select_trainer_or_member"
         and m.owner_user_id = auth.uid()
     )
     or member_id = nullif(auth.jwt() -> 'app_metadata' ->> 'member_id', '')
-    or member_id = nullif(auth.jwt() -> 'user_metadata' ->> 'member_id', '')
+    or exists (
+      select 1
+      from public.members m
+      where m.id = chat_messages.member_id
+        and lower(trim(coalesce(m.email, ''))) = lower(trim(coalesce(auth.jwt() ->> 'email', '')))
+        and coalesce(m.is_active, true) is not false
+    )
   );
 
 drop policy if exists "training_programs_select_dev" on public.training_programs;
@@ -40,7 +46,13 @@ create policy "training_programs_select_trainer_or_member"
   using (
     owner_user_id = auth.uid()
     or member_id = nullif(auth.jwt() -> 'app_metadata' ->> 'member_id', '')
-    or member_id = nullif(auth.jwt() -> 'user_metadata' ->> 'member_id', '')
+    or exists (
+      select 1
+      from public.members m
+      where m.id = training_programs.member_id
+        and lower(trim(coalesce(m.email, ''))) = lower(trim(coalesce(auth.jwt() ->> 'email', '')))
+        and coalesce(m.is_active, true) is not false
+    )
     or exists (
       select 1
       from public.members m
@@ -48,8 +60,8 @@ create policy "training_programs_select_trainer_or_member"
         and lower(trim(m.customer_type)) = 'medlem'
         and lower(trim(coalesce(m.membership_type, ''))) <> 'premium'
         and (
-          auth.jwt() -> 'app_metadata' ->> 'role' = 'trainer'
-          or auth.jwt() -> 'user_metadata' ->> 'role' = 'trainer'
+          nullif(auth.jwt() -> 'app_metadata' ->> 'role', '') = 'trainer'
+          or lower(trim(coalesce(auth.jwt() ->> 'email', ''))) like '%@motus-skarnes.no'
         )
     )
   );
@@ -63,7 +75,13 @@ create policy "workout_logs_select_trainer_or_member"
   using (
     owner_user_id = auth.uid()
     or member_id = nullif(auth.jwt() -> 'app_metadata' ->> 'member_id', '')
-    or member_id = nullif(auth.jwt() -> 'user_metadata' ->> 'member_id', '')
+    or exists (
+      select 1
+      from public.members m
+      where m.id = workout_logs.member_id
+        and lower(trim(coalesce(m.email, ''))) = lower(trim(coalesce(auth.jwt() ->> 'email', '')))
+        and coalesce(m.is_active, true) is not false
+    )
   );
 
 -- ---------------------------------------------------------------------------

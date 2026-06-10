@@ -142,11 +142,26 @@ export type SupabaseSignInResult =
   | { ok: true; user: AuthUser }
   | { ok: false; message: string };
 
+function normalizeAuthClientErrorMessage(message: string): string {
+  const trimmed = message.trim();
+  if (!trimmed) return "Ukjent feil fra Supabase.";
+  const normalized = trimmed.toLowerCase();
+  if (
+    normalized.includes("failed to fetch") ||
+    normalized.includes("networkerror") ||
+    normalized.includes("network request failed") ||
+    normalized.includes("load failed")
+  ) {
+    return "Kunne ikke nå innloggingstjenesten (Supabase Auth er utilgjengelig). Vent 1–2 minutter og prøv igjen. Hvis det vedvarer: åpne Supabase-dashbordet → PT app → Settings → Infrastructure → Restart project.";
+  }
+  return trimmed;
+}
+
 export async function signInWithSupabase(email: string, password: string): Promise<SupabaseSignInResult> {
   if (!supabaseClient) return { ok: false, message: "Tjenesten er ikke tilgjengelig akkurat nå." };
   const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
   if (error || !data.user) {
-    const detailedMessage = error?.message?.trim() || "Ukjent feil fra Supabase.";
+    const detailedMessage = normalizeAuthClientErrorMessage(error?.message ?? "");
     return { ok: false, message: detailedMessage };
   }
   return { ok: true, user: mapSupabaseUserToAuthUser(data.user) };

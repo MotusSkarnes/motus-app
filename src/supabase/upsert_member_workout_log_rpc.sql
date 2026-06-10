@@ -15,7 +15,7 @@ as $$
       and (
         lower(trim(coalesce(m.email, ''))) = lower(trim(coalesce(auth.jwt() ->> 'email', '')))
         or m.id = nullif(trim(auth.jwt() -> 'app_metadata' ->> 'member_id'), '')
-        or m.id = nullif(trim(auth.jwt() -> 'user_metadata' ->> 'member_id'), '')
+        or m.id = 'auth-' || auth.uid()::text
       )
   );
 $$;

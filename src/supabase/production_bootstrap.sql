@@ -151,21 +151,19 @@ create policy "members_select_own"
   using (
     owner_user_id = auth.uid()
     or (
-      lower(trim(email)) = lower(trim(auth.jwt() ->> 'email'))
+      lower(trim(email)) = lower(trim(coalesce(auth.jwt() ->> 'email', '')))
       and is_active = true
     )
     or (
-      id::text = coalesce(
-        auth.jwt() -> 'app_metadata' ->> 'member_id',
-        auth.jwt() -> 'user_metadata' ->> 'member_id'
-      )
+      id::text = nullif(auth.jwt() -> 'app_metadata' ->> 'member_id', '')
       and is_active = true
     )
     or (
       lower(trim(customer_type)) = 'medlem'
+      and lower(trim(coalesce(membership_type, ''))) <> 'premium'
       and (
-        auth.jwt() -> 'app_metadata' ->> 'role' = 'trainer'
-        or auth.jwt() -> 'user_metadata' ->> 'role' = 'trainer'
+        nullif(auth.jwt() -> 'app_metadata' ->> 'role', '') = 'trainer'
+        or lower(trim(coalesce(auth.jwt() ->> 'email', ''))) like '%@motus-skarnes.no'
       )
     )
   );
@@ -193,7 +191,13 @@ create policy "chat_messages_select_trainer_or_member"
         and m.owner_user_id = auth.uid()
     )
     or member_id = nullif(auth.jwt() -> 'app_metadata' ->> 'member_id', '')
-    or member_id = nullif(auth.jwt() -> 'user_metadata' ->> 'member_id', '')
+    or exists (
+      select 1
+      from public.members m
+      where m.id = chat_messages.member_id
+        and lower(trim(coalesce(m.email, ''))) = lower(trim(coalesce(auth.jwt() ->> 'email', '')))
+        and coalesce(m.is_active, true) is not false
+    )
   );
 
 create policy "chat_messages_insert_own"
@@ -207,15 +211,22 @@ create policy "training_programs_select_trainer_or_member"
   using (
     owner_user_id = auth.uid()
     or member_id = nullif(auth.jwt() -> 'app_metadata' ->> 'member_id', '')
-    or member_id = nullif(auth.jwt() -> 'user_metadata' ->> 'member_id', '')
+    or exists (
+      select 1
+      from public.members m
+      where m.id = training_programs.member_id
+        and lower(trim(coalesce(m.email, ''))) = lower(trim(coalesce(auth.jwt() ->> 'email', '')))
+        and coalesce(m.is_active, true) is not false
+    )
     or exists (
       select 1
       from public.members m
       where m.id = training_programs.member_id
         and lower(trim(m.customer_type)) = 'medlem'
+        and lower(trim(coalesce(m.membership_type, ''))) <> 'premium'
         and (
-          auth.jwt() -> 'app_metadata' ->> 'role' = 'trainer'
-          or auth.jwt() -> 'user_metadata' ->> 'role' = 'trainer'
+          nullif(auth.jwt() -> 'app_metadata' ->> 'role', '') = 'trainer'
+          or lower(trim(coalesce(auth.jwt() ->> 'email', ''))) like '%@motus-skarnes.no'
         )
     )
   );
@@ -243,16 +254,26 @@ create policy "training_programs_update_member_library"
     member_id is not null
     and (
       member_id = nullif(auth.jwt() -> 'app_metadata' ->> 'member_id', '')
-      or member_id = nullif(auth.jwt() -> 'user_metadata' ->> 'member_id', '')
-      or lower(btrim(member_id)) = lower(btrim(coalesce(auth.jwt() ->> 'email', '')))
+      or exists (
+        select 1
+        from public.members m
+        where m.id = training_programs.member_id
+          and lower(trim(coalesce(m.email, ''))) = lower(trim(coalesce(auth.jwt() ->> 'email', '')))
+          and coalesce(m.is_active, true) is not false
+      )
     )
   )
   with check (
     member_id is not null
     and (
       member_id = nullif(auth.jwt() -> 'app_metadata' ->> 'member_id', '')
-      or member_id = nullif(auth.jwt() -> 'user_metadata' ->> 'member_id', '')
-      or lower(btrim(member_id)) = lower(btrim(coalesce(auth.jwt() ->> 'email', '')))
+      or exists (
+        select 1
+        from public.members m
+        where m.id = training_programs.member_id
+          and lower(trim(coalesce(m.email, ''))) = lower(trim(coalesce(auth.jwt() ->> 'email', '')))
+          and coalesce(m.is_active, true) is not false
+      )
     )
   );
 
@@ -264,8 +285,13 @@ create policy "training_programs_delete_member_created"
     and member_id is not null
     and (
       member_id = nullif(auth.jwt() -> 'app_metadata' ->> 'member_id', '')
-      or member_id = nullif(auth.jwt() -> 'user_metadata' ->> 'member_id', '')
-      or lower(btrim(member_id)) = lower(btrim(coalesce(auth.jwt() ->> 'email', '')))
+      or exists (
+        select 1
+        from public.members m
+        where m.id = training_programs.member_id
+          and lower(trim(coalesce(m.email, ''))) = lower(trim(coalesce(auth.jwt() ->> 'email', '')))
+          and coalesce(m.is_active, true) is not false
+      )
     )
   );
 
@@ -275,7 +301,13 @@ create policy "workout_logs_select_trainer_or_member"
   using (
     owner_user_id = auth.uid()
     or member_id = nullif(auth.jwt() -> 'app_metadata' ->> 'member_id', '')
-    or member_id = nullif(auth.jwt() -> 'user_metadata' ->> 'member_id', '')
+    or exists (
+      select 1
+      from public.members m
+      where m.id = workout_logs.member_id
+        and lower(trim(coalesce(m.email, ''))) = lower(trim(coalesce(auth.jwt() ->> 'email', '')))
+        and coalesce(m.is_active, true) is not false
+    )
   );
 
 create policy "workout_logs_insert_own"
@@ -301,8 +333,13 @@ create policy "workout_logs_delete_member_own"
     member_id is not null
     and (
       member_id = nullif(auth.jwt() -> 'app_metadata' ->> 'member_id', '')
-      or member_id = nullif(auth.jwt() -> 'user_metadata' ->> 'member_id', '')
-      or lower(btrim(member_id)) = lower(btrim(coalesce(auth.jwt() ->> 'email', '')))
+      or exists (
+        select 1
+        from public.members m
+        where m.id = workout_logs.member_id
+          and lower(trim(coalesce(m.email, ''))) = lower(trim(coalesce(auth.jwt() ->> 'email', '')))
+          and coalesce(m.is_active, true) is not false
+      )
     )
   );
 
@@ -317,7 +354,7 @@ create policy "workout_logs_insert_member"
         and (
           lower(trim(coalesce(m.email, ''))) = lower(trim(coalesce(auth.jwt() ->> 'email', '')))
           or m.id = nullif(auth.jwt() -> 'app_metadata' ->> 'member_id', '')
-          or m.id = nullif(auth.jwt() -> 'user_metadata' ->> 'member_id', '')
+          or m.id = 'auth-' || auth.uid()::text
         )
     )
   );
@@ -331,7 +368,7 @@ create policy "workout_logs_update_member"
         and (
           lower(trim(coalesce(m.email, ''))) = lower(trim(coalesce(auth.jwt() ->> 'email', '')))
           or m.id = nullif(auth.jwt() -> 'app_metadata' ->> 'member_id', '')
-          or m.id = nullif(auth.jwt() -> 'user_metadata' ->> 'member_id', '')
+          or m.id = 'auth-' || auth.uid()::text
         )
     )
   )
@@ -342,7 +379,7 @@ create policy "workout_logs_update_member"
         and (
           lower(trim(coalesce(m.email, ''))) = lower(trim(coalesce(auth.jwt() ->> 'email', '')))
           or m.id = nullif(auth.jwt() -> 'app_metadata' ->> 'member_id', '')
-          or m.id = nullif(auth.jwt() -> 'user_metadata' ->> 'member_id', '')
+          or m.id = 'auth-' || auth.uid()::text
         )
     )
   );
@@ -371,7 +408,14 @@ create policy "member_period_plans_select_trainer_or_member"
   for select to authenticated
   using (
     owner_user_id = auth.uid()
-    or member_id = coalesce(auth.jwt() -> 'app_metadata' ->> 'member_id', '')
+    or member_id = nullif(auth.jwt() -> 'app_metadata' ->> 'member_id', '')
+    or exists (
+      select 1
+      from public.members m
+      where m.id = member_period_plans.member_id
+        and lower(trim(coalesce(m.email, ''))) = lower(trim(coalesce(auth.jwt() ->> 'email', '')))
+        and coalesce(m.is_active, true) is not false
+    )
   );
 
 create policy "member_period_plans_insert_trainer"

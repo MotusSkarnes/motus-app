@@ -1,38 +1,32 @@
--- Felles matvarebank på tvers av PT-er (importerte/nedlastede matvarer).
--- Personlige favoritter/nylig brukt + egne/endrede matvarer ligger fortsatt per PT i trainer_food_bank.
-create table if not exists public.shared_food_bank_items (
-  id text primary key,
-  item jsonb not null,
-  updated_at timestamptz not null default now()
-);
-
-alter table public.shared_food_bank_items enable row level security;
+-- Fjerner user_metadata fra shared_food_bank_items PT-policies.
+-- PT: app_metadata.role = trainer eller @motus-skarnes.no e-post.
+-- Kjør i Supabase SQL Editor.
 
 drop policy if exists "shared_food_bank_items_select_trainers" on public.shared_food_bank_items;
+
 create policy "shared_food_bank_items_select_trainers"
   on public.shared_food_bank_items
-  for select
-  to authenticated
+  for select to authenticated
   using (
     nullif(auth.jwt() -> 'app_metadata' ->> 'role', '') = 'trainer'
     or lower(trim(coalesce(auth.jwt() ->> 'email', ''))) like '%@motus-skarnes.no'
   );
 
 drop policy if exists "shared_food_bank_items_insert_trainers" on public.shared_food_bank_items;
+
 create policy "shared_food_bank_items_insert_trainers"
   on public.shared_food_bank_items
-  for insert
-  to authenticated
+  for insert to authenticated
   with check (
     nullif(auth.jwt() -> 'app_metadata' ->> 'role', '') = 'trainer'
     or lower(trim(coalesce(auth.jwt() ->> 'email', ''))) like '%@motus-skarnes.no'
   );
 
 drop policy if exists "shared_food_bank_items_update_trainers" on public.shared_food_bank_items;
+
 create policy "shared_food_bank_items_update_trainers"
   on public.shared_food_bank_items
-  for update
-  to authenticated
+  for update to authenticated
   using (
     nullif(auth.jwt() -> 'app_metadata' ->> 'role', '') = 'trainer'
     or lower(trim(coalesce(auth.jwt() ->> 'email', ''))) like '%@motus-skarnes.no'
@@ -41,20 +35,3 @@ create policy "shared_food_bank_items_update_trainers"
     nullif(auth.jwt() -> 'app_metadata' ->> 'role', '') = 'trainer'
     or lower(trim(coalesce(auth.jwt() ->> 'email', ''))) like '%@motus-skarnes.no'
   );
-
-drop policy if exists "shared_food_bank_items_select_members" on public.shared_food_bank_items;
-create policy "shared_food_bank_items_select_members"
-  on public.shared_food_bank_items
-  for select
-  to authenticated
-  using (
-    exists (
-      select 1
-      from public.members m
-      where m.id = auth.uid()::text
-        or lower(coalesce(m.email, '')) = lower(coalesce(auth.jwt() ->> 'email', ''))
-    )
-  );
-
-comment on table public.shared_food_bank_items is 'Felles importerte matvarer (Matvaretabellen/USDA) som alle PT-er kan lese. item=FoodItem snapshot.';
-

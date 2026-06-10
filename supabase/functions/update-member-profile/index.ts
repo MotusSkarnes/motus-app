@@ -1,4 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { buildMemberEmailIlikeOrFilter } from "../_shared/memberEmailQueries.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -42,6 +43,18 @@ function jsonResponse(status: number, body: Record<string, unknown>) {
 
 function normalizeEmail(value: unknown): string {
   return String(value ?? "").trim().toLowerCase();
+}
+
+async function fetchMembersByNormalizedEmails(
+  adminClient: ReturnType<typeof createClient>,
+  emails: Iterable<string>,
+  select: string,
+): Promise<{ data: Array<Record<string, unknown>> | null; error: { message: string } | null }> {
+  const orFilter = buildMemberEmailIlikeOrFilter(emails);
+  if (!orFilter) return { data: [], error: null };
+  const { data, error } = await adminClient.from("members").select(select).or(orFilter);
+  if (error) return { data: null, error };
+  return { data: (data ?? []) as Array<Record<string, unknown>>, error: null };
 }
 
 function normalizeString(value: unknown): string {
@@ -308,19 +321,18 @@ Deno.serve(async (req) => {
   );
   let expandedRows: Array<{ id: string; email: string; owner_user_id: string | null; customer_type: string | null }> = [];
   if (normalizedTargetEmails.size) {
-    // Legacy data can contain casing/whitespace variants in email, so do a broad fetch
-    // and normalize in-memory to find all duplicates that should sync together.
-    // Never match by display name — common names (e.g. "Emil") would overwrite unrelated members.
-    const { data: allRows, error: allRowsError } = await adminClient
-      .from("members")
-      .select("id,email,name,owner_user_id,customer_type");
+    const { data: emailRows, error: allRowsError } = await fetchMembersByNormalizedEmails(
+      adminClient,
+      normalizedTargetEmails,
+      "id,email,name,owner_user_id,customer_type",
+    );
     if (allRowsError) {
       return jsonResponse(500, { error: `Could not expand member targets: ${allRowsError.message}` });
     }
-    expandedRows = (allRows ?? []).filter((row) => {
-      const rowEmail = normalizeEmail(row.email);
+    expandedRows = (emailRows ?? []).filter((row) => {
+      const rowEmail = normalizeEmail((row as { email?: string }).email);
       return Boolean(rowEmail && normalizedTargetEmails.has(rowEmail));
-    });
+    }) as Array<{ id: string; email: string; owner_user_id: string | null; customer_type: string | null }>;
   }
   const visibleExpandedRows = expandedRows.filter((row) => {
     if (userRole !== "trainer") return true;
@@ -400,9 +412,11 @@ Deno.serve(async (req) => {
   if (hasProfileUpdates && userRole === "trainer" && normalizedTargetEmails.size > 0) {
     const trainerId = user.id;
     const emailSet = new Set(Array.from(normalizedTargetEmails).filter((value) => value.includes("@")));
-    const { data: allMemberRows, error: profileFanoutError } = await adminClient
-      .from("members")
-      .select("id,email,owner_user_id,customer_type");
+    const { data: allMemberRows, error: profileFanoutError } = await fetchMembersByNormalizedEmails(
+      adminClient,
+      emailSet,
+      "id,email,owner_user_id,customer_type",
+    );
     if (profileFanoutError) {
       return jsonResponse(500, { error: `Could not fan out profile fields: ${profileFanoutError.message}` });
     }
@@ -452,7 +466,11 @@ Deno.serve(async (req) => {
   ) {
     const nutritionFields = { nutrition_access: changes.nutritionAccess === true };
     const emailSet = new Set(Array.from(normalizedTargetEmails).filter((value) => value.includes("@")));
-    const { data: allMemberRows, error: nutritionFanoutError } = await adminClient.from("members").select("id,email");
+    const { data: allMemberRows, error: nutritionFanoutError } = await fetchMembersByNormalizedEmails(
+      adminClient,
+      emailSet,
+      "id,email",
+    );
     if (nutritionFanoutError) {
       return jsonResponse(500, { error: `Could not fan out nutrition access: ${nutritionFanoutError.message}` });
     }

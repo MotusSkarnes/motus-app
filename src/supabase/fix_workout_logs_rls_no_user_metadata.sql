@@ -1,12 +1,34 @@
--- Kjør hvis du allerede har kjørt member_workout_log_save_setup.sql uten auth-id-støtte.
--- Legger til m.id = 'auth-' || auth.uid() for medlemmer med syntetisk klient-id.
+-- Fjerner user_metadata fra workout_logs RLS-policies.
+-- Medlem: app_metadata.member_id, e-postkobling i members, eller auth-{uid}.
+-- PT: owner_user_id = auth.uid().
+-- Kjør i Supabase SQL Editor.
+
+drop policy if exists "workout_logs_select_trainer_or_member" on public.workout_logs;
+
+create policy "workout_logs_select_trainer_or_member"
+  on public.workout_logs
+  for select to authenticated
+  using (
+    owner_user_id = auth.uid()
+    or member_id = nullif(auth.jwt() -> 'app_metadata' ->> 'member_id', '')
+    or exists (
+      select 1
+      from public.members m
+      where m.id = workout_logs.member_id
+        and lower(trim(coalesce(m.email, ''))) = lower(trim(coalesce(auth.jwt() ->> 'email', '')))
+        and coalesce(m.is_active, true) is not false
+    )
+  );
 
 drop policy if exists "workout_logs_insert_member" on public.workout_logs;
+
 create policy "workout_logs_insert_member"
-  on public.workout_logs for insert to authenticated
+  on public.workout_logs
+  for insert to authenticated
   with check (
     exists (
-      select 1 from public.members m
+      select 1
+      from public.members m
       where m.id = member_id
         and (
           lower(trim(coalesce(m.email, ''))) = lower(trim(coalesce(auth.jwt() ->> 'email', '')))
@@ -17,11 +39,14 @@ create policy "workout_logs_insert_member"
   );
 
 drop policy if exists "workout_logs_update_member" on public.workout_logs;
+
 create policy "workout_logs_update_member"
-  on public.workout_logs for update to authenticated
+  on public.workout_logs
+  for update to authenticated
   using (
     exists (
-      select 1 from public.members m
+      select 1
+      from public.members m
       where m.id = member_id
         and (
           lower(trim(coalesce(m.email, ''))) = lower(trim(coalesce(auth.jwt() ->> 'email', '')))
@@ -32,13 +57,33 @@ create policy "workout_logs_update_member"
   )
   with check (
     exists (
-      select 1 from public.members m
+      select 1
+      from public.members m
       where m.id = member_id
         and (
           lower(trim(coalesce(m.email, ''))) = lower(trim(coalesce(auth.jwt() ->> 'email', '')))
           or m.id = nullif(auth.jwt() -> 'app_metadata' ->> 'member_id', '')
           or m.id = 'auth-' || auth.uid()::text
         )
+    )
+  );
+
+drop policy if exists "workout_logs_delete_member_own" on public.workout_logs;
+
+create policy "workout_logs_delete_member_own"
+  on public.workout_logs
+  for delete to authenticated
+  using (
+    member_id is not null
+    and (
+      member_id = nullif(auth.jwt() -> 'app_metadata' ->> 'member_id', '')
+      or exists (
+        select 1
+        from public.members m
+        where m.id = workout_logs.member_id
+          and lower(trim(coalesce(m.email, ''))) = lower(trim(coalesce(auth.jwt() ->> 'email', '')))
+          and coalesce(m.is_active, true) is not false
+      )
     )
   );
 

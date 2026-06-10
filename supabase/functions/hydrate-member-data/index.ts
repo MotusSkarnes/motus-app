@@ -1,4 +1,12 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { buildMemberEmailIlikeOrFilter } from "../_shared/memberEmailQueries.ts";
+
+const PROGRAMS_SELECT =
+  "id, member_id, title, goal, notes, exercises, created_at, owner_user_id, program_created_by, program_created_by_name, image_url, member_library_status";
+const EXERCISE_BANK_SELECT =
+  "id, name, category, muscle_group, equipment, level, description, image_url, personal_record_image_url, is_active, created_at, updated_at";
+const PROGRAM_TEMPLATE_COVER_SELECT =
+  "id, member_id, title, notes, exercises, created_at, owner_user_id, image_url";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -225,70 +233,61 @@ Deno.serve(async (req) => {
   const membersSelectWithoutNutrition = membersSelectWithAvatar.replace(", nutrition_access", "");
   const membersSelectLegacy = membersSelectWithoutNutrition.replace(", avatar_url", "");
 
-  async function fetchAllMembersRows(): Promise<{ rows: Array<Record<string, unknown>>; error: { message: string } | null }> {
-    const attempt = await adminClient.from("members").select(membersSelectWithAvatar).order("created_at", { ascending: false });
+  function addMemberRowsToMap(
+    map: Map<string, Record<string, unknown>>,
+    rows: Array<Record<string, unknown>> | null | undefined,
+  ) {
+    for (const row of rows ?? []) {
+      const id = String((row as { id?: string }).id ?? "").trim();
+      if (!id) continue;
+      if (!map.has(id)) map.set(id, row as Record<string, unknown>);
+    }
+  }
+
+  async function fetchMembersByEmailOrFilter(
+    emails: string[],
+  ): Promise<{ rows: Array<Record<string, unknown>>; error: { message: string } | null }> {
+    const orFilter = buildMemberEmailIlikeOrFilter(emails);
+    if (!orFilter) return { rows: [], error: null };
+    const attempt = await adminClient
+      .from("members")
+      .select(membersSelectWithAvatar)
+      .or(orFilter)
+      .order("created_at", { ascending: false });
     if (!attempt.error) {
       return { rows: (attempt.data ?? []) as Array<Record<string, unknown>>, error: null };
     }
     if (isMissingMembersColumnError(attempt.error.message, "nutrition_access")) {
-      const withoutNutrition = await adminClient.from("members").select(membersSelectWithoutNutrition).order("created_at", { ascending: false });
+      const withoutNutrition = await adminClient
+        .from("members")
+        .select(membersSelectWithoutNutrition)
+        .or(orFilter)
+        .order("created_at", { ascending: false });
       if (!withoutNutrition.error) {
         return { rows: (withoutNutrition.data ?? []) as Array<Record<string, unknown>>, error: null };
       }
       if (isMissingMembersColumnError(withoutNutrition.error.message, "avatar_url")) {
-        const legacy = await adminClient.from("members").select(membersSelectLegacy).order("created_at", { ascending: false });
+        const legacy = await adminClient
+          .from("members")
+          .select(membersSelectLegacy)
+          .or(orFilter)
+          .order("created_at", { ascending: false });
         return { rows: (legacy.data ?? []) as Array<Record<string, unknown>>, error: legacy.error };
       }
       return { rows: [], error: withoutNutrition.error };
     }
     if (isMissingMembersColumnError(attempt.error.message, "avatar_url")) {
-      const withoutAvatar = await adminClient.from("members").select(membersSelectWithoutAvatar).order("created_at", { ascending: false });
+      const withoutAvatar = await adminClient
+        .from("members")
+        .select(membersSelectWithoutAvatar)
+        .or(orFilter)
+        .order("created_at", { ascending: false });
       return { rows: (withoutAvatar.data ?? []) as Array<Record<string, unknown>>, error: withoutAvatar.error };
     }
     return { rows: [], error: attempt.error };
   }
 
-  const { rows: allMembers, error: membersError } = await fetchAllMembersRows();
-  if (membersError) return jsonResponse(500, { error: membersError.message });
-
-  const members = (allMembers ?? []).filter((row) => {
-    const rowEmail = normalizeEmail((row as { email?: string }).email);
-    const rowId = String((row as { id?: string }).id ?? "").trim();
-    if (rowEmail === requesterEmail) return true;
-    if (authMemberId && rowId === authMemberId) return true;
-    return false;
-  });
-
-  // Legacy-dupe support: widen member scope only to rows sharing the exact normalized email
-  // with the initially matched member rows. Never match by display name; common names
-  // like "Lene" can represent unrelated users across trainers.
-  const relatedEmailSet = new Set(
-    members
-      .map((row) => normalizeEmail((row as { email?: string }).email))
-      .filter((value) => value && value.includes("@")),
-  );
-  const widenedMembers = (allMembers ?? []).filter((row) => {
-    const rowEmail = normalizeEmail((row as { email?: string }).email);
-    if (rowEmail && relatedEmailSet.has(rowEmail)) return true;
-    return false;
-  });
   const dedupedMembersById = new Map<string, Record<string, unknown>>();
-  [...members, ...widenedMembers].forEach((row) => {
-    const id = String((row as { id?: string }).id ?? "").trim();
-    if (!id) return;
-    if (!dedupedMembersById.has(id)) dedupedMembersById.set(id, row as Record<string, unknown>);
-  });
-  if (authMemberId && !dedupedMembersById.has(authMemberId)) {
-    const { data: authMemberRow } = await adminClient
-      .from("members")
-      .select(membersSelectWithAvatar)
-      .eq("id", authMemberId)
-      .maybeSingle();
-    if (authMemberRow) {
-      dedupedMembersById.set(authMemberId, authMemberRow as Record<string, unknown>);
-    }
-  }
-  // DB-side email match catches rows even if in-memory normalize/allMembers path missed them.
   let rowsByLoginEmail: Array<Record<string, unknown>> | null = null;
   const emailRowsAttempt = await adminClient.from("members").select(membersSelectWithAvatar).ilike("email", requesterEmail);
   if (!emailRowsAttempt.error) {
@@ -310,12 +309,28 @@ Deno.serve(async (req) => {
   } else {
     console.warn("hydrate-member-data: members ilike email failed:", emailRowsAttempt.error.message);
   }
-  if (rowsByLoginEmail) {
-    for (const row of rowsByLoginEmail) {
-      const id = String((row as { id?: string }).id ?? "").trim();
-      if (!id) continue;
-      if (!dedupedMembersById.has(id)) dedupedMembersById.set(id, row);
+  addMemberRowsToMap(dedupedMembersById, rowsByLoginEmail);
+
+  if (authMemberId && !dedupedMembersById.has(authMemberId)) {
+    const { data: authMemberRow } = await adminClient
+      .from("members")
+      .select(membersSelectWithAvatar)
+      .eq("id", authMemberId)
+      .maybeSingle();
+    if (authMemberRow) {
+      dedupedMembersById.set(authMemberId, authMemberRow as Record<string, unknown>);
     }
+  }
+
+  const relatedEmailSet = new Set(
+    Array.from(dedupedMembersById.values())
+      .map((row) => normalizeEmail((row as { email?: string }).email))
+      .filter((value) => value && value.includes("@")),
+  );
+  if (relatedEmailSet.size > 0) {
+    const { rows: widenedRows, error: widenError } = await fetchMembersByEmailOrFilter(Array.from(relatedEmailSet));
+    if (widenError) return jsonResponse(500, { error: widenError.message });
+    addMemberRowsToMap(dedupedMembersById, widenedRows);
   }
   const emailRowsForAccess = rowsByLoginEmail ?? [];
   if (emailRowsForAccess.length > 0 && !emailRowsForAccess.some(rowIsActive)) {
@@ -433,7 +448,7 @@ Deno.serve(async (req) => {
     memberDataLookupList.length > 0
       ? await adminClient
           .from("training_programs")
-          .select("*")
+          .select(PROGRAMS_SELECT)
           .in("member_id", memberDataLookupList)
           .order("created_at", { ascending: false })
       : { data: [], error: null };
@@ -441,7 +456,7 @@ Deno.serve(async (req) => {
     requesterUserId
       ? await adminClient
           .from("training_programs")
-          .select("*")
+          .select(PROGRAMS_SELECT)
           .eq("owner_user_id", requesterUserId)
           .order("created_at", { ascending: false })
       : { data: [], error: null };
@@ -515,7 +530,7 @@ Deno.serve(async (req) => {
   let exercises: Array<Record<string, unknown>> = [];
   const { data: exerciseRows, error: exercisesError } = await adminClient
     .from("exercise_bank")
-    .select("*")
+    .select(EXERCISE_BANK_SELECT)
     .or("is_active.is.null,is_active.eq.true")
     .order("name", { ascending: true });
   if (exercisesError) {
@@ -581,7 +596,7 @@ Deno.serve(async (req) => {
   let activityTemplateRows: Array<Record<string, unknown>> = [];
   const { data: allTemplateRows, error: allTemplateRowsError } = await adminClient
     .from("training_programs")
-    .select("*")
+    .select(PROGRAMS_SELECT)
     .eq("member_id", "__template__");
   if (allTemplateRowsError) {
     console.warn("hydrate-member-data: activity template query failed:", allTemplateRowsError.message);
@@ -684,7 +699,7 @@ Deno.serve(async (req) => {
   if (ownerIdsForCoverLookup.length > 0) {
     const { data: coverRows, error: coverRowsError } = await adminClient
       .from("training_programs")
-      .select("*")
+      .select(PROGRAM_TEMPLATE_COVER_SELECT)
       .eq("member_id", "__template__")
       .ilike("title", NO_PLAN_DAY_TEMPLATE_TITLE)
       .not("image_url", "is", null)
@@ -727,7 +742,7 @@ Deno.serve(async (req) => {
   if (!noPlanDayCoverImageUrl && ownerIdsForCoverLookup.length === 0) {
     const { data: fallbackRows, error: fallbackError } = await adminClient
       .from("training_programs")
-      .select("*")
+      .select(PROGRAM_TEMPLATE_COVER_SELECT)
       .eq("member_id", "__template__")
       .ilike("title", NO_PLAN_DAY_TEMPLATE_TITLE)
       .not("image_url", "is", null)

@@ -140,6 +140,13 @@ import {
   buildCustomerTimeline,
   memberAgeLabel,
 } from "./trainer-dashboard/buildCustomerDashboardData";
+import {
+  isMemberCustomerTypeSort,
+  memberCustomerTierSortRank,
+  memberMatchesCustomerTypeFilter,
+  type MemberCustomerTypeFilter,
+  type MemberCustomerTypeSort,
+} from "../app/memberCustomerTier";
 import { TrainerPtDashboard, type TrainerListFilterTab, type TrainerPtListMember } from "./trainer-dashboard/TrainerPtDashboard";
 import { TrainerPtDetailPortal } from "./trainer-dashboard/TrainerPtDetailPortal";
 import { TrainerStatisticsView } from "./TrainerStatisticsView";
@@ -898,8 +905,8 @@ function pickFirstName(value: unknown): string {
   const [memberFilter, setMemberFilter] = useState<
     "all" | "followUp" | "invited" | "notInvited" | "noProgram" | "unreadMessages"
   >("all");
-  const [customerTypeFilter, setCustomerTypeFilter] = useState<"all" | "PT-kunde" | "Premium-kunde" | "Medlem">("all");
-  const [memberSort, setMemberSort] = useState<"activityRecent" | "nameAsc" | "nameDesc">("activityRecent");
+  const [customerTypeFilter, setCustomerTypeFilter] = useState<MemberCustomerTypeFilter>("all");
+  const [memberSort, setMemberSort] = useState<MemberCustomerTypeSort>("activityRecent");
   const [inviteStatus, setInviteStatus] = useState<string | null>(null);
   const [isInvitingMember, setIsInvitingMember] = useState(false);
   const [memberLinkStatus, setMemberLinkStatus] = useState<string | null>(null);
@@ -1315,9 +1322,7 @@ function pickFirstName(value: unknown): string {
           member.email.toLowerCase().includes(query) ||
           member.goal.toLowerCase().includes(query);
         if (!matchesSearch) return false;
-        if (customerTypeFilter === "PT-kunde" && member.customerType !== "PT-kunde") return false;
-        if (customerTypeFilter === "Premium-kunde" && member.membershipType !== "Premium") return false;
-        if (customerTypeFilter === "Medlem" && member.customerType !== "Medlem") return false;
+        if (!memberMatchesCustomerTypeFilter(member, customerTypeFilter)) return false;
         if (memberFilter === "followUp") return (trainerInactiveDaysForFollowUp(member, members, logs) ?? -1) >= 7;
         if (memberFilter === "invited") return memberEffectivelyInvited(member, members, { messages, logs });
         if (memberFilter === "notInvited") return !memberEffectivelyInvited(member, members, { messages, logs });
@@ -1384,6 +1389,12 @@ function pickFirstName(value: unknown): string {
         if (aUnread > 0 && bUnread === 0) return -1;
         if (bUnread > 0 && aUnread === 0) return 1;
         if (aUnread !== bUnread) return bUnread - aUnread;
+      }
+      if (isMemberCustomerTypeSort(memberSort)) {
+        const aRank = memberCustomerTierSortRank(a, memberSort);
+        const bRank = memberCustomerTierSortRank(b, memberSort);
+        if (aRank !== bRank) return aRank - bRank;
+        return a.name.localeCompare(b.name, "no");
       }
       if (memberSort === "nameAsc") return a.name.localeCompare(b.name, "no");
       if (memberSort === "nameDesc") return b.name.localeCompare(a.name, "no");
@@ -3680,6 +3691,8 @@ function pickFirstName(value: unknown): string {
     setMemberFilter("all");
     setCustomerTypeFilter("all");
     setPriorityFilter("all");
+    setMemberSort("activityRecent");
+    setPtListFilterTab("all");
   }
 
   function openCustomersWithListFilters(
@@ -4748,6 +4761,16 @@ function pickFirstName(value: unknown): string {
     };
   }, [visibleMembers, members, logs]);
 
+  const customerTypeCounts = useMemo(() => {
+    const active = visibleMembers.filter((m) => m.isActive !== false);
+    return {
+      all: active.length,
+      "PT-kunde": active.filter((m) => memberMatchesCustomerTypeFilter(m, "PT-kunde")).length,
+      "Premium-kunde": active.filter((m) => memberMatchesCustomerTypeFilter(m, "Premium-kunde")).length,
+      Medlem: active.filter((m) => memberMatchesCustomerTypeFilter(m, "Medlem")).length,
+    };
+  }, [visibleMembers]);
+
   const ptFilteredMembers = useMemo(() => {
     if (ptListFilterTab === "inactive") {
       return sortedMembers.filter((m) => m.isActive === false);
@@ -5121,6 +5144,11 @@ function pickFirstName(value: unknown): string {
             if (tab === "inactive") setShowInactiveMembers(true);
           }}
           listCounts={ptListCounts}
+          customerTypeFilter={customerTypeFilter}
+          onCustomerTypeFilterChange={setCustomerTypeFilter}
+          customerTypeCounts={customerTypeCounts}
+          memberSort={memberSort}
+          onMemberSortChange={setMemberSort}
           memberSearch={memberSearch}
           onMemberSearchChange={setMemberSearch}
           onSelectMember={(memberId) => {
@@ -5394,7 +5422,7 @@ function pickFirstName(value: unknown): string {
                 />
                 <SelectBox
                   value={customerTypeFilter}
-                  onChange={(value) => setCustomerTypeFilter(value as "all" | "PT-kunde" | "Premium-kunde" | "Medlem")}
+                  onChange={(value) => setCustomerTypeFilter(value as MemberCustomerTypeFilter)}
                   options={[
                     { value: "all", label: "Alle kundetyper" },
                     { value: "PT-kunde", label: "PT-kunde" },
@@ -5404,11 +5432,14 @@ function pickFirstName(value: unknown): string {
                 />
                 <SelectBox
                   value={memberSort}
-                  onChange={(value) => setMemberSort(value as "activityRecent" | "nameAsc" | "nameDesc")}
+                  onChange={(value) => setMemberSort(value as MemberCustomerTypeSort)}
                   options={[
                     { value: "activityRecent", label: "Siste økt (nyeste først)" },
                     { value: "nameAsc", label: "Navn A-Å" },
                     { value: "nameDesc", label: "Navn Å-A" },
+                    { value: "typePremiumFirst", label: "Kundetype: Premium først" },
+                    { value: "typePtFirst", label: "Kundetype: PT-kunde først" },
+                    { value: "typeMedlemFirst", label: "Kundetype: Medlem først" },
                   ]}
                 />
               </div>

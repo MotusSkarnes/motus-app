@@ -9,11 +9,12 @@ create policy "member_meal_plans_select"
   using (
     auth.uid() = owner_user_id
     or member_id = nullif(auth.jwt() -> 'app_metadata' ->> 'member_id', '')
-    or member_id = nullif(auth.jwt() -> 'user_metadata' ->> 'member_id', '')
-    or member_id in (
-      select m.id::text
+    or exists (
+      select 1
       from public.members m
-      where lower(trim(m.email)) = lower(trim(coalesce(auth.jwt() ->> 'email', '')))
+      where m.id::text = member_meal_plans.member_id
+        and lower(trim(coalesce(m.email, ''))) = lower(trim(coalesce(auth.jwt() ->> 'email', '')))
+        and coalesce(m.is_active, true) is not false
     )
     or exists (
       select 1

@@ -15,6 +15,7 @@ import {
   TrendingUp,
 } from "lucide-react";
 import { MOTUS } from "../../app/data";
+import type { MemberCustomerTypeFilter, MemberCustomerTypeSort } from "../../app/memberCustomerTier";
 import type { Member } from "../../app/types";
 import type { TrainerTodoModel } from "../TrainerHomeOverview";
 import type { CustomerFollowUpItem, CustomerMetrics, CustomerTimelineItem } from "./buildCustomerDashboardData";
@@ -38,6 +39,11 @@ export type TrainerPtDashboardProps = {
   listFilterTab: TrainerListFilterTab;
   onListFilterTabChange: (tab: TrainerListFilterTab) => void;
   listCounts: { all: number; active: number; risk: number; inactive: number };
+  customerTypeFilter?: MemberCustomerTypeFilter;
+  onCustomerTypeFilterChange?: (filter: MemberCustomerTypeFilter) => void;
+  customerTypeCounts?: Record<MemberCustomerTypeFilter, number>;
+  memberSort?: MemberCustomerTypeSort;
+  onMemberSortChange?: (sort: MemberCustomerTypeSort) => void;
   memberSearch: string;
   onMemberSearchChange: (value: string) => void;
   onSelectMember: (memberId: string) => void;
@@ -130,11 +136,32 @@ const LIST_TABS: Array<{ id: TrainerListFilterTab; label: string }> = [
   { id: "inactive", label: "Inaktive" },
 ];
 
+const CUSTOMER_TYPE_TABS: Array<{ id: MemberCustomerTypeFilter; label: string }> = [
+  { id: "all", label: "Alle typer" },
+  { id: "PT-kunde", label: "PT-kunde" },
+  { id: "Premium-kunde", label: "Premium" },
+  { id: "Medlem", label: "Medlem" },
+];
+
+const MEMBER_SORT_OPTIONS: Array<{ value: MemberCustomerTypeSort; label: string }> = [
+  { value: "activityRecent", label: "Siste økt" },
+  { value: "nameAsc", label: "Navn A-Å" },
+  { value: "nameDesc", label: "Navn Å-A" },
+  { value: "typePremiumFirst", label: "Premium først" },
+  { value: "typePtFirst", label: "PT-kunde først" },
+  { value: "typeMedlemFirst", label: "Medlem først" },
+];
+
 export function TrainerPtDashboard({
   listMembers,
   listFilterTab,
   onListFilterTabChange,
   listCounts,
+  customerTypeFilter = "all",
+  onCustomerTypeFilterChange,
+  customerTypeCounts,
+  memberSort = "activityRecent",
+  onMemberSortChange,
   memberSearch,
   onMemberSearchChange,
   onSelectMember,
@@ -193,7 +220,7 @@ export function TrainerPtDashboard({
             placeholder="Søk kunder..."
           />
         </label>
-        <div className="motus-pt-dash-list-tabs" role="tablist">
+        <div className="motus-pt-dash-list-tabs" role="tablist" aria-label="Aktivitetsfilter">
           {LIST_TABS.map((tab) => {
             const count = listCounts[tab.id];
             return (
@@ -210,6 +237,41 @@ export function TrainerPtDashboard({
             );
           })}
         </div>
+        {onCustomerTypeFilterChange ? (
+          <div className="motus-pt-dash-list-tabs motus-pt-dash-list-tabs--type" role="tablist" aria-label="Kundetype">
+            {CUSTOMER_TYPE_TABS.map((tab) => {
+              const count = customerTypeCounts?.[tab.id] ?? listMembers.length;
+              return (
+                <button
+                  key={tab.id}
+                  type="button"
+                  role="tab"
+                  aria-selected={customerTypeFilter === tab.id}
+                  className={`motus-pt-dash-list-tab motus-pt-dash-list-tab--compact ${customerTypeFilter === tab.id ? "motus-pt-dash-list-tab--active" : ""}`}
+                  onClick={() => onCustomerTypeFilterChange(tab.id)}
+                >
+                  {tab.label} ({count})
+                </button>
+              );
+            })}
+          </div>
+        ) : null}
+        {onMemberSortChange ? (
+          <label className="motus-pt-dash-sort">
+            <span className="motus-pt-dash-sort-label">Sorter</span>
+            <select
+              className="motus-pt-dash-sort-select"
+              value={memberSort}
+              onChange={(event) => onMemberSortChange(event.target.value as MemberCustomerTypeSort)}
+            >
+              {MEMBER_SORT_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </label>
+        ) : null}
         <div className="motus-pt-dash-list-scroll">
           {listMembers.map((row) => (
             <button

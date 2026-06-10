@@ -1163,20 +1163,26 @@ export function useAppState() {
         if (applied) setMemberRemoteHydrated(true);
       }
       const hydratedTrainer = isTrainerSession && ownerUserId ? await fetchHydratedTrainerData(ownerUserId) : null;
-      const [hydratedMember, directMemberPrograms, directMemberLogs, directTrainerPrograms, directMemberMembers] =
-        await Promise.all([
-          isMemberLikeSession
-            ? fetchHydratedMemberData().then((data) => {
-                applyEarlyMemberHydrate(data, sessionUser?.email?.trim().toLowerCase() ?? "");
-                return data;
-              })
-            : Promise.resolve(null),
-          isMemberLikeSession ? fetchProgramsFromSupabase() : Promise.resolve(null),
-          isMemberLikeSession ? fetchLogsFromSupabase() : Promise.resolve(null),
-          isTrainerSession ? fetchProgramsFromSupabase() : Promise.resolve(null),
-          isMemberLikeSession ? fetchMembersFromSupabase() : Promise.resolve(null),
-        ]);
+      const hydratedMember = isMemberLikeSession
+        ? await fetchHydratedMemberData().then((data) => {
+            applyEarlyMemberHydrate(data, sessionUser?.email?.trim().toLowerCase() ?? "");
+            return data;
+          })
+        : null;
       const sessionEmail = sessionUser?.email?.trim().toLowerCase() ?? "";
+      const trainerHydrateFailedEarly =
+        Boolean(hydratedTrainer) &&
+        (hydratedTrainer?.debug?.status === "invoke_error" || hydratedTrainer?.debug?.status === "invalid_payload");
+      const trainerHydrateOkEarly = Boolean(hydratedTrainer) && !trainerHydrateFailedEarly;
+      const memberHydrateOkEarly = hydratedMember !== null && !hydratedMember.accessDenied;
+      const [directMemberPrograms, directMemberLogs, directTrainerPrograms, directMemberMembers, directTrainerMembers] =
+        await Promise.all([
+          isMemberLikeSession && !memberHydrateOkEarly ? fetchProgramsFromSupabase() : Promise.resolve(null),
+          isMemberLikeSession && !memberHydrateOkEarly ? fetchLogsFromSupabase() : Promise.resolve(null),
+          isTrainerSession && !trainerHydrateOkEarly ? fetchProgramsFromSupabase() : Promise.resolve(null),
+          isMemberLikeSession && !memberHydrateOkEarly ? fetchMembersFromSupabase() : Promise.resolve(null),
+          isTrainerSession && !trainerHydrateOkEarly ? fetchMembersFromSupabase() : Promise.resolve(null),
+        ]);
       const archivedMessage = hydratedMemberAccessDenied(hydratedMember);
       const accessBlocked =
         isMemberLikeSession && sessionEmail
@@ -1188,15 +1194,19 @@ export function useAppState() {
         await blockArchivedMemberAccess(archivedMessage ?? MEMBER_ARCHIVED_APP_MESSAGE, sessionEmail);
         return;
       }
-      const directTrainerMembers = isTrainerSession ? await fetchMembersFromSupabase() : null;
       const remoteMembers = isTrainerSession
         ? hydratedTrainer
           ? mergeMembersById(hydratedTrainer.members, directTrainerMembers)
           : directTrainerMembers
         : mergeMembersById(hydratedMember?.members ?? null, directMemberMembers) ??
           directMemberMembers ??
-          (await fetchMembersFromSupabase());
-      const remoteMessages = hydratedTrainer?.messages ?? hydratedMember?.messages ?? (await fetchMessagesFromSupabase());
+          (memberHydrateOkEarly ? null : await fetchMembersFromSupabase());
+      const remoteMessages =
+        trainerHydrateOkEarly
+          ? (hydratedTrainer?.messages ?? [])
+          : memberHydrateOkEarly
+            ? (hydratedMember?.messages ?? [])
+            : await fetchMessagesFromSupabase();
       // Edge hydrate and RLS-backed selects can disagree; merge by id so new devices still see programs/logs
       // the member can read directly from Postgres even when hydrate returns a partial list.
       let remotePrograms: TrainingProgram[] | null =
@@ -1295,7 +1305,11 @@ export function useAppState() {
         (isMemberLikeSession && hydratedMember !== null) ||
         (isMemberLikeSession && hydratedMember === null && Array.isArray(directMemberLogs) && directMemberLogs.length > 0);
       const remoteExercises =
-        hydratedTrainer?.exercises ?? hydratedMember?.exercises ?? (await fetchExercisesFromSupabase());
+        trainerHydrateOkEarly
+          ? (hydratedTrainer?.exercises ?? [])
+          : memberHydrateOkEarly
+            ? (hydratedMember?.exercises ?? [])
+            : hydratedTrainer?.exercises ?? hydratedMember?.exercises ?? (await fetchExercisesFromSupabase());
       if (cancelled) return;
 
       if (

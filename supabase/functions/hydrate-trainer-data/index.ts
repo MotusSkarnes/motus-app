@@ -1,4 +1,8 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { buildMemberEmailIlikeOrFilter } from "../_shared/memberEmailQueries.ts";
+
+const EXERCISE_BANK_SELECT =
+  "id, name, category, muscle_group, equipment, level, description, image_url, personal_record_image_url, is_active, created_at, updated_at";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -273,25 +277,44 @@ Deno.serve(async (req) => {
 
   const adminClient = createClient(supabaseUrl, serviceRoleKey);
 
+  async function tableHasNullOwnerRowsForMembers(
+    table: "training_programs" | "workout_logs" | "chat_messages",
+    memberIds: string[],
+  ): Promise<boolean> {
+    if (!memberIds.length) return false;
+    const { count, error } = await adminClient
+      .from(table)
+      .select("id", { count: "exact", head: true })
+      .is("owner_user_id", null)
+      .in("member_id", memberIds);
+    if (error) {
+      console.warn(`hydrate-trainer-data: ${table} null-owner check failed:`, error.message);
+      return false;
+    }
+    return (count ?? 0) > 0;
+  }
+
+  async function backfillNullOwnerUserId(
+    table: "training_programs" | "workout_logs" | "chat_messages",
+    memberIds: string[],
+  ): Promise<void> {
+    if (!(await tableHasNullOwnerRowsForMembers(table, memberIds))) return;
+    await adminClient
+      .from(table)
+      .update({ owner_user_id: ownerUserId })
+      .is("owner_user_id", null)
+      .in("member_id", memberIds);
+  }
+
   const { data: ownedMembers } = await adminClient.from("members").select("id").eq("owner_user_id", ownerUserId);
   const ownedMemberIds = (ownedMembers ?? []).map((row) => String((row as { id?: string }).id ?? "")).filter(Boolean);
 
   if (ownedMemberIds.length > 0) {
-    await adminClient
-      .from("training_programs")
-      .update({ owner_user_id: ownerUserId })
-      .is("owner_user_id", null)
-      .in("member_id", ownedMemberIds);
-    await adminClient
-      .from("workout_logs")
-      .update({ owner_user_id: ownerUserId })
-      .is("owner_user_id", null)
-      .in("member_id", ownedMemberIds);
-    await adminClient
-      .from("chat_messages")
-      .update({ owner_user_id: ownerUserId })
-      .is("owner_user_id", null)
-      .in("member_id", ownedMemberIds);
+    await Promise.all([
+      backfillNullOwnerUserId("training_programs", ownedMemberIds),
+      backfillNullOwnerUserId("workout_logs", ownedMemberIds),
+      backfillNullOwnerUserId("chat_messages", ownedMemberIds),
+    ]);
   }
 
   const membersSelectWithAvatar =
@@ -376,27 +399,34 @@ Deno.serve(async (req) => {
         .map((row) => normalizeEmail((row as { email?: string }).email))
         .filter((value) => value && value.includes("@")),
     );
-    const allMembersWithAvatar = await adminClient
-      .from("members")
-      .select(membersSelectWithAvatar)
-      .order("created_at", { ascending: true });
-    let allMembersRows: Array<Record<string, unknown>> = [];
-    if (allMembersWithAvatar.error && allMembersWithAvatar.error.message.includes("avatar_url")) {
-      const allMembersWithoutAvatar = await adminClient
+    const emailOrFilter = buildMemberEmailIlikeOrFilter(Array.from(relatedEmailSet));
+    if (emailOrFilter) {
+      const widenedWithAvatar = await adminClient
         .from("members")
-        .select(membersSelectWithoutAvatar)
+        .select(membersSelectWithAvatar)
+        .or(emailOrFilter)
         .order("created_at", { ascending: true });
-      allMembersRows = (allMembersWithoutAvatar.data ?? []) as Array<Record<string, unknown>>;
-    } else {
-      allMembersRows = (allMembersWithAvatar.data ?? []) as Array<Record<string, unknown>>;
+      let widenedRows: Array<Record<string, unknown>> = [];
+      if (widenedWithAvatar.error && widenedWithAvatar.error.message.includes("avatar_url")) {
+        const widenedWithoutAvatar = await adminClient
+          .from("members")
+          .select(membersSelectWithoutAvatar)
+          .or(emailOrFilter)
+          .order("created_at", { ascending: true });
+        widenedRows = (widenedWithoutAvatar.data ?? []) as Array<Record<string, unknown>>;
+      } else if (!widenedWithAvatar.error) {
+        widenedRows = (widenedWithAvatar.data ?? []) as Array<Record<string, unknown>>;
+      } else {
+        membersError = widenedWithAvatar.error;
+      }
+      const widenedMembers = widenedRows.filter((row) => {
+        const rowEmail = normalizeEmail((row as { email?: string }).email);
+        if (!rowEmail || !relatedEmailSet.has(rowEmail)) return false;
+        return isMemberRowVisibleInTrainerRoster(row, ownerUserId, linkedMemberIds);
+      });
+      members = uniqueById([...(members ?? []), ...widenedMembers]) as Array<Record<string, unknown>>;
+      members = harmonizeMemberProfilesByEmail(members);
     }
-    const widenedMembers = allMembersRows.filter((row) => {
-      const rowEmail = normalizeEmail((row as { email?: string }).email);
-      if (!rowEmail || !relatedEmailSet.has(rowEmail)) return false;
-      return isMemberRowVisibleInTrainerRoster(row, ownerUserId, linkedMemberIds);
-    });
-    members = uniqueById([...(members ?? []), ...widenedMembers]) as Array<Record<string, unknown>>;
-    members = harmonizeMemberProfilesByEmail(members);
   }
   members = (members ?? []).filter((row) => isMemberRowVisibleInTrainerRoster(row, ownerUserId, linkedMemberIds));
 
@@ -409,21 +439,11 @@ Deno.serve(async (req) => {
   }
   // Backfill only NULL owner_user_id — never reassign another PT's programs/logs to member.owner_user_id.
   if (visibleMemberIds.length > 0) {
-    await adminClient
-      .from("training_programs")
-      .update({ owner_user_id: ownerUserId })
-      .in("member_id", visibleMemberIds)
-      .is("owner_user_id", null);
-    await adminClient
-      .from("workout_logs")
-      .update({ owner_user_id: ownerUserId })
-      .in("member_id", visibleMemberIds)
-      .is("owner_user_id", null);
-    await adminClient
-      .from("chat_messages")
-      .update({ owner_user_id: ownerUserId })
-      .in("member_id", visibleMemberIds)
-      .is("owner_user_id", null);
+    await Promise.all([
+      backfillNullOwnerUserId("training_programs", visibleMemberIds),
+      backfillNullOwnerUserId("workout_logs", visibleMemberIds),
+      backfillNullOwnerUserId("chat_messages", visibleMemberIds),
+    ]);
   }
   const visibleMemberEmails = Array.from(
     new Set(
@@ -552,7 +572,7 @@ Deno.serve(async (req) => {
 
   const { data: exercises, error: exercisesError } = await adminClient
     .from("exercise_bank")
-    .select("*")
+    .select(EXERCISE_BANK_SELECT)
     .or("is_active.is.null,is_active.eq.true")
     .order("name", { ascending: true });
 

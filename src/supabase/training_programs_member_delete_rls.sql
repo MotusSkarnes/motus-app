@@ -12,8 +12,13 @@ create policy "training_programs_delete_member_created"
     and member_id is not null
     and (
       member_id = nullif(auth.jwt() -> 'app_metadata' ->> 'member_id', '')
-      or member_id = nullif(auth.jwt() -> 'user_metadata' ->> 'member_id', '')
-      or lower(btrim(member_id)) = lower(btrim(coalesce(auth.jwt() ->> 'email', '')))
+      or exists (
+        select 1
+        from public.members m
+        where m.id = training_programs.member_id
+          and lower(trim(coalesce(m.email, ''))) = lower(trim(coalesce(auth.jwt() ->> 'email', '')))
+          and coalesce(m.is_active, true) is not false
+      )
     )
   );
 
@@ -26,7 +31,12 @@ create policy "workout_logs_delete_member_own"
     member_id is not null
     and (
       member_id = nullif(auth.jwt() -> 'app_metadata' ->> 'member_id', '')
-      or member_id = nullif(auth.jwt() -> 'user_metadata' ->> 'member_id', '')
-      or lower(btrim(member_id)) = lower(btrim(coalesce(auth.jwt() ->> 'email', '')))
+      or exists (
+        select 1
+        from public.members m
+        where m.id = workout_logs.member_id
+          and lower(trim(coalesce(m.email, ''))) = lower(trim(coalesce(auth.jwt() ->> 'email', '')))
+          and coalesce(m.is_active, true) is not false
+      )
     )
   );

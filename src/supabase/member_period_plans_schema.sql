@@ -25,7 +25,14 @@ create policy "member_period_plans_select_trainer_or_member"
   for select to authenticated
   using (
     owner_user_id = auth.uid()
-    or member_id = coalesce(auth.jwt() -> 'app_metadata' ->> 'member_id', '')
+    or member_id = nullif(auth.jwt() -> 'app_metadata' ->> 'member_id', '')
+    or exists (
+      select 1
+      from public.members m
+      where m.id = member_period_plans.member_id
+        and lower(trim(coalesce(m.email, ''))) = lower(trim(coalesce(auth.jwt() ->> 'email', '')))
+        and coalesce(m.is_active, true) is not false
+    )
   );
 
 create policy "member_period_plans_insert_trainer"
