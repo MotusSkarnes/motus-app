@@ -43,6 +43,7 @@ import {
   NO_PLAN_DAY_TEMPLATE_TITLE,
   parseActivityTemplateKind,
 } from "../app/activityTemplate";
+import { DEFAULT_MOTUS_GROUP_CLASS_NAMES } from "../app/motusGroupClassTemplates";
 import { imageObjectPositionFromSrc, programCustomCoverImageStyle } from "../app/imageFocalPoint";
 import {
   programCoverUsesPhotoStyle,
@@ -1070,20 +1071,7 @@ function intervalTimerBadgeToneClass(tone: IntervalTimerStep["tone"]): string {
 }
 
 export function MemberPortal(props: MemberPortalProps) {
-  const groupWorkoutClassOptions = [
-    "Smilepuls",
-    "Sykkel 45",
-    "Mølle 45",
-    "Sterk",
-    "Sirkeltrening",
-    "Stram opp",
-    "Dansemix",
-    "Yoga",
-    "HIIT",
-    "Tabata",
-    "Godt voksen",
-    "Step styrke",
-  ];
+  const groupWorkoutClassOptions = [...DEFAULT_MOTUS_GROUP_CLASS_NAMES];
   const {
     members,
     currentUserRole,

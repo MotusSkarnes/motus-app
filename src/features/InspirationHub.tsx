@@ -68,6 +68,7 @@ import {
   type InspirationHeroConfig,
 } from "../app/inspirationStorage";
 import { RUNNING_INSPIRATION_ITEMS } from "../app/inspirationRunningPlans";
+import { ensureDefaultMotusGroupClassTemplates } from "../app/motusGroupClassTemplates";
 import { buildPeriodPlanProgramSelectOptions, WEEKDAY_PLAN_FIELDS } from "../app/periodPlanBuilder";
 import { normalizePeriodSchedulePlan, syncGradientMarkedWeekDays } from "../app/periodPlanMerge";
 import { uid } from "../app/storage";
@@ -817,7 +818,7 @@ export function InspirationHub({
         .filter((item) => item.programTemplate?.title)
         .map((item) => item.programTemplate!.title),
     ];
-    return buildPeriodPlanProgramSelectOptions(titles);
+    return buildPeriodPlanProgramSelectOptions(titles, ensureDefaultMotusGroupClassTemplates(programTemplates));
   }, [programTemplates, items]);
 
   const activePeriodWeek = useMemo(

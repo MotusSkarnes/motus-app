@@ -219,6 +219,7 @@ import {
   stripActivityTemplateMarker,
 } from "../app/activityTemplate";
 import { findProgramForPeriodPlanEntry } from "../app/periodPlanEntryActions";
+import { ensureDefaultMotusGroupClassTemplates } from "../app/motusGroupClassTemplates";
 import { buildPeriodPlanProgramSelectOptions } from "../app/periodPlanBuilder";
 import {
   dedupePeriodPlansById,
@@ -1598,7 +1599,7 @@ function pickFirstName(value: unknown): string {
   }, [periodPlansByMemberId, periodPlanMemberIdsForMerge]);
   const templatePrograms = useMemo(
     () =>
-      dedupeSharedOrgActivityTemplates(programs.filter((program) => program.memberId === "__template__")),
+      ensureDefaultMotusGroupClassTemplates(programs.filter((program) => program.memberId === "__template__")),
     [programs],
   );
   const exerciseCategoryById = useMemo(() => buildExerciseCategoryById(exercises), [exercises]);

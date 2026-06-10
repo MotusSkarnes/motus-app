@@ -93,6 +93,7 @@ import {
   isMemberSessionScopedProgram,
   mergeMemberProgramsWithActivityTemplates,
 } from "./activityTemplate";
+import { ensureDefaultMotusGroupClassTemplates } from "./motusGroupClassTemplates";
 import { memberMayDeleteProgram, mergeProgramAuthorFields } from "./programAuthor";
 import {
   mergeProgramImageUrl,
@@ -1137,6 +1138,7 @@ export function useAppState() {
             if (noPlanCoverUrl) {
               programs = ensureNoPlanCoverProgramInList(programs, noPlanCoverUrl, memberOwnerUserId || undefined);
             }
+            programs = ensureDefaultMotusGroupClassTemplates(programs);
             next.programs = mergeMemberProgramsWithLocalEphemeral(
               programs,
               prevStripped.programs,
@@ -1226,6 +1228,7 @@ export function useAppState() {
             );
           }
         }
+        remotePrograms = ensureDefaultMotusGroupClassTemplates(remotePrograms);
       }
       let remoteLogs =
         hydratedTrainer?.logs ??
