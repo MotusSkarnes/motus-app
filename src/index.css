@@ -2685,6 +2685,56 @@ button.motus-progress-status-banner {
   }
 }
 
+.motus-progress-status-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.5rem;
+  padding: 0.875rem;
+}
+
+.motus-progress-status-grid-title {
+  margin-bottom: 0.125rem;
+}
+
+.motus-progress-status-metric {
+  min-height: 5.75rem;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.35rem;
+  padding: 0.625rem;
+}
+
+.motus-progress-status-metric-icon {
+  height: 1.75rem;
+  width: 1.75rem;
+  border-radius: 0.65rem;
+}
+
+.motus-progress-status-metric-label {
+  font-size: 0.5625rem;
+  line-height: 1;
+}
+
+.motus-progress-status-metric-value {
+  margin-top: 0.075rem;
+  font-size: 1rem;
+}
+
+.motus-progress-status-metric-subline {
+  margin-top: 0.075rem;
+  font-size: 0.6rem;
+  line-height: 1.18;
+}
+
+.motus-progress-status-highlights {
+  display: none;
+}
+
+@media (max-width: 340px) {
+  .motus-progress-status-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
 .motus-progress-flow-cinematic {
   position: relative;
   min-height: 7.5rem;

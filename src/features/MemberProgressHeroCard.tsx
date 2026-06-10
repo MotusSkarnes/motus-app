@@ -442,6 +442,26 @@ export function MemberProgressHeroCard({
           pct={recovery.pct}
           tone="pink"
         />
+        <StatusMetric
+          label="Økter"
+          value={completedSessions.toLocaleString("nb-NO")}
+          subline={completedSessions === 1 ? "Fullført økt totalt." : "Fullførte økter totalt."}
+          icon={<Shield className="h-4 w-4" strokeWidth={2.25} />}
+          tone="neutral"
+        />
+        <StatusMetric
+          label="Streak"
+          value={`${streakWeeks} ${streakWeeks === 1 ? "uke" : "uker"}`}
+          subline={bestStreakSubline(streakWeeks, bestStreakWeeks)}
+          icon={<Flame className="h-4 w-4" strokeWidth={2.25} />}
+          tone="pink"
+        />
+        <StatusMetric
+          label="Rekorder"
+          value={personalRecordsCount.toLocaleString("nb-NO")}
+          subline={personalRecordSubline(personalRecordsCount)}
+          icon={<Trophy className="h-4 w-4" strokeWidth={2.25} />}
+        />
         <div className="motus-progress-status-highlights">
           <div className="motus-progress-status-highlight">
             <span className="motus-progress-status-highlight-icon motus-progress-status-highlight-icon--pink" aria-hidden>
