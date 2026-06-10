@@ -119,7 +119,7 @@ export function buildHomeWeekMotivation(input: {
   }
 
   if (input.completed > 0 && input.planned > 0 && input.progressPct >= 50) {
-    return { title: "Du holder koken 🔥", detail: "Halvparten av uka er i boks — fortsett." };
+    return { title: "Du holder koken 🔥", detail: "Halvparten av uka er i boks — fortsett sånn." };
   }
 
   if (input.completed === 0 && input.planned > 0) {
