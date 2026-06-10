@@ -231,6 +231,8 @@ import { ensureDefaultMotusGroupClassTemplates } from "../app/motusGroupClassTem
 import { buildPeriodPlanProgramSelectOptions } from "../app/periodPlanBuilder";
 import {
   dedupePeriodPlansById,
+  mergeTrainerPeriodPlansFromRemote,
+  removePeriodPlanFromLocalStorage,
   MAX_PERIOD_PLAN_WEEKS,
   memberIdsForPeriodPlanMerge,
   pickCanonicalMemberIdForPeriodPlans,
@@ -1943,17 +1945,7 @@ function pickFirstName(value: unknown): string {
 
   useEffect(() => {
     if (!isSupabaseConfigured || isLocalDemoSession) return;
-    const keys = Object.keys(remoteTrainerPeriodPlansByMemberId);
-    if (!keys.length) return;
-    setPeriodPlansByMemberId((prev) => {
-      const next = { ...prev };
-      keys.forEach((memberId) => {
-        const remotePlans = remoteTrainerPeriodPlansByMemberId[memberId] ?? [];
-        const localPlans = next[memberId] ?? [];
-        next[memberId] = dedupePeriodPlansById([...localPlans, ...remotePlans]);
-      });
-      return next;
-    });
+    setPeriodPlansByMemberId((prev) => mergeTrainerPeriodPlansFromRemote(prev, remoteTrainerPeriodPlansByMemberId));
   }, [isLocalDemoSession, remoteTrainerPeriodPlansByMemberId]);
 
   useEffect(() => {
@@ -2694,10 +2686,14 @@ function pickFirstName(value: unknown): string {
       return syncGradientMarkedWeekDays(next);
     });
   }
-  function removePeriodPlan(planId: string) {
+  async function removePeriodPlan(planId: string) {
     if (!selectedMemberId || selectedMemberId === "__template__" || selectedMemberRelatedIds.length === 0) return;
     if (isSupabaseConfigured && !isLocalDemoSession) {
-      void deleteMemberPeriodPlanByPlanId(planId);
+      const result = await deleteMemberPeriodPlanByPlanId(planId);
+      if (!result.ok) {
+        setPeriodPlanStatus(result.message?.trim() || "Kunne ikke slette periodeplan i sky. Prøv igjen.");
+        return;
+      }
     }
     setPeriodPlansByMemberId((prev) => {
       const next = { ...prev };
@@ -2707,6 +2703,7 @@ function pickFirstName(value: unknown): string {
       });
       return next;
     });
+    removePeriodPlanFromLocalStorage(selectedMemberRelatedIds, planId);
     setPeriodPlanStatus("Periodeplan slettet.");
   }
 

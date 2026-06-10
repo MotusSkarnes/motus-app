@@ -24,6 +24,8 @@ import {
   resolvePeriodPlanWeek,
   syncGradientMarkedWeekDays,
   writeHiddenPeriodPlanIdsForMembers,
+  mergeTrainerPeriodPlansFromRemote,
+  mergedPeriodPlanListForMember,
 } from "./periodPlanMerge";
 import type { PeriodSchedulePlan, TrainingProgram, WeeklySchedulePlan } from "./types";
 
@@ -604,5 +606,46 @@ describe("dedupePeriodPlansById", () => {
     expect(result).toHaveLength(1);
     expect(preferNewerPeriodPlan(older, newer).weeklyPlans[0]?.days.monday).toBe("Ny økt fra PT");
     expect(result[0]?.weeklyPlans[0]?.days.monday).toBe("Ny økt fra PT");
+  });
+});
+
+describe("mergeTrainerPeriodPlansFromRemote", () => {
+  it("erstatter lokal cache med remote — slettede planer kommer ikke tilbake", () => {
+    const staleLocal: PeriodSchedulePlan = {
+      ...makePlan([{ id: "w1", weekNumber: 1, days: { ...empty, monday: "Gammel lokal" } }]),
+      id: "plan-deleted",
+      periodPlanAddedBy: "trainer",
+    };
+    const remotePlan: PeriodSchedulePlan = {
+      ...makePlan([{ id: "w1", weekNumber: 1, days: { ...empty, monday: "Aktiv i sky" } }]),
+      id: "plan-live",
+      periodPlanAddedBy: "trainer",
+    };
+    const merged = mergeTrainerPeriodPlansFromRemote(
+      { m1: [staleLocal] },
+      { m1: [remotePlan] },
+    );
+    expect(merged.m1?.map((plan) => plan.id)).toEqual(["plan-live"]);
+  });
+});
+
+describe("mergedPeriodPlanListForMember", () => {
+  it("ignorerer utdatert lokal PT-plan når den ikke finnes i remote", () => {
+    const staleLocal: PeriodSchedulePlan = {
+      ...makePlan([{ id: "w1", weekNumber: 1, days: { ...empty, monday: "Skal bort" } }]),
+      id: "plan-deleted",
+      periodPlanAddedBy: "trainer",
+    };
+    const memberOwned: PeriodSchedulePlan = {
+      ...makePlan([{ id: "w1", weekNumber: 1, days: { ...empty, tuesday: "Medlem" } }]),
+      id: "plan-member-1710000000000",
+      periodPlanAddedBy: "member",
+    };
+    const plans = mergedPeriodPlanListForMember(
+      ["m1"],
+      { m1: [staleLocal, memberOwned] },
+      [],
+    );
+    expect(plans.map((plan) => plan.id)).toEqual(["plan-member-1710000000000"]);
   });
 });

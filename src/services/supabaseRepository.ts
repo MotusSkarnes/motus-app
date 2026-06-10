@@ -605,14 +605,18 @@ async function notifyMemberPeriodPlanPush(memberIds: string[], plan: PeriodSched
   }
 }
 
-export async function deleteMemberPeriodPlanByPlanId(planId: string): Promise<void> {
-  if (!supabaseClient) return;
+export async function deleteMemberPeriodPlanByPlanId(
+  planId: string,
+): Promise<{ ok: boolean; message?: string }> {
+  if (!supabaseClient) return { ok: false, message: "Supabase er ikke konfigurert." };
   const trimmed = planId.trim();
-  if (!trimmed) return;
+  if (!trimmed) return { ok: false, message: "Mangler plan-id." };
   const { error } = await supabaseClient.from("member_period_plans").delete().eq("plan_id", trimmed);
   if (error) {
     console.warn("Supabase member_period_plans delete failed:", error.message);
+    return { ok: false, message: error.message };
   }
+  return { ok: true };
 }
 
 async function resolveRelatedMemberIds(

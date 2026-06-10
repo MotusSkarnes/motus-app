@@ -793,9 +793,18 @@ export function mergedPeriodPlanListForMember(
 ): PeriodSchedulePlan[] {
   const merged = new Map<string, PeriodSchedulePlan>();
   const idSet = new Set(relatedMemberIds.map((id) => id.trim()).filter(Boolean));
+  const trainerPlanIds = buildTrainerPeriodPlanIdSet(relatedMemberIds, remoteRows);
+  const remotePlanIds = new Set(
+    remoteRows
+      .filter((row) => idSet.has(row.memberId.trim()))
+      .map((row) => normalizePeriodSchedulePlan(row.plan).id),
+  );
   for (const memberId of idSet) {
     for (const plan of localByMember[memberId] ?? []) {
       const normalized = normalizePeriodSchedulePlan(plan);
+      if (!isMemberOwnedPeriodPlan(normalized, trainerPlanIds) && !remotePlanIds.has(normalized.id)) {
+        continue;
+      }
       const existing = merged.get(normalized.id);
       merged.set(normalized.id, existing ? preferNewerPeriodPlan(existing, normalized) : normalized);
     }
@@ -807,6 +816,38 @@ export function mergedPeriodPlanListForMember(
     merged.set(normalized.id, existing ? preferNewerPeriodPlan(existing, normalized) : normalized);
   }
   return Array.from(merged.values()).sort((a, b) => planStartTimeMs(b) - planStartTimeMs(a));
+}
+
+/** Fjern en plan fra lokal periodeplan-cache (alle member_id-varianter). */
+export function removePeriodPlanFromLocalStorage(memberIds: string[], planId: string): boolean {
+  const trimmedPlanId = planId.trim();
+  if (!trimmedPlanId) return false;
+  const byMember = readPeriodPlansByMemberId();
+  let changed = false;
+  for (const memberId of memberIds) {
+    const previous = byMember[memberId] ?? [];
+    const next = previous.filter((plan) => plan.id !== trimmedPlanId);
+    if (next.length !== previous.length) {
+      byMember[memberId] = next;
+      changed = true;
+    }
+  }
+  if (changed) writePeriodPlansByMemberId(byMember);
+  return changed;
+}
+
+/** Supabase er kilde til sannhet for PT — erstatter lokal cache per kunde. */
+export function mergeTrainerPeriodPlansFromRemote(
+  previous: Record<string, PeriodSchedulePlan[]>,
+  remoteByMemberId: Record<string, PeriodSchedulePlan[]>,
+): Record<string, PeriodSchedulePlan[]> {
+  const remoteKeys = Object.keys(remoteByMemberId);
+  if (!remoteKeys.length) return previous;
+  const next = { ...previous };
+  for (const memberId of remoteKeys) {
+    next[memberId] = dedupePeriodPlansById(remoteByMemberId[memberId] ?? []);
+  }
+  return next;
 }
 
 export function computePeriodPlanSessionProgress(
