@@ -196,6 +196,9 @@ function formatPlanFromWorkoutRows(
   options?: WorkoutPlanLabelOptions,
 ): string {
   if (!rows.length) return "";
+  if (rows[0]?.logFieldKeys?.length) {
+    return formatLogAfterPlanLabel(rows[0]);
+  }
   const programExercise = program?.exercises.find((exercise) => exercise.id === programExerciseId);
   const exerciseIndex = program?.exercises.findIndex((exercise) => exercise.id === programExerciseId) ?? -1;
   const merged = mergeProgramExerciseWithWorkoutRows(programExercise, rows, options);
@@ -286,6 +289,9 @@ function resultIsHold(result: WorkoutExerciseResult, linked?: Exercise): boolean
 
 /** Plan for ett logget sett (volum per sett, samme språk som programmet). */
 export function formatWorkoutResultSetPlanLabel(result: WorkoutExerciseResult, exerciseLibrary: Exercise[] = []): string {
+  if (result.logFieldKeys?.length) {
+    return formatLogAfterPlanLabel(result);
+  }
   const linked = findLinkedExerciseForResult(result, exerciseLibrary);
   if (resultIsCardio(result, linked)) {
     const parts: string[] = [];
@@ -317,13 +323,21 @@ export function formatWorkoutResultExercisePlanLabel(
   });
 }
 
-function formatLogAfterPerformedPart(result: WorkoutExerciseResult, key: ExercisePrescriptionFieldKey): string {
-  const labelExercise = {
-    customField1Label: result.customField1Label,
-    customField2Label: result.customField2Label,
+function logAfterValueByKey(
+  result: WorkoutExerciseResult,
+  key: ExercisePrescriptionFieldKey,
+  kind: "planned" | "performed",
+): string {
+  const plannedByKey: Partial<Record<ExercisePrescriptionFieldKey, string | undefined>> = {
+    minutes: result.plannedDurationMinutes,
+    distance: result.plannedDistanceKm,
+    heartRate: result.plannedHeartRate,
+    speed: result.plannedSpeed,
+    incline: result.plannedIncline,
+    custom1: result.plannedCustom1,
+    custom2: result.plannedCustom2,
   };
-  const label = resolvePrescriptionFieldLabel(key, labelExercise);
-  const valueByKey: Partial<Record<ExercisePrescriptionFieldKey, string | undefined>> = {
+  const performedByKey: Partial<Record<ExercisePrescriptionFieldKey, string | undefined>> = {
     minutes: result.performedDurationMinutes,
     distance: result.performedDistanceKm,
     heartRate: result.performedHeartRate,
@@ -332,13 +346,40 @@ function formatLogAfterPerformedPart(result: WorkoutExerciseResult, key: Exercis
     custom1: result.performedCustom1,
     custom2: result.performedCustom2,
   };
-  const value = String(valueByKey[key] ?? "").trim();
+  const raw = kind === "planned" ? plannedByKey[key] : performedByKey[key];
+  return String(raw ?? "").trim();
+}
+
+function formatLogAfterValuePart(
+  result: WorkoutExerciseResult,
+  key: ExercisePrescriptionFieldKey,
+  kind: "planned" | "performed",
+): string {
+  const labelExercise = {
+    customField1Label: result.customField1Label,
+    customField2Label: result.customField2Label,
+  };
+  const label = resolvePrescriptionFieldLabel(key, labelExercise);
+  const value = logAfterValueByKey(result, key, kind);
   if (!value) return "";
-  if (key === "minutes") return `${value} min`;
-  if (key === "distance") return `${value} km`;
-  if (key === "speed") return `${value} km/t`;
-  if (key === "incline") return `${value}%`;
+  if (key === "minutes") return `${label} ${value} min`;
+  if (key === "distance") return `${label} ${value} km`;
+  if (key === "speed") return `${label} ${value} km/t`;
+  if (key === "incline") return `${label} ${value} %`;
+  if (key === "heartRate") return `${label} ${value}`;
   return `${label} ${value}`;
+}
+
+function formatLogAfterPlanLabel(result: WorkoutExerciseResult): string {
+  if (!result.logFieldKeys?.length) return "";
+  const parts = result.logFieldKeys
+    .map((key) => formatLogAfterValuePart(result, key, "planned"))
+    .filter(Boolean);
+  return parts.length ? parts.join(" · ") : "—";
+}
+
+function formatLogAfterPerformedPart(result: WorkoutExerciseResult, key: ExercisePrescriptionFieldKey): string {
+  return formatLogAfterValuePart(result, key, "performed");
 }
 
 /** Utført volum for ett logget sett. */

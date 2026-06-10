@@ -58,6 +58,38 @@ function logAfterFieldHasValue(row: WorkoutSetRow, key: ExercisePrescriptionFiel
   return String(raw ?? "").trim().length > 0;
 }
 
+function logAfterLabelExercise(row: WorkoutSetRow) {
+  return {
+    customField1Label: row.customField1Label,
+    customField2Label: row.customField2Label,
+  };
+}
+
+function formatLogAfterDisplayValue(
+  key: ExercisePrescriptionFieldKey,
+  value: string,
+  row: WorkoutSetRow,
+): string {
+  const trimmed = value.trim();
+  if (!trimmed) return "—";
+  if (key === "minutes") return `${trimmed} min`;
+  if (key === "distance") return `${trimmed} km`;
+  if (key === "speed") return `${trimmed} km/t`;
+  if (key === "incline") return `${trimmed} %`;
+  if (key === "heartRate") return `${trimmed} puls`;
+  if (key === "custom1" || key === "custom2") {
+    const label = resolvePrescriptionFieldLabel(key, logAfterLabelExercise(row));
+    return `${label}: ${trimmed}`;
+  }
+  return trimmed;
+}
+
+function plannedValueForLogAfterField(row: WorkoutSetRow, key: ExercisePrescriptionFieldKey): string {
+  const mapping = LOG_AFTER_FIELD_MAP[key];
+  if (!mapping?.planned) return "";
+  return String(row[mapping.planned] ?? "").trim();
+}
+
 type LastSessionEntry = {
   weight?: string;
   reps?: string;
@@ -236,6 +268,49 @@ export function WorkoutCompactSetTable({
   if (!rows.length) return null;
 
   const activeIndex = rows.findIndex((row) => !row.completed);
+  const isLogAfterMode = rows.some((row) => row.logFieldKeys && row.logFieldKeys.length > 0);
+
+  if (isLogAfterMode) {
+    return (
+      <div className="space-y-0">
+        {exerciseLabel ? <div className="mb-2 text-xs font-semibold text-slate-700">{exerciseLabel}</div> : null}
+        {planHint ? <div className="mb-2 text-[11px] leading-snug text-slate-500">Plan: {planHint}</div> : null}
+        <div className="space-y-3">
+          {rows.map((row, index) => {
+            const isActive = index === activeIndex;
+            const isDone = row.completed;
+            return (
+              <div
+                key={row.exerciseId}
+                className={`rounded-xl border bg-white p-3 sm:p-4 ${
+                  isActive ? "ring-2 ring-pink-200" : ""
+                } ${isDone ? "motus-set-complete" : ""}`}
+                style={{ borderColor: "rgba(15,23,42,0.08)" }}
+              >
+                {isDone ? (
+                  <div className="space-y-2">
+                    <div className="text-xs font-semibold uppercase tracking-wide text-emerald-700">Logget</div>
+                    {renderLogAfterCompletedSummary(row)}
+                    <button
+                      type="button"
+                      onClick={() => onUpdate(row.exerciseId, "completed", false)}
+                      className="text-[11px] font-medium text-slate-500 underline-offset-2 hover:text-slate-700 hover:underline"
+                    >
+                      Rediger verdier
+                    </button>
+                  </div>
+                ) : isActive ? (
+                  renderLogAfterControls(row)
+                ) : (
+                  <p className="text-xs text-slate-400">Venter på at du logger forrige øvelse …</p>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    );
+  }
   const firstRow = rows[0]!;
   const { isCardio, isStretch, isTreadmill, isStrengthSeconds } = resolveRowKind(firstRow, exerciseByName);
   const repsUnitLabel = resolveWorkoutRepsUnit(firstRow) === "min" ? "MIN" : "REPS";
@@ -294,32 +369,64 @@ export function WorkoutCompactSetTable({
     return Number(row.performedWeight.trim()) > 0 && Number(row.performedReps.trim()) > 0;
   }
 
-  function renderLogAfterControls(row: WorkoutSetRow) {
-    const labelExercise = {
-      customField1Label: row.customField1Label,
-      customField2Label: row.customField2Label,
-    };
+  function renderLogAfterFieldInputs(row: WorkoutSetRow) {
     const keys = row.logFieldKeys ?? [];
     return (
-      <div className="mt-2 space-y-1.5 rounded-lg border border-pink-200 bg-white p-2 sm:mt-3 sm:space-y-2 sm:rounded-xl sm:p-3">
-        <div className="grid gap-2 sm:grid-cols-2">
-          {keys.map((key) => {
-            const mapping = LOG_AFTER_FIELD_MAP[key];
-            if (!mapping) return null;
-            const label = resolvePrescriptionFieldLabel(key, labelExercise);
-            const planned = mapping.planned ? String(row[mapping.planned] ?? "").trim() : "";
-            return (
+      <div className="grid gap-3 sm:grid-cols-2">
+        {keys.map((key) => {
+          const mapping = LOG_AFTER_FIELD_MAP[key];
+          if (!mapping) return null;
+          const label = resolvePrescriptionFieldLabel(key, logAfterLabelExercise(row));
+          const planned = plannedValueForLogAfterField(row, key);
+          return (
+            <label key={key} className="block space-y-1">
+              <span className="block text-xs font-semibold text-slate-700">{label}</span>
+              {planned ? (
+                <span className="block text-[11px] text-slate-500">
+                  Forslag fra program: {formatLogAfterDisplayValue(key, planned, row)}
+                </span>
+              ) : null}
               <TextInput
-                key={key}
                 value={String(row[mapping.performed] ?? "")}
                 onChange={(e) => handleInputChange(row, mapping.performed, e.target.value)}
-                placeholder={planned || mapping.placeholder}
-                className="h-10 text-center text-sm"
-                aria-label={key === "custom1" || key === "custom2" ? label : mapping.ariaLabel}
+                placeholder={`Fyll inn ${label.toLowerCase()}`}
+                className="h-10 text-sm"
+                aria-label={label}
               />
-            );
-          })}
-        </div>
+            </label>
+          );
+        })}
+      </div>
+    );
+  }
+
+  function renderLogAfterCompletedSummary(row: WorkoutSetRow) {
+    const keys = row.logFieldKeys ?? [];
+    return (
+      <div className="grid gap-2 sm:grid-cols-2">
+        {keys.map((key) => {
+          const mapping = LOG_AFTER_FIELD_MAP[key];
+          if (!mapping) return null;
+          const label = resolvePrescriptionFieldLabel(key, logAfterLabelExercise(row));
+          const value = String(row[mapping.performed] ?? "").trim();
+          return (
+            <div key={key} className="rounded-lg bg-slate-50 px-3 py-2">
+              <div className="text-[11px] font-medium text-slate-500">{label}</div>
+              <div className="text-sm font-semibold text-slate-900">
+                {value ? formatLogAfterDisplayValue(key, value, row) : "—"}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    );
+  }
+
+  function renderLogAfterControls(row: WorkoutSetRow) {
+    return (
+      <div className="space-y-3">
+        <p className="text-xs font-medium text-slate-600">Fyll inn det du faktisk gjorde:</p>
+        {renderLogAfterFieldInputs(row)}
         <div className="flex items-center gap-2">
           <GradientButton
             type="button"
