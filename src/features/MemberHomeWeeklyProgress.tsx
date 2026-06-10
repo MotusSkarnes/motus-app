@@ -1,7 +1,6 @@
-import { useEffect, useId, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useId, useMemo, useState } from "react";
 import { BarChart3, Check, ChevronRight, Clock3, Flame, Sparkles, Trophy } from "lucide-react";
 import {
-  buildHomeWeekFlow,
   buildHomeWeekHeadline,
   buildHomeWeekInsight,
   buildHomeWeekMotivation,
@@ -33,7 +32,6 @@ type MemberHomeWeeklyProgressProps = {
   completedLogDates: Date[];
   nowDate: Date;
   onOpenCalendar: () => void;
-  onOpenProgress?: () => void;
   showStats?: boolean;
 };
 
@@ -105,7 +103,6 @@ export function MemberHomeWeeklyProgress({
   completedLogDates,
   nowDate,
   onOpenCalendar,
-  onOpenProgress,
   showStats = true,
 }: MemberHomeWeeklyProgressProps) {
   const progressPct = useMemo(
@@ -145,32 +142,11 @@ export function MemberHomeWeeklyProgress({
   );
 
   const insight = useMemo(() => buildHomeWeekInsight(completedLogDates, nowDate), [completedLogDates, nowDate]);
-  const flow = useMemo(() => buildHomeWeekFlow(streakWeeks, streakSubline), [streakWeeks, streakSubline]);
 
   const weekStripPct = useMemo(() => {
     const done = weekDays.filter((day) => day.status === "completed").length;
     return Math.min(100, Math.round((done / 7) * 100));
   }, [weekDays]);
-
-  const flowInner: ReactNode = (
-    <>
-      <span className="motus-home-week-flow-icon" aria-hidden>
-        <Flame className="h-5 w-5" strokeWidth={2.25} />
-      </span>
-      <span className="min-w-0 flex-1">
-        <span className="motus-home-week-flow-title">{flow.title}</span>
-        <span className="motus-home-week-flow-detail">{flow.detail}</span>
-      </span>
-      {flow.streakLabel ? (
-        <span className="motus-home-week-flow-streak">
-          {flow.streakLabel}
-          <ChevronRight className="h-4 w-4" aria-hidden />
-        </span>
-      ) : (
-        <ChevronRight className="h-4 w-4 shrink-0 text-slate-400" aria-hidden />
-      )}
-    </>
-  );
 
   return (
     <div className="motus-home-week-stack">
@@ -279,18 +255,6 @@ export function MemberHomeWeeklyProgress({
           </div>
         </div>
       </section>
-
-      {onOpenProgress ? (
-        <button
-          type="button"
-          onClick={onOpenProgress}
-          className="motus-home-section-card motus-home-week-flow motus-pressable motus-fade-in-up w-full text-left"
-        >
-          {flowInner}
-        </button>
-      ) : (
-        <aside className="motus-home-section-card motus-home-week-flow motus-fade-in-up">{flowInner}</aside>
-      )}
     </div>
   );
 }

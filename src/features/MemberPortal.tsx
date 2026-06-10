@@ -6356,7 +6356,6 @@ export function MemberPortal(props: MemberPortalProps) {
                           setHomeCalendarViewMode("month");
                           setCalendarMonth(new Date(calendarWeekStart.getFullYear(), calendarWeekStart.getMonth(), 1));
                         }}
-                        onOpenProgress={() => setMemberTab("progress")}
                       />
                     ) : (
                       memberHomeCalendarPanel
