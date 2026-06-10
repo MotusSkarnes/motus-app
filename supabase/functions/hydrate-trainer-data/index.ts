@@ -1,5 +1,6 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { buildMemberEmailIlikeOrFilter } from "../_shared/memberEmailQueries.ts";
+import { assertTrainerHydrateAuth } from "./auth.ts";
 
 const EXERCISE_BANK_SELECT =
   "id, name, category, muscle_group, equipment, level, description, image_url, personal_record_image_url, is_active, created_at, updated_at";
@@ -276,6 +277,10 @@ Deno.serve(async (req) => {
   }
 
   const adminClient = createClient(supabaseUrl, serviceRoleKey);
+  const authResult = await assertTrainerHydrateAuth(adminClient, req.headers.get("Authorization"), ownerUserId);
+  if (!authResult.ok) {
+    return jsonResponse(authResult.status, { error: authResult.error });
+  }
 
   async function tableHasNullOwnerRowsForMembers(
     table: "training_programs" | "workout_logs" | "chat_messages",
