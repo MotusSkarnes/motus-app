@@ -1,5 +1,6 @@
+import { parseStoredLogDate } from "./dateFormat";
 import { formatWorkoutResultPerformedLabel } from "./programExercisePresentation";
-import type { Exercise, WorkoutExerciseResult } from "./types";
+import type { Exercise, WorkoutExerciseResult, WorkoutLog } from "./types";
 
 export type LastSessionSetEntry = {
   weight?: string;
@@ -8,6 +9,133 @@ export type LastSessionSetEntry = {
   speed?: string;
   incline?: string;
 };
+
+export function normalizeExerciseNameKey(name: string): string {
+  return name.trim().toLowerCase();
+}
+
+export function workoutResultToLastSessionEntry(
+  row: Pick<
+    WorkoutExerciseResult,
+    "performedWeight" | "performedReps" | "performedDurationMinutes" | "performedSpeed" | "performedIncline"
+  >,
+): LastSessionSetEntry {
+  return {
+    weight: row.performedWeight,
+    reps: row.performedReps,
+    durationMinutes: row.performedDurationMinutes,
+    speed: row.performedSpeed,
+    incline: row.performedIncline,
+  };
+}
+
+/** Best historical sett strictly før `beforeSetNumber`, ellers eksakt sett, ellers høyeste sett. */
+export function pickPreviousSetEntry(
+  setMap: Map<number, LastSessionSetEntry>,
+  beforeSetNumber: number,
+): LastSessionSetEntry | null {
+  let best: { setNumber: number; entry: LastSessionSetEntry } | null = null;
+  for (const [setNumber, entry] of setMap) {
+    if (setNumber < beforeSetNumber && (!best || setNumber > best.setNumber)) {
+      best = { setNumber, entry };
+    }
+  }
+  if (best) return best.entry;
+  const exact = setMap.get(beforeSetNumber);
+  if (exact) return exact;
+  return pickLastSetFromLastSession(setMap)?.entry ?? null;
+}
+
+type LastSessionLookupRow = Pick<
+  WorkoutExerciseResult,
+  | "exerciseName"
+  | "setNumber"
+  | "blockRound"
+  | "completed"
+  | "performedWeight"
+  | "performedReps"
+  | "performedDurationMinutes"
+  | "performedSpeed"
+  | "performedIncline"
+>;
+
+/** Siste relevante verdier for et sett: først fullførte sett i pågående økt, deretter forrige logger. */
+export function resolveLastSessionEntryForRow(
+  row: LastSessionLookupRow,
+  sessionRows: LastSessionLookupRow[],
+  lastSessionByExercise?: LastSessionByExerciseMap,
+): LastSessionSetEntry | null {
+  const key = normalizeExerciseNameKey(row.exerciseName);
+  const setNumber = row.setNumber ?? row.blockRound ?? 1;
+
+  let fromSessionSetNumber = 0;
+  let fromSession: LastSessionSetEntry | null = null;
+  for (const sessionRow of sessionRows) {
+    if (!sessionRow.completed) continue;
+    if (normalizeExerciseNameKey(sessionRow.exerciseName) !== key) continue;
+    const sessionSetNumber = sessionRow.setNumber ?? sessionRow.blockRound ?? 1;
+    if (sessionSetNumber >= setNumber) continue;
+    if (sessionSetNumber > fromSessionSetNumber) {
+      fromSessionSetNumber = sessionSetNumber;
+      fromSession = workoutResultToLastSessionEntry(sessionRow);
+    }
+  }
+  if (fromSession) return fromSession;
+
+  const setMap = lastSessionByExercise?.get(key);
+  if (!setMap?.size) return null;
+  return pickPreviousSetEntry(setMap, setNumber);
+}
+
+export function buildLastSessionByExerciseFromLogs(logs: WorkoutLog[]): LastSessionByExerciseMap {
+  const result: LastSessionByExerciseMap = new Map();
+  const capturedFromExercises = new Set<string>();
+  const sortedLogs = logs
+    .filter((log) => log.status === "Fullført")
+    .slice()
+    .sort((a, b) => {
+      const aTime = parseStoredLogDate(a.date)?.getTime() ?? 0;
+      const bTime = parseStoredLogDate(b.date)?.getTime() ?? 0;
+      return bTime - aTime;
+    });
+
+  sortedLogs.forEach((log) => {
+    const exercisesInThisLog = new Set<string>();
+    (log.results ?? []).forEach((row) => {
+      if (!row.completed) return;
+      const key = normalizeExerciseNameKey(row.exerciseName);
+      if (capturedFromExercises.has(key)) return;
+      exercisesInThisLog.add(key);
+      const setMap = result.get(key) ?? new Map<number, LastSessionSetEntry>();
+      const setNum = row.setNumber ?? row.blockRound ?? 1;
+      setMap.set(setNum, workoutResultToLastSessionEntry(row));
+      result.set(key, setMap);
+    });
+    exercisesInThisLog.forEach((key) => capturedFromExercises.add(key));
+  });
+
+  return result;
+}
+
+export function mergeWorkoutResultsIntoLastSession(
+  base: LastSessionByExerciseMap | undefined,
+  results: WorkoutExerciseResult[],
+): LastSessionByExerciseMap {
+  const merged: LastSessionByExerciseMap = new Map(
+    base ? [...base.entries()].map(([key, setMap]) => [key, new Map(setMap)]) : [],
+  );
+
+  results.forEach((row) => {
+    if (!row.completed) return;
+    const key = normalizeExerciseNameKey(row.exerciseName);
+    const setMap = merged.get(key) ?? new Map<number, LastSessionSetEntry>();
+    const setNum = row.setNumber ?? row.blockRound ?? 1;
+    setMap.set(setNum, workoutResultToLastSessionEntry(row));
+    merged.set(key, setMap);
+  });
+
+  return merged;
+}
 
 export function pickLastSetFromLastSession(
   setMap: Map<number, LastSessionSetEntry>,

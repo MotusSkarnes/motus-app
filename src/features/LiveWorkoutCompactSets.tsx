@@ -8,6 +8,7 @@ import {
   resolveWorkoutLoadUnit,
   resolveWorkoutRepsUnit,
 } from "../app/workoutResultUnits";
+import { resolveLastSessionEntryForRow, type LastSessionByExerciseMap } from "../app/lastSessionSetDisplay";
 import { GradientButton, TextInput } from "../app/ui";
 import type { Exercise, WorkoutModeState } from "../app/types";
 
@@ -43,7 +44,7 @@ type WorkoutCompactSetTableProps = {
   /** Kalles når et sett markeres som fullført og slår tidligere rekord. */
   onSetPersonalRecord?: (exerciseName: string) => void;
   /** Siste utførte sett per øvelse (lowercase navn) og settnummer. Brukes til å vise «siste gang»-verdier i grått. */
-  lastSessionByExercise?: Map<string, Map<number, LastSessionEntry>>;
+  lastSessionByExercise?: LastSessionByExerciseMap;
   /** Vis søppelkasse på siste sett-rad (ekstra sett lagt til under økta). */
   showRemoveLastSet?: boolean;
   onRemoveLastSet?: () => void;
@@ -127,16 +128,7 @@ export function WorkoutCompactSetTable({
   onRemoveLastSet,
 }: WorkoutCompactSetTableProps) {
   function lookupLastSession(row: WorkoutSetRow): LastSessionEntry | null {
-    if (!lastSessionByExercise) return null;
-    const key = normalizeExerciseKey(row.exerciseName);
-    const setMap = lastSessionByExercise.get(key);
-    if (!setMap) return null;
-    const setNumber = row.setNumber ?? row.blockRound ?? 1;
-    const exact = setMap.get(setNumber);
-    if (exact) return exact;
-    // Fallback: any entry from last session (use first available set), so user always sees previous data even if set numbers differ.
-    const first = setMap.values().next();
-    return first.done ? null : first.value;
+    return resolveLastSessionEntryForRow(row, rows, lastSessionByExercise);
   }
 
   function lastWeightFor(row: WorkoutSetRow): string | undefined {
@@ -433,10 +425,11 @@ export function WorkoutCompactSetTable({
           const speedFallback = lastSpeed || row.plannedSpeed || "";
           const plannedRepsDisplay = formatWorkoutPlannedRepsDisplay(row);
           const plannedLoadDisplay = formatWorkoutPlannedLoadDisplay(row, { isCardio: rowCardio });
+          const futureRepsDisplay = repsFallback || plannedRepsDisplay;
           const displayRepsRaw = isDone
             ? row.performedReps || repsFallback || "—"
             : isFuture
-              ? plannedRepsDisplay
+              ? futureRepsDisplay
               : row.performedReps || repsFallback || "";
           const displayReps =
             !isFuture && rowRepsUnit === "min" && displayRepsRaw && displayRepsRaw !== "—"
@@ -449,6 +442,15 @@ export function WorkoutCompactSetTable({
               : performedLoadRaw
                 ? `${performedLoadRaw} kg`
                 : "—";
+          const futureWeightDisplay = rowCardio
+            ? durationFallback
+              ? `${durationFallback} min`
+              : plannedLoadDisplay
+            : weightFallback
+              ? rowLoadUnit === "sec"
+                ? `${weightFallback} sek`
+                : `${weightFallback} kg`
+              : plannedLoadDisplay;
           const displayWeight = isDone
             ? rowCardio
               ? row.performedDurationMinutes?.trim()
@@ -458,7 +460,7 @@ export function WorkoutCompactSetTable({
                   : "—"
               : performedLoadDisplay
             : isFuture
-              ? plannedLoadDisplay
+              ? futureWeightDisplay
               : rowCardio
                 ? row.performedDurationMinutes || durationFallback || ""
                 : row.performedWeight || weightFallback || "";
@@ -467,7 +469,7 @@ export function WorkoutCompactSetTable({
               ? isDone
                 ? row.performedSpeed || speedFallback || "—"
                 : isFuture
-                  ? speedFallback || "—"
+                  ? speedFallback || row.plannedSpeed || "—"
                   : row.performedSpeed || speedFallback || ""
               : "";
 

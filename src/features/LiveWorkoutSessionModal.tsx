@@ -18,7 +18,11 @@ import {
 import { GradientButton, OutlineButton, TextArea, TextInput } from "../app/ui";
 import { ReflectionLevelPicker } from "./ReflectionLevelPicker";
 import type { Exercise, TrainingProgram, WorkoutModeState, WorkoutReflection } from "../app/types";
-import { resolveDetailLastSessionLabel } from "../app/lastSessionSetDisplay";
+import {
+  mergeWorkoutResultsIntoLastSession,
+  resolveDetailLastSessionLabel,
+  type LastSessionByExerciseMap,
+} from "../app/lastSessionSetDisplay";
 import { buildTrainingProgramFromWorkoutMode } from "../app/pausedWorkoutSession";
 import {
   countExtraWorkoutSets,
@@ -73,10 +77,7 @@ export type LiveWorkoutSessionModalProps = {
   /** Kalles når et sett markeres som fullført og slår tidligere rekord. */
   onSetPersonalRecord?: (exerciseName: string) => void;
   /** Siste utførte sett per øvelse (lowercase navn) og settnummer. Vises i grått som placeholder/fallback i øktmodus. */
-  lastSessionByExercise?: Map<
-    string,
-    Map<number, { weight?: string; reps?: string; durationMinutes?: string; speed?: string; incline?: string }>
-  >;
+  lastSessionByExercise?: LastSessionByExerciseMap;
 };
 
 type RestCountdownState = {
@@ -156,6 +157,11 @@ export function LiveWorkoutSessionModal({
   const workoutResultGroups = useMemo(
     () => (workoutMode ? buildWorkoutResultGroups(workoutMode.results, resolvedProgram) : []),
     [workoutMode, resolvedProgram],
+  );
+
+  const effectiveLastSessionByExercise = useMemo(
+    () => mergeWorkoutResultsIntoLastSession(lastSessionByExercise, workoutMode?.results ?? []),
+    [lastSessionByExercise, workoutMode?.results],
   );
 
   const activeWorkoutModeProgramId = workoutMode?.programId ?? "";
@@ -630,7 +636,7 @@ export function LiveWorkoutSessionModal({
   if (!workoutMode || !resolvedProgram) return null;
 
   const detailLastSessionLabel = resolveDetailLastSessionLabel({
-    lastSessionByExercise,
+    lastSessionByExercise: effectiveLastSessionByExercise,
     detailExercise,
     blockDetailExercise,
     currentWorkoutExerciseName: currentWorkoutGroup?.exerciseName,
@@ -956,7 +962,7 @@ export function LiveWorkoutSessionModal({
                                 onUpdate={updateWorkoutExerciseResult}
                                 previousPersonalBests={previousPersonalBests}
                                 onSetPersonalRecord={onSetPersonalRecord}
-                                lastSessionByExercise={lastSessionByExercise}
+                                lastSessionByExercise={effectiveLastSessionByExercise}
                               />
                             ) : null,
                           )}
@@ -970,7 +976,7 @@ export function LiveWorkoutSessionModal({
                       onUpdate={updateWorkoutExerciseResult}
                       previousPersonalBests={previousPersonalBests}
                       onSetPersonalRecord={onSetPersonalRecord}
-                      lastSessionByExercise={lastSessionByExercise}
+                      lastSessionByExercise={effectiveLastSessionByExercise}
                       showRemoveLastSet={canRemoveCurrentExtraSet}
                       onRemoveLastSet={
                         canRemoveCurrentExtraSet

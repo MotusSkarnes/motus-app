@@ -14,6 +14,7 @@ import { formatActivityDurationLabel, formatReflectionLevelForDisplay, isActivit
 import { buildUnreadMessagesByIdentityKey, unreadCountForMember } from "../app/trainerUnreadMessages";
 import { MOTUS } from "../app/data";
 import { formatDateDdMmYyyy, getDefaultPeriodPlanStartMondayISO, periodPlanStartDateForDateInput } from "../app/dateFormat";
+import { buildLastSessionByExerciseFromLogs } from "../app/lastSessionSetDisplay";
 import {
   getArchiveTombstones,
   hasArchiveTombstone,
@@ -1649,6 +1650,10 @@ function pickFirstName(value: unknown): string {
       })
       .sort((a, b) => parseLogDateMs(b.date) - parseLogDateMs(a.date));
   }, [logs, selectedMemberRelatedIdSet, members, selectedMemberId, memberById]);
+  const lastSessionResultsByExercise = useMemo(
+    () => buildLastSessionByExerciseFromLogs(selectedLogs),
+    [selectedLogs],
+  );
   const selectedMessages = useMemo(() => {
     const selected = members.find((member) => member.id === selectedMemberId) ?? null;
     const isSharedMember = selected?.customerType === "Medlem";
@@ -7716,6 +7721,7 @@ function pickFirstName(value: unknown): string {
       updateWorkoutExerciseNote={updateWorkoutExerciseNote}
       finishWorkoutMode={handleFinishTrainerLiveWorkout}
       cancelWorkoutMode={cancelWorkoutMode}
+      lastSessionByExercise={lastSessionResultsByExercise}
     />
     <ConfirmDialog
       open={Boolean(confirmDialog)}

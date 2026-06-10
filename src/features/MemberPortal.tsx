@@ -84,6 +84,7 @@ import {
   readMemberNotificationPreferencesFromPersonalGoals,
 } from "../app/notificationPreferences";
 import { motusShareStatusMessage, sharePersonalRecordCard } from "../app/motusShareCard";
+import { buildLastSessionByExerciseFromLogs } from "../app/lastSessionSetDisplay";
 import { buildTrainingProgramFromWorkoutMode } from "../app/pausedWorkoutSession";
 import { findMaxPerformedLoadFromLastExerciseSession } from "../app/suggestedWorkoutWeight";
 import {
@@ -2865,42 +2866,10 @@ export function MemberPortal(props: MemberPortalProps) {
     });
     return best;
   }, [memberLogs]);
-  const lastSessionResultsByExercise = useMemo(() => {
-    const result = new Map<
-      string,
-      Map<number, { weight?: string; reps?: string; durationMinutes?: string; speed?: string; incline?: string }>
-    >();
-    const capturedFromExercises = new Set<string>();
-    const sortedLogs = memberLogs
-      .filter((log) => log.status === "Fullført")
-      .slice()
-      .sort((a, b) => {
-        const aTime = parseStoredLogDate(a.date)?.getTime() ?? 0;
-        const bTime = parseStoredLogDate(b.date)?.getTime() ?? 0;
-        return bTime - aTime;
-      });
-    sortedLogs.forEach((log) => {
-      const exercisesInThisLog = new Set<string>();
-      (log.results ?? []).forEach((row) => {
-        if (!row.completed) return;
-        const key = row.exerciseName.trim().toLowerCase();
-        if (capturedFromExercises.has(key)) return;
-        exercisesInThisLog.add(key);
-        const setMap = result.get(key) ?? new Map<number, { weight?: string; reps?: string; durationMinutes?: string; speed?: string; incline?: string }>();
-        const setNum = row.setNumber ?? row.blockRound ?? 1;
-        setMap.set(setNum, {
-          weight: row.performedWeight,
-          reps: row.performedReps,
-          durationMinutes: row.performedDurationMinutes,
-          speed: row.performedSpeed,
-          incline: row.performedIncline,
-        });
-        result.set(key, setMap);
-      });
-      exercisesInThisLog.forEach((key) => capturedFromExercises.add(key));
-    });
-    return result;
-  }, [memberLogs]);
+  const lastSessionResultsByExercise = useMemo(
+    () => buildLastSessionByExerciseFromLogs(memberLogs),
+    [memberLogs],
+  );
   const activeCelebration = liveWorkoutCelebration ?? workoutCelebration;
   const recentlyFinishedLog = useMemo(() => {
     if (!recentlyFinishedLogId) return null;
