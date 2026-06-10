@@ -284,6 +284,22 @@ describe("normalizePeriodSchedulePlan", () => {
     expect(resolvePeriodPlanWeek(normalized, 3)?.days.monday).toBe("");
   });
 
+  it("supports extended period plans up to 24 weeks", () => {
+    const plan: PeriodSchedulePlan = {
+      id: "plan-1",
+      title: "Lang plan",
+      notes: "",
+      startDate: "2026-01-06",
+      weeks: 24,
+      createdAt: "2026-01-01",
+      weeklyPlans: [{ id: "w1", weekNumber: 1, days: { ...empty, monday: "A" } }],
+    };
+    const normalized = normalizePeriodSchedulePlan(plan);
+    expect(normalized.weeklyPlans).toHaveLength(24);
+    expect(buildPeriodPlanWeekNavItemsFromPlan(normalized)).toHaveLength(24);
+    expect(resolvePeriodPlanWeek(normalized, 24)?.days.monday).toBe("");
+  });
+
   it("syncs days for weeks marked usesGradientPlan (lowest week is canonical)", () => {
     const withGradient: PeriodSchedulePlan = {
       id: "plan-1",

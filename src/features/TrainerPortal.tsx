@@ -223,6 +223,7 @@ import { ensureDefaultMotusGroupClassTemplates } from "../app/motusGroupClassTem
 import { buildPeriodPlanProgramSelectOptions } from "../app/periodPlanBuilder";
 import {
   dedupePeriodPlansById,
+  MAX_PERIOD_PLAN_WEEKS,
   memberIdsForPeriodPlanMerge,
   pickCanonicalMemberIdForPeriodPlans,
   sortPeriodPlansByRecency,
@@ -1882,7 +1883,7 @@ function pickFirstName(value: unknown): string {
   }, [periodWeeklyPlansDraft]);
 
   useEffect(() => {
-    const parsed = Math.max(1, Math.min(12, Number(periodPlanWeeksDraft) || 1));
+    const parsed = Math.max(1, Math.min(MAX_PERIOD_PLAN_WEEKS, Number(periodPlanWeeksDraft) || 1));
     setPeriodWeeklyPlansDraft((prev) => {
       if (prev.length === parsed) return prev;
       const normalized = prev.slice(0, parsed).map((week, index) => ({ ...week, weekNumber: index + 1 }));
@@ -2135,7 +2136,7 @@ function pickFirstName(value: unknown): string {
   }
 
   function loadPeriodPlanIntoDraft(plan: PeriodSchedulePlan) {
-    const weeks = Math.max(1, Math.min(12, plan.weeks || plan.weeklyPlans.length || 1));
+    const weeks = Math.max(1, Math.min(MAX_PERIOD_PLAN_WEEKS, plan.weeks || plan.weeklyPlans.length || 1));
     const sortedWeeks = [...plan.weeklyPlans]
       .sort((a, b) => a.weekNumber - b.weekNumber)
       .slice(0, weeks)
@@ -2560,7 +2561,7 @@ function pickFirstName(value: unknown): string {
 
   function handlePeriodPlanWeeksDraftChange(value: string) {
     setPeriodPlanWeeksDraft(value);
-    const parsed = Math.max(1, Math.min(12, Number(value) || 1));
+    const parsed = Math.max(1, Math.min(MAX_PERIOD_PLAN_WEEKS, Number(value) || 1));
     setPeriodWeeklyPlansDraft((prev) => {
       const normalized = prev.slice(0, parsed).map((week, index) => ({ ...week, weekNumber: index + 1 }));
       while (normalized.length < parsed) {
@@ -2601,20 +2602,18 @@ function pickFirstName(value: unknown): string {
       setPeriodPlanStatus("Legg inn navn på periodeplanen.");
       return;
     }
-    const weeks = Math.max(1, Math.min(12, Number(periodPlanWeeksDraft) || 1));
+    const weeks = Math.max(1, Math.min(MAX_PERIOD_PLAN_WEEKS, Number(periodPlanWeeksDraft) || 1));
     const weeklyPlans = syncGradientMarkedWeekDays(
       periodWeeklyPlansDraft.slice(0, weeks).map((week, index) => ({
         ...week,
         weekNumber: index + 1,
       })),
     );
-    const existingPeriodPlan =
-      selectedPeriodPlans.find((plan) => plan.id === periodPlanDraftId) ?? selectedPeriodPlans[0] ?? null;
-    const periodPlanId = periodPlanDraftId ?? existingPeriodPlan?.id ?? uid("period-plan");
+    const existingPeriodPlan = periodPlanDraftId
+      ? selectedPeriodPlans.find((plan) => plan.id === periodPlanDraftId) ?? null
+      : null;
+    const periodPlanId = periodPlanDraftId ?? uid("period-plan");
     const isNewPlan = !selectedPeriodPlans.some((plan) => plan.id === periodPlanId);
-    const obsoletePeriodPlanIds = isNewPlan
-      ? []
-      : selectedPeriodPlans.map((plan) => plan.id).filter((planId) => planId && planId !== periodPlanId);
     const newPeriodPlan: PeriodSchedulePlan = {
       id: periodPlanId,
       title,
@@ -2647,9 +2646,6 @@ function pickFirstName(value: unknown): string {
       return next;
     });
     if (isSupabaseConfigured && !isLocalDemoSession) {
-      obsoletePeriodPlanIds.forEach((planId) => {
-        void deleteMemberPeriodPlanByPlanId(planId);
-      });
       const persist = await upsertMemberPeriodPlansForTrainer(selectedMemberRelatedIds, newPeriodPlan, {
         targetEmail: selectedMember?.email,
       });
@@ -6315,15 +6311,24 @@ function pickFirstName(value: unknown): string {
                             <CalendarRange className="h-5 w-5" aria-hidden />
                           </MotusSectionIcon>
                           <div>
-                            <h3 className="text-lg font-bold text-slate-900">Lag periodeplan</h3>
+                            <h3 className="text-lg font-bold text-slate-900">
+                              {periodPlanDraftId && !periodPlanCreatingNew ? "Rediger periodeplan" : "Lag periodeplan"}
+                            </h3>
                             <p className="mt-1 text-sm text-slate-600">Planlegg én eller flere uker. Medlemmet ser planen under Trening – Periodeplan.</p>
                           </div>
                         </div>
-                        {selectedPeriodPlans.length > 0 ? (
-                          <span className="rounded-full bg-teal-100 px-2.5 py-1 text-xs font-semibold text-teal-900">
-                            {selectedPeriodPlans.length} lagret
-                          </span>
-                        ) : null}
+                        <div className="flex flex-wrap items-center gap-2">
+                          {periodPlanDraftId && !periodPlanCreatingNew ? (
+                            <span className="rounded-full bg-pink-100 px-2.5 py-1 text-xs font-semibold text-pink-900">
+                              Redigerer
+                            </span>
+                          ) : null}
+                          {selectedPeriodPlans.length > 0 ? (
+                            <span className="rounded-full bg-teal-100 px-2.5 py-1 text-xs font-semibold text-teal-900">
+                              {selectedPeriodPlans.length} lagret
+                            </span>
+                          ) : null}
+                        </div>
                       </div>
                       <div className="space-y-4">
                         <div className="grid gap-4 lg:grid-cols-2">
@@ -6347,11 +6352,11 @@ function pickFirstName(value: unknown): string {
                             <TextInput
                               value={periodPlanWeeksDraft}
                               onChange={(e) => handlePeriodPlanWeeksDraftChange(e.target.value)}
-                              placeholder="1–12"
+                              placeholder={`1-${MAX_PERIOD_PLAN_WEEKS}`}
                               type="number"
                               inputMode="numeric"
                               min={1}
-                              max={12}
+                              max={MAX_PERIOD_PLAN_WEEKS}
                               className="text-center md:text-left"
                             />
                           </label>
@@ -6369,7 +6374,7 @@ function pickFirstName(value: unknown): string {
                           <div className="rounded-xl border bg-white p-4 space-y-3" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
                             <div className="text-base font-semibold text-slate-900">Uker i planen</div>
                             <div className="grid grid-cols-3 gap-1.5 sm:grid-cols-5 lg:grid-cols-8 xl:grid-cols-10">
-                              {periodWeeklyPlansDraft.slice(0, Math.max(1, Math.min(12, Number(periodPlanWeeksDraft) || 1))).map((week) => {
+                              {periodWeeklyPlansDraft.slice(0, Math.max(1, Math.min(MAX_PERIOD_PLAN_WEEKS, Number(periodPlanWeeksDraft) || 1))).map((week) => {
                                 const marked = week.usesGradientPlan === true;
                                 const isActive = activePeriodWeekId === week.id;
                                 return (
@@ -6431,7 +6436,7 @@ function pickFirstName(value: unknown): string {
                         ) : null}
                         <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
                           <GradientButton onClick={() => void savePeriodPlanForSelectedMember()} className="w-full sm:w-auto">
-                            Lagre periodeplan
+                            {periodPlanDraftId && !periodPlanCreatingNew ? "Lagre endringer" : "Lagre periodeplan"}
                           </GradientButton>
                           {selectedPeriodPlans.length > 0 ? (
                             <OutlineButton
@@ -6450,6 +6455,7 @@ function pickFirstName(value: unknown): string {
                               message={periodPlanStatus}
                               tone={
                                 periodPlanStatus.toLowerCase().includes("lagrer")
+                                  || periodPlanStatus.toLowerCase().includes("redigerer")
                                   ? "info"
                                   : periodPlanStatus.toLowerCase().includes("lagret") ||
                                       periodPlanStatus.toLowerCase().includes("oppdatert") ||
@@ -6489,20 +6495,32 @@ function pickFirstName(value: unknown): string {
                                       <div className="text-base font-semibold text-slate-900">{plan.title}</div>
                                       <div className="mt-1 text-sm text-slate-600">Start: {plan.startDate} · {plan.weeks} uker · Lagret {plan.createdAt}</div>
                                     </div>
-                                    <OutlineButton
-                                      className="px-3 py-1.5 text-sm"
-                                      onClick={() =>
-                                        setConfirmDialog({
-                                          title: "Slette periodeplan?",
-                                          message: `Dette sletter «${plan.title.trim()}» for kunden permanent. Handlingen kan ikke angres.`,
-                                          confirmLabel: "Slett",
-                                          tone: "danger",
-                                          onConfirm: () => removePeriodPlan(plan.id),
-                                        })
-                                      }
-                                    >
-                                      Slett
-                                    </OutlineButton>
+                                    <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
+                                      <OutlineButton
+                                        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm"
+                                        onClick={() => {
+                                          loadPeriodPlanIntoDraft(plan);
+                                          setPeriodPlanStatus(`Redigerer «${plan.title.trim() || "Periodeplan"}».`);
+                                        }}
+                                      >
+                                        <Pencil className="h-3.5 w-3.5" aria-hidden />
+                                        Rediger
+                                      </OutlineButton>
+                                      <OutlineButton
+                                        className="px-3 py-1.5 text-sm"
+                                        onClick={() =>
+                                          setConfirmDialog({
+                                            title: "Slette periodeplan?",
+                                            message: `Dette sletter «${plan.title.trim()}» for kunden permanent. Handlingen kan ikke angres.`,
+                                            confirmLabel: "Slett",
+                                            tone: "danger",
+                                            onConfirm: () => removePeriodPlan(plan.id),
+                                          })
+                                        }
+                                      >
+                                        Slett
+                                      </OutlineButton>
+                                    </div>
                                   </div>
                                   <div className="mt-3">
                                     <PeriodPlanWeekNavigator

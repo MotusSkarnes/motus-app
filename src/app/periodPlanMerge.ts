@@ -4,6 +4,7 @@ import { applyPeriodPlanSwaps, getSwapsForWeek, WEEKDAY_PLAN_ORDER, type PeriodP
 import type { PeriodSchedulePlan, TrainingProgram, WeekdayPlanKey, WeeklyDayPlan, WeeklySchedulePlan } from "./types";
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
+export const MAX_PERIOD_PLAN_WEEKS = 24;
 
 function startOfLocalDay(date: Date): Date {
   return new Date(date.getFullYear(), date.getMonth(), date.getDate());
@@ -564,7 +565,7 @@ export function buildPeriodPlanWeekNavItems(
 ): PeriodPlanWeekNavItem[] {
   const weekCount = Math.max(
     1,
-    Math.min(12, Math.max(weeklyPlans.length, Math.floor(Number(totalWeeks) || 1))),
+    Math.min(MAX_PERIOD_PLAN_WEEKS, Math.max(weeklyPlans.length, Math.floor(Number(totalWeeks) || 1))),
   );
   return Array.from({ length: weekCount }, (_, index) => {
     const weekNumber = index + 1;
@@ -587,7 +588,7 @@ export function normalizePeriodSchedulePlan(plan: PeriodSchedulePlan): PeriodSch
   const weeks = Math.max(
     1,
     Math.min(
-      12,
+      MAX_PERIOD_PLAN_WEEKS,
       Math.max(
         source.length,
         Number.isFinite(Number(plan.weeks)) && Number(plan.weeks) > 0 ? Number(plan.weeks) : source.length || 1,
