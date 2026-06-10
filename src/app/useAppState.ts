@@ -1639,6 +1639,7 @@ export function useAppState() {
     let cancelled = false;
 
     async function hydrateSession() {
+      try {
       if (typeof window !== "undefined" && supabaseClient) {
         const hash = new URLSearchParams(window.location.hash.replace(/^#/, ""));
         const query = new URLSearchParams(window.location.search);
@@ -1717,6 +1718,13 @@ export function useAppState() {
       setIsAuthSessionLoading(false);
       if (user.role === "member") {
         void linkActiveMemberSession(user);
+      }
+      } catch (error) {
+        console.warn("Supabase auth bootstrap failed:", error);
+        if (cancelled) return;
+        setIsLocalDemoSession(false);
+        setAppState((prev) => ({ ...prev, currentUser: null, role: "trainer" }));
+        setIsAuthSessionLoading(false);
       }
     }
 
