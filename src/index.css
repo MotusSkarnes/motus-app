@@ -10466,20 +10466,20 @@ html:has(.motus-trainer-app) {
 }
 
 .motus-member-history-heatmap {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 0.875rem 0.75rem;
-}
-
-@media (min-width: 640px) {
-  .motus-member-history-heatmap {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-  }
+  display: flex;
+  gap: 0.875rem;
+  margin-inline: -0.25rem;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  padding: 0.125rem 0.25rem 0.5rem;
+  scroll-padding-inline: 0.25rem;
+  scroll-snap-type: x mandatory;
 }
 
 .motus-member-history-heatmap-month {
-  min-width: 0;
-  width: 100%;
+  flex: 0 0 min(74%, 17rem);
+  min-width: 14.75rem;
+  scroll-snap-align: start;
 }
 
 .motus-member-history-heatmap-label {

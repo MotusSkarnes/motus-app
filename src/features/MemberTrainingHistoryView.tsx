@@ -154,6 +154,7 @@ export function MemberTrainingHistoryView({
     () => computeConsistencyHeatmap(completedLogs, 4, nowTimestamp),
     [completedLogs, nowTimestamp],
   );
+  const visibleHeatmapMonths = useMemo(() => [...heatmapMonths].reverse(), [heatmapMonths]);
   const topExercises = useMemo(() => topLoggedExercises(completedLogs, 12), [completedLogs]);
   const periodBadge = useMemo(() => formatPeriodBadge(periodStats), [periodStats]);
 
@@ -380,7 +381,7 @@ export function MemberTrainingHistoryView({
           ) : null}
 
           <div className="motus-member-history-heatmap">
-            {heatmapMonths.map((month) => (
+            {visibleHeatmapMonths.map((month) => (
               <div key={month.label} className="motus-member-history-heatmap-month">
                 <div className="motus-member-history-heatmap-label">{month.label}</div>
                 <div className="motus-member-history-heatmap-weekdays-row" aria-hidden>
