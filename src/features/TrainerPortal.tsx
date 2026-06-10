@@ -806,6 +806,7 @@ function pickFirstName(value: unknown): string {
   const [selectedTemplateProgramId, setSelectedTemplateProgramId] = useState("");
   const [templateAssignStatus, setTemplateAssignStatus] = useState<string | null>(null);
   const [noPlanDayCoverImageUrl, setNoPlanDayCoverImageUrl] = useState("");
+  const [editingNoPlanDayCover, setEditingNoPlanDayCover] = useState(false);
   const [draggedExerciseIdFromLibrary, setDraggedExerciseIdFromLibrary] = useState<string | null>(null);
   const [draggedDraftExerciseId, setDraggedDraftExerciseId] = useState<string | null>(null);
   const [isDraftDropZoneActive, setIsDraftDropZoneActive] = useState(false);
@@ -2804,10 +2805,12 @@ function pickFirstName(value: unknown): string {
     if (templateKind === "no-plan") {
       setProgramsSubTab("activity");
       setEditingTemplateProgramId(null);
+      setEditingNoPlanDayCover(true);
       setNoPlanDayCoverImageUrl(program.imageUrl ?? "");
       setTemplateAssignStatus("Redigerer bilde for «Ingen plan i dag».");
       return;
     }
+    setEditingNoPlanDayCover(false);
     const subTab: TrainingSubTab = templateKind ?? getTrainingProgramSubTab(program, exerciseCategoryById);
     const draft = program.exercises.map((exercise) => ({ ...exercise }));
     setProgramsSubTab(subTab);
@@ -2829,6 +2832,7 @@ function pickFirstName(value: unknown): string {
 
   function resetTemplateProgramBuilder() {
     setEditingTemplateProgramId(null);
+    setEditingNoPlanDayCover(false);
     setTemplateProgramTitle(defaultTemplateProgramTitle(programsSubTab));
     setProgramFormImageUrl("");
     setProgramNotes("");
@@ -7188,7 +7192,11 @@ function pickFirstName(value: unknown): string {
           onNoPlanDayCoverImageUpload={(file) => void handleNoPlanDayCoverImageUpload(file)}
           onSaveNoPlanDayCover={saveNoPlanDayCoverTemplate}
           hasNoPlanDayCoverTemplate={Boolean(noPlanDayCoverTemplate)}
-          noPlanDayCoverSaveStatus={programsSubTab === "activity" ? templateAssignStatus : null}
+          noPlanDayCoverSaveStatus={programsSubTab === "activity" && editingNoPlanDayCover ? templateAssignStatus : null}
+          editingNoPlanDayCover={editingNoPlanDayCover}
+          periodPlanTemplateSaveStatus={
+            editingTemplateProgramId && isActivityTemplateSubTab(programsSubTab) ? templateAssignStatus : null
+          }
           cardioIntervalIntensity={cardioIntervalIntensity}
           cardioEquipmentId={cardioEquipmentId}
           programsSubTabConditioningExtras={
