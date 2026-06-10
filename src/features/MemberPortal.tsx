@@ -229,7 +229,6 @@ import { computeWorkoutCelebrationStats } from "../app/workoutCelebrationStats";
 import { MemberWeeklySummaryCard } from "./MemberWeeklySummaryCard";
 import { MemberProgressStatusBanner } from "./MemberProgressStatusBanner";
 import { MemberConsistencyWeekCard } from "./MemberConsistencyWeekCard";
-import { MemberProgressHighlightRow } from "./MemberProgressHighlightRow";
 import { MemberTrainingHistoryView } from "./MemberTrainingHistoryView";
 import { MemberTrainingOverview } from "./MemberTrainingOverview";
 import { MemberTrainingQuickActions } from "./MemberTrainingQuickActions";
@@ -7573,6 +7572,8 @@ export function MemberPortal(props: MemberPortalProps) {
                 scores={memberProgressScores}
                 memberFirstName={homeFirstName}
                 streakWeeks={streakWeeks}
+                recentStreakWeeks={recentStreakWeeks}
+                personalRecordsCount={personalRecords.length}
                 xpBreakdown={{
                   completedSessions: completedLogs.length,
                   streakWeeks,
@@ -7586,11 +7587,6 @@ export function MemberPortal(props: MemberPortalProps) {
               <MemberConsistencyWeekCard
                 completedLogs={completedLogs}
                 nowTimestamp={nowTimestamp}
-              />
-              <MemberProgressHighlightRow
-                streakWeeks={streakWeeks}
-                recentStreakWeeks={recentStreakWeeks}
-                personalRecordsCount={personalRecords.length}
               />
               <MemberPersonalRecordsSection
                 records={personalRecords}

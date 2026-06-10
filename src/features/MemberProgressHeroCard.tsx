@@ -1,12 +1,15 @@
 import { useEffect, useId, useRef, useState, type ReactNode } from "react";
-import { Shield, Target } from "lucide-react";
+import { Flame, Shield, Target, Trophy } from "lucide-react";
 import { MOTUS } from "../app/data";
 import type { MemberProgressScores } from "../app/memberMomentumScores";
+import type { RecentStreakWeek } from "../app/memberProgressGamification";
 
 type MemberProgressHeroCardProps = {
   scores: MemberProgressScores;
   memberFirstName: string;
   streakWeeks: number;
+  recentStreakWeeks?: RecentStreakWeek[];
+  personalRecordsCount?: number;
   /** Brukes til "Slik fungerer XP"-forklaringen så vi kan vise medlemmets faktiske tall. */
   xpBreakdown?: {
     completedSessions: number;
@@ -18,6 +21,32 @@ type MemberProgressHeroCardProps = {
 const XP_PER_SESSION = 100;
 const XP_PER_STREAK_WEEK = 75;
 const XP_PER_ACHIEVED_LEVEL = 250;
+
+function computeBestStreakWeeks(weeks: RecentStreakWeek[] = []): number {
+  let best = 0;
+  let current = 0;
+  for (const week of weeks) {
+    if (week.trained) {
+      current += 1;
+      if (current > best) best = current;
+    } else {
+      current = 0;
+    }
+  }
+  return best;
+}
+
+function bestStreakSubline(streakWeeks: number, bestStreakWeeks: number): string {
+  if (bestStreakWeeks <= 0) return "Din første streak er i gang.";
+  if (streakWeeks >= bestStreakWeeks) return "Ny personlig rekord.";
+  return `Din beste: ${bestStreakWeeks} uker`;
+}
+
+function personalRecordSubline(count: number): string {
+  if (count <= 0) return "Logg styrkeøkter for å bygge PR-listen.";
+  if (count === 1) return "Din første personlige rekord er satt.";
+  return "Personlige rekorder registrert.";
+}
 
 function useCountUpNumber(target: number, durationMs = 800): number {
   const [value, setValue] = useState(target);
@@ -283,7 +312,14 @@ function _XpExplainerPanel({
   );
 }
 
-export function MemberProgressHeroCard({ scores, memberFirstName, xpBreakdown }: MemberProgressHeroCardProps) {
+export function MemberProgressHeroCard({
+  scores,
+  memberFirstName,
+  streakWeeks,
+  recentStreakWeeks = [],
+  personalRecordsCount = 0,
+  xpBreakdown,
+}: MemberProgressHeroCardProps) {
   const { momentum, consistency, weekly, recovery, xp } = scores;
   const planStatusPct = weekly.maxScore ? weekly.pct : 0;
   const animatedPlanStatusPct = useCountUpNumber(planStatusPct);
@@ -292,6 +328,7 @@ export function MemberProgressHeroCard({ scores, memberFirstName, xpBreakdown }:
   const animatedWeeklyScore = useCountUpNumber(weekly.score);
   const completedSessions = xpBreakdown?.completedSessions ?? 0;
   const rhythmWeeks = xpBreakdown?.streakWeeks ?? 0;
+  const bestStreakWeeks = Math.max(computeBestStreakWeeks(recentStreakWeeks), streakWeeks);
   const plannedSessions = weekly.maxScore ?? 0;
   const completedPlanSessions = weekly.score;
   const remainingPlanSessions = Math.max(0, plannedSessions - completedPlanSessions);
@@ -413,6 +450,30 @@ export function MemberProgressHeroCard({ scores, memberFirstName, xpBreakdown }:
           pct={recovery.pct}
           tone="pink"
         />
+        <div className="motus-progress-status-highlights">
+          <div className="motus-progress-status-highlight">
+            <span className="motus-progress-status-highlight-icon motus-progress-status-highlight-icon--pink" aria-hidden>
+              <Flame className="h-4 w-4" strokeWidth={2.25} />
+            </span>
+            <div className="min-w-0 flex-1">
+              <p className="motus-progress-status-highlight-value">
+                {streakWeeks} <span>{streakWeeks === 1 ? "ukes streak" : "ukers streak"}</span>
+              </p>
+              <p className="motus-progress-status-highlight-subline">{bestStreakSubline(streakWeeks, bestStreakWeeks)}</p>
+            </div>
+          </div>
+          <div className="motus-progress-status-highlight">
+            <span className="motus-progress-status-highlight-icon motus-progress-status-highlight-icon--mint" aria-hidden>
+              <Trophy className="h-4 w-4" strokeWidth={2.25} />
+            </span>
+            <div className="min-w-0 flex-1">
+              <p className="motus-progress-status-highlight-value">
+                {personalRecordsCount} <span>{personalRecordsCount === 1 ? "personlig rekord" : "personlige rekorder"}</span>
+              </p>
+              <p className="motus-progress-status-highlight-subline">{personalRecordSubline(personalRecordsCount)}</p>
+            </div>
+          </div>
+        </div>
       </div>
     </section>
   );
