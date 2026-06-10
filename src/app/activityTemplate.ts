@@ -65,20 +65,30 @@ export function activityTemplateMatchesPeriodEntry(
   return Boolean(title) && (normalizedEntry === title || normalizedEntry.endsWith(`: ${title}`));
 }
 
+/** Gruppe/aktivitet for periodeplan — inkl. eldre cover-maler uten notes-markør (telles som gruppetime). */
+export function resolvePeriodPlanActivityTemplateKind(
+  program: Pick<TrainingProgram, "memberId" | "title" | "notes" | "exercises" | "activityTemplateKind">,
+): ActivityTemplateKind | null {
+  const parsed = parseActivityTemplateKind(program);
+  if (parsed === "group" || parsed === "activity") return parsed;
+  if (program.memberId !== "__template__" || program.exercises.length > 0) return null;
+  if (isNoPlanDayCoverProgram(program)) return null;
+  return program.title.trim() ? "group" : null;
+}
+
 export function isPeriodPlanActivityTemplate(
-  program: Pick<TrainingProgram, "memberId" | "notes" | "activityTemplateKind">,
+  program: Pick<TrainingProgram, "memberId" | "title" | "notes" | "exercises" | "activityTemplateKind">,
 ): boolean {
-  const kind = parseActivityTemplateKind(program);
-  return program.memberId === "__template__" && (kind === "group" || kind === "activity");
+  return resolvePeriodPlanActivityTemplateKind(program) !== null;
 }
 
 /** Gruppetrening-, aktivitet- og «Ingen plan i dag»-maler er felles på tvers av PT-er. */
 export function isSharedOrgActivityTemplate(
-  program: Pick<TrainingProgram, "memberId" | "title" | "notes" | "activityTemplateKind">,
+  program: Pick<TrainingProgram, "memberId" | "title" | "notes" | "exercises" | "activityTemplateKind">,
 ): boolean {
   if (program.memberId !== "__template__") return false;
   if (isNoPlanDayCoverProgram(program)) return true;
-  const kind = parseActivityTemplateKind(program);
+  const kind = parseActivityTemplateKind(program) ?? resolvePeriodPlanActivityTemplateKind(program);
   return kind === "group" || kind === "activity";
 }
 
@@ -89,7 +99,7 @@ export function sharedOrgActivityTemplateDedupeKey(
   if (isNoPlanDayCoverProgram(program)) {
     return `no-plan:${NO_PLAN_DAY_TEMPLATE_TITLE.toLowerCase()}`;
   }
-  const kind = parseActivityTemplateKind(program);
+  const kind = parseActivityTemplateKind(program) ?? resolvePeriodPlanActivityTemplateKind(program);
   const title = program.title.trim().toLowerCase();
   return kind && title ? `${kind}:${title}` : null;
 }
@@ -127,7 +137,18 @@ export function listActivityTemplates(
 ): TrainingProgram[] {
   return programs
     .filter((program) => isPeriodPlanActivityTemplate(program))
-    .filter((program) => !kind || parseActivityTemplateKind(program) === kind);
+    .filter((program) => !kind || resolvePeriodPlanActivityTemplateKind(program) === kind);
+}
+
+/** PT Program-fanen: felles maler deduplisert og filtrert på gruppe vs aktivitet. */
+export function listSharedOrgTemplatesForTrainerSubTab(
+  programs: TrainingProgram[],
+  subTab: "group" | "activity",
+): TrainingProgram[] {
+  const sharedTemplates = dedupeSharedOrgActivityTemplates(
+    programs.filter((program) => program.memberId === "__template__" && isSharedOrgActivityTemplate(program)),
+  );
+  return listActivityTemplates(sharedTemplates, subTab);
 }
 
 function programCreatedAtSortMs(program: Pick<TrainingProgram, "createdAt">): number {

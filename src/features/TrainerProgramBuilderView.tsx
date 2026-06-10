@@ -26,6 +26,8 @@ import {
   programExerciseHoldSeconds,
   defaultTemplateProgramTitle,
   isActivityTemplateSubTab,
+  periodPlanTemplateBuilderDescription,
+  periodPlanTemplateBuilderTitle,
   programsBuilderDescription,
   programsBuilderTitle,
   savedTemplatesTitle,
@@ -402,12 +404,12 @@ export function TrainerProgramBuilderView({
         </div>
       ) : null}
 
-      {isActivityTab ? (
+      {programsSubTab === "group" || programsSubTab === "activity" ? (
         <div className="motus-prog-builder-activity-template space-y-4 rounded-2xl border bg-white p-4 sm:p-5" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
           <div>
-            <h2 className="text-base font-semibold text-slate-900">Aktivitetsmal til periodeplan</h2>
+            <h2 className="text-base font-semibold text-slate-900">{periodPlanTemplateBuilderTitle(programsSubTab)}</h2>
             <p className="mt-1 text-sm leading-relaxed text-slate-600">
-              Legges i periodeplan-dropdown som «Aktivitet: navn».
+              {periodPlanTemplateBuilderDescription(programsSubTab)}
             </p>
           </div>
           <div className="motus-prog-builder-hero max-w-xl">
@@ -425,7 +427,7 @@ export function TrainerProgramBuilderView({
               />
               <div className="motus-prog-builder-hero-tags">
                 <span className="motus-prog-builder-hero-tag">{programCategoryLabel(programsSubTab)}</span>
-                <span className="motus-prog-builder-hero-tag">Mal</span>
+                <span className="motus-prog-builder-hero-tag">Felles mal</span>
               </div>
             </div>
           </div>
@@ -441,9 +443,6 @@ export function TrainerProgramBuilderView({
             className="min-h-[96px]"
             placeholder="Kort beskrivelse (valgfritt) — vises for deg, ikke i periodeplan-cellen."
           />
-          <p className="text-xs leading-relaxed text-slate-500">
-            Malen legges i periodeplan-dropdown for alle kunder. Gruppetime logges som «Gruppetime: navn», aktivitet som «Aktivitet: navn».
-          </p>
           <div className="flex flex-wrap gap-2">
             <GradientButton type="button" onClick={onSaveTemplate}>
               {editingTemplateProgramId ? "Oppdater mal" : "Lagre mal"}

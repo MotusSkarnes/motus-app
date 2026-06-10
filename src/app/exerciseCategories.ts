@@ -240,11 +240,33 @@ export function programsBuilderDescription(subTab: TrainingSubTab): string {
     case "rehab":
       return "Bygg rehab-øvelser med kontrollert belastning og hold/sek.";
     case "group":
-      return "Lag gruppetime-maler med bilde til periodeplan og medlemsoversikt.";
+      return "Lag gruppetime-maler med bilde til periodeplan. Malene er felles for alle trenere.";
     case "activity":
-      return "Tilpass bilde for «Ingen plan i dag» og lag aktivitetsmaler til periodeplan.";
+      return "Tilpass bilde for «Ingen plan i dag» og lag aktivitetsmaler til periodeplan. Malene er felles for alle trenere.";
     default:
       return "Bygg treningsprogram med sett, reps og vekt — drag-and-drop fra biblioteket.";
+  }
+}
+
+export function periodPlanTemplateBuilderTitle(subTab: TrainingSubTab): string {
+  switch (subTab) {
+    case "group":
+      return "Gruppetime-mal til periodeplan";
+    case "activity":
+      return "Aktivitetsmal til periodeplan";
+    default:
+      return "";
+  }
+}
+
+export function periodPlanTemplateBuilderDescription(subTab: TrainingSubTab): string {
+  switch (subTab) {
+    case "group":
+      return "Legges i periodeplan-dropdown som «Gruppetime: navn». Felles for alle trenere i Motus.";
+    case "activity":
+      return "Legges i periodeplan-dropdown som «Aktivitet: navn». Felles for alle trenere i Motus.";
+    default:
+      return "";
   }
 }
 

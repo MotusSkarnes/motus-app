@@ -1,4 +1,4 @@
-import { parseActivityTemplateKind } from "./activityTemplate";
+import { parseActivityTemplateKind, resolvePeriodPlanActivityTemplateKind } from "./activityTemplate";
 import { isLegacyIntervalCooldownDrag } from "./programBlocks";
 import type { Exercise, ProgramExercise, TrainingProgram } from "./types";
 import {
@@ -134,7 +134,10 @@ export function getTrainingProgramSubTab(
   exerciseCategoryById: Map<string, Exercise["category"]>,
   exerciseBank: Exercise[] = [],
 ): TrainingSubTab {
-  const templateKind = program.activityTemplateKind ?? parseActivityTemplateKind(program);
+  const templateKind =
+    program.activityTemplateKind ??
+    parseActivityTemplateKind(program) ??
+    resolvePeriodPlanActivityTemplateKind(program);
   if (templateKind === "group") return "group";
   if (templateKind === "activity" || templateKind === "no-plan") return "activity";
 

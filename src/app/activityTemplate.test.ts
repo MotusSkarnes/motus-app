@@ -8,6 +8,7 @@ import {
   isMemberSessionScopedProgram,
   isSharedOrgActivityTemplate,
   listActivityTemplates,
+  listSharedOrgTemplatesForTrainerSubTab,
   mergeMemberProgramsWithActivityTemplates,
   periodPlanEntryForActivityTemplate,
   stripActivityTemplateMarker,
@@ -164,6 +165,31 @@ describe("activityTemplate", () => {
     expect(findNoPlanDayCoverTemplate([withoutImage, withImage], "pt-a")?.imageUrl).toBe(
       "https://cdn.example/custom.png",
     );
+  });
+
+  it("treats legacy cover templates without notes marker as group templates", () => {
+    const legacy: TrainingProgram = {
+      id: "legacy-group",
+      memberId: "__template__",
+      title: "Spinning",
+      goal: "",
+      notes: "Morgenøkt",
+      createdAt: "01.01.2025",
+      exercises: [],
+      imageUrl: "https://cdn.example/spinning.png",
+    };
+    expect(listActivityTemplates([legacy], "group")).toHaveLength(1);
+    expect(listActivityTemplates([legacy], "activity")).toHaveLength(0);
+  });
+
+  it("lists group and activity templates on separate trainer sub tabs", () => {
+    const group = templateProgram("group", "Spinning");
+    const activity = templateProgram("activity", "Svømming");
+    const programs = [group, activity];
+    expect(listSharedOrgTemplatesForTrainerSubTab(programs, "group")).toHaveLength(1);
+    expect(listSharedOrgTemplatesForTrainerSubTab(programs, "group")[0]?.title).toBe("Spinning");
+    expect(listSharedOrgTemplatesForTrainerSubTab(programs, "activity")).toHaveLength(1);
+    expect(listSharedOrgTemplatesForTrainerSubTab(programs, "activity")[0]?.title).toBe("Svømming");
   });
 
   it("dedupes shared org templates by kind and title", () => {

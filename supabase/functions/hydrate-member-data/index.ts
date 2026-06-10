@@ -44,15 +44,22 @@ function nameFromEmail(email: string): string {
 const NO_PLAN_DAY_TEMPLATE_TITLE = "Ingen plan i dag";
 const TEMPLATE_KIND_PREFIX = /^__motusTemplateKind=(group|activity|no-plan)(?:\r?\n|$)/;
 
+function rowHasTemplateExercises(row: Record<string, unknown>): boolean {
+  const exercises = row.exercises;
+  return Array.isArray(exercises) && exercises.length > 0;
+}
+
 function rowTemplateKind(row: Record<string, unknown>): string | null {
   const notes = String(row.notes ?? "");
   const match = notes.match(TEMPLATE_KIND_PREFIX);
   if (match) return match[1];
-  if (
-    String(row.member_id ?? "").trim() === "__template__" &&
-    String(row.title ?? "").trim() === NO_PLAN_DAY_TEMPLATE_TITLE
-  ) {
+  const memberId = String(row.member_id ?? "").trim();
+  const title = String(row.title ?? "").trim();
+  if (memberId === "__template__" && title === NO_PLAN_DAY_TEMPLATE_TITLE) {
     return "no-plan";
+  }
+  if (memberId === "__template__" && !rowHasTemplateExercises(row) && title) {
+    return "group";
   }
   return null;
 }
@@ -572,26 +579,15 @@ Deno.serve(async (req) => {
   }
 
   let activityTemplateRows: Array<Record<string, unknown>> = [];
-  const [byNotesResult, byTitleResult] = await Promise.all([
-    adminClient
-      .from("training_programs")
-      .select("*")
-      .eq("member_id", "__template__")
-      .like("notes", "__motusTemplateKind=%"),
-    adminClient
-      .from("training_programs")
-      .select("*")
-      .eq("member_id", "__template__")
-      .ilike("title", NO_PLAN_DAY_TEMPLATE_TITLE),
-  ]);
-  if (byNotesResult.error) {
-    console.warn("hydrate-member-data: activity template query failed:", byNotesResult.error.message);
-  }
-  if (byTitleResult.error) {
-    console.warn("hydrate-member-data: no-plan title template query failed:", byTitleResult.error.message);
+  const { data: allTemplateRows, error: allTemplateRowsError } = await adminClient
+    .from("training_programs")
+    .select("*")
+    .eq("member_id", "__template__");
+  if (allTemplateRowsError) {
+    console.warn("hydrate-member-data: activity template query failed:", allTemplateRowsError.message);
   }
   const templateById = new Map<string, Record<string, unknown>>();
-  [...(byNotesResult.data ?? []), ...(byTitleResult.data ?? [])].forEach((row) => {
+  [...(allTemplateRows ?? [])].forEach((row) => {
     const typedRow = row as Record<string, unknown>;
     if (!rowIsSharedOrgActivityTemplate(typedRow)) return;
     const id = String(typedRow.id ?? "").trim();

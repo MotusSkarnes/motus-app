@@ -211,6 +211,8 @@ import { resolveMemberTrainerDisplayName } from "../app/trainerProfile";
 import { printHtmlDocument } from "../app/printHtmlDocument";
 import {
   buildActivityTemplateNotes,
+  dedupeSharedOrgActivityTemplates,
+  listSharedOrgTemplatesForTrainerSubTab,
   findNoPlanDayCoverTemplate,
   NO_PLAN_DAY_TEMPLATE_TITLE,
   parseActivityTemplateKind,
@@ -1594,7 +1596,8 @@ function pickFirstName(value: unknown): string {
     return sortPeriodPlansByRecency(dedupePeriodPlansById(merged));
   }, [periodPlansByMemberId, periodPlanMemberIdsForMerge]);
   const templatePrograms = useMemo(
-    () => programs.filter((program) => program.memberId === "__template__"),
+    () =>
+      dedupeSharedOrgActivityTemplates(programs.filter((program) => program.memberId === "__template__")),
     [programs],
   );
   const exerciseCategoryById = useMemo(() => buildExerciseCategoryById(exercises), [exercises]);
@@ -1602,13 +1605,17 @@ function pickFirstName(value: unknown): string {
     () => findNoPlanDayCoverTemplate(templatePrograms),
     [templatePrograms],
   );
-  const activeTemplatePrograms = useMemo(
-    () =>
-      filterTemplateProgramsBySubTab(templatePrograms, programsSubTab, exerciseCategoryById).filter(
-        (program) => parseActivityTemplateKind(program) !== "no-plan",
-      ),
-    [templatePrograms, programsSubTab, exerciseCategoryById],
-  );
+  const activeTemplatePrograms = useMemo(() => {
+    if (programsSubTab === "group") {
+      return listSharedOrgTemplatesForTrainerSubTab(templatePrograms, "group");
+    }
+    if (programsSubTab === "activity") {
+      return listSharedOrgTemplatesForTrainerSubTab(templatePrograms, "activity");
+    }
+    return filterTemplateProgramsBySubTab(templatePrograms, programsSubTab, exerciseCategoryById).filter(
+      (program) => parseActivityTemplateKind(program) !== "no-plan",
+    );
+  }, [templatePrograms, programsSubTab, exerciseCategoryById]);
   const selectedLogs = useMemo(() => {
     const selected = members.find((member) => member.id === selectedMemberId) ?? null;
     const isSharedMember = selected?.customerType === "Medlem";

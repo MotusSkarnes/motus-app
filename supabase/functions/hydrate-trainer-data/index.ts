@@ -32,15 +32,22 @@ function uniqueById<T extends RowWithId>(rows: T[]): T[] {
 const NO_PLAN_DAY_TEMPLATE_TITLE = "Ingen plan i dag";
 const TEMPLATE_KIND_PREFIX = /^__motusTemplateKind=(group|activity|no-plan)(?:\r?\n|$)/;
 
+function rowHasTemplateExercises(row: Record<string, unknown>): boolean {
+  const exercises = row.exercises;
+  return Array.isArray(exercises) && exercises.length > 0;
+}
+
 function rowTemplateKind(row: Record<string, unknown>): string | null {
   const notes = String(row.notes ?? "");
   const match = notes.match(TEMPLATE_KIND_PREFIX);
   if (match) return match[1];
-  if (
-    String(row.member_id ?? "").trim() === "__template__" &&
-    String(row.title ?? "").trim() === NO_PLAN_DAY_TEMPLATE_TITLE
-  ) {
+  const memberId = String(row.member_id ?? "").trim();
+  const title = String(row.title ?? "").trim();
+  if (memberId === "__template__" && title === NO_PLAN_DAY_TEMPLATE_TITLE) {
     return "no-plan";
+  }
+  if (memberId === "__template__" && !rowHasTemplateExercises(row) && title) {
+    return "group";
   }
   return null;
 }
@@ -471,26 +478,15 @@ Deno.serve(async (req) => {
     .order("created_at", { ascending: false });
 
   let sharedOrgActivityTemplateRows: Array<Record<string, unknown>> = [];
-  const [sharedByNotesResult, sharedByNoPlanTitleResult] = await Promise.all([
-    adminClient
-      .from("training_programs")
-      .select("id, member_id, title, goal, notes, exercises, created_at, owner_user_id, program_created_by, program_created_by_name, image_url, member_library_status")
-      .eq("member_id", "__template__")
-      .like("notes", "__motusTemplateKind=%"),
-    adminClient
-      .from("training_programs")
-      .select("id, member_id, title, goal, notes, exercises, created_at, owner_user_id, program_created_by, program_created_by_name, image_url, member_library_status")
-      .eq("member_id", "__template__")
-      .ilike("title", NO_PLAN_DAY_TEMPLATE_TITLE),
-  ]);
-  if (sharedByNotesResult.error) {
-    console.warn("hydrate-trainer-data: shared activity template query failed:", sharedByNotesResult.error.message);
-  }
-  if (sharedByNoPlanTitleResult.error) {
-    console.warn("hydrate-trainer-data: shared no-plan template query failed:", sharedByNoPlanTitleResult.error.message);
+  const { data: sharedTemplateRows, error: sharedTemplateRowsError } = await adminClient
+    .from("training_programs")
+    .select("id, member_id, title, goal, notes, exercises, created_at, owner_user_id, program_created_by, program_created_by_name, image_url, member_library_status")
+    .eq("member_id", "__template__");
+  if (sharedTemplateRowsError) {
+    console.warn("hydrate-trainer-data: shared activity template query failed:", sharedTemplateRowsError.message);
   }
   const sharedTemplateById = new Map<string, Record<string, unknown>>();
-  [...(sharedByNotesResult.data ?? []), ...(sharedByNoPlanTitleResult.data ?? [])].forEach((row) => {
+  [...(sharedTemplateRows ?? [])].forEach((row) => {
     const typedRow = row as Record<string, unknown>;
     if (!rowIsSharedOrgActivityTemplate(typedRow)) return;
     const id = String(typedRow.id ?? "").trim();
