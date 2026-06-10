@@ -1,5 +1,6 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { buildMemberEmailIlikeOrFilter } from "../_shared/memberEmailQueries.ts";
+import { programRowVisibleToTrainer, rowBelongsToOwner } from "./access.ts";
 import { assertTrainerHydrateAuth } from "./auth.ts";
 
 const EXERCISE_BANK_SELECT =
@@ -127,21 +128,6 @@ function isMemberRowVisibleInTrainerRoster(
   const id = String((row as { id?: string }).id ?? "").trim();
   if (id && linkedMemberIds.has(id)) return true;
   return isVisibleToTrainer(row, ownerUserId);
-}
-
-function rowBelongsToOwner(row: Record<string, unknown>, ownerUserId: string): boolean {
-  return String(row.owner_user_id ?? "").trim() === ownerUserId;
-}
-
-/** Query is already limited to customer-related member_id values; include those rows regardless of owner_user_id. */
-function programRowVisibleToTrainer(
-  row: Record<string, unknown>,
-  ownerUserId: string,
-): boolean {
-  if (rowBelongsToOwner(row, ownerUserId)) return true;
-  const memberId = String((row as { member_id?: string }).member_id ?? "").trim();
-  if (!memberId || memberId === "__template__") return false;
-  return true;
 }
 
 function profileCanonicalScore(row: Record<string, unknown>): number {
@@ -436,11 +422,14 @@ Deno.serve(async (req) => {
   members = (members ?? []).filter((row) => isMemberRowVisibleInTrainerRoster(row, ownerUserId, linkedMemberIds));
 
   const visibleMemberIds = (members ?? []).map((row) => String((row as { id?: string }).id ?? "")).filter(Boolean);
-  const memberOwnerById = new Map<string, string>();
+  const sharedMemberIds = new Set<string>();
+  const ownedVisibleMemberIds = new Set<string>();
   for (const row of members ?? []) {
     const memberId = String((row as { id?: string }).id ?? "").trim();
     const ptOwner = String((row as { owner_user_id?: string }).owner_user_id ?? "").trim();
-    if (memberId && ptOwner) memberOwnerById.set(memberId, ptOwner);
+    if (!memberId) continue;
+    if (isSharedMember(row)) sharedMemberIds.add(memberId);
+    if (ptOwner === ownerUserId) ownedVisibleMemberIds.add(memberId);
   }
   // Backfill only NULL owner_user_id — never reassign another PT's programs/logs to member.owner_user_id.
   if (visibleMemberIds.length > 0) {
@@ -550,7 +539,7 @@ Deno.serve(async (req) => {
       .in("member_id", Array.from(programLookupMemberIds))
       .order("created_at", { ascending: false });
     programsByMember = ((data ?? []) as Array<Record<string, unknown>>).filter((row) =>
-      programRowVisibleToTrainer(row, ownerUserId),
+      programRowVisibleToTrainer(row, ownerUserId, sharedMemberIds, ownedVisibleMemberIds),
     );
     programsByMemberError = error;
   }
