@@ -54,12 +54,22 @@ function hydrateStoredTombstones(): void {
   stored.fingerprints.forEach((fingerprint) => deletedProgramFingerprints.add(fingerprint));
 }
 
-export function registerDeletedProgram(program: Pick<TrainingProgram, "id" | "memberId" | "title" | "goal" | "notes" | "exercises">): void {
+export function registerDeletedProgram(
+  program: Pick<TrainingProgram, "id" | "memberId" | "title" | "goal" | "notes" | "exercises">,
+  options?: { relatedMemberIds?: string[] },
+): void {
   hydrateStoredTombstones();
-  const scope = tombstoneScope(program);
+  const fingerprint = buildTrainingProgramDisplayKey(program);
   const id = program.id?.trim();
-  if (id) deletedProgramIds.add(scopedValue(scope, id));
-  deletedProgramFingerprints.add(scopedValue(scope, buildTrainingProgramDisplayKey(program)));
+  const scopes = new Set<string>([tombstoneScope(program)]);
+  for (const relatedId of options?.relatedMemberIds ?? []) {
+    const trimmed = relatedId.trim().toLowerCase();
+    if (trimmed) scopes.add(trimmed);
+  }
+  for (const scope of scopes) {
+    if (id) deletedProgramIds.add(scopedValue(scope, id));
+    deletedProgramFingerprints.add(scopedValue(scope, fingerprint));
+  }
   persistStoredTombstones();
 }
 
@@ -85,4 +95,31 @@ export function isProgramDeleted(program: TrainingProgram): boolean {
 
 export function filterDeletedPrograms(programs: TrainingProgram[]): TrainingProgram[] {
   return programs.filter((program) => !isProgramDeleted(program));
+}
+
+function parseScopedTombstoneValue(value: string): { scope: string; payload: string } | null {
+  const idx = value.indexOf("::");
+  if (idx < 0) return { scope: "__unknown_member__", payload: value.trim() };
+  const scope = value.slice(0, idx).trim().toLowerCase();
+  const payload = value.slice(idx + 2).trim();
+  if (!payload) return null;
+  return { scope, payload };
+}
+
+export function listStoredDeletedProgramTombstones(): {
+  scopedIds: Array<{ scope: string; programId: string }>;
+  scopedFingerprints: Array<{ scope: string; fingerprint: string }>;
+} {
+  hydrateStoredTombstones();
+  const scopedIds: Array<{ scope: string; programId: string }> = [];
+  const scopedFingerprints: Array<{ scope: string; fingerprint: string }> = [];
+  for (const value of deletedProgramIds) {
+    const parsed = parseScopedTombstoneValue(value);
+    if (parsed) scopedIds.push({ scope: parsed.scope, programId: parsed.payload });
+  }
+  for (const value of deletedProgramFingerprints) {
+    const parsed = parseScopedTombstoneValue(value);
+    if (parsed) scopedFingerprints.push({ scope: parsed.scope, fingerprint: parsed.payload });
+  }
+  return { scopedIds, scopedFingerprints };
 }

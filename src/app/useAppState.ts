@@ -63,6 +63,7 @@ import { notifyInspirationItemsChanged, saveInspirationItemsToStorage } from "./
 import {
   filterDeletedPrograms,
   isProgramDeleted,
+  listStoredDeletedProgramTombstones,
   registerDeletedProgram,
   unregisterDeletedProgram,
 } from "./deletedProgramTombstones";
@@ -105,6 +106,7 @@ import {
   checkMemberAccessBlocked,
   createTrainerMemberViaEdgeFunction,
   deleteProgramRemote,
+  deleteProgramsByDisplayKeyRemote,
   fetchExercisesFromSupabase,
   fetchHydratedMemberData,
   fetchHydratedTrainerData,
@@ -500,6 +502,15 @@ const LOCAL_OPTIMISTIC_WORKOUT_LOG_KEEP_MS = 48 * 60 * 60 * 1000;
 const MEMBER_PENDING_WORKOUT_LOG_MS = 25 * 60 * 1000;
 const remoteTombstoneCleanupInFlight = new Set<string>();
 
+function memberCleanupScopeIds(members: Member[] | null | undefined): string[] {
+  if (!members?.length) return [];
+  return Array.from(
+    new Set(
+      members.flatMap((member) => [member.id, member.email].map((value) => String(value ?? "").trim()).filter(Boolean)),
+    ),
+  );
+}
+
 function filterProgramsHiddenFromCloudViews(programs: TrainingProgram[]): TrainingProgram[] {
   return filterDeletedPrograms(programs).filter((program) => !programIsInMemberArchive(program.memberLibraryStatus));
 }
@@ -513,8 +524,38 @@ function cleanupRemoteProgramsDeletedLocally(
     const programId = program.id.trim();
     if (!programId || remoteTombstoneCleanupInFlight.has(programId)) continue;
     remoteTombstoneCleanupInFlight.add(programId);
-    void deleteProgramRemote(programId, context).finally(() => {
+    void deleteProgramRemote(programId, { ...context, programSnapshot: program }).finally(() => {
       remoteTombstoneCleanupInFlight.delete(programId);
+    });
+  }
+
+  const visibleMemberIds = new Set(
+    (context.memberIds ?? []).map((memberId) => memberId.trim().toLowerCase()).filter(Boolean),
+  );
+  const tombstones = listStoredDeletedProgramTombstones();
+  for (const entry of tombstones.scopedIds) {
+    if (visibleMemberIds.size && !visibleMemberIds.has(entry.scope)) continue;
+    const cleanupKey = `id:${entry.scope}::${entry.programId}`;
+    if (remoteTombstoneCleanupInFlight.has(cleanupKey)) continue;
+    remoteTombstoneCleanupInFlight.add(cleanupKey);
+    void deleteProgramRemote(entry.programId, {
+      ...context,
+      memberIds: context.memberIds?.length ? context.memberIds : [entry.scope],
+    }).finally(() => {
+      remoteTombstoneCleanupInFlight.delete(cleanupKey);
+    });
+  }
+  for (const entry of tombstones.scopedFingerprints) {
+    if (visibleMemberIds.size && !visibleMemberIds.has(entry.scope)) continue;
+    const cleanupKey = `fp:${entry.scope}::${entry.fingerprint}`;
+    if (remoteTombstoneCleanupInFlight.has(cleanupKey)) continue;
+    remoteTombstoneCleanupInFlight.add(cleanupKey);
+    void deleteProgramsByDisplayKeyRemote(entry.fingerprint, {
+      ...context,
+      memberScope: entry.scope,
+      memberIds: context.memberIds?.length ? context.memberIds : [entry.scope],
+    }).finally(() => {
+      remoteTombstoneCleanupInFlight.delete(cleanupKey);
     });
   }
 }
@@ -1217,7 +1258,12 @@ export function useAppState() {
           cleanupRemoteProgramsDeletedLocally(remotePrograms, {
             requestedBy: "member",
             targetEmail: sessionEmail,
-            memberIds: remoteMembers?.map((member) => member.id) ?? [],
+            memberIds: memberCleanupScopeIds(remoteMembers),
+          });
+        } else if (isTrainerSession) {
+          cleanupRemoteProgramsDeletedLocally(remotePrograms, {
+            requestedBy: "trainer",
+            memberIds: memberCleanupScopeIds(remoteMembers),
           });
         }
         remotePrograms = filterProgramsHiddenFromCloudViews(remotePrograms);
@@ -2396,12 +2442,20 @@ export function useAppState() {
         return prev;
       }
       shouldDelete = true;
-      if (deletedSnapshot) registerDeletedProgram(deletedSnapshot);
-      return repository.deleteProgram(prev, programId, context);
+      if (deletedSnapshot) {
+        registerDeletedProgram(deletedSnapshot, { relatedMemberIds: context?.memberIds });
+      }
+      return repository.deleteProgram(prev, programId, {
+        ...context,
+        programSnapshot: deletedSnapshot,
+      });
     });
     if (!shouldDelete) return;
     void (async () => {
-      const ok = await deleteProgramRemote(programId, context);
+      const ok = await deleteProgramRemote(programId, {
+        ...context,
+        programSnapshot: deletedSnapshot,
+      });
       if (!ok) {
         const memberInitiated = context?.requestedBy === "member" || appState.role === "member";
         if (memberInitiated) return;

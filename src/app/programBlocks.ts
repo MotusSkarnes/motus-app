@@ -1,4 +1,5 @@
 import { isConditioningLogAfterProgram } from "./conditioningProgramMode";
+import { stripConditioningModeMarker } from "./conditioningProgramMode";
 import { isHoldBasedExerciseCategory, programExerciseHoldSeconds } from "./exerciseCategories";
 import { resolveProgramExerciseLogFields } from "./exercisePrescriptionFields";
 import { mergeProgramAuthorFields } from "./programAuthor";
@@ -46,14 +47,32 @@ export type WorkoutResultGroup = {
   }>;
 };
 
+export function buildProgramExercisePersistenceLine(item: ProgramExercise): string {
+  const logFields = item.logFieldKeys?.length ? item.logFieldKeys.join(",") : "";
+  return [
+    item.exerciseName,
+    item.sets,
+    item.reps,
+    item.repsUnit ?? "",
+    item.weight,
+    item.weightUnit ?? "",
+    item.holdSeconds ?? "",
+    item.durationMinutes ?? "",
+    item.distanceKm ?? "",
+    item.speed ?? "",
+    item.incline ?? "",
+    item.restSeconds,
+    item.targetHrPercent ?? "",
+    logFields,
+    item.customField1 ?? "",
+    item.customField2 ?? "",
+    item.notes,
+  ].join("|");
+}
+
 export function buildTrainingProgramDisplayKey(program: Pick<TrainingProgram, "title" | "goal" | "notes" | "exercises">): string {
-  const exerciseFingerprint = program.exercises
-    .map(
-      (item) =>
-        `${item.exerciseName}|${item.sets}|${item.reps}|${item.repsUnit ?? ""}|${item.weight}|${item.weightUnit ?? ""}|${item.holdSeconds ?? ""}|${item.durationMinutes ?? ""}|${item.speed ?? ""}|${item.incline ?? ""}|${item.restSeconds}|${item.targetHrPercent ?? ""}|${item.notes}`,
-    )
-    .join("||");
-  return `${program.title.trim()}::${program.goal.trim()}::${program.notes.trim()}::${exerciseFingerprint}`;
+  const exerciseFingerprint = program.exercises.map(buildProgramExercisePersistenceLine).join("||");
+  return `${program.title.trim()}::${program.goal.trim()}::${stripConditioningModeMarker(program.notes)}::${exerciseFingerprint}`;
 }
 
 /** Legacy «hidden» behandles som arkivert (skjul fra oversikt er fjernet i UI). */

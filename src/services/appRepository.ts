@@ -82,6 +82,7 @@ export type DeleteProgramContext = {
   targetEmail?: string;
   targetName?: string;
   requestedBy?: "member" | "trainer";
+  programSnapshot?: Pick<TrainingProgram, "id" | "memberId" | "title" | "goal" | "notes" | "exercises">;
 };
 
 export type UpdateWorkoutResultInput = {
