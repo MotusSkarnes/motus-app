@@ -6310,18 +6310,6 @@ export function MemberPortal(props: MemberPortalProps) {
                 workoutCoverUsesPhotoStyle={homeDisplayCoverPresentation.usesPhotoStyle}
                 workoutZoneLabel={homeDisplayZoneLabel}
                 onWorkoutCardClick={openHomeWorkoutDestination}
-                quickActions={{
-                  onLogWorkout: () => {
-                    setMemberTab("programs");
-                    setTrainingSection("custom");
-                  },
-                  onViewPrograms: () => {
-                    setMemberTab("programs");
-                    setTrainingSection("programs");
-                  },
-                  onViewPeriodPlan: openProgramsWithPeriodPlan,
-                  onViewMessages: () => setMemberTab("messages"),
-                }}
                 belowWorkout={
                   <MemberHomeBelowWorkout>
                     {memberHasVisiblePeriodPlan && nextPlannedWorkout ? (

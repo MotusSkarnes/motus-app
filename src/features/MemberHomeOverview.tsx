@@ -1,14 +1,10 @@
 ﻿import type { CSSProperties, ReactNode } from "react";
 import {
   Bookmark,
-  CalendarDays,
-  CalendarRange,
   ChevronRight,
-  ClipboardList,
   Clock3,
   Dumbbell,
   Flame,
-  MessageSquare,
   Play,
   X,
 } from "lucide-react";
@@ -26,13 +22,6 @@ export type MemberHomeWeekStats = {
   completedSessions: number;
   momentumPct: number;
   streakWeeks: number;
-};
-
-export type MemberHomeQuickActions = {
-  onLogWorkout: () => void;
-  onViewPrograms: () => void;
-  onViewPeriodPlan: () => void;
-  onViewMessages: () => void;
 };
 
 export type MemberHomeOverviewProps = {
@@ -57,7 +46,6 @@ export type MemberHomeOverviewProps = {
   workoutCoverUsesPhotoStyle?: boolean;
   workoutZoneLabel?: string | null;
   weekStats?: MemberHomeWeekStats | null;
-  quickActions?: MemberHomeQuickActions;
   betweenSections?: ReactNode;
   headerActions?: ReactNode;
   notificationsPanel?: ReactNode;
@@ -92,7 +80,6 @@ export function MemberHomeOverview({
   workoutZoneLabel,
   primaryCta,
   onWorkoutCardClick,
-  quickActions,
   belowWorkout,
   onboardingPrompt,
   monthlyCheckInPrompt,
@@ -262,41 +249,8 @@ export function MemberHomeOverview({
       {onboardingPrompt ? <div className="w-full">{onboardingPrompt}</div> : null}
       {monthlyCheckInPrompt ? <div className="w-full">{monthlyCheckInPrompt}</div> : null}
 
-      {quickActions ? (
-        <section className="motus-home-quick-actions" aria-label="Hurtighandlinger">
-          <HomeQuickAction label="Registrer trening" icon={ClipboardList} tone="brand" onClick={quickActions.onLogWorkout} />
-          <HomeQuickAction label="Se program" icon={CalendarDays} tone="pink" onClick={quickActions.onViewPrograms} />
-          <HomeQuickAction label="Periodeplan" icon={CalendarRange} tone="brand" onClick={quickActions.onViewPeriodPlan} />
-          <HomeQuickAction label="Meldinger" icon={MessageSquare} tone="pink" onClick={quickActions.onViewMessages} />
-        </section>
-      ) : null}
-
       {bottomContent}
     </div>
-  );
-}
-
-function HomeQuickAction({
-  label,
-  icon: Icon,
-  tone,
-  onClick,
-}: {
-  label: string;
-  icon: typeof ClipboardList;
-  tone: "brand" | "pink";
-  onClick: () => void;
-}) {
-  return (
-    <button type="button" onClick={onClick} className="motus-home-quick-action motus-pressable text-left">
-      <span
-        className={`motus-home-quick-action-icon ${tone === "brand" ? "motus-home-quick-action-icon--brand" : "motus-home-quick-action-icon--pink"}`}
-        aria-hidden
-      >
-        <Icon className="h-5 w-5" strokeWidth={2} />
-      </span>
-      <span className="block text-sm font-semibold leading-tight text-slate-800">{label}</span>
-    </button>
   );
 }
 
