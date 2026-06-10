@@ -29,11 +29,14 @@ type MemberPersonalRecordsSectionProps = {
 };
 
 function resolveRecordImage(name: string, exercises: Exercise[]): string {
+  const normalized = name.trim().toLowerCase();
+  const match = exercises.find((exercise) => exercise.name.trim().toLowerCase() === normalized);
+  const customRecordImage = match?.personalRecordImageUrl?.trim();
+  if (customRecordImage) return customRecordImage;
+
   const progressPhoto = resolveProgressPersonalRecordImage(name);
   if (progressPhoto) return progressPhoto;
 
-  const normalized = name.trim().toLowerCase();
-  const match = exercises.find((exercise) => exercise.name.trim().toLowerCase() === normalized);
   if (match) return resolveExerciseImageSrc(match);
   return STRENGTH_TRAINING_COVER_IMAGE;
 }

@@ -220,6 +220,7 @@ export type SaveExerciseInput = {
   level: Exercise["level"];
   description: string;
   imageUrl?: string;
+  personalRecordImageUrl?: string;
   prescriptionFields?: Exercise["prescriptionFields"];
   customField1Label?: string;
   customField2Label?: string;
@@ -1448,6 +1449,7 @@ export function saveExerciseInState(state: AppState, input: SaveExerciseInput): 
   const normalizedGroup = input.group.trim();
   const normalizedDescription = input.description.trim();
   const normalizedImageUrl = input.imageUrl?.trim() || "";
+  const normalizedPersonalRecordImageUrl = input.personalRecordImageUrl?.trim() || "";
   if (!normalizedName || !normalizedGroup) return state;
 
   const savedPrescriptionFields = prescriptionFieldsForExerciseSave(input.prescriptionFields, input.category);
@@ -1466,6 +1468,7 @@ export function saveExerciseInState(state: AppState, input: SaveExerciseInput): 
               level: input.level,
               description: normalizedDescription,
               imageUrl: normalizedImageUrl,
+              personalRecordImageUrl: normalizedPersonalRecordImageUrl,
               prescriptionFields: savedPrescriptionFields,
               customField1Label: input.customField1Label?.trim() ?? "",
               customField2Label: input.customField2Label?.trim() ?? "",
@@ -1484,6 +1487,7 @@ export function saveExerciseInState(state: AppState, input: SaveExerciseInput): 
     level: input.level,
     description: normalizedDescription,
     imageUrl: normalizedImageUrl,
+    personalRecordImageUrl: normalizedPersonalRecordImageUrl,
     prescriptionFields: savedPrescriptionFields,
     customField1Label: input.customField1Label?.trim() ?? "",
     customField2Label: input.customField2Label?.trim() ?? "",

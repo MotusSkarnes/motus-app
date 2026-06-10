@@ -993,6 +993,7 @@ function pickFirstName(value: unknown): string {
   const [exerciseFormLevel, setExerciseFormLevel] = useState<Exercise["level"]>("Nybegynner");
   const [exerciseFormDescription, setExerciseFormDescription] = useState("");
   const [exerciseFormImageUrl, setExerciseFormImageUrl] = useState("");
+  const [exerciseFormPersonalRecordImageUrl, setExerciseFormPersonalRecordImageUrl] = useState("");
   const [exerciseFormPrescriptionFields, setExerciseFormPrescriptionFields] = useState<ExercisePrescriptionFieldKey[]>([]);
   const [exerciseFormCustomField1Label, setExerciseFormCustomField1Label] = useState("");
   const [exerciseFormCustomField2Label, setExerciseFormCustomField2Label] = useState("");
@@ -4204,6 +4205,7 @@ function pickFirstName(value: unknown): string {
     setExerciseFormLevel("Nybegynner");
     setExerciseFormDescription("");
     setExerciseFormImageUrl("");
+    setExerciseFormPersonalRecordImageUrl("");
     setExerciseFormPrescriptionFields(defaultPrescriptionFieldsForCategory(defaultCategoryForExerciseBankTab(exerciseBankSubTab)));
     setExerciseFormCustomField1Label("");
     setExerciseFormCustomField2Label("");
@@ -4220,6 +4222,7 @@ function pickFirstName(value: unknown): string {
     setExerciseFormLevel(exercise.level);
     setExerciseFormDescription(exercise.description);
     setExerciseFormImageUrl(exercise.imageUrl ?? "");
+    setExerciseFormPersonalRecordImageUrl(exercise.personalRecordImageUrl ?? "");
     setExerciseFormPrescriptionFields(resolveExercisePrescriptionFields(exercise));
     setExerciseFormCustomField1Label(exercise.customField1Label ?? "");
     setExerciseFormCustomField2Label(exercise.customField2Label ?? "");
@@ -4245,6 +4248,7 @@ function pickFirstName(value: unknown): string {
       level: exerciseFormLevel,
       description,
       imageUrl: exerciseFormImageUrl.trim(),
+      personalRecordImageUrl: exerciseFormPersonalRecordImageUrl.trim(),
       prescriptionFields: prescriptionFieldsForExerciseSave(exerciseFormPrescriptionFields, exerciseFormCategory),
       customField1Label: exerciseFormCustomField1Label,
       customField2Label: exerciseFormCustomField2Label,
@@ -4263,6 +4267,7 @@ function pickFirstName(value: unknown): string {
       level: exercise.level,
       description: exercise.description,
       imageUrl: exercise.imageUrl?.trim() ?? "",
+      personalRecordImageUrl: exercise.personalRecordImageUrl?.trim() ?? "",
       prescriptionFields: resolveExercisePrescriptionFields(exercise),
       customField1Label: exercise.customField1Label,
       customField2Label: exercise.customField2Label,
@@ -4313,7 +4318,7 @@ function pickFirstName(value: unknown): string {
     }
   }
 
-  async function handleExerciseImageUpload(file: File | null) {
+  async function handleExerciseImageUpload(file: File | null, target: "main" | "personalRecord" = "main") {
     if (!file) return;
     if (!supabaseClient) {
       setExerciseFormStatus("Bildefunksjonen er ikke tilgjengelig akkurat nå.");
@@ -4343,8 +4348,13 @@ function pickFirstName(value: unknown): string {
       if (!data.publicUrl) {
         throw new Error("Mangler offentlig URL for opplastet bilde.");
       }
-      setExerciseFormImageUrl(data.publicUrl);
-      setExerciseFormStatus("Bilde lastet opp. Husk å lagre øvelsen.");
+      if (target === "personalRecord") {
+        setExerciseFormPersonalRecordImageUrl(data.publicUrl);
+        setExerciseFormStatus("Rekordbilde lastet opp. Husk å lagre øvelsen.");
+      } else {
+        setExerciseFormImageUrl(data.publicUrl);
+        setExerciseFormStatus("Bilde lastet opp. Husk å lagre øvelsen.");
+      }
     } catch (error) {
       const message = error instanceof Error ? error.message : "Ukjent feil ved opplasting.";
       if (message.toLowerCase().includes("bucket")) {
@@ -7324,6 +7334,8 @@ function pickFirstName(value: unknown): string {
           onExerciseFormEquipmentChange={setExerciseFormEquipment}
           exerciseFormImageUrl={exerciseFormImageUrl}
           onExerciseFormImageUrlChange={setExerciseFormImageUrl}
+          exerciseFormPersonalRecordImageUrl={exerciseFormPersonalRecordImageUrl}
+          onExerciseFormPersonalRecordImageUrlChange={setExerciseFormPersonalRecordImageUrl}
           exerciseFormDescription={exerciseFormDescription}
           onExerciseFormDescriptionChange={setExerciseFormDescription}
           exerciseFormPrescriptionFields={exerciseFormPrescriptionFields}

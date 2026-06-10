@@ -152,6 +152,8 @@ export type Exercise = {
   level: Level;
   description: string;
   imageUrl?: string;
+  /** Eget bilde for PR-kort under Fremgang. Faller tilbake til vanlig øvelsesbilde når tomt. */
+  personalRecordImageUrl?: string;
   favorite?: boolean;
   /** Hvilke programfelter som vises når øvelsen legges i et program (tom = standard for kategori). */
   prescriptionFields?: ExercisePrescriptionFieldKey[];

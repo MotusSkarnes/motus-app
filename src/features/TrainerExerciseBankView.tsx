@@ -122,6 +122,8 @@ export type TrainerExerciseBankViewProps = {
   onExerciseFormEquipmentChange: (value: string) => void;
   exerciseFormImageUrl: string;
   onExerciseFormImageUrlChange: (value: string) => void;
+  exerciseFormPersonalRecordImageUrl: string;
+  onExerciseFormPersonalRecordImageUrlChange: (value: string) => void;
   exerciseFormDescription: string;
   onExerciseFormDescriptionChange: (value: string) => void;
   exerciseFormPrescriptionFields: ExercisePrescriptionFieldKey[];
@@ -134,7 +136,7 @@ export type TrainerExerciseBankViewProps = {
   exerciseFormEquipmentOptions: string[];
   exerciseFormStatus: string | null;
   isUploadingExerciseImage: boolean;
-  onImageUpload: (file: File | null) => void;
+  onImageUpload: (file: File | null, target?: "main" | "personalRecord") => void;
   onSubmit: () => void;
   onReset: () => void;
   onStartEdit: (exercise: Exercise) => void;
@@ -167,6 +169,8 @@ export function TrainerExerciseBankView({
   onExerciseFormEquipmentChange,
   exerciseFormImageUrl,
   onExerciseFormImageUrlChange,
+  exerciseFormPersonalRecordImageUrl,
+  onExerciseFormPersonalRecordImageUrlChange,
   exerciseFormDescription,
   onExerciseFormDescriptionChange,
   exerciseFormPrescriptionFields,
@@ -464,6 +468,47 @@ export function TrainerExerciseBankView({
                 placeholder="Eller lim inn bilde-URL"
                 className="mt-2"
               />
+              <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50/70 p-3">
+                <div className="mb-2">
+                  <p className="text-sm font-semibold text-slate-900">Rekordbilde</p>
+                  <p className="text-xs text-slate-500">Vises på PR-kort under Fremgang. Hvis tomt brukes vanlig øvelsesbilde.</p>
+                </div>
+                <label className="motus-exbank-upload-zone">
+                  <input
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp"
+                    className="hidden"
+                    onChange={(event) => {
+                      const file = event.currentTarget.files?.[0] ?? null;
+                      onImageUpload(file, "personalRecord");
+                      event.currentTarget.value = "";
+                    }}
+                    disabled={isUploadingExerciseImage}
+                  />
+                  {exerciseFormPersonalRecordImageUrl.trim() ? (
+                    <img
+                      src={exerciseFormPersonalRecordImageUrl}
+                      alt=""
+                      className="motus-exbank-upload-preview"
+                      onError={(event) => {
+                        event.currentTarget.src = exerciseFormImageUrl.trim() || previewSketch;
+                      }}
+                    />
+                  ) : (
+                    <div className="motus-exbank-upload-placeholder">
+                      <Upload className="h-6 w-6 text-slate-400" aria-hidden />
+                      <span>{isUploadingExerciseImage ? "Laster opp..." : "Last opp eget rekordbilde"}</span>
+                      <span className="text-xs text-slate-400">Gjerne foto eller tydelig bilde i kvadratisk format</span>
+                    </div>
+                  )}
+                </label>
+                <TextInput
+                  value={exerciseFormPersonalRecordImageUrl}
+                  onChange={(e) => onExerciseFormPersonalRecordImageUrlChange(e.target.value)}
+                  placeholder="Eller lim inn URL til rekordbilde"
+                  className="mt-2"
+                />
+              </div>
             </FormSection>
 
             <FormSection icon={<FileText className="h-4 w-4" />} title="Instruksjoner">

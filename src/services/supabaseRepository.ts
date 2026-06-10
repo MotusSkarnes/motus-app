@@ -1850,26 +1850,32 @@ async function persistMember(member: Member, previousPersonalGoals?: string) {
 
 async function persistExercise(exercise: Exercise) {
   if (!supabaseClient) return;
-  const { error } = await supabaseClient.from("exercise_bank").upsert(
-    {
-      id: exercise.id,
-      name: exercise.name,
-      category: exercise.category,
-      muscle_group: exercise.group,
-      equipment: exercise.equipment,
-      level: exercise.level,
-      description: exercise.description,
-      image_url: exercise.imageUrl ?? null,
-      prescription_fields: prescriptionFieldsForExerciseSave(exercise.prescriptionFields, exercise.category),
-      custom_field_1_label: exercise.customField1Label?.trim() ?? "",
-      custom_field_2_label: exercise.customField2Label?.trim() ?? "",
-      is_active: true,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    },
-    { onConflict: "id" }
-  );
+  const row = {
+    id: exercise.id,
+    name: exercise.name,
+    category: exercise.category,
+    muscle_group: exercise.group,
+    equipment: exercise.equipment,
+    level: exercise.level,
+    description: exercise.description,
+    image_url: exercise.imageUrl ?? null,
+    personal_record_image_url: exercise.personalRecordImageUrl ?? null,
+    prescription_fields: prescriptionFieldsForExerciseSave(exercise.prescriptionFields, exercise.category),
+    custom_field_1_label: exercise.customField1Label?.trim() ?? "",
+    custom_field_2_label: exercise.customField2Label?.trim() ?? "",
+    is_active: true,
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+  };
+  const { error } = await supabaseClient.from("exercise_bank").upsert(row, { onConflict: "id" });
   if (error) {
+    if (error.message.toLowerCase().includes("personal_record_image_url")) {
+      const { personal_record_image_url: _personalRecordImageUrl, ...fallbackRow } = row;
+      const { error: fallbackError } = await supabaseClient.from("exercise_bank").upsert(fallbackRow, { onConflict: "id" });
+      if (!fallbackError) return;
+      console.warn("Supabase exercise persist failed:", fallbackError.message);
+      return;
+    }
     console.warn("Supabase exercise persist failed:", error.message);
   }
 }
@@ -3937,6 +3943,7 @@ function mapExerciseBankRow(row: Record<string, unknown>): Exercise {
     level: row.level === "Litt øvet" || row.level === "Øvet" ? row.level : "Nybegynner",
     description: String(row.description ?? ""),
     imageUrl: String(row.image_url ?? ""),
+    personalRecordImageUrl: String(row.personal_record_image_url ?? ""),
     prescriptionFields:
       parsePrescriptionFieldsFromDb(row.prescription_fields) ?? prescriptionFieldsForExerciseSave(undefined, category),
     customField1Label: String(row.custom_field_1_label ?? ""),
@@ -3948,7 +3955,7 @@ export async function fetchExercisesFromSupabase(): Promise<Exercise[] | null> {
   if (!supabaseClient) return null;
   const { data, error } = await supabaseClient
     .from("exercise_bank")
-    .select("id, name, category, muscle_group, equipment, level, description, image_url, prescription_fields, custom_field_1_label, custom_field_2_label")
+    .select("*")
     .or("is_active.is.null,is_active.eq.true")
     .order("name", { ascending: true });
 

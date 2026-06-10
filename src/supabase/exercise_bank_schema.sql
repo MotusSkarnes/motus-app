@@ -7,6 +7,7 @@ create table if not exists public.exercise_bank (
   level text not null check (level in ('Nybegynner', 'Litt øvet', 'Øvet')),
   description text not null default '',
   image_url text not null default '',
+  personal_record_image_url text not null default '',
   is_active boolean not null default true,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
@@ -14,6 +15,9 @@ create table if not exists public.exercise_bank (
 
 alter table public.exercise_bank
   add column if not exists image_url text not null default '';
+
+alter table public.exercise_bank
+  add column if not exists personal_record_image_url text not null default '';
 
 alter table public.exercise_bank
   add column if not exists is_active boolean not null default true;
