@@ -2577,6 +2577,114 @@ button.motus-progress-status-banner {
   color: #64748b;
 }
 
+.motus-progress-status-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.625rem;
+  padding: 1rem;
+  border: 1px solid rgba(15, 23, 42, 0.06);
+  border-radius: 1.125rem;
+  background: linear-gradient(180deg, #ffffff 0%, #fbfdff 100%);
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04), 0 16px 36px -30px rgba(15, 23, 42, 0.24);
+}
+
+.motus-progress-status-grid-title {
+  margin-bottom: 0.125rem;
+  font-size: 0.9375rem;
+}
+
+.motus-progress-status-metric {
+  display: flex;
+  min-width: 0;
+  align-items: flex-start;
+  gap: 0.625rem;
+  border-radius: 0.875rem;
+  background: #f8fafc;
+  padding: 0.75rem;
+  box-shadow: inset 0 0 0 1px rgba(15, 23, 42, 0.04);
+}
+
+.motus-progress-status-metric-icon {
+  display: inline-flex;
+  height: 2rem;
+  width: 2rem;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0.75rem;
+}
+
+.motus-progress-status-metric-icon--mint {
+  background: rgba(48, 227, 190, 0.14);
+  color: #0f766e;
+}
+
+.motus-progress-status-metric-icon--pink {
+  background: linear-gradient(135deg, #fbcfe8 0%, #d91278 100%);
+  color: #ffffff;
+  box-shadow: 0 6px 14px -8px rgba(217, 18, 120, 0.55);
+}
+
+.motus-progress-status-metric-icon--neutral {
+  background: #eef2f7;
+  color: #475569;
+}
+
+.motus-progress-status-metric-copy {
+  min-width: 0;
+  flex: 1;
+}
+
+.motus-progress-status-metric-label {
+  font-size: 0.625rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #64748b;
+}
+
+.motus-progress-status-metric-value {
+  margin-top: 0.125rem;
+  font-size: 1.0625rem;
+  font-weight: 850;
+  line-height: 1.1;
+  color: #0f172a;
+}
+
+.motus-progress-status-metric-subline {
+  margin-top: 0.1875rem;
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  font-size: 0.6875rem;
+  line-height: 1.25;
+  color: #64748b;
+}
+
+.motus-progress-status-highlights {
+  gap: 0.625rem;
+  padding-top: 0.625rem;
+}
+
+.motus-progress-status-highlight {
+  border-radius: 0.875rem;
+  background: #ffffff;
+  padding: 0.75rem;
+  box-shadow: inset 0 0 0 1px rgba(15, 23, 42, 0.06);
+}
+
+.motus-progress-status-highlight-icon {
+  height: 2rem;
+  width: 2rem;
+  border-radius: 0.75rem;
+}
+
+@media (max-width: 380px) {
+  .motus-progress-status-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
 .motus-progress-flow-cinematic {
   position: relative;
   min-height: 7.5rem;

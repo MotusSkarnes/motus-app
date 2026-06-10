@@ -1,6 +1,5 @@
 import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { Flame, Shield, Target, Trophy } from "lucide-react";
-import { MOTUS } from "../app/data";
 import type { MemberProgressScores } from "../app/memberMomentumScores";
 import type { RecentStreakWeek } from "../app/memberProgressGamification";
 
@@ -136,11 +135,37 @@ function MomentumRing({ pct, animatedPct }: { pct: number; animatedPct: number }
   );
 }
 
+function StatusMetric({
+  label,
+  value,
+  subline,
+  icon,
+  tone = "mint",
+}: {
+  label: string;
+  value: string;
+  subline: string;
+  icon: ReactNode;
+  tone?: "mint" | "pink" | "neutral";
+}) {
+  return (
+    <div className="motus-progress-status-metric">
+      <span className={`motus-progress-status-metric-icon motus-progress-status-metric-icon--${tone}`} aria-hidden>
+        {icon}
+      </span>
+      <div className="motus-progress-status-metric-copy">
+        <p className="motus-progress-status-metric-label">{label}</p>
+        <p className="motus-progress-status-metric-value">{value}</p>
+        <p className="motus-progress-status-metric-subline">{subline}</p>
+      </div>
+    </div>
+  );
+}
+
 function ScoreRing({
   label,
   value,
   subline,
-  pct,
   tone = "mint",
 }: {
   label: string;
@@ -149,36 +174,14 @@ function ScoreRing({
   pct: number | null;
   tone?: "mint" | "pink";
 }) {
-  const ringPct = pct === null ? 0 : Math.min(100, Math.max(0, pct));
-  const stroke = tone === "pink" ? MOTUS.pink : MOTUS.turquoise;
-  const dash = `${Math.max(8, (ringPct / 100) * 226)} 226`;
-
   return (
-    <div className="motus-progress-status-card">
-      <div className="relative mx-auto motus-progress-status-ring">
-        <svg viewBox="0 0 88 88" className="h-full w-full" aria-hidden>
-          <circle cx="44" cy="44" r="36" fill="none" stroke="rgba(15,23,42,0.08)" strokeWidth="6" />
-          {pct !== null ? (
-            <circle
-              cx="44"
-              cy="44"
-              r="36"
-              fill="none"
-              stroke={stroke}
-              strokeWidth="6"
-              strokeLinecap="round"
-              strokeDasharray={dash}
-              transform="rotate(-90 44 44)"
-            />
-          ) : null}
-        </svg>
-        <div className="motus-progress-status-value absolute inset-0 flex items-center justify-center font-bold tabular-nums text-slate-900">
-          {value}
-        </div>
-      </div>
-      <p className="motus-progress-status-label mt-1 font-semibold uppercase tracking-wide text-slate-400">{label}</p>
-      <p className="motus-progress-status-subline mt-0.5 line-clamp-2 text-slate-600">{subline}</p>
-    </div>
+    <StatusMetric
+      label={label}
+      value={value}
+      subline={subline}
+      icon={<Shield className="h-4 w-4" strokeWidth={2.25} />}
+      tone={tone === "pink" ? "neutral" : "mint"}
+    />
   );
 }
 
@@ -186,7 +189,6 @@ function StatHighlight({
   label,
   value,
   subline,
-  badge,
   icon,
 }: {
   label: string;
@@ -195,17 +197,7 @@ function StatHighlight({
   badge?: string;
   icon: ReactNode;
 }) {
-  return (
-    <div className="motus-progress-status-card motus-progress-status-card--weekly">
-      <span className="motus-progress-status-icon motus-progress-status-icon--pink">{icon}</span>
-      <p className="motus-progress-status-stat-value mt-1 font-black tabular-nums tracking-tight text-slate-950">
-        {value}
-      </p>
-      <p className="motus-progress-status-label mt-0.5 font-semibold uppercase tracking-wide text-slate-400">{label}</p>
-      <p className="motus-progress-status-subline mt-0.5 line-clamp-2 text-slate-600">{subline}</p>
-      {badge ? <span className="motus-progress-status-badge">{badge}</span> : null}
-    </div>
-  );
+  return <StatusMetric label={label} value={value} subline={subline} icon={icon} tone="pink" />;
 }
 
 function ConfettiBurst({ active }: { active: boolean }) {
@@ -438,13 +430,13 @@ export function MemberProgressHeroCard({
           tone="mint"
         />
         <StatHighlight
-          label="Uke-score"
+          label="Denne uken"
           value={weekly.maxScore ? `${animatedWeeklyScore}/${weekly.maxScore}` : "Sett mål"}
           subline={weekly.subline}
           icon={<Target className="h-3.5 w-3.5 sm:h-4 sm:w-4" strokeWidth={2} />}
         />
         <ScoreRing
-          label="Recovery"
+          label="Restitusjon"
           value={recovery.pct === null ? "—" : `${animatedRecovery}%`}
           subline={recovery.subline}
           pct={recovery.pct}
