@@ -393,7 +393,7 @@ export function expandProgramExercisesToWorkoutResults(
   exerciseBank: Exercise[],
   options?: {
     suggestedWeightByProgramExerciseId?: Record<string, string>;
-    program?: Pick<TrainingProgram, "notes" | "conditioningDeliveryMode">;
+    program?: Pick<TrainingProgram, "notes" | "conditioningDeliveryMode" | "exercises">;
   },
 ): WorkoutExerciseResult[] {
   const opts = {

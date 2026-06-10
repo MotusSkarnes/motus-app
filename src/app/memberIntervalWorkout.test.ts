@@ -59,6 +59,16 @@ describe("isMemberIntervalWorkoutProgram", () => {
     expect(isMemberIntervalWorkoutProgram(program, categories, exercises)).toBe(true);
   });
 
+  it("does not use interval timer when exercises have logFieldKeys even without notes marker", () => {
+    const program = program4x4([
+      {
+        ...row("Løping", { durationMinutes: "30", holdSeconds: "30" }),
+        logFieldKeys: ["minutes", "distance"],
+      },
+    ]);
+    expect(isMemberIntervalWorkoutProgram(program, categories, exercises)).toBe(false);
+  });
+
   it("does not use interval timer for explicit log-after conditioning programs", () => {
     const program = program4x4([
       row("Løping", { durationMinutes: "45" }),

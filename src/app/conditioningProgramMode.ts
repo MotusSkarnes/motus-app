@@ -1,4 +1,7 @@
-import type { TrainingProgram } from "./types";
+import { sanitizeProgramExerciseForLogAfter } from "./exercisePrescriptionFields";
+import type { ProgramExercise, TrainingProgram } from "./types";
+
+export { sanitizeProgramExerciseForLogAfter } from "./exercisePrescriptionFields";
 
 export type ConditioningDeliveryMode = "interval" | "logAfter";
 
@@ -24,7 +27,7 @@ export function buildConditioningProgramNotes(mode: ConditioningDeliveryMode, de
 }
 
 export function enrichProgramWithConditioningMode(program: TrainingProgram): TrainingProgram {
-  const mode = parseConditioningDeliveryMode(program);
+  const mode = resolveConditioningDeliveryMode(program);
   if (!mode) return program;
   return {
     ...program,
@@ -33,11 +36,29 @@ export function enrichProgramWithConditioningMode(program: TrainingProgram): Tra
   };
 }
 
+/** Minst én øvelse har eksplisitt valgte loggfelt (lagres i exercises-json). */
+export function programHasConfiguredLogAfterFields(
+  program: Pick<TrainingProgram, "exercises">,
+): boolean {
+  return program.exercises.some(
+    (exercise) => Array.isArray(exercise.logFieldKeys) && exercise.logFieldKeys.length > 0,
+  );
+}
+
+export function resolveConditioningDeliveryMode(
+  program: Pick<TrainingProgram, "notes" | "conditioningDeliveryMode" | "exercises">,
+): ConditioningDeliveryMode | null {
+  const explicit = parseConditioningDeliveryMode(program);
+  if (explicit) return explicit;
+  if (programHasConfiguredLogAfterFields(program)) return "logAfter";
+  return null;
+}
+
 /** Eksplisitt logg-etter-økt (ikke intervalltimer). */
 export function isConditioningLogAfterProgram(
-  program: Pick<TrainingProgram, "notes" | "conditioningDeliveryMode">,
+  program: Pick<TrainingProgram, "notes" | "conditioningDeliveryMode" | "exercises">,
 ): boolean {
-  return parseConditioningDeliveryMode(program) === "logAfter";
+  return resolveConditioningDeliveryMode(program) === "logAfter";
 }
 
 /** Eksplisitt intervalløkt med nedtelling. */
@@ -49,10 +70,14 @@ export function isConditioningIntervalProgram(
 
 /** Bygg notes for lagring/sync når modus ligger i minnet men er strippet fra notes. */
 export function serializeConditioningProgramNotes(
-  program: Pick<TrainingProgram, "notes" | "conditioningDeliveryMode">,
+  program: Pick<TrainingProgram, "notes" | "conditioningDeliveryMode" | "exercises">,
 ): string {
-  const mode = parseConditioningDeliveryMode(program);
+  const mode = resolveConditioningDeliveryMode(program);
   const body = stripConditioningModeMarker(program.notes);
   if (!mode) return body;
   return buildConditioningProgramNotes(mode, body);
+}
+
+export function sanitizeProgramExercisesForLogAfter(exercises: ProgramExercise[]): ProgramExercise[] {
+  return exercises.map((exercise) => sanitizeProgramExerciseForLogAfter(exercise));
 }

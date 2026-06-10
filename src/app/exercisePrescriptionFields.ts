@@ -81,20 +81,40 @@ export function resolveProgramExerciseLogFields(
   return resolveExercisePrescriptionFields(linkedExercise);
 }
 
+export function sanitizeProgramExerciseForLogAfter(exercise: ProgramExercise): ProgramExercise {
+  const keys: ExercisePrescriptionFieldKey[] = exercise.logFieldKeys?.length
+    ? [...exercise.logFieldKeys]
+    : defaultLogAfterPrescriptionFields();
+  const keep = (key: ExercisePrescriptionFieldKey, value: string | undefined) =>
+    keys.includes(key) ? String(value ?? "").trim() : "";
+  return {
+    ...exercise,
+    sets: "1",
+    logFieldKeys: keys,
+    reps: "",
+    weight: "",
+    repsUnit: undefined,
+    weightUnit: undefined,
+    holdSeconds: keep("seconds", exercise.holdSeconds),
+    durationMinutes: keep("minutes", exercise.durationMinutes),
+    distanceKm: keep("distance", exercise.distanceKm),
+    targetHrPercent: keep("heartRate", exercise.targetHrPercent),
+    speed: keep("speed", exercise.speed),
+    incline: keep("incline", exercise.incline),
+    restSeconds: keep("pause", exercise.restSeconds),
+    seatSetting: keep("seatSettings", exercise.seatSetting),
+    customField1: keep("custom1", exercise.customField1),
+    customField2: keep("custom2", exercise.customField2),
+    cardioIntensity: undefined,
+  };
+}
+
 export function buildProgramExerciseFromBankForLogAfter(exercise: Exercise): ProgramExercise {
   const row = buildProgramExerciseFromBank(exercise);
-  return {
+  return sanitizeProgramExerciseForLogAfter({
     ...row,
-    sets: "1",
     logFieldKeys: defaultLogAfterPrescriptionFields(),
-    durationMinutes: "",
-    holdSeconds: "",
-    speed: "",
-    incline: "",
-    restSeconds: "",
-    customField1: "",
-    customField2: "",
-  };
+  });
 }
 
 export function resolveExercisePrescriptionFields(exercise?: Pick<Exercise, "category" | "prescriptionFields">): ExercisePrescriptionFieldKey[] {

@@ -65,7 +65,7 @@ import {
   resolveExercisePrescriptionFields,
   resolveProgramExerciseLogFields,
 } from "../app/exercisePrescriptionFields";
-import type { ConditioningDeliveryMode } from "../app/conditioningProgramMode";
+import { sanitizeProgramExerciseForLogAfter, type ConditioningDeliveryMode } from "../app/conditioningProgramMode";
 import { ExercisePrescriptionFieldsEditor } from "./ExercisePrescriptionFieldsEditor";
 import { EmptyState, GradientButton, OutlineButton, PillButton, SelectBox, TextArea, TextInput } from "../app/ui";
 import { useToast } from "../app/toast";
@@ -706,7 +706,9 @@ export function TrainerProgramBuilderView({
                           onChange={(next) =>
                             onProgramExercisesDraftChange(
                               programExercisesDraft.map((row) =>
-                                row.id === item.id ? { ...row, logFieldKeys: next } : row,
+                                row.id === item.id
+                                  ? sanitizeProgramExerciseForLogAfter({ ...row, logFieldKeys: next })
+                                  : row,
                               ),
                             )
                           }

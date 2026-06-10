@@ -1,4 +1,8 @@
-import { isConditioningIntervalProgram, isConditioningLogAfterProgram } from "./conditioningProgramMode";
+import {
+  isConditioningIntervalProgram,
+  isConditioningLogAfterProgram,
+  programHasConfiguredLogAfterFields,
+} from "./conditioningProgramMode";
 import type { Exercise, TrainingProgram } from "./types";
 import { getTrainingProgramSubTab, isConditioningTrainingProgram } from "./trainingProgramKind";
 
@@ -8,6 +12,7 @@ const INTERVAL_EXERCISE_NAME_PATTERN = /\bdrag\b|intervall|oppvarm|nedjogg|nedtr
 
 function hasIntervalStepStructure(program: Pick<TrainingProgram, "exercises">): boolean {
   return program.exercises.some((exercise) => {
+    if (exercise.logFieldKeys?.length) return false;
     const name = exercise.exerciseName.trim();
     if (INTERVAL_EXERCISE_NAME_PATTERN.test(name)) return true;
     if (Number(exercise.durationMinutes) > 0) return true;
@@ -22,7 +27,7 @@ export function isMemberIntervalWorkoutProgram(
   exerciseCategoryById: Map<string, Exercise["category"]>,
   exerciseBank: Exercise[] = [],
 ): boolean {
-  if (isConditioningLogAfterProgram(program)) {
+  if (isConditioningLogAfterProgram(program) || programHasConfiguredLogAfterFields(program)) {
     return false;
   }
   if (isConditioningIntervalProgram(program)) {

@@ -36,6 +36,35 @@ describe("conditioningProgramMode", () => {
     expect(isConditioningLogAfterProgram({ notes: "", conditioningDeliveryMode: "interval" })).toBe(false);
   });
 
+  it("infers log-after from exercise logFieldKeys when notes marker is missing", () => {
+    const program: TrainingProgram = {
+      id: "p2",
+      memberId: "m1",
+      title: "Løping",
+      goal: "",
+      notes: "",
+      createdAt: "",
+      exercises: [
+        {
+          id: "ex1",
+          exerciseId: "e1",
+          exerciseName: "Løping",
+          sets: "1",
+          reps: "",
+          weight: "",
+          holdSeconds: "30",
+          durationMinutes: "30",
+          restSeconds: "30",
+          logFieldKeys: ["minutes", "distance"],
+          notes: "",
+        },
+      ],
+    };
+    expect(isConditioningLogAfterProgram(program)).toBe(true);
+    const enriched = enrichProgramWithConditioningMode(program);
+    expect(enriched.conditioningDeliveryMode).toBe("logAfter");
+  });
+
   it("serializes mode back into notes after enrich stripped the marker", () => {
     const enriched = enrichProgramWithConditioningMode(program(buildConditioningProgramNotes("logAfter", "Løpetur")));
     expect(enriched.notes).toBe("Løpetur");

@@ -66,7 +66,9 @@ import {
 } from "../app/cardioIntervalIntensity";
 import {
   buildConditioningProgramNotes,
+  isConditioningLogAfterProgram,
   parseConditioningDeliveryMode,
+  sanitizeProgramExercisesForLogAfter,
   serializeConditioningProgramNotes,
   stripConditioningModeMarker,
   type ConditioningDeliveryMode,
@@ -2404,16 +2406,33 @@ function pickFirstName(value: unknown): string {
   }
 
   function buildConditioningNotesForSave(userNotes: string): string {
-    if (programsSubTab !== "conditioning") return userNotes.trim();
-    return buildConditioningProgramNotes(conditioningDeliveryMode, userNotes);
-  }
-
-  function buildCustomerProgramNotesForSave(userNotes: string, editingProgram?: TrainingProgram | null): string {
-    const hadMode = editingProgram ? parseConditioningDeliveryMode(editingProgram) : null;
-    if (conditioningDeliveryMode !== "interval" || hadMode) {
+    if (conditioningDeliveryMode === "logAfter") {
+      return buildConditioningProgramNotes("logAfter", userNotes);
+    }
+    if (programsSubTab === "conditioning") {
       return buildConditioningProgramNotes(conditioningDeliveryMode, userNotes);
     }
     return userNotes.trim();
+  }
+
+  function applyConditioningDeliveryMode(mode: ConditioningDeliveryMode) {
+    setConditioningDeliveryMode(mode);
+    if (mode === "logAfter") {
+      setProgramExercisesDraft((prev) => sanitizeProgramExercisesForLogAfter(prev));
+    }
+  }
+
+  function programExercisesForConditioningSave(draft: ProgramExercise[]): ProgramExercise[] {
+    if (conditioningDeliveryMode !== "logAfter") return draft;
+    return sanitizeProgramExercisesForLogAfter(draft);
+  }
+
+  function buildCustomerProgramNotesForSave(userNotes: string): string {
+    return serializeConditioningProgramNotes({
+      notes: userNotes,
+      conditioningDeliveryMode,
+      exercises: programExercisesDraft,
+    });
   }
 
   function addExerciseToDraft(exercise: Exercise) {
@@ -2826,9 +2845,11 @@ function pickFirstName(value: unknown): string {
       goal: "",
       notes: buildConditioningNotesForSave(programNotes),
       memberId: "__template__",
-      exercises: editingTemplateProgramId
-        ? programExercisesDraft.map((exercise) => ({ ...exercise }))
-        : programExercisesDraft.map((exercise) => ({ ...exercise, id: uid("template-ex") })),
+      exercises: programExercisesForConditioningSave(
+        editingTemplateProgramId
+          ? programExercisesDraft.map((exercise) => ({ ...exercise }))
+          : programExercisesDraft.map((exercise) => ({ ...exercise, id: uid("template-ex") })),
+      ),
       imageUrl: programSaveImageUrl(),
     });
     if (editingTemplateProgramId) {
@@ -2938,7 +2959,10 @@ function pickFirstName(value: unknown): string {
         goal: template.goal,
         notes: serializeConditioningProgramNotes(template),
         memberId,
-        exercises: template.exercises.map((exercise) => ({ ...exercise, id: uid("prog-ex") })),
+        exercises: (isConditioningLogAfterProgram(template)
+          ? sanitizeProgramExercisesForLogAfter(template.exercises)
+          : template.exercises
+        ).map((exercise) => ({ ...exercise, id: uid("prog-ex") })),
         imageUrl: template.imageUrl,
         programCreatedBy: "trainer",
         programCreatedByName: trainerAuthor,
@@ -6822,13 +6846,8 @@ function pickFirstName(value: unknown): string {
                             id: editingProgramId ?? undefined,
                             title: programTitle,
                             goal: programGoal,
-                            notes: buildCustomerProgramNotesForSave(
-                              programNotes,
-                              editingProgramId
-                                ? selectedPrograms.find((program) => program.id === editingProgramId) ?? null
-                                : null,
-                            ),
-                            exercises: programExercisesDraft,
+                            notes: buildCustomerProgramNotesForSave(programNotes),
+                            exercises: programExercisesForConditioningSave(programExercisesDraft),
                             imageUrl: programSaveImageUrl(),
                           });
                         }}
@@ -7303,7 +7322,7 @@ function pickFirstName(value: unknown): string {
           cardioIntervalIntensity={cardioIntervalIntensity}
           cardioEquipmentId={cardioEquipmentId}
           conditioningDeliveryMode={conditioningDeliveryMode}
-          onConditioningDeliveryModeChange={setConditioningDeliveryMode}
+          onConditioningDeliveryModeChange={applyConditioningDeliveryMode}
           programsSubTabConditioningExtras={
             programsSubTab === "conditioning" ? (
               <div className="space-y-3">
@@ -7312,7 +7331,7 @@ function pickFirstName(value: unknown): string {
                   <div className="flex flex-wrap gap-2">
                     <button
                       type="button"
-                      onClick={() => setConditioningDeliveryMode("interval")}
+                      onClick={() => applyConditioningDeliveryMode("interval")}
                       className={`rounded-lg border px-3 py-2 text-xs font-semibold transition ${
                         conditioningDeliveryMode === "interval"
                           ? "border-teal-300 bg-teal-50 text-teal-900"
@@ -7324,7 +7343,7 @@ function pickFirstName(value: unknown): string {
                     </button>
                     <button
                       type="button"
-                      onClick={() => setConditioningDeliveryMode("logAfter")}
+                      onClick={() => applyConditioningDeliveryMode("logAfter")}
                       className={`rounded-lg border px-3 py-2 text-xs font-semibold transition ${
                         conditioningDeliveryMode === "logAfter"
                           ? "border-teal-300 bg-teal-50 text-teal-900"
