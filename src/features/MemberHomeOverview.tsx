@@ -1,6 +1,7 @@
 ﻿import type { CSSProperties, ReactNode } from "react";
 import {
   Bookmark,
+  CheckCircle2,
   ChevronRight,
   Clock3,
   Dumbbell,
@@ -231,14 +232,23 @@ export function MemberHomeOverview({
         </div>
         <div className="motus-home-dash-kpi-row">
           <div className="motus-home-dash-kpi">
+            <span className="motus-home-dash-kpi-icon motus-home-dash-kpi-icon--brand" aria-hidden>
+              <CheckCircle2 className="h-4 w-4" strokeWidth={2.5} />
+            </span>
             <span className="motus-home-dash-kpi-value">{weekSessionsLabel ?? "0/0"}</span>
             <span className="motus-home-dash-kpi-label">økter denne uka</span>
           </div>
           <div className="motus-home-dash-kpi">
+            <span className="motus-home-dash-kpi-icon motus-home-dash-kpi-icon--time" aria-hidden>
+              <Clock3 className="h-4 w-4" strokeWidth={2.35} />
+            </span>
             <span className="motus-home-dash-kpi-value">{weekMinutesLabel ?? "0 min"}</span>
             <span className="motus-home-dash-kpi-label">trening</span>
           </div>
           <div className="motus-home-dash-kpi">
+            <span className="motus-home-dash-kpi-icon motus-home-dash-kpi-icon--pink" aria-hidden>
+              <Flame className="h-4 w-4" strokeWidth={2.35} />
+            </span>
             <span className="motus-home-dash-kpi-value">{streakLabel}</span>
             <span className="motus-home-dash-kpi-label">på rad</span>
           </div>
