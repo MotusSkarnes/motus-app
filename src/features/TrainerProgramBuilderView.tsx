@@ -60,7 +60,13 @@ import { ExerciseBankBadges } from "./ExerciseBankListCard";
 import { ProgramCoverImageField } from "./ProgramCoverImageField";
 import { ProgramExerciseBlockActions } from "./ProgramExerciseBlockActions";
 import { TrainingProgramPreviewModal } from "./TrainingProgramPreviewModal";
-import { resolveExercisePrescriptionFields } from "../app/exercisePrescriptionFields";
+import {
+  defaultLogAfterPrescriptionFields,
+  resolveExercisePrescriptionFields,
+  resolveProgramExerciseLogFields,
+} from "../app/exercisePrescriptionFields";
+import type { ConditioningDeliveryMode } from "../app/conditioningProgramMode";
+import { ExercisePrescriptionFieldsEditor } from "./ExercisePrescriptionFieldsEditor";
 import { EmptyState, GradientButton, OutlineButton, PillButton, SelectBox, TextArea, TextInput } from "../app/ui";
 import { useToast } from "../app/toast";
 import type { Exercise, ProgramExercise, TrainingProgram } from "../app/types";
@@ -163,6 +169,8 @@ export type TrainerProgramBuilderViewProps = {
   editingNoPlanDayCover?: boolean;
   periodPlanTemplateSaveStatus?: string | null;
   programsSubTabConditioningExtras?: ReactNode;
+  conditioningDeliveryMode?: ConditioningDeliveryMode;
+  onConditioningDeliveryModeChange?: (mode: ConditioningDeliveryMode) => void;
   cardioIntervalIntensity?: CardioIntensityLevel;
   cardioEquipmentId?: CardioEquipmentId;
   assignTemplateSection: ReactNode;
@@ -220,6 +228,7 @@ export function TrainerProgramBuilderView({
   editingNoPlanDayCover = false,
   periodPlanTemplateSaveStatus = null,
   programsSubTabConditioningExtras,
+  conditioningDeliveryMode = "interval",
   cardioIntervalIntensity,
   cardioEquipmentId = "rowing",
   assignTemplateSection,
@@ -606,7 +615,11 @@ export function TrainerProgramBuilderView({
               const linkedExercise = exercisesById.get(item.exerciseId);
               const isExpanded = expandedDraftId === item.id;
               const isCardio = isCardioProgramRow(item, linkedExercise, programsSubTab);
-              const prescriptionFields = resolveExercisePrescriptionFields(linkedExercise);
+              const isLogAfterConditioning =
+                programsSubTab === "conditioning" && conditioningDeliveryMode === "logAfter";
+              const prescriptionFields = isLogAfterConditioning
+                ? resolveProgramExerciseLogFields(item, linkedExercise)
+                : resolveExercisePrescriptionFields(linkedExercise);
               const prescription = draftExercisePrescriptionLabel(item, index, programExercisesDraft, linkedExercise, programsSubTab);
 
               return (
@@ -682,15 +695,34 @@ export function TrainerProgramBuilderView({
                   {isExpanded ? (
                     <div className="motus-prog-builder-row-edit">
                       <ProgramExerciseBlockActions exercises={programExercisesDraft} index={index} onChange={onProgramExercisesDraftChange} />
+                      {isLogAfterConditioning ? (
+                        <ExercisePrescriptionFieldsEditor
+                          value={item.logFieldKeys?.length ? item.logFieldKeys : defaultLogAfterPrescriptionFields()}
+                          onChange={(next) =>
+                            onProgramExercisesDraftChange(
+                              programExercisesDraft.map((row) =>
+                                row.id === item.id ? { ...row, logFieldKeys: next } : row,
+                              ),
+                            )
+                          }
+                          customField1Label={linkedExercise?.customField1Label ?? ""}
+                          customField2Label={linkedExercise?.customField2Label ?? ""}
+                          onCustomField1LabelChange={() => {}}
+                          onCustomField2LabelChange={() => {}}
+                          compact
+                          showHint={false}
+                        />
+                      ) : null}
                       <ProgramExercisePrescriptionFields
                         fields={prescriptionFields}
                         item={item}
                         exercise={linkedExercise}
                         onUpdate={(field, value) => onUpdateDraftExercise(item.id, field, value)}
-                        setsLabel={isCardio ? cardioSetLabel() : "Sett"}
-                        setsPlaceholder={isCardio ? cardioSetPlaceholder() : "Sett"}
+                        showSets={!isLogAfterConditioning}
+                        setsLabel={isCardio && !isLogAfterConditioning ? cardioSetLabel() : "Sett"}
+                        setsPlaceholder={isCardio && !isLogAfterConditioning ? cardioSetPlaceholder() : "Sett"}
                         trailing={
-                          isCardio ? (
+                          isCardio && !isLogAfterConditioning ? (
                             <CardioExerciseExtraFields
                               item={item}
                               linkedExercise={linkedExercise}

@@ -8,9 +8,10 @@ import {
   resolveWorkoutLoadUnit,
   resolveWorkoutRepsUnit,
 } from "../app/workoutResultUnits";
+import { resolvePrescriptionFieldLabel } from "../app/exercisePrescriptionFields";
 import { resolveLastSessionEntryForRow, type LastSessionByExerciseMap } from "../app/lastSessionSetDisplay";
 import { GradientButton, TextInput } from "../app/ui";
-import type { Exercise, WorkoutModeState } from "../app/types";
+import type { Exercise, ExercisePrescriptionFieldKey, WorkoutModeState } from "../app/types";
 
 export type WorkoutSetRow = WorkoutModeState["results"][number];
 
@@ -20,8 +21,42 @@ type UpdateField =
   | "performedDurationMinutes"
   | "performedSpeed"
   | "performedIncline"
+  | "performedDistanceKm"
+  | "performedHeartRate"
+  | "performedCustom1"
+  | "performedCustom2"
   | "performedLoadUnit"
   | "completed";
+
+const LOG_AFTER_FIELD_MAP: Record<
+  ExercisePrescriptionFieldKey,
+  {
+    performed: UpdateField;
+    planned?: keyof WorkoutSetRow;
+    ariaLabel: string;
+    placeholder: string;
+  } | null
+> = {
+  minutes: { performed: "performedDurationMinutes", planned: "plannedDurationMinutes", ariaLabel: "Minutter", placeholder: "Min" },
+  seconds: null,
+  kg: null,
+  reps: null,
+  pause: null,
+  seatSettings: null,
+  distance: { performed: "performedDistanceKm", planned: "plannedDistanceKm", ariaLabel: "Distanse (km)", placeholder: "Km" },
+  heartRate: { performed: "performedHeartRate", planned: "plannedHeartRate", ariaLabel: "Puls", placeholder: "Puls" },
+  speed: { performed: "performedSpeed", planned: "plannedSpeed", ariaLabel: "Fart (km/t)", placeholder: "Km/t" },
+  incline: { performed: "performedIncline", planned: "plannedIncline", ariaLabel: "Stigning (%)", placeholder: "%" },
+  custom1: { performed: "performedCustom1", planned: "plannedCustom1", ariaLabel: "Egendefinert", placeholder: "Verdi" },
+  custom2: { performed: "performedCustom2", planned: "plannedCustom2", ariaLabel: "Egendefinert", placeholder: "Verdi" },
+};
+
+function logAfterFieldHasValue(row: WorkoutSetRow, key: ExercisePrescriptionFieldKey): boolean {
+  const mapping = LOG_AFTER_FIELD_MAP[key];
+  if (!mapping) return false;
+  const raw = row[mapping.performed];
+  return String(raw ?? "").trim().length > 0;
+}
 
 type LastSessionEntry = {
   weight?: string;
@@ -245,6 +280,9 @@ export function WorkoutCompactSetTable({
   }
 
   function rowIsLoggable(row: WorkoutSetRow): boolean {
+    if (row.logFieldKeys?.length) {
+      return row.logFieldKeys.some((key) => logAfterFieldHasValue(row, key));
+    }
     const { isCardio: cardio, isStretch: stretch, isTreadmill: treadmill, isStrengthSeconds } = resolveRowKind(row, exerciseByName);
     if (cardio) {
       const duration = (row.performedDurationMinutes ?? "").trim();
@@ -256,7 +294,55 @@ export function WorkoutCompactSetTable({
     return Number(row.performedWeight.trim()) > 0 && Number(row.performedReps.trim()) > 0;
   }
 
+  function renderLogAfterControls(row: WorkoutSetRow) {
+    const labelExercise = {
+      customField1Label: row.customField1Label,
+      customField2Label: row.customField2Label,
+    };
+    const keys = row.logFieldKeys ?? [];
+    return (
+      <div className="mt-2 space-y-1.5 rounded-lg border border-pink-200 bg-white p-2 sm:mt-3 sm:space-y-2 sm:rounded-xl sm:p-3">
+        <div className="grid gap-2 sm:grid-cols-2">
+          {keys.map((key) => {
+            const mapping = LOG_AFTER_FIELD_MAP[key];
+            if (!mapping) return null;
+            const label = resolvePrescriptionFieldLabel(key, labelExercise);
+            const planned = mapping.planned ? String(row[mapping.planned] ?? "").trim() : "";
+            return (
+              <TextInput
+                key={key}
+                value={String(row[mapping.performed] ?? "")}
+                onChange={(e) => handleInputChange(row, mapping.performed, e.target.value)}
+                placeholder={planned || mapping.placeholder}
+                className="h-10 text-center text-sm"
+                aria-label={key === "custom1" || key === "custom2" ? label : mapping.ariaLabel}
+              />
+            );
+          })}
+        </div>
+        <div className="flex items-center gap-2">
+          <GradientButton
+            type="button"
+            className="flex-1"
+            onClick={() => {
+              if (rowIsLoggable(row) && !row.completed) onUpdate(row.exerciseId, "completed", true);
+            }}
+          >
+            Lagre
+          </GradientButton>
+          <SetCheckToggle
+            completed={row.completed}
+            onToggle={() => onUpdate(row.exerciseId, "completed", !row.completed)}
+          />
+        </div>
+      </div>
+    );
+  }
+
   function renderActiveSetControls(row: WorkoutSetRow) {
+    if (row.logFieldKeys?.length) {
+      return renderLogAfterControls(row);
+    }
     const { isCardio: cardio, isStretch: stretch, isTreadmill: treadmill, isStrengthSeconds } = resolveRowKind(row, exerciseByName);
     const activeLastWeight = lastWeightFor(row);
     const activeLastDuration = lastDurationFor(row);

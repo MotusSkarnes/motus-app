@@ -45,6 +45,14 @@ export type WorkoutExerciseResult = {
   plannedDurationMinutes?: string;
   plannedSpeed?: string;
   plannedIncline?: string;
+  plannedDistanceKm?: string;
+  plannedHeartRate?: string;
+  plannedCustom1?: string;
+  plannedCustom2?: string;
+  /** Kondisjon logg-etter: hvilke felt som vises i øktmodus. */
+  logFieldKeys?: ExercisePrescriptionFieldKey[];
+  customField1Label?: string;
+  customField2Label?: string;
   performedWeight: string;
   /** Midlertidig enhetsvalg i live-økt for styrke (kg/sek). */
   performedLoadUnit?: "kg" | "sec";
@@ -52,6 +60,10 @@ export type WorkoutExerciseResult = {
   performedDurationMinutes?: string;
   performedSpeed?: string;
   performedIncline?: string;
+  performedDistanceKm?: string;
+  performedHeartRate?: string;
+  performedCustom1?: string;
+  performedCustom2?: string;
   completed: boolean;
   /** Valgfri kommentar til øvelsen (lagres på alle sett for samme programExerciseId). */
   exerciseNote?: string;
@@ -140,6 +152,10 @@ export type ExercisePrescriptionFieldKey =
   | "reps"
   | "pause"
   | "seatSettings"
+  | "distance"
+  | "heartRate"
+  | "speed"
+  | "incline"
   | "custom1"
   | "custom2";
 
@@ -177,10 +193,14 @@ export type ProgramExercise = {
   /** Hold/strekk: sekunder per sett (mobilitet, rehab, uttøyning). */
   holdSeconds?: string;
   durationMinutes?: string;
+  /** Distanse i km (kondisjon logg etter økt). */
+  distanceKm?: string;
   speed?: string;
   incline?: string;
   /** Målpuls som prosent av makspuls (f.eks. 85–90); fritekst. */
   targetHrPercent?: string;
+  /** Hvilke verdier medlem skal logge etter økt (kondisjon logg-etter-modus). */
+  logFieldKeys?: ExercisePrescriptionFieldKey[];
   /** PT-merket intensitet på kondisjonssteg (fart/stigning/puls fylles inn manuelt). */
   cardioIntensity?: "low" | "medium" | "high";
   /** Maskin: sete/høyde/backrest (fra øvelsesbank «seteinnstillinger»). */
@@ -219,6 +239,8 @@ export type TrainingProgram = {
   imageUrl?: string;
   /** Gruppetrening/aktivitetsmal (parsed fra notes, brukes i periodeplan). */
   activityTemplateKind?: "group" | "activity" | "no-plan";
+  /** Kondisjonsmal: intervalløkt med timer vs. logg etter økt (parsed fra notes). */
+  conditioningDeliveryMode?: "interval" | "logAfter";
   /** Not persisted; removed after økt fullføres eller avbrytes. */
   ephemeral?: boolean;
 };

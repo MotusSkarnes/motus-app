@@ -2471,6 +2471,10 @@ export function useAppState() {
       | "performedDurationMinutes"
       | "performedSpeed"
       | "performedIncline"
+      | "performedDistanceKm"
+      | "performedHeartRate"
+      | "performedCustom1"
+      | "performedCustom2"
       | "performedLoadUnit"
       | "completed",
     value: string | boolean,

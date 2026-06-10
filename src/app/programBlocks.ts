@@ -1,4 +1,6 @@
+import { isConditioningLogAfterProgram } from "./conditioningProgramMode";
 import { isHoldBasedExerciseCategory, programExerciseHoldSeconds } from "./exerciseCategories";
+import { resolveProgramExerciseLogFields } from "./exercisePrescriptionFields";
 import { mergeProgramAuthorFields } from "./programAuthor";
 import { pickProgramImageUrlFromDuplicateMerge } from "./programImage";
 import { CARDIO_COOLDOWN_STEP_NAME, isCardioCooldownStepName } from "./cardioEquipment";
@@ -248,7 +250,10 @@ function buildWorkoutRow(
   ex: ProgramExercise,
   meta: Exercise | undefined,
   setNumber: number,
-  options: { suggestedWeightByProgramExerciseId?: Record<string, string> },
+  options: {
+    suggestedWeightByProgramExerciseId?: Record<string, string>;
+    conditioningLogAfter?: boolean;
+  },
   blockMeta?: { blockId: string; blockType: ExerciseBlockType; blockRound: number },
 ): WorkoutExerciseResult {
   const isStretch = meta ? isHoldBasedExerciseCategory(meta.category) : false;
@@ -257,6 +262,9 @@ function buildWorkoutRow(
   const holdPlan = programExerciseHoldSeconds(ex, meta?.category);
   const initialWeight = isStretch ? suggestedWeight || holdPlan || "30" : suggestedWeight || ex.weight;
   const plannedRepsForRow = isStretch ? (ex.reps.trim() || "1") : ex.reps;
+
+  const logAfter = options.conditioningLogAfter && meta?.category === "Kondisjon";
+  const logFieldKeys = logAfter ? resolveProgramExerciseLogFields(ex, meta) : undefined;
 
   return {
     exerciseId: `${ex.id}-set-${setNumber}`,
@@ -273,12 +281,27 @@ function buildWorkoutRow(
     plannedDurationMinutes: ex.durationMinutes ?? "",
     plannedSpeed: ex.speed ?? "",
     plannedIncline: ex.incline ?? "",
-    performedWeight: initialWeight,
+    plannedDistanceKm: ex.distanceKm ?? "",
+    plannedHeartRate: ex.targetHrPercent ?? "",
+    plannedCustom1: ex.customField1 ?? "",
+    plannedCustom2: ex.customField2 ?? "",
+    ...(logFieldKeys
+      ? {
+          logFieldKeys,
+          customField1Label: meta?.customField1Label,
+          customField2Label: meta?.customField2Label,
+        }
+      : {}),
+    performedWeight: logAfter ? "" : initialWeight,
     performedLoadUnit: isStretch ? "sec" : (ex.weightUnit === "seconds" ? "sec" : "kg"),
-    performedReps: plannedRepsForRow,
-    performedDurationMinutes: ex.durationMinutes ?? "",
-    performedSpeed: ex.speed ?? "",
-    performedIncline: ex.incline ?? "",
+    performedReps: logAfter ? "" : plannedRepsForRow,
+    performedDurationMinutes: logAfter ? "" : (ex.durationMinutes ?? ""),
+    performedSpeed: logAfter ? "" : (ex.speed ?? ""),
+    performedIncline: logAfter ? "" : (ex.incline ?? ""),
+    performedDistanceKm: logAfter ? "" : (ex.distanceKm ?? ""),
+    performedHeartRate: logAfter ? "" : (ex.targetHrPercent ?? ""),
+    performedCustom1: logAfter ? "" : (ex.customField1 ?? ""),
+    performedCustom2: logAfter ? "" : (ex.customField2 ?? ""),
     completed: false,
     ...(blockMeta
       ? {
@@ -368,9 +391,15 @@ export function splitProgramExercisesIntoSegments(programExercises: ProgramExerc
 export function expandProgramExercisesToWorkoutResults(
   programExercises: ProgramExercise[],
   exerciseBank: Exercise[],
-  options?: { suggestedWeightByProgramExerciseId?: Record<string, string> },
+  options?: {
+    suggestedWeightByProgramExerciseId?: Record<string, string>;
+    program?: Pick<TrainingProgram, "notes" | "conditioningDeliveryMode">;
+  },
 ): WorkoutExerciseResult[] {
-  const opts = options ?? {};
+  const opts = {
+    suggestedWeightByProgramExerciseId: options?.suggestedWeightByProgramExerciseId,
+    conditioningLogAfter: options?.program ? isConditioningLogAfterProgram(options.program) : false,
+  };
   const normalizedProgramExercises = normalizeLegacyIntervalCooldownExerciseNames(programExercises);
   return splitProgramExercisesIntoSegments(normalizedProgramExercises).flatMap((segment) => {
     if (segment.length === 1 && !isBlockExercise(segment[0])) {

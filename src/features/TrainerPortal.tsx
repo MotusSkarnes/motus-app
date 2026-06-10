@@ -65,7 +65,14 @@ import {
   type CardioIntensityLevel,
 } from "../app/cardioIntervalIntensity";
 import {
+  buildConditioningProgramNotes,
+  parseConditioningDeliveryMode,
+  stripConditioningModeMarker,
+  type ConditioningDeliveryMode,
+} from "../app/conditioningProgramMode";
+import {
   buildProgramExerciseFromBank,
+  buildProgramExerciseFromBankForLogAfter,
   defaultPrescriptionFieldsForCategory,
   prescriptionFieldsForExerciseSave,
   resolveExercisePrescriptionFields,
@@ -812,6 +819,7 @@ function pickFirstName(value: unknown): string {
   const [programExercisesDraft, setProgramExercisesDraft] = useState<ProgramExercise[]>([]);
   const [cardioIntervalIntensity, setCardioIntervalIntensity] = useState<CardioIntensityLevel>("medium");
   const [cardioEquipmentId, setCardioEquipmentId] = useState<CardioEquipmentId>(defaultCardioEquipmentId);
+  const [conditioningDeliveryMode, setConditioningDeliveryMode] = useState<ConditioningDeliveryMode>("interval");
   const [templateProgramTitle, setTemplateProgramTitle] = useState(() => defaultTemplateProgramTitle("strength"));
   const [editingTemplateProgramId, setEditingTemplateProgramId] = useState<string | null>(null);
   const [expandedTemplateProgramId, setExpandedTemplateProgramId] = useState<string | null>(null);
@@ -2394,10 +2402,29 @@ function pickFirstName(value: unknown): string {
     }
   }
 
+  function buildConditioningNotesForSave(userNotes: string): string {
+    if (programsSubTab !== "conditioning") return userNotes.trim();
+    return buildConditioningProgramNotes(conditioningDeliveryMode, userNotes);
+  }
+
+  function buildCustomerProgramNotesForSave(userNotes: string, editingProgram?: TrainingProgram | null): string {
+    const hadMode = editingProgram ? parseConditioningDeliveryMode(editingProgram) : null;
+    if (conditioningDeliveryMode !== "interval" || hadMode) {
+      return buildConditioningProgramNotes(conditioningDeliveryMode, userNotes);
+    }
+    return userNotes.trim();
+  }
+
   function addExerciseToDraft(exercise: Exercise) {
     const mapped =
-      programsSubTab === "conditioning" ? mapExerciseToCardioEquipment(exercise, cardioEquipmentId) : exercise;
-    setProgramExercisesDraft((prev) => [...prev, buildProgramExerciseFromBank(mapped)]);
+      programsSubTab === "conditioning" && conditioningDeliveryMode === "interval"
+        ? mapExerciseToCardioEquipment(exercise, cardioEquipmentId)
+        : exercise;
+    const row =
+      programsSubTab === "conditioning" && conditioningDeliveryMode === "logAfter"
+        ? buildProgramExerciseFromBankForLogAfter(mapped)
+        : buildProgramExerciseFromBank(mapped);
+    setProgramExercisesDraft((prev) => [...prev, row]);
   }
 
   function moveDraftExercise(sourceId: string, targetId: string) {
@@ -2460,11 +2487,12 @@ function pickFirstName(value: unknown): string {
     setEditingProgramId(program.id);
     setProgramTitle(program.title);
     setProgramGoal(program.goal);
-    setProgramNotes(program.notes);
+    setProgramNotes(stripConditioningModeMarker(program.notes));
     setProgramFormImageUrl(program.imageUrl ?? "");
     setProgramCoverCleared(false);
     const draft = program.exercises.map((exercise) => ({ ...exercise }));
     setProgramExercisesDraft(draft);
+    setConditioningDeliveryMode(parseConditioningDeliveryMode(program) ?? "interval");
     setCardioIntervalIntensity(inferCardioIntensityFromDraft(draft));
     setCustomerProgramBuilderFocus("training");
     setCustomerSubTab("programs");
@@ -2482,6 +2510,7 @@ function pickFirstName(value: unknown): string {
     setProgramExercisesDraft([]);
     setCardioIntervalIntensity("medium");
     setCardioEquipmentId(defaultCardioEquipmentId());
+    setConditioningDeliveryMode("interval");
   }
 
   function applyCardioEquipmentToDraft(equipmentId: CardioEquipmentId) {
@@ -2794,7 +2823,7 @@ function pickFirstName(value: unknown): string {
       id: editingTemplateProgramId ?? undefined,
       title,
       goal: "",
-      notes: "",
+      notes: buildConditioningNotesForSave(programNotes),
       memberId: "__template__",
       exercises: editingTemplateProgramId
         ? programExercisesDraft.map((exercise) => ({ ...exercise }))
@@ -2829,9 +2858,14 @@ function pickFirstName(value: unknown): string {
     setExpandedTemplateProgramId(program.id);
     setTemplateProgramTitle(program.title);
     setProgramFormImageUrl(program.imageUrl ?? "");
-    setProgramNotes(templateKind ? stripActivityTemplateMarker(program.notes) : program.notes);
+    setProgramNotes(
+      templateKind
+        ? stripActivityTemplateMarker(program.notes)
+        : stripConditioningModeMarker(program.notes),
+    );
     setProgramExercisesDraft(templateKind ? [] : draft);
     if (!templateKind && subTab === "conditioning") {
+      setConditioningDeliveryMode(parseConditioningDeliveryMode(program) ?? "interval");
       setCardioIntervalIntensity(inferCardioIntensityFromDraft(draft));
       const first = draft[0];
       const linked = first ? exercisesById.get(first.exerciseId) : undefined;
@@ -2850,6 +2884,7 @@ function pickFirstName(value: unknown): string {
     setProgramExercisesDraft([]);
     setCardioIntervalIntensity("medium");
     setCardioEquipmentId(defaultCardioEquipmentId());
+    setConditioningDeliveryMode("interval");
     setTemplateAssignStatus(null);
   }
 
@@ -6786,7 +6821,12 @@ function pickFirstName(value: unknown): string {
                             id: editingProgramId ?? undefined,
                             title: programTitle,
                             goal: programGoal,
-                            notes: programNotes,
+                            notes: buildCustomerProgramNotesForSave(
+                              programNotes,
+                              editingProgramId
+                                ? selectedPrograms.find((program) => program.id === editingProgramId) ?? null
+                                : null,
+                            ),
                             exercises: programExercisesDraft,
                             imageUrl: programSaveImageUrl(),
                           });
@@ -7261,39 +7301,87 @@ function pickFirstName(value: unknown): string {
           }
           cardioIntervalIntensity={cardioIntervalIntensity}
           cardioEquipmentId={cardioEquipmentId}
+          conditioningDeliveryMode={conditioningDeliveryMode}
+          onConditioningDeliveryModeChange={setConditioningDeliveryMode}
           programsSubTabConditioningExtras={
             programsSubTab === "conditioning" ? (
+              <div className="space-y-3">
                 <div className="rounded-xl border bg-white p-3 space-y-3" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
-                  <div className="text-sm font-semibold text-slate-700">Steg for intervalløkt</div>
-                  <p className="text-xs text-slate-500 leading-relaxed">
-                  Velg utstyr først, start med oppvarming, legg inn drag med arbeidstid/pause, og avslutt med nedtrapping.
-                  </p>
-                <CardioEquipmentSelect value={cardioEquipmentId} onChange={(equipmentId) => applyCardioEquipmentToDraft(equipmentId)} />
-                <CardioIntensitySelect
-                  value={cardioIntervalIntensity}
-                  onChange={(level) => applyCardioIntensityLevelToDraft(level)}
-                  hint="Merker alle steg med valgt intensitet. Fart, stigning og puls fyller du inn per steg — tilpasset kundens form."
-                />
+                  <div className="text-sm font-semibold text-slate-700">Type kondisjonsprogram</div>
                   <div className="flex flex-wrap gap-2">
-                    <OutlineButton type="button" onClick={startNewCardioTemplateDraft}>
-                      Start med oppvarming
-                    </OutlineButton>
-                    <OutlineButton
+                    <button
                       type="button"
-                      onClick={appendCardioDragRow}
-                      disabled={programExercisesDraft.length === 0}
+                      onClick={() => setConditioningDeliveryMode("interval")}
+                      className={`rounded-lg border px-3 py-2 text-xs font-semibold transition ${
+                        conditioningDeliveryMode === "interval"
+                          ? "border-teal-300 bg-teal-50 text-teal-900"
+                          : "border-slate-200 bg-white text-slate-600 hover:border-slate-300"
+                      }`}
+                      aria-pressed={conditioningDeliveryMode === "interval"}
                     >
-                      Legg til drag
-                    </OutlineButton>
-                    <OutlineButton
+                      Intervalløkt med nedtelling
+                    </button>
+                    <button
                       type="button"
-                      onClick={appendCardioCooldownRow}
-                      disabled={programExercisesDraft.length === 0 || hasCardioCooldownRow(programExercisesDraft)}
+                      onClick={() => setConditioningDeliveryMode("logAfter")}
+                      className={`rounded-lg border px-3 py-2 text-xs font-semibold transition ${
+                        conditioningDeliveryMode === "logAfter"
+                          ? "border-teal-300 bg-teal-50 text-teal-900"
+                          : "border-slate-200 bg-white text-slate-600 hover:border-slate-300"
+                      }`}
+                      aria-pressed={conditioningDeliveryMode === "logAfter"}
                     >
-                      Legg til nedtrapping
-                    </OutlineButton>
+                      Logg etter økt
+                    </button>
                   </div>
+                  <p className="text-xs text-slate-500 leading-relaxed">
+                    {conditioningDeliveryMode === "interval"
+                      ? "Kunden får nedtelling og stegvis intervalløkt (oppvarming, drag, nedtrapping)."
+                      : "Kunden logger verdier etter trening uten timer — du velger hva som skal fylles inn per øvelse."}
+                  </p>
                 </div>
+                {conditioningDeliveryMode === "interval" ? (
+                  <div className="rounded-xl border bg-white p-3 space-y-3" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+                    <div className="text-sm font-semibold text-slate-700">Steg for intervalløkt</div>
+                    <p className="text-xs text-slate-500 leading-relaxed">
+                      Velg utstyr først, start med oppvarming, legg inn drag med arbeidstid/pause, og avslutt med nedtrapping.
+                    </p>
+                    <CardioEquipmentSelect value={cardioEquipmentId} onChange={(equipmentId) => applyCardioEquipmentToDraft(equipmentId)} />
+                    <CardioIntensitySelect
+                      value={cardioIntervalIntensity}
+                      onChange={(level) => applyCardioIntensityLevelToDraft(level)}
+                      hint="Merker alle steg med valgt intensitet. Fart, stigning og puls fyller du inn per steg — tilpasset kundens form."
+                    />
+                    <div className="flex flex-wrap gap-2">
+                      <OutlineButton type="button" onClick={startNewCardioTemplateDraft}>
+                        Start med oppvarming
+                      </OutlineButton>
+                      <OutlineButton
+                        type="button"
+                        onClick={appendCardioDragRow}
+                        disabled={programExercisesDraft.length === 0}
+                      >
+                        Legg til drag
+                      </OutlineButton>
+                      <OutlineButton
+                        type="button"
+                        onClick={appendCardioCooldownRow}
+                        disabled={programExercisesDraft.length === 0 || hasCardioCooldownRow(programExercisesDraft)}
+                      >
+                        Legg til nedtrapping
+                      </OutlineButton>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="rounded-xl border bg-white p-3 space-y-2" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+                    <div className="text-sm font-semibold text-slate-700">Loggfelt etter økt</div>
+                    <p className="text-xs text-slate-500 leading-relaxed">
+                      Legg til øvelser fra listen til høyre. Utvid hver øvelse for å velge hvilke verdier kunden skal logge (distanse, tid, puls m.m.).
+                      Fyll inn mål eller eksempelverdier — kunden fører inn det som ble utført.
+                    </p>
+                  </div>
+                )}
+              </div>
             ) : null
           }
           assignTemplateSection={

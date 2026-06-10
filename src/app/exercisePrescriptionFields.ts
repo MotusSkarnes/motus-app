@@ -19,6 +19,10 @@ export const EXERCISE_PRESCRIPTION_FIELD_OPTIONS: ExercisePrescriptionFieldDef[]
   { key: "reps", label: "Reps", shortLabel: "reps", programField: "reps", placeholder: "Reps" },
   { key: "pause", label: "Pause", shortLabel: "pause", programField: "restSeconds", placeholder: "Sek" },
   { key: "seatSettings", label: "Seteinnstillinger", shortLabel: "sete", programField: "seatSetting", placeholder: "F.eks. høyde 4" },
+  { key: "distance", label: "Distanse (km)", shortLabel: "km", programField: "distanceKm", placeholder: "Km" },
+  { key: "heartRate", label: "Puls", shortLabel: "puls", programField: "targetHrPercent", placeholder: "F.eks. 145" },
+  { key: "speed", label: "Fart (km/t)", shortLabel: "km/t", programField: "speed", placeholder: "Km/t" },
+  { key: "incline", label: "Stigning (%)", shortLabel: "stign", programField: "incline", placeholder: "%" },
   { key: "custom1", label: "Egendefinert 1", shortLabel: "e1", programField: "customField1", placeholder: "Verdi" },
   { key: "custom2", label: "Egendefinert 2", shortLabel: "e2", programField: "customField2", placeholder: "Verdi" },
 ];
@@ -61,6 +65,31 @@ export function defaultPrescriptionFieldsForCategory(category: Exercise["categor
   if (category === "Kondisjon") return ["minutes", "seconds", "pause"];
   if (isHoldBasedExerciseCategory(category)) return ["seconds", "pause"];
   return ["reps", "kg", "pause"];
+}
+
+/** Standard loggfelt når PT lager kondisjonsprogram uten intervalltimer. */
+export function defaultLogAfterPrescriptionFields(): ExercisePrescriptionFieldKey[] {
+  return ["minutes", "distance", "heartRate", "custom1"];
+}
+
+export function resolveProgramExerciseLogFields(
+  programExercise: Pick<ProgramExercise, "logFieldKeys">,
+  linkedExercise?: Pick<Exercise, "category" | "prescriptionFields">,
+): ExercisePrescriptionFieldKey[] {
+  if (programExercise.logFieldKeys?.length) return [...programExercise.logFieldKeys];
+  if (linkedExercise?.category === "Kondisjon") return defaultLogAfterPrescriptionFields();
+  return resolveExercisePrescriptionFields(linkedExercise);
+}
+
+export function buildProgramExerciseFromBankForLogAfter(exercise: Exercise): ProgramExercise {
+  const row = buildProgramExerciseFromBank(exercise);
+  return {
+    ...row,
+    sets: "1",
+    logFieldKeys: defaultLogAfterPrescriptionFields(),
+    customField1: "",
+    customField2: "",
+  };
 }
 
 export function resolveExercisePrescriptionFields(exercise?: Pick<Exercise, "category" | "prescriptionFields">): ExercisePrescriptionFieldKey[] {
@@ -113,6 +142,7 @@ export function buildProgramExerciseFromBank(exercise: Exercise): ProgramExercis
     weight: "",
     holdSeconds: "",
     durationMinutes: "",
+    distanceKm: "",
     seatSetting: "",
     customField1: "",
     customField2: "",

@@ -1,4 +1,4 @@
-import { enrichProgramWithActivityTemplateKind } from "../app/activityTemplate";
+import { enrichTrainingProgram } from "../app/programEnrichment";
 import {
   activityWorkoutLogTitle,
   groupWorkoutLogTitle,
@@ -92,6 +92,10 @@ export type UpdateWorkoutResultInput = {
     | "performedDurationMinutes"
     | "performedSpeed"
     | "performedIncline"
+    | "performedDistanceKm"
+    | "performedHeartRate"
+    | "performedCustom1"
+    | "performedCustom2"
     | "performedLoadUnit"
     | "completed";
   value: string | boolean;
@@ -411,7 +415,7 @@ export function saveProgramInState(
       ...state,
       programs: state.programs.map((program) =>
         program.id === input.id
-          ? enrichProgramWithActivityTemplateKind({
+          ? enrichTrainingProgram({
               ...program,
               memberId: input.memberId,
               title: input.title.trim(),
@@ -433,7 +437,7 @@ export function saveProgramInState(
     }
   }
 
-  const newProgram = enrichProgramWithActivityTemplateKind({
+  const newProgram = enrichTrainingProgram({
     id: input.id?.trim() || uid("program"),
     memberId: input.memberId,
     title: input.title.trim(),
@@ -722,6 +726,7 @@ export function startWorkoutModeInState(state: AppState, programId: string, opti
 
   const expandedResults = expandProgramExercisesToWorkoutResults(program.exercises, state.exercises, {
     suggestedWeightByProgramExerciseId: options?.suggestedWeightByProgramExerciseId,
+    program,
   });
 
   const memberId = options?.memberId?.trim() || program.memberId;
@@ -751,6 +756,10 @@ export function updateWorkoutResultInState(
     | "performedDurationMinutes"
     | "performedSpeed"
     | "performedIncline"
+    | "performedDistanceKm"
+    | "performedHeartRate"
+    | "performedCustom1"
+    | "performedCustom2"
     | "performedLoadUnit"
     | "completed",
   value: string | boolean

@@ -14,12 +14,12 @@ import type {
   WorkoutLog,
 } from "../app/types";
 import {
-  enrichProgramWithActivityTemplateKind,
   findNoPlanDayCoverTemplate,
   NO_PLAN_DAY_TEMPLATE_TITLE,
   parseActivityTemplateKind,
   type ActivityTemplateKind,
 } from "../app/activityTemplate";
+import { enrichTrainingProgram } from "../app/programEnrichment";
 import { formatDateDdMmYyyy, formatDateTimeDdMmYyyy, normalizeStoredLogDate } from "../app/dateFormat";
 import { normalizeMemberGender } from "../app/memberGender";
 import { dedupePeriodPlansById } from "../app/periodPlanMerge";
@@ -3064,7 +3064,7 @@ function trainingProgramFromHydrateRow(program: Record<string, unknown>): Traini
   const memberLibraryStatus: MemberProgramLibraryStatus | undefined =
     rawLibrary === "hidden" || rawLibrary === "archived" ? "archived" : undefined;
   const imageUrl = String(program.image_url ?? "").trim();
-  return enrichProgramWithActivityTemplateKind({
+  return enrichTrainingProgram({
     id: String(program.id ?? ""),
     memberId: String(program.member_id ?? ""),
     title: String(program.title ?? ""),

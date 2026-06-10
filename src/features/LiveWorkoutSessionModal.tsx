@@ -52,6 +52,10 @@ export type LiveWorkoutSessionModalProps = {
       | "performedDurationMinutes"
       | "performedSpeed"
       | "performedIncline"
+      | "performedDistanceKm"
+      | "performedHeartRate"
+      | "performedCustom1"
+      | "performedCustom2"
       | "performedLoadUnit"
       | "completed",
     value: string | boolean,

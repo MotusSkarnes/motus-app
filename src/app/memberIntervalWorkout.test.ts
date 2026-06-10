@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { buildConditioningProgramNotes } from "./conditioningProgramMode";
 import { buildExerciseCategoryById } from "./trainingProgramKind";
 import { isMemberIntervalWorkoutProgram } from "./memberIntervalWorkout";
 import type { Exercise, TrainingProgram } from "./types";
@@ -55,6 +56,20 @@ describe("isMemberIntervalWorkoutProgram", () => {
       row("Drag 1", { holdSeconds: "240", sets: "4" }),
       row("Nedjogg", { holdSeconds: "300" }),
     ]);
+    expect(isMemberIntervalWorkoutProgram(program, categories, exercises)).toBe(true);
+  });
+
+  it("does not use interval timer for explicit log-after conditioning programs", () => {
+    const program = program4x4([
+      row("Løping", { durationMinutes: "45" }),
+    ]);
+    program.notes = buildConditioningProgramNotes("logAfter", "");
+    expect(isMemberIntervalWorkoutProgram(program, categories, exercises)).toBe(false);
+  });
+
+  it("uses interval timer for explicit interval conditioning programs", () => {
+    const program = program4x4([row("Løping")]);
+    program.notes = buildConditioningProgramNotes("interval", "");
     expect(isMemberIntervalWorkoutProgram(program, categories, exercises)).toBe(true);
   });
 

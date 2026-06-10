@@ -4,6 +4,7 @@ import {
   resolveExercisePrescriptionFields,
   resolvePrescriptionFieldLabel,
 } from "./exercisePrescriptionFields";
+import type { ExercisePrescriptionFieldKey } from "./types";
 import { CARDIO_COOLDOWN_STEP_NAME } from "./cardioEquipment";
 import {
   EXERCISE_BLOCK_LABELS,
@@ -316,9 +317,37 @@ export function formatWorkoutResultExercisePlanLabel(
   });
 }
 
+function formatLogAfterPerformedPart(result: WorkoutExerciseResult, key: ExercisePrescriptionFieldKey): string {
+  const labelExercise = {
+    customField1Label: result.customField1Label,
+    customField2Label: result.customField2Label,
+  };
+  const label = resolvePrescriptionFieldLabel(key, labelExercise);
+  const valueByKey: Partial<Record<ExercisePrescriptionFieldKey, string | undefined>> = {
+    minutes: result.performedDurationMinutes,
+    distance: result.performedDistanceKm,
+    heartRate: result.performedHeartRate,
+    speed: result.performedSpeed,
+    incline: result.performedIncline,
+    custom1: result.performedCustom1,
+    custom2: result.performedCustom2,
+  };
+  const value = String(valueByKey[key] ?? "").trim();
+  if (!value) return "";
+  if (key === "minutes") return `${value} min`;
+  if (key === "distance") return `${value} km`;
+  if (key === "speed") return `${value} km/t`;
+  if (key === "incline") return `${value}%`;
+  return `${label} ${value}`;
+}
+
 /** Utført volum for ett logget sett. */
 export function formatWorkoutResultPerformedLabel(result: WorkoutExerciseResult, exerciseLibrary: Exercise[] = []): string {
   const linked = findLinkedExerciseForResult(result, exerciseLibrary);
+  if (result.logFieldKeys?.length) {
+    const parts = result.logFieldKeys.map((key) => formatLogAfterPerformedPart(result, key)).filter(Boolean);
+    return parts.length ? parts.join(" · ") : "—";
+  }
   if (resultIsCardio(result, linked)) {
     const parts: string[] = [];
     const minutes = String(result.performedDurationMinutes ?? "").trim();
