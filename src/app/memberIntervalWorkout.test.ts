@@ -83,6 +83,17 @@ describe("isMemberIntervalWorkoutProgram", () => {
     expect(isMemberIntervalWorkoutProgram(program, categories, exercises)).toBe(true);
   });
 
+  it("uses interval timer for explicit interval programs even when stale log-after fields remain", () => {
+    const program = program4x4([
+      {
+        ...row("Løping", { durationMinutes: "30", holdSeconds: "30" }),
+        logFieldKeys: ["minutes", "distance"],
+      },
+    ]);
+    program.notes = buildConditioningProgramNotes("interval", "");
+    expect(isMemberIntervalWorkoutProgram(program, categories, exercises)).toBe(true);
+  });
+
   it("does not treat conditioning title alone as interval without timed steps", () => {
     const program: TrainingProgram = {
       id: "p-title",

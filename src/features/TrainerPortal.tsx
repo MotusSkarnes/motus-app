@@ -2406,13 +2406,9 @@ function pickFirstName(value: unknown): string {
   }
 
   function buildConditioningNotesForSave(userNotes: string): string {
-    if (conditioningDeliveryMode === "logAfter") {
-      return buildConditioningProgramNotes("logAfter", userNotes);
-    }
-    if (programsSubTab === "conditioning") {
-      return buildConditioningProgramNotes(conditioningDeliveryMode, userNotes);
-    }
-    return userNotes.trim();
+    return programsSubTab === "conditioning"
+      ? buildConditioningProgramNotes(conditioningDeliveryMode, userNotes)
+      : userNotes.trim();
   }
 
   function applyConditioningDeliveryMode(mode: ConditioningDeliveryMode) {
@@ -2422,12 +2418,26 @@ function pickFirstName(value: unknown): string {
     }
   }
 
-  function programExercisesForConditioningSave(draft: ProgramExercise[]): ProgramExercise[] {
-    if (conditioningDeliveryMode !== "logAfter") return draft;
+  function customerDraftIsConditioningProgram(draft: ProgramExercise[] = programExercisesDraft): boolean {
+    return (
+      getTrainingProgramSubTab(
+        { title: programTitle, notes: programNotes, exercises: draft },
+        exerciseCategoryById,
+        exercises,
+      ) === "conditioning"
+    );
+  }
+
+  function programExercisesForConditioningSave(
+    draft: ProgramExercise[],
+    options: { conditioningDraft?: boolean } = {},
+  ): ProgramExercise[] {
+    if (!options.conditioningDraft || conditioningDeliveryMode !== "logAfter") return draft;
     return sanitizeProgramExercisesForLogAfter(draft);
   }
 
   function buildCustomerProgramNotesForSave(userNotes: string): string {
+    if (!customerDraftIsConditioningProgram()) return userNotes.trim();
     return serializeConditioningProgramNotes({
       notes: userNotes,
       conditioningDeliveryMode,
@@ -2436,12 +2446,14 @@ function pickFirstName(value: unknown): string {
   }
 
   function addExerciseToDraft(exercise: Exercise) {
+    const conditioningDraft =
+      trainerTab === "programs" ? programsSubTab === "conditioning" : customerDraftIsConditioningProgram();
     const mapped =
-      programsSubTab === "conditioning" && conditioningDeliveryMode === "interval"
+      conditioningDraft && conditioningDeliveryMode === "interval"
         ? mapExerciseToCardioEquipment(exercise, cardioEquipmentId)
         : exercise;
     const row =
-      programsSubTab === "conditioning" && conditioningDeliveryMode === "logAfter"
+      conditioningDraft && conditioningDeliveryMode === "logAfter"
         ? buildProgramExerciseFromBankForLogAfter(mapped)
         : buildProgramExerciseFromBank(mapped);
     setProgramExercisesDraft((prev) => [...prev, row]);
@@ -2849,6 +2861,7 @@ function pickFirstName(value: unknown): string {
         editingTemplateProgramId
           ? programExercisesDraft.map((exercise) => ({ ...exercise }))
           : programExercisesDraft.map((exercise) => ({ ...exercise, id: uid("template-ex") })),
+        { conditioningDraft: programsSubTab === "conditioning" },
       ),
       imageUrl: programSaveImageUrl(),
     });
@@ -6847,7 +6860,9 @@ function pickFirstName(value: unknown): string {
                             title: programTitle,
                             goal: programGoal,
                             notes: buildCustomerProgramNotesForSave(programNotes),
-                            exercises: programExercisesForConditioningSave(programExercisesDraft),
+                            exercises: programExercisesForConditioningSave(programExercisesDraft, {
+                              conditioningDraft: customerDraftIsConditioningProgram(),
+                            }),
                             imageUrl: programSaveImageUrl(),
                           });
                         }}

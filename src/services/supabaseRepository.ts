@@ -2002,7 +2002,7 @@ export async function deleteProgramsByDisplayKeyRemote(
   const contextMemberIds = Array.isArray(context.memberIds) ? context.memberIds : [];
   const deletionKeys = Array.from(
     new Set(
-      [memberScope, ...contextMemberIds, context.targetEmail ?? ""]
+      (memberScope ? [memberScope] : [...contextMemberIds, context.targetEmail ?? ""])
         .map((value) => String(value ?? "").trim())
         .filter(Boolean),
     ),
