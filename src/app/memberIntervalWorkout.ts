@@ -27,11 +27,11 @@ export function isMemberIntervalWorkoutProgram(
   exerciseCategoryById: Map<string, Exercise["category"]>,
   exerciseBank: Exercise[] = [],
 ): boolean {
-  if (isConditioningLogAfterProgram(program) || programHasConfiguredLogAfterFields(program)) {
-    return false;
-  }
   if (isConditioningIntervalProgram(program)) {
     return true;
+  }
+  if (isConditioningLogAfterProgram(program) || programHasConfiguredLogAfterFields(program)) {
+    return false;
   }
   const subTab = getTrainingProgramSubTab(program, exerciseCategoryById, exerciseBank);
   if (subTab === "conditioning") {

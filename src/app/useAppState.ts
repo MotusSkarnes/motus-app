@@ -523,8 +523,13 @@ function cleanupRemoteProgramsDeletedLocally(
   for (const program of deletedPrograms) {
     const programId = program.id.trim();
     if (!programId || remoteTombstoneCleanupInFlight.has(programId)) continue;
+    const memberId = program.memberId.trim();
     remoteTombstoneCleanupInFlight.add(programId);
-    void deleteProgramRemote(programId, { ...context, programSnapshot: program }).finally(() => {
+    void deleteProgramRemote(programId, {
+      ...context,
+      memberIds: memberId ? [memberId] : undefined,
+      programSnapshot: program,
+    }).finally(() => {
       remoteTombstoneCleanupInFlight.delete(programId);
     });
   }
@@ -540,7 +545,7 @@ function cleanupRemoteProgramsDeletedLocally(
     remoteTombstoneCleanupInFlight.add(cleanupKey);
     void deleteProgramRemote(entry.programId, {
       ...context,
-      memberIds: context.memberIds?.length ? context.memberIds : [entry.scope],
+      memberIds: [entry.scope],
     }).finally(() => {
       remoteTombstoneCleanupInFlight.delete(cleanupKey);
     });
@@ -553,7 +558,7 @@ function cleanupRemoteProgramsDeletedLocally(
     void deleteProgramsByDisplayKeyRemote(entry.fingerprint, {
       ...context,
       memberScope: entry.scope,
-      memberIds: context.memberIds?.length ? context.memberIds : [entry.scope],
+      memberIds: [entry.scope],
     }).finally(() => {
       remoteTombstoneCleanupInFlight.delete(cleanupKey);
     });
