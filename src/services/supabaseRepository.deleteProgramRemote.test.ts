@@ -44,6 +44,26 @@ describe("deleteProgramRemote", () => {
       if (table === "workout_logs") {
         throw new Error("program deletion must not cascade workout_logs by program_title");
       }
+      if (table === "members") {
+        return {
+          select: (columns: string) => ({
+            eq: (column: string, value: string) => {
+              if (columns !== "email" || column !== "id" || value !== "member-1") {
+                throw new Error(`Unexpected member lookup ${columns} ${column}=${value}`);
+              }
+              return {
+                maybeSingle: async () => ({ data: { email: "member@example.com" }, error: null }),
+              };
+            },
+            ilike: async (column: string, value: string) => {
+              if (columns !== "id" || column !== "email" || value !== "member@example.com") {
+                throw new Error(`Unexpected member email lookup ${columns} ${column}=${value}`);
+              }
+              return { data: [{ id: "member-1" }], error: null };
+            },
+          }),
+        };
+      }
       if (table !== "training_programs") {
         throw new Error(`Unexpected table ${table}`);
       }
