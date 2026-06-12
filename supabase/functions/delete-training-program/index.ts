@@ -136,22 +136,6 @@ async function resolveRelatedMemberIds(
   return Array.from(ids);
 }
 
-async function deleteLogsForProgram(
-  adminClient: ReturnType<typeof createClient>,
-  memberId: string,
-  title: string,
-) {
-  const normalizedMemberId = normalizeId(memberId);
-  const normalizedTitle = String(title ?? "").trim();
-  if (!normalizedMemberId || !normalizedTitle) return;
-  const { error } = await adminClient
-    .from("workout_logs")
-    .delete()
-    .eq("member_id", normalizedMemberId)
-    .eq("program_title", normalizedTitle);
-  if (error) console.warn("delete-training-program: workout log cleanup failed:", error.message);
-}
-
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
@@ -273,7 +257,8 @@ Deno.serve(async (req) => {
   const { error: deleteError } = await adminClient.from("training_programs").delete().in("id", idsToDelete);
   if (deleteError) return jsonResponse(500, { error: deleteError.message });
 
-  await Promise.all(relatedMemberIds.map((id) => deleteLogsForProgram(adminClient, id, title)));
+  // Workout logs only store program_title, so a title-based cascade can erase
+  // history for a different program with the same title.
 
   return jsonResponse(200, {
     ok: true,
