@@ -261,7 +261,9 @@ Deno.serve(async (req) => {
               relatedMemberIdSet.has(candidateMemberId)
             );
           }
-          if (ownerUserId) return normalizeId(candidate.owner_user_id) === ownerUserId;
+          if (ownerUserId) {
+            return normalizeId(candidate.owner_user_id) === ownerUserId && relatedMemberIdSet.has(candidateMemberId);
+          }
           return !relatedMemberIds.length || relatedMemberIdSet.has(candidateMemberId);
         })
         .map((row) => normalizeId((row as ProgramRow).id))

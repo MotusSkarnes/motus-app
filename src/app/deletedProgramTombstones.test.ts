@@ -1,10 +1,16 @@
 import { describe, expect, it } from "vitest";
-import { filterDeletedPrograms, registerDeletedProgram } from "./deletedProgramTombstones";
+import {
+  clearDeletedProgramTombstone,
+  clearDeletedProgramTombstoneForProgram,
+  filterDeletedPrograms,
+  registerDeletedProgram,
+} from "./deletedProgramTombstones";
+import { buildTrainingProgramDisplayKey } from "./programBlocks";
 import type { TrainingProgram } from "./types";
 
 function program(overrides: Partial<TrainingProgram> = {}): TrainingProgram {
   return {
-    id: `program-${Math.random().toString(36).slice(2)}`,
+    id: "program-a",
     memberId: "member-a",
     title: "Egen styrke",
     goal: "Bygge styrke",
@@ -39,5 +45,43 @@ describe("deleted program tombstones", () => {
     registerDeletedProgram(deleted);
 
     expect(filterDeletedPrograms([deleted, otherMemberCopy])).toEqual([otherMemberCopy]);
+
+    clearDeletedProgramTombstoneForProgram(deleted);
+  });
+
+  it("clears a confirmed tombstone so a newly recreated matching program is not hidden", () => {
+    const deleted = program({ id: "deleted-program", memberId: "member-recreate" });
+    const recreated = program({
+      ...deleted,
+      id: "recreated-program",
+      memberId: "member-recreate",
+    });
+
+    registerDeletedProgram(deleted);
+
+    expect(filterDeletedPrograms([recreated])).toEqual([]);
+
+    clearDeletedProgramTombstoneForProgram(deleted);
+
+    expect(filterDeletedPrograms([recreated])).toEqual([recreated]);
+  });
+
+  it("clears fingerprint tombstones only for the confirmed member scope", () => {
+    const memberA = program({ id: "deleted-a", memberId: "member-a" });
+    const memberB = program({ ...memberA, id: "deleted-b", memberId: "member-b" });
+    const memberARecreated = program({ ...memberA, id: "recreated-a" });
+    const memberBRecreated = program({ ...memberB, id: "recreated-b" });
+
+    registerDeletedProgram(memberA);
+    registerDeletedProgram(memberB);
+    clearDeletedProgramTombstone({
+      scope: "member-a",
+      fingerprint: buildTrainingProgramDisplayKey(memberA),
+    });
+
+    expect(filterDeletedPrograms([memberARecreated, memberBRecreated])).toEqual([memberARecreated]);
+
+    clearDeletedProgramTombstoneForProgram(memberA);
+    clearDeletedProgramTombstoneForProgram(memberB);
   });
 });
