@@ -1977,10 +1977,11 @@ async function collectProgramIdsToDeleteByDisplayKey(input: {
             return false;
           }
           if (trainingProgramDisplayKeyFromRow(row) !== targetKey) return false;
-          if (targetOwnerUserId) {
-            return String(row.owner_user_id ?? "").trim() === targetOwnerUserId;
-          }
           const candidateMemberId = String(row.member_id ?? "").trim();
+          if (targetOwnerUserId) {
+            if (String(row.owner_user_id ?? "").trim() !== targetOwnerUserId) return false;
+            return !deletionKeys.length || deletionKeys.includes(candidateMemberId);
+          }
           return !deletionKeys.length || deletionKeys.includes(candidateMemberId);
         })
         .map((row) => String(row.id ?? "").trim())
@@ -2018,7 +2019,7 @@ export async function deleteProgramsByDisplayKeyRemote(
     targetOwnerUserId: "",
   });
   const ids = programIdsToDelete.filter(Boolean);
-  if (!ids.length) return false;
+  if (!ids.length) return true;
   const { error } = await supabaseClient.from("training_programs").delete().in("id", ids);
   if (error) {
     console.warn("Supabase display-key program delete failed:", error.message);

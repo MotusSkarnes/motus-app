@@ -16,6 +16,21 @@ function resolvePausedWorkoutMemberId(state: AppState, memberIdHint?: string): s
   return state.memberViewId?.trim() ?? state.currentUser?.memberId?.trim() ?? "";
 }
 
+function workoutResultHasEnteredProgress(result: WorkoutModeState["results"][number]): boolean {
+  return Boolean(
+    result.performedWeight.trim() ||
+      result.performedReps.trim() ||
+      (result.performedDurationMinutes ?? "").trim() ||
+      (result.performedSpeed ?? "").trim() ||
+      (result.performedIncline ?? "").trim() ||
+      (result.performedDistanceKm ?? "").trim() ||
+      (result.performedHeartRate ?? "").trim() ||
+      (result.performedCustom1 ?? "").trim() ||
+      (result.performedCustom2 ?? "").trim() ||
+      (result.exerciseNote ?? "").trim(),
+  );
+}
+
 export function persistPausedWorkoutFromState(state: AppState, memberIdHint?: string): void {
   const rawWorkoutMode = state.workoutMode;
   if (!rawWorkoutMode) return;
@@ -26,13 +41,7 @@ export function persistPausedWorkoutFromState(state: AppState, memberIdHint?: st
   const hasProgress =
     workoutMode.results.some((result) => result.completed) ||
     workoutMode.note.trim().length > 0 ||
-    workoutMode.results.some(
-      (result) =>
-        result.performedWeight.trim() ||
-        result.performedReps.trim() ||
-        (result.performedDurationMinutes ?? "").trim() ||
-        (result.exerciseNote ?? "").trim(),
-    );
+    workoutMode.results.some(workoutResultHasEnteredProgress);
   if (!hasProgress) {
     removePausedWorkoutByProgramId(memberId, workoutMode.programId);
     return;

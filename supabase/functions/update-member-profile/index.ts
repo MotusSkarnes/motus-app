@@ -228,7 +228,7 @@ Deno.serve(async (req) => {
   }
 
   const changes = payload.changes ?? {};
-  const targetEmailForUpdate = requestedEmail || currentEmail;
+  const targetEmailForUpdate = userRole === "member" ? currentEmail : requestedEmail || currentEmail;
   const normalizedBirthDate =
     changes.birthDate !== undefined ? normalizeBirthDate(changes.birthDate) : undefined;
   if (normalizedBirthDate === null) {
@@ -308,7 +308,7 @@ Deno.serve(async (req) => {
       const rowEmail = normalizeEmail(row.email);
       const rowId = normalizeString(row.id);
       if (rowId && (rowId === authMemberId || rowId === user.id)) return true;
-      return rowEmail === currentEmail || requestedEmails.includes(rowEmail);
+      return rowEmail === currentEmail;
     }
     return canTrainerEditAnchor(
       row as { owner_user_id?: string | null; customer_type?: string | null },
@@ -317,7 +317,9 @@ Deno.serve(async (req) => {
   });
 
   const normalizedTargetEmails = new Set<string>(
-    [targetEmailForUpdate, currentEmail, ...requestedEmails].map((value) => normalizeEmail(value)).filter(Boolean),
+    (userRole === "member" ? [currentEmail] : [targetEmailForUpdate, currentEmail, ...requestedEmails])
+      .map((value) => normalizeEmail(value))
+      .filter(Boolean),
   );
   let expandedRows: Array<{ id: string; email: string; owner_user_id: string | null; customer_type: string | null }> = [];
   if (normalizedTargetEmails.size) {
@@ -335,7 +337,11 @@ Deno.serve(async (req) => {
     }) as Array<{ id: string; email: string; owner_user_id: string | null; customer_type: string | null }>;
   }
   const visibleExpandedRows = expandedRows.filter((row) => {
-    if (userRole !== "trainer") return true;
+    if (userRole !== "trainer") {
+      const rowEmail = normalizeEmail(row.email);
+      const rowId = normalizeString(row.id);
+      return rowEmail === currentEmail || (rowId && (rowId === authMemberId || rowId === user.id));
+    }
     if (!visibleAnchors.length) return false;
     return canTrainerEditAnchor(
       row as { owner_user_id?: string | null; customer_type?: string | null },
@@ -352,7 +358,12 @@ Deno.serve(async (req) => {
   );
   const targetEmails = Array.from(
     new Set(
-      [targetEmailForUpdate, ...requestedEmails, ...visibleAnchors.map((row) => normalizeEmail(row.email)), ...visibleExpandedRows.map((row) => normalizeEmail(row.email))]
+      [
+        targetEmailForUpdate,
+        ...(userRole === "member" ? [] : requestedEmails),
+        ...visibleAnchors.map((row) => normalizeEmail(row.email)),
+        ...visibleExpandedRows.map((row) => normalizeEmail(row.email)),
+      ]
         .filter((value) => value && value.includes("@"))
     )
   );
@@ -445,7 +456,7 @@ Deno.serve(async (req) => {
   if (hasProfileUpdates && normalizedTargetEmails.size > 0 && userRole !== "trainer") {
     const emailMatchedIds = Array.from(
       new Set(
-        expandedRows
+        visibleExpandedRows
           .map((row) => normalizeString(row.id))
           .filter(Boolean),
       ),
@@ -538,11 +549,6 @@ Deno.serve(async (req) => {
         ? requestedMemberIds.map((value) => normalizeString(value)).filter((id) => rosterEditableIds.has(id))
         : Array.from(rosterEditableIds);
       rosterIds = Array.from(new Set(rosterIds));
-      if (!rosterIds.length && requestedMemberIds.length) {
-        rosterIds = Array.from(
-          new Set(requestedMemberIds.map((value) => normalizeString(value)).filter(Boolean)),
-        );
-      }
       if (rosterIds.length) {
         const privateRosterPayload = {
           ...rosterUpdateFields,

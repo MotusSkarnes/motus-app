@@ -60,6 +60,29 @@ describe("pausedWorkoutSession", () => {
     expect(listPausedWorkouts("m1")[0]?.programTitle).toBe("Styrke A");
   });
 
+  it("dismiss saves draft when log-after fields have progress", () => {
+    window.localStorage.removeItem(PAUSED_WORKOUTS_STORAGE_KEY);
+    const logAfterWorkoutMode: WorkoutModeState = {
+      ...workoutMode,
+      note: "",
+      results: [
+        {
+          ...workoutMode.results[0],
+          performedWeight: "",
+          performedReps: "",
+          completed: false,
+          performedDistanceKm: "5.0",
+        },
+      ],
+    };
+    const state = { ...baseState(), workoutMode: logAfterWorkoutMode };
+
+    dismissWorkoutModeInState(state);
+
+    expect(listPausedWorkouts("m1")).toHaveLength(1);
+    expect(listPausedWorkouts("m1")[0]?.workoutMode.results[0]?.performedDistanceKm).toBe("5.0");
+  });
+
   it("resume restores workout mode from draft", () => {
     window.localStorage.removeItem(PAUSED_WORKOUTS_STORAGE_KEY);
     const draft = upsertPausedWorkout({

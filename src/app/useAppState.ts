@@ -61,6 +61,8 @@ import { MEAL_PLAN_STATE_CHANGED_EVENT } from "./memberMealPlanState";
 import { notifyMealPlanChanged } from "./mealPlanStorage";
 import { notifyInspirationItemsChanged, saveInspirationItemsToStorage } from "./inspirationStorage";
 import {
+  clearDeletedProgramTombstone,
+  clearDeletedProgramTombstoneForProgram,
   filterDeletedPrograms,
   isProgramDeleted,
   listStoredDeletedProgramTombstones,
@@ -524,9 +526,17 @@ function cleanupRemoteProgramsDeletedLocally(
     const programId = program.id.trim();
     if (!programId || remoteTombstoneCleanupInFlight.has(programId)) continue;
     remoteTombstoneCleanupInFlight.add(programId);
-    void deleteProgramRemote(programId, { ...context, programSnapshot: program }).finally(() => {
-      remoteTombstoneCleanupInFlight.delete(programId);
-    });
+    void deleteProgramRemote(programId, {
+      ...context,
+      memberIds: program.memberId?.trim() ? [program.memberId.trim()] : undefined,
+      programSnapshot: program,
+    })
+      .then((ok) => {
+        if (ok) clearDeletedProgramTombstoneForProgram(program);
+      })
+      .finally(() => {
+        remoteTombstoneCleanupInFlight.delete(programId);
+      });
   }
 
   const visibleMemberIds = new Set(
@@ -540,10 +550,14 @@ function cleanupRemoteProgramsDeletedLocally(
     remoteTombstoneCleanupInFlight.add(cleanupKey);
     void deleteProgramRemote(entry.programId, {
       ...context,
-      memberIds: context.memberIds?.length ? context.memberIds : [entry.scope],
-    }).finally(() => {
-      remoteTombstoneCleanupInFlight.delete(cleanupKey);
-    });
+      memberIds: [entry.scope],
+    })
+      .then((ok) => {
+        if (ok) clearDeletedProgramTombstone({ scope: entry.scope, programId: entry.programId });
+      })
+      .finally(() => {
+        remoteTombstoneCleanupInFlight.delete(cleanupKey);
+      });
   }
   for (const entry of tombstones.scopedFingerprints) {
     if (visibleMemberIds.size && !visibleMemberIds.has(entry.scope)) continue;
@@ -553,10 +567,14 @@ function cleanupRemoteProgramsDeletedLocally(
     void deleteProgramsByDisplayKeyRemote(entry.fingerprint, {
       ...context,
       memberScope: entry.scope,
-      memberIds: context.memberIds?.length ? context.memberIds : [entry.scope],
-    }).finally(() => {
-      remoteTombstoneCleanupInFlight.delete(cleanupKey);
-    });
+      memberIds: [entry.scope],
+    })
+      .then((ok) => {
+        if (ok) clearDeletedProgramTombstone({ scope: entry.scope, fingerprint: entry.fingerprint });
+      })
+      .finally(() => {
+        remoteTombstoneCleanupInFlight.delete(cleanupKey);
+      });
   }
 }
 
@@ -2456,6 +2474,10 @@ export function useAppState() {
         ...context,
         programSnapshot: deletedSnapshot,
       });
+      if (ok && deletedSnapshot) {
+        clearDeletedProgramTombstoneForProgram(deletedSnapshot);
+        return;
+      }
       if (!ok) {
         const memberInitiated = context?.requestedBy === "member" || appState.role === "member";
         if (memberInitiated) return;

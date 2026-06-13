@@ -84,6 +84,50 @@ export function unregisterDeletedProgram(programId: string): void {
   }
 }
 
+export function clearDeletedProgramTombstone(input: {
+  scope?: string;
+  programId?: string;
+  fingerprint?: string;
+}): void {
+  hydrateStoredTombstones();
+  const scope = input.scope?.trim().toLowerCase();
+  const programId = input.programId?.trim();
+  const fingerprint = input.fingerprint?.trim();
+  let changed = false;
+
+  if (programId) {
+    const scopedId = scope ? scopedValue(scope, programId) : "";
+    Array.from(deletedProgramIds).forEach((value) => {
+      if (value === programId || value === scopedId || (!scope && value.endsWith(`::${programId}`))) {
+        deletedProgramIds.delete(value);
+        changed = true;
+      }
+    });
+  }
+
+  if (fingerprint) {
+    const scopedFingerprint = scope ? scopedValue(scope, fingerprint) : "";
+    Array.from(deletedProgramFingerprints).forEach((value) => {
+      if (value === fingerprint || value === scopedFingerprint || (!scope && value.endsWith(`::${fingerprint}`))) {
+        deletedProgramFingerprints.delete(value);
+        changed = true;
+      }
+    });
+  }
+
+  if (changed) persistStoredTombstones();
+}
+
+export function clearDeletedProgramTombstoneForProgram(
+  program: Pick<TrainingProgram, "id" | "memberId" | "title" | "goal" | "notes" | "exercises">,
+): void {
+  clearDeletedProgramTombstone({
+    scope: tombstoneScope(program),
+    programId: program.id,
+    fingerprint: buildTrainingProgramDisplayKey(program),
+  });
+}
+
 export function isProgramDeleted(program: TrainingProgram): boolean {
   hydrateStoredTombstones();
   const scope = tombstoneScope(program);
