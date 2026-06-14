@@ -73,10 +73,9 @@ const mockSupabase = vi.hoisted(() => {
     return query;
   }
 
-  return {
-    ...state,
+  return Object.assign(state, {
     from: vi.fn((table: string) => createQuery(table)),
-  };
+  });
 });
 
 vi.mock("./supabaseClient", () => ({
