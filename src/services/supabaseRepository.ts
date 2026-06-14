@@ -1977,8 +1977,8 @@ async function collectProgramIdsToDeleteByDisplayKey(input: {
             return false;
           }
           if (trainingProgramDisplayKeyFromRow(row) !== targetKey) return false;
-          if (targetOwnerUserId) {
-            return String(row.owner_user_id ?? "").trim() === targetOwnerUserId;
+          if (targetOwnerUserId && String(row.owner_user_id ?? "").trim() !== targetOwnerUserId) {
+            return false;
           }
           const candidateMemberId = String(row.member_id ?? "").trim();
           return !deletionKeys.length || deletionKeys.includes(candidateMemberId);
@@ -2000,9 +2000,10 @@ export async function deleteProgramsByDisplayKeyRemote(
   if (!supabaseClient || !displayKey.trim()) return false;
   const memberScope = String(context.memberScope ?? "").trim();
   const contextMemberIds = Array.isArray(context.memberIds) ? context.memberIds : [];
+  const scopedContextMemberIds = memberScope ? [memberScope] : contextMemberIds;
   const deletionKeys = Array.from(
     new Set(
-      [memberScope, ...contextMemberIds, context.targetEmail ?? ""]
+      [memberScope, ...scopedContextMemberIds, context.targetEmail ?? ""]
         .map((value) => String(value ?? "").trim())
         .filter(Boolean),
     ),

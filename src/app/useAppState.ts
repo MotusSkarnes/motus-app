@@ -515,6 +515,15 @@ function filterProgramsHiddenFromCloudViews(programs: TrainingProgram[]): Traini
   return filterDeletedPrograms(programs).filter((program) => !programIsInMemberArchive(program.memberLibraryStatus));
 }
 
+function tombstoneCleanupContext(context: DeleteProgramContext, memberScope: string): DeleteProgramContext {
+  const scopedMemberId = memberScope.trim();
+  if (!scopedMemberId) return context;
+  return {
+    ...context,
+    memberIds: [scopedMemberId],
+  };
+}
+
 function cleanupRemoteProgramsDeletedLocally(
   programs: TrainingProgram[],
   context: DeleteProgramContext,
@@ -524,7 +533,10 @@ function cleanupRemoteProgramsDeletedLocally(
     const programId = program.id.trim();
     if (!programId || remoteTombstoneCleanupInFlight.has(programId)) continue;
     remoteTombstoneCleanupInFlight.add(programId);
-    void deleteProgramRemote(programId, { ...context, programSnapshot: program }).finally(() => {
+    void deleteProgramRemote(programId, {
+      ...tombstoneCleanupContext(context, program.memberId),
+      programSnapshot: program,
+    }).finally(() => {
       remoteTombstoneCleanupInFlight.delete(programId);
     });
   }
@@ -539,8 +551,7 @@ function cleanupRemoteProgramsDeletedLocally(
     if (remoteTombstoneCleanupInFlight.has(cleanupKey)) continue;
     remoteTombstoneCleanupInFlight.add(cleanupKey);
     void deleteProgramRemote(entry.programId, {
-      ...context,
-      memberIds: context.memberIds?.length ? context.memberIds : [entry.scope],
+      ...tombstoneCleanupContext(context, entry.scope),
     }).finally(() => {
       remoteTombstoneCleanupInFlight.delete(cleanupKey);
     });
@@ -551,9 +562,8 @@ function cleanupRemoteProgramsDeletedLocally(
     if (remoteTombstoneCleanupInFlight.has(cleanupKey)) continue;
     remoteTombstoneCleanupInFlight.add(cleanupKey);
     void deleteProgramsByDisplayKeyRemote(entry.fingerprint, {
-      ...context,
+      ...tombstoneCleanupContext(context, entry.scope),
       memberScope: entry.scope,
-      memberIds: context.memberIds?.length ? context.memberIds : [entry.scope],
     }).finally(() => {
       remoteTombstoneCleanupInFlight.delete(cleanupKey);
     });
