@@ -18,7 +18,7 @@ export function ReflectionLevelPicker({ question, value, onChange }: ReflectionL
     <div className="space-y-2">
       <div className="text-xs font-medium text-slate-700">{question}</div>
       <div className="grid grid-cols-5 gap-2">
-        {([1, 2, 3, 4, 5] as const).map((uiLevel) => {
+        {([5, 4, 3, 2, 1] as const).map((uiLevel) => {
           const active = uiValue === uiLevel;
           return (
             <button

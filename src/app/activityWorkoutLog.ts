@@ -93,7 +93,7 @@ export function reflectionLevelToStorage(ui: ReflectionLevel): ReflectionLevel {
   return (6 - ui) as ReflectionLevel;
 }
 
-/** Emoji for visning i felt (ui-skala: venstre = sliten, høyre = bra). */
+/** Emoji for visning i felt (ui-skala: venstre = bra, høyre = sliten/tungt). */
 export function workoutReflectionEmoji(uiLevel?: ReflectionLevel): string {
   if (!uiLevel || uiLevel <= 1) return "🥵";
   if (uiLevel === 2) return "😮‍💨";
