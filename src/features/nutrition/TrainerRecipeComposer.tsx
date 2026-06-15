@@ -190,9 +190,9 @@ export function TrainerRecipeComposer({
   }
 
   return (
-    <div className="motus-foodbank-modal-backdrop" role="presentation" onClick={onClose}>
+    <div className="motus-foodbank-modal-backdrop motus-recipe-composer-backdrop" role="presentation" onClick={onClose}>
       <div
-        className="motus-foodbank-modal motus-foodbank-modal--wide"
+        className="motus-foodbank-modal motus-foodbank-modal--wide motus-recipe-composer-modal"
         role="dialog"
         aria-label={editItem && !duplicateFromItem ? "Rediger oppskrift" : "Ny oppskrift"}
         onClick={(e) => e.stopPropagation()}
@@ -203,7 +203,7 @@ export function TrainerRecipeComposer({
             <X className="h-4 w-4" />
           </button>
         </div>
-        <div className="motus-foodbank-modal-body max-h-[min(80vh,40rem)] space-y-3 overflow-y-auto">
+        <div className="motus-foodbank-modal-body motus-recipe-composer-body max-h-[min(80vh,40rem)] space-y-3 overflow-y-auto">
           <p className="text-xs text-slate-600">
             Oppskrifter vises kun under <strong>Ernæring</strong> for medlemmer og i matplan — ikke i Utforsk. Næringsinnhold
             beregnes automatisk fra ingredienslisten når du skriver.
@@ -241,6 +241,7 @@ export function TrainerRecipeComposer({
             value={body}
             onChange={(e) => setBody(e.target.value)}
             placeholder={"**Til 2 porsjoner**\n\n**Ingredienser**\n- 200 g …\n\n**Slik gjør du**\n1. …"}
+            className="motus-recipe-composer-textarea"
             rows={12}
           />
           {recipeMacros ? (

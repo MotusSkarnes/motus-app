@@ -493,6 +493,44 @@
   width: min(100%, 40rem);
 }
 
+.motus-recipe-composer-modal {
+  width: min(96vw, 72rem);
+  max-height: min(94vh, 860px);
+  overflow: hidden;
+}
+
+.motus-recipe-composer-body {
+  max-height: min(82vh, 46rem) !important;
+  padding-right: 0.15rem;
+}
+
+.motus-recipe-composer-textarea {
+  min-height: 22rem;
+  resize: vertical;
+  line-height: 1.55;
+}
+
+@media (max-width: 640px) {
+  .motus-recipe-composer-backdrop {
+    align-items: stretch;
+    padding: 0.5rem;
+  }
+
+  .motus-recipe-composer-modal {
+    width: 100%;
+    max-height: calc(100svh - 1rem);
+    border-radius: 0.875rem;
+  }
+
+  .motus-recipe-composer-body {
+    max-height: calc(100svh - 5.5rem) !important;
+  }
+
+  .motus-recipe-composer-textarea {
+    min-height: 18rem;
+  }
+}
+
 .motus-foodbank-modal-head {
   display: flex;
   align-items: center;
