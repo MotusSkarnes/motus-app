@@ -11536,8 +11536,8 @@ html:has(.motus-trainer-app) {
 }
 
 .motus-workout-celebration-stat--mint {
-  background: linear-gradient(160deg, #ffffff 0%, #ecfdf5 100%);
-  border-color: rgba(16, 185, 129, 0.2);
+  background: linear-gradient(160deg, #ffffff 0%, var(--motus-brand-soft) 100%);
+  border-color: var(--motus-brand-border);
 }
 
 .motus-workout-celebration-stat-icon {
@@ -11556,8 +11556,8 @@ html:has(.motus-trainer-app) {
 }
 
 .motus-workout-celebration-stat-icon--mint {
-  background: linear-gradient(135deg, #10b981 0%, #34d399 100%);
-  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+  background: linear-gradient(135deg, var(--motus-brand) 0%, #6ff0d4 100%);
+  box-shadow: 0 4px 12px rgba(48, 227, 190, 0.3);
 }
 
 .motus-workout-celebration-stat-value {
@@ -11620,7 +11620,7 @@ html:has(.motus-trainer-app) {
   margin-top: 0.25rem;
   border: none;
   border-radius: 999px;
-  background: linear-gradient(135deg, #10b981 0%, #34d399 60%, #d91278 100%);
+  background: linear-gradient(135deg, var(--motus-brand) 0%, #6ff0d4 60%, var(--motus-pink) 100%);
   color: #ffffff;
   font-size: 0.9375rem;
   font-weight: 800;

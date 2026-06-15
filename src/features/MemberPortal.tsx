@@ -5008,6 +5008,28 @@ export function MemberPortal(props: MemberPortalProps) {
       }),
     [nowTimestamp],
   );
+  const homeLoggedOtherProgramToday = useMemo(() => {
+    if (todayPeriodPlanCompleted) return null;
+    const logsForToday = calendarLogsByDateKey.get(todayDateKey) ?? [];
+    if (!logsForToday.length) return null;
+    const otherLog = logsForToday.find((log) => {
+      if (todayPlanAction.kind === "start-program") {
+        return !completedLogMatchesProgramForPeriodEntry(log, todayPlanAction.program, todayPlanEntry);
+      }
+      if (todayPlanEntry.trim()) {
+        return !periodPlanEntryMatchesCompletedProgram(todayPlanEntry, log.programTitle, memberProgramsForPeriodPlan);
+      }
+      return true;
+    });
+    return otherLog?.programTitle.trim() || null;
+  }, [
+    calendarLogsByDateKey,
+    todayDateKey,
+    todayPeriodPlanCompleted,
+    todayPlanAction,
+    todayPlanEntry,
+    memberProgramsForPeriodPlan,
+  ]);
   const homeHeaderMotivation = useMemo(() => {
     const completed = homeWeeklySummary.completedThisWeek;
     const planned = homeWeeklySummary.plannedThisWeek;
@@ -5027,6 +5049,9 @@ export function MemberPortal(props: MemberPortalProps) {
     streakWeeks,
   ]);
   const homeDashboardSubline = useMemo(() => {
+    if (homeLoggedOtherProgramToday) {
+      return `I dag logget du «${homeLoggedOtherProgramToday}». Dagens plan står klar når du vil ta den.`;
+    }
     const nextBadge = memberBadgeCollection.allBadges
       .filter(
         (badge) =>
@@ -5043,7 +5068,7 @@ export function MemberPortal(props: MemberPortalProps) {
     const unit = formatBadgeMetricValue(nextBadge.id, remaining);
     if (remaining <= 0) return `Nesten i mål med badgen ${nextBadge.title}`;
     return `${unit} igjen til badgen ${nextBadge.title}`;
-  }, [memberBadgeCollection.allBadges, memberProgressScores.momentum.subline]);
+  }, [homeLoggedOtherProgramToday, memberBadgeCollection.allBadges, memberProgressScores.momentum.subline]);
   const homeDashboardHeadline =
     homeWeeklySummary.completedThisWeek > 0 || streakWeeks > 0 ? "Du er på vei!" : "Klar for en ny uke";
   const homeWorkoutSubtitle = useMemo(() => {
@@ -5274,6 +5299,56 @@ export function MemberPortal(props: MemberPortalProps) {
     });
   }
 
+  function handleUpdateWorkoutLogDate(input: { logId: string; date: string }) {
+    if (!updateWorkoutLogDate) return;
+    const existingLog = memberLogs.find((log) => log.id === input.logId);
+    const previousDate = existingLog ? parseStoredLogDate(existingLog.date) : null;
+    const nextStoredDate = resolveWorkoutLogDateTime(input.date, previousDate ?? new Date());
+    const nextDate = parseStoredLogDate(nextStoredDate);
+
+    updateWorkoutLogDate({ logId: input.logId, date: input.date });
+
+    if (!existingLog || !previousDate || !nextDate) return;
+    if (getStartOfDay(previousDate).getTime() === getStartOfDay(nextDate).getTime()) return;
+
+    const linkedProgram = findProgramForPeriodPlanEntry(existingLog.programTitle, memberProgramsForPeriodPlan);
+    const previousTargets = findPeriodPlanAutoCompleteTargets({
+      plans: visiblePeriodPlans,
+      swapsByPlan: periodPlanSwapsByPlan,
+      programTitle: existingLog.programTitle,
+      programId: linkedProgram?.id,
+      programs: memberProgramsForPeriodPlan,
+      completedAt: previousDate,
+      calendarWeekdayKey: weekdayKeyForDate(previousDate),
+    });
+
+    if (
+      todayPeriodPlanMatch &&
+      getStartOfDay(previousDate).getTime() === getStartOfDay(nowDate).getTime()
+    ) {
+      previousTargets.unshift({
+        planId: todayPeriodPlanMatch.plan.id,
+        weekNumber: todayPeriodPlanMatch.weekNumber,
+        day: todayPeriodPlanMatch.day,
+      });
+    }
+
+    const seenPreviousTargets = new Set<string>();
+    for (const target of previousTargets) {
+      const key = buildPeriodPlanEntryKey(target.planId, target.weekNumber, target.day);
+      if (seenPreviousTargets.has(key)) continue;
+      seenPreviousTargets.add(key);
+      unmarkPeriodPlanDayCompleted(target.planId, target.weekNumber, target.day);
+      dismissPeriodPlanDay(target.planId, target.weekNumber, target.day);
+    }
+
+    applyPeriodPlanAutoComplete({
+      programId: linkedProgram?.id,
+      programTitle: existingLog.programTitle,
+      completedAt: nextDate,
+    });
+  }
+
   function handleFinishWorkoutMode(input?: { reflection?: WorkoutReflection }) {
     const snapshot = workoutMode;
     const periodPlanContext = pendingPeriodPlanWorkoutStartRef.current;
@@ -5501,8 +5576,8 @@ export function MemberPortal(props: MemberPortalProps) {
       const nextSwaps = buildPeriodPlanWeekOverride(week.days, nextDays, day, day);
       return setSwapsForWeek(prev, planId, weekNumber, nextSwaps);
     });
-    clearPeriodPlanDayDismissed(planId, weekNumber, day);
     unmarkPeriodPlanDayCompleted(planId, weekNumber, day);
+    dismissPeriodPlanDay(planId, weekNumber, day);
     setPeriodPlanActionStatus(`Programmet på ${WEEKDAY_PLAN_LABELS[day].toLowerCase()} er byttet til «${program.title}».`);
   }
 
@@ -6250,7 +6325,7 @@ export function MemberPortal(props: MemberPortalProps) {
                                     isEditing={editingCalendarSimpleLogId === selectedCalendarLog.id}
                                     onStartEdit={() => setEditingCalendarSimpleLogId(selectedCalendarLog.id)}
                                     onCancelEdit={() => setEditingCalendarSimpleLogId(null)}
-                                    onSaveDate={(date) => updateWorkoutLogDate?.({ logId: selectedCalendarLog.id, date })}
+                                    onSaveDate={(date) => handleUpdateWorkoutLogDate({ logId: selectedCalendarLog.id, date })}
                                     onSaveActivity={(payload) => {
                                       updateActivityWorkout({ logId: selectedCalendarLog.id, ...payload });
                                       setEditingCalendarSimpleLogId(null);
@@ -7604,7 +7679,7 @@ export function MemberPortal(props: MemberPortalProps) {
                     onCancelEdit: cancelEditLoggedExercise,
                     onDeleteExercise: handleDeleteLoggedExercise,
                     onDraftChange: setEditingLoggedExerciseDraft,
-                    onUpdateWorkoutLogDate: updateWorkoutLogDate,
+                    onUpdateWorkoutLogDate: handleUpdateWorkoutLogDate,
                     onUpdateActivityWorkout: (input) =>
                       updateActivityWorkout({
                         logId: input.logId,
