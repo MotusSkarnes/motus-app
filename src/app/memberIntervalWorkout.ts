@@ -47,9 +47,6 @@ export function isMemberIntervalWorkoutProgram(
   return program.exercises.some((exercise) => {
     const name = exercise.exerciseName.trim();
     if (INTERVAL_EXERCISE_NAME_PATTERN.test(name)) return true;
-    if (Number(exercise.durationMinutes) > 0) return true;
-    const holdSeconds = Number(exercise.holdSeconds) || 0;
-    if (holdSeconds > 0 && /4x4/i.test(title)) return true;
     return false;
   });
 }

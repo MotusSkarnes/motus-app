@@ -134,4 +134,42 @@ describe("isMemberIntervalWorkoutProgram", () => {
     };
     expect(isMemberIntervalWorkoutProgram(program, categories, exercises)).toBe(false);
   });
+
+  it("does not treat timed strength/core programs as interval", () => {
+    const program: TrainingProgram = {
+      id: "p-upper-core",
+      memberId: "m1",
+      title: "Overkropp og kjerne",
+      goal: "",
+      notes: "",
+      createdAt: "",
+      exercises: [
+        {
+          id: "x1",
+          exerciseId: "e1",
+          exerciseName: "Nedtrekk bredt grep",
+          sets: "3",
+          reps: "8",
+          weight: "35",
+          durationMinutes: "",
+          holdSeconds: "",
+          restSeconds: "90",
+          notes: "",
+        },
+        {
+          id: "x2",
+          exerciseId: "e1",
+          exerciseName: "Pallof press",
+          sets: "3",
+          reps: "30",
+          weight: "0",
+          durationMinutes: "1",
+          holdSeconds: "30",
+          restSeconds: "90",
+          notes: "Kjernehold",
+        },
+      ],
+    };
+    expect(isMemberIntervalWorkoutProgram(program, categories, exercises)).toBe(false);
+  });
 });
