@@ -327,6 +327,7 @@ export function useNotifications({
   const lastMergedTrainerRemoteUpdatedAtRef = useRef(0);
 
   const buildMemberNotificationSnapshot = useCallback((): MemberNotificationPreferences => {
+    const existing = readMemberNotificationPreferencesFromPersonalGoals(memberPersonalGoals);
     return {
       version: MEMBER_NOTIFICATION_PREFS_VERSION,
       memberAlertsSeenAt,
@@ -337,9 +338,12 @@ export function useNotifications({
       seenMemberPeriodPlanKeys,
       dismissedMemberCheckInMonths,
       memberInspirationBaselineAt: readMemberInspirationBaselineAt(),
+      seenHiddenBadgeIds: existing?.seenHiddenBadgeIds ?? [],
+      lastCelebratedAchievedLevel: existing?.lastCelebratedAchievedLevel ?? 0,
       updatedAt: Date.now(),
     };
   }, [
+    memberPersonalGoals,
     memberAlertsSeenAt,
     seenMemberProgramIds,
     seenMemberWorkoutCommentKeys,
@@ -1053,8 +1057,8 @@ export function useNotifications({
   ]);
 
   function openAlert(alert: MemberAlert) {
-    setMemberAlertsSeenAt((prev) => Math.max(prev, alert.timestamp));
     if (alert.kind === "message") {
+      setMemberAlertsSeenAt((prev) => Math.max(prev, alert.timestamp));
       setOpenedMemberAlertIds((prev) => Array.from(new Set([...prev, alert.id])));
     } else if (alert.kind === "program") {
       const programId = alert.programId ?? alert.id.replace(/^member-program-/, "");

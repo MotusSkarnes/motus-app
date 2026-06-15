@@ -98,4 +98,15 @@ describe("periodPlanSwaps", () => {
     );
     expect(getSwapsForWeek(merged.swapsByPlan, "plan-1", 1)[0]?.dayA).toBe("wednesday");
   });
+
+  it("keeps independent local and remote week overrides when merging", () => {
+    const localSwaps = setSwapsForWeek({}, "plan-1", 1, [{ dayA: "monday", dayB: "tuesday", mode: "swap" }]);
+    const remoteSwaps = setSwapsForWeek({}, "plan-1", 3, [{ dayA: "wednesday", dayB: "thursday", mode: "swap" }]);
+    const merged = mergePeriodPlanSwapPrefs(
+      { version: 1, swapsByPlan: localSwaps, updatedAt: 100 },
+      { version: 1, swapsByPlan: remoteSwaps, updatedAt: 200 },
+    );
+    expect(getSwapsForWeek(merged.swapsByPlan, "plan-1", 1)[0]?.dayA).toBe("monday");
+    expect(getSwapsForWeek(merged.swapsByPlan, "plan-1", 3)[0]?.dayA).toBe("wednesday");
+  });
 });

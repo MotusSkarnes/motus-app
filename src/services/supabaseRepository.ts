@@ -4620,7 +4620,9 @@ export const supabaseAppRepository: AppRepository = {
       void persistWorkoutLog(
         updatedLog,
         buildMemberPersistenceHints(state, updatedLog.memberId, { programTitle: updatedLog.programTitle }),
-      );
+      ).then((result) => {
+        input.onPersisted?.(result);
+      });
     }
     return nextState;
   },

@@ -127,6 +127,7 @@ import type {
   StartCustomWorkoutInput,
   StartWorkoutModeOptions,
   DeleteProgramContext,
+  UpdateWorkoutLogDateInput,
   UpdateMemberInput,
 } from "../services/appRepository";
 import {
@@ -347,7 +348,7 @@ type MemberPortalProps = {
   deferWorkoutExerciseGroup: (programExerciseId: string) => void;
   removeWorkoutLogResult: (input: { logId: string; exerciseId: string }) => void;
   setWorkoutLogResults: (input: { logId: string; results: WorkoutLog["results"] }) => void;
-  updateWorkoutLogDate?: (input: { logId: string; date: string }) => void;
+  updateWorkoutLogDate?: (input: UpdateWorkoutLogDateInput) => void;
   updateWorkoutModeNote: (note: string) => void;
   updateWorkoutExerciseNote: (programExerciseId: string, note: string) => void;
   finishWorkoutMode: (input?: { reflection?: WorkoutReflection }) => void;
@@ -1581,7 +1582,7 @@ export function MemberPortal(props: MemberPortalProps) {
       {
         version: 1,
         swapsByPlan: localSwaps,
-        updatedAt: periodPlanSwapsLocalUpdatedAtRef.current,
+        updatedAt: 0,
       },
       remoteSwaps,
     );
@@ -3475,6 +3476,7 @@ export function MemberPortal(props: MemberPortalProps) {
           });
         });
       }
+      periodPlanSwapsDirtyRef.current = false;
     }, 350);
     return () => window.clearTimeout(timer);
   }, [
@@ -6250,7 +6252,19 @@ export function MemberPortal(props: MemberPortalProps) {
                                     isEditing={editingCalendarSimpleLogId === selectedCalendarLog.id}
                                     onStartEdit={() => setEditingCalendarSimpleLogId(selectedCalendarLog.id)}
                                     onCancelEdit={() => setEditingCalendarSimpleLogId(null)}
-                                    onSaveDate={(date) => updateWorkoutLogDate?.({ logId: selectedCalendarLog.id, date })}
+                                    onSaveDate={(date) =>
+                                      updateWorkoutLogDate?.({
+                                        logId: selectedCalendarLog.id,
+                                        date,
+                                        onPersisted: (result) => {
+                                          if (!result.ok) {
+                                            setPeriodPlanActionStatus(
+                                              result.message?.trim() || "Kunne ikke lagre dato i sky. Prøv igjen.",
+                                            );
+                                          }
+                                        },
+                                      })
+                                    }
                                     onSaveActivity={(payload) => {
                                       updateActivityWorkout({ logId: selectedCalendarLog.id, ...payload });
                                       setEditingCalendarSimpleLogId(null);

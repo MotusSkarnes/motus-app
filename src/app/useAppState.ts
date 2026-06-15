@@ -512,6 +512,21 @@ function registerPendingWorkoutLogEdit(log: WorkoutLog, nowMs = Date.now()) {
   pendingWorkoutLogEdits.set(id, { log, expiresAt: nowMs + PENDING_WORKOUT_LOG_EDIT_MS });
 }
 
+function clearPendingWorkoutLogEdit(logId: string) {
+  const id = logId.trim();
+  if (id) pendingWorkoutLogEdits.delete(id);
+}
+
+function extendPendingWorkoutLogEdit(logId: string, nowMs = Date.now()) {
+  const id = logId.trim();
+  const pending = id ? pendingWorkoutLogEdits.get(id) : undefined;
+  if (!pending) return;
+  pendingWorkoutLogEdits.set(id, {
+    ...pending,
+    expiresAt: nowMs + LOCAL_OPTIMISTIC_WORKOUT_LOG_KEEP_MS,
+  });
+}
+
 function pendingWorkoutLogEditFor(localLog: WorkoutLog, remoteLog: WorkoutLog | undefined, nowMs: number): WorkoutLog | null {
   const id = localLog.id.trim();
   if (!id) return null;
@@ -2607,7 +2622,17 @@ export function useAppState() {
 
   function updateWorkoutLogDate(input: UpdateWorkoutLogDateInput) {
     setAppState((prev) => {
-      const next = repository.updateWorkoutLogDate(prev, input);
+      const next = repository.updateWorkoutLogDate(prev, {
+        ...input,
+        onPersisted: (result) => {
+          if (result.ok) {
+            clearPendingWorkoutLogEdit(input.logId);
+          } else {
+            extendPendingWorkoutLogEdit(input.logId);
+          }
+          input.onPersisted?.(result);
+        },
+      });
       const updatedLog = next.logs.find((log) => log.id === input.logId);
       if (updatedLog) {
         registerPendingWorkoutLogEdit(updatedLog);

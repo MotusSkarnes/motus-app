@@ -760,6 +760,48 @@ describe("useNotifications workout comment alerts", () => {
     expect(result.current.memberFocusProgramId).toBe("program-1");
   });
 
+  it("does not mark trainer messages read when opening an unrelated member alert", () => {
+    const trainerProgram: TrainingProgram = {
+      id: "program-1",
+      memberId: "member-1",
+      title: "4x4 intervall",
+      goal: "Kondis",
+      notes: "",
+      exercises: [],
+      createdAt: "16.05.2026",
+      programCreatedBy: "trainer",
+    };
+    const { result } = renderHook(() =>
+      useNotifications({
+        messages: [
+          {
+            id: "msg-1",
+            memberId: "member-1",
+            sender: "trainer",
+            text: "Husk økten i morgen",
+            createdAt: "2026-05-15T12:00:00.000Z",
+          },
+        ],
+        programs: [trainerProgram],
+        logs: [],
+        members: [{ id: "member-1", name: "Test", email: "test@example.com" } as never],
+        memberViewId: "member-1",
+        setMemberTab: () => {},
+      }),
+    );
+
+    expect(result.current.memberUnreadMessageCount).toBe(1);
+    const programAlert = result.current.memberVisibleAlerts.find((item) => item.kind === "program");
+    expect(programAlert).toBeDefined();
+
+    act(() => {
+      result.current.openAlert(programAlert!);
+    });
+
+    expect(result.current.memberUnreadMessageCount).toBe(1);
+    expect(result.current.memberVisibleAlerts.some((item) => item.kind === "message")).toBe(true);
+  });
+
   it("keeps the same trainer program read when it is hydrated with a new local id", async () => {
     const makeTrainerProgram = (id: string): TrainingProgram => ({
       id,
@@ -888,6 +930,69 @@ describe("useNotifications workout comment alerts", () => {
       expect(result.current.memberVisibleAlerts.find((item) => item.kind === "program")).toBeUndefined();
       expect(result.current.memberUnreadCount).toBe(0);
     });
+  });
+
+  it("preserves badge and celebration notification fields when persisting member alert state", async () => {
+    const trainerProgram: TrainingProgram = {
+      id: "program-1",
+      memberId: "member-1",
+      title: "4x4 intervall",
+      goal: "Kondis",
+      notes: "",
+      exercises: [],
+      createdAt: "20.05.2026",
+      programCreatedBy: "trainer",
+      ownerUserId: "trainer-1",
+    };
+    const personalGoals = `MOTUS_PROFILE_V1:${JSON.stringify({
+      notificationPreferences: {
+        version: 1,
+        memberAlertsSeenAt: 0,
+        seenMemberProgramIds: [],
+        seenMemberWorkoutCommentKeys: [],
+        openedMemberAlertIds: [],
+        seenMemberInspirationIds: [],
+        seenMemberPeriodPlanKeys: [],
+        dismissedMemberCheckInMonths: [],
+        memberInspirationBaselineAt: 0,
+        seenHiddenBadgeIds: ["secret-a"],
+        lastCelebratedAchievedLevel: 4,
+        updatedAt: 100,
+      },
+    })}`;
+    let persisted: Parameters<NonNullable<Parameters<typeof useNotifications>[0]["onPersistMemberNotificationPreferences"]>>[0] | null = null;
+    const { result } = renderHook(() =>
+      useNotifications({
+        messages: [],
+        programs: [trainerProgram],
+        logs: [],
+        members: [{ id: "member-1", name: "Test", email: "test@example.com", personalGoals } as never],
+        memberViewId: "member-1",
+        memberPersonalGoals: personalGoals,
+        memberNotificationProfileReady: true,
+        currentUserRole: "member",
+        setMemberTab: () => {},
+        onPersistMemberNotificationPreferences: (preferences) => {
+          persisted = preferences;
+        },
+      }),
+    );
+
+    await waitFor(() => {
+      expect(result.current.memberVisibleAlerts.find((item) => item.kind === "program")).toBeDefined();
+    });
+
+    act(() => {
+      result.current.openAlert(result.current.memberVisibleAlerts.find((item) => item.kind === "program")!);
+    });
+
+    await waitFor(
+      () => {
+        expect(persisted?.seenHiddenBadgeIds).toEqual(["secret-a"]);
+        expect(persisted?.lastCelebratedAchievedLevel).toBe(4);
+      },
+      { timeout: 1500 },
+    );
   });
 
   it("ignores workout comments on non-completed logs", () => {
