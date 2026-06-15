@@ -1392,22 +1392,6 @@ export function MemberPortal(props: MemberPortalProps) {
     periodPlanSwapsLocalUpdatedAtRef.current = mergedSwaps.updatedAt;
     periodPlanSwapsDirtyRef.current = false;
   }
-  useEffect(() => {
-    if (!editableMember?.id || periodPlanSwapsDirtyRef.current) return;
-    const remoteSwaps = readPeriodPlanSwapsFromPersonalGoals(
-      resolveBestPersonalGoalsForRelatedMembers(editableMember, members, relatedMemberIdSet),
-    );
-    if (!remoteSwaps || remoteSwaps.updatedAt <= periodPlanSwapsLocalUpdatedAtRef.current) return;
-    periodPlanSwapsLocalUpdatedAtRef.current = remoteSwaps.updatedAt;
-    setPeriodPlanSwapsByPlan(remoteSwaps.swapsByPlan);
-    if (typeof window !== "undefined") {
-      try {
-        window.localStorage.setItem(getPeriodPlanSwapsStorageKey(editableMember.id), JSON.stringify(remoteSwaps.swapsByPlan));
-      } catch {
-        // ignore storage write errors (quota/private mode)
-      }
-    }
-  }, [editableMember, members, relatedMemberIdSet, relatedProfileGoalsSignature]);
   const memberNotificationPrefs = useMemo(
     () => readMemberNotificationPreferencesFromPersonalGoals(editableMember?.personalGoals),
     [editableMember?.personalGoals],
@@ -1606,6 +1590,22 @@ export function MemberPortal(props: MemberPortalProps) {
       relatedMembersForProfile.map((member) => `${member.id}:${member.personalGoals ?? ""}`).join("|"),
     [relatedMembersForProfile],
   );
+  useEffect(() => {
+    if (!editableMember?.id || periodPlanSwapsDirtyRef.current) return;
+    const remoteSwaps = readPeriodPlanSwapsFromPersonalGoals(
+      resolveBestPersonalGoalsForRelatedMembers(editableMember, members, relatedMemberIdSet),
+    );
+    if (!remoteSwaps || remoteSwaps.updatedAt <= periodPlanSwapsLocalUpdatedAtRef.current) return;
+    periodPlanSwapsLocalUpdatedAtRef.current = remoteSwaps.updatedAt;
+    setPeriodPlanSwapsByPlan(remoteSwaps.swapsByPlan);
+    if (typeof window !== "undefined") {
+      try {
+        window.localStorage.setItem(getPeriodPlanSwapsStorageKey(editableMember.id), JSON.stringify(remoteSwaps.swapsByPlan));
+      } catch {
+        // ignore storage write errors (quota/private mode)
+      }
+    }
+  }, [editableMember, members, relatedMemberIdSet, relatedProfileGoalsSignature]);
   const isMemberLimited = useMemo(() => {
     const candidates = members.filter((member) => {
       if (currentUserMemberId && member.id === currentUserMemberId) return true;
