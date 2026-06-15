@@ -3362,6 +3362,36 @@ export function MemberPortal(props: MemberPortalProps) {
       localUpdatedAt: periodPlanCompletionLocalUpdatedAtRef.current,
     });
 
+    if (memberRemoteHydrated) {
+      const sameKeys = (a: string[], b: string[]) =>
+        a.length === b.length && a.every((key, index) => key === b[index]);
+      const remoteCompleted = remotePrefs?.completedEntryKeys ?? [];
+      const remoteDismissed = remotePrefs?.dismissedEntryKeys ?? [];
+      const shouldPersistReconciledKeys =
+        !sameKeys(storedCompleted, reconciled.completedKeys) ||
+        !sameKeys(storedDismissed, reconciled.dismissedKeys) ||
+        !sameKeys(remoteCompleted, reconciled.completedKeys) ||
+        !sameKeys(remoteDismissed, reconciled.dismissedKeys);
+
+      if (shouldPersistReconciledKeys) {
+        bumpPeriodPlanLocalUpdatedAt();
+        periodPlanCompletedDirtyRef.current = true;
+        periodPlanDismissedDirtyRef.current = true;
+        try {
+          window.localStorage.setItem(
+            getPeriodPlanCompletedStorageKey(memberId),
+            JSON.stringify(reconciled.completedKeys),
+          );
+          window.localStorage.setItem(
+            getPeriodPlanDismissedStorageKey(memberId),
+            JSON.stringify(reconciled.dismissedKeys),
+          );
+        } catch {
+          // ignore storage write errors (quota/private mode)
+        }
+      }
+    }
+
     setCompletedPeriodPlanEntryKeys((prev) => {
       const next = reconciled.completedKeys;
       if (prev.length === next.length && prev.every((key, index) => key === next[index])) return prev;
