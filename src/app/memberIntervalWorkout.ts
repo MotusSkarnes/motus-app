@@ -30,17 +30,24 @@ export function isMemberIntervalWorkoutProgram(
   if (isConditioningLogAfterProgram(program) || programHasConfiguredLogAfterFields(program)) {
     return false;
   }
-  if (isConditioningIntervalProgram(program)) {
-    return true;
-  }
   const subTab = getTrainingProgramSubTab(program, exerciseCategoryById, exerciseBank);
+  const title = program.title?.trim() ?? "";
+
+  if (isConditioningIntervalProgram(program)) {
+    return (
+      subTab === "conditioning" ||
+      isConditioningTrainingProgram(program, exerciseCategoryById, exerciseBank) ||
+      INTERVAL_TITLE_PATTERN.test(title) ||
+      program.exercises.some((exercise) => INTERVAL_EXERCISE_NAME_PATTERN.test(exercise.exerciseName.trim()))
+    );
+  }
+
   if (subTab === "conditioning") {
     return hasIntervalStepStructure(program);
   }
   if (isConditioningTrainingProgram(program, exerciseCategoryById, exerciseBank)) {
     return hasIntervalStepStructure(program);
   }
-  const title = program.title?.trim() ?? "";
   if (INTERVAL_TITLE_PATTERN.test(title) && hasIntervalStepStructure(program)) {
     return true;
   }
