@@ -1950,6 +1950,7 @@ export function TrainerMealPlanEditor({
                           tag: previewRecipe.tag,
                         })}
                         recipeId={previewRecipe.id}
+                        foodOverrides={previewRecipe.ingredientFoodOverrides}
                       />
                       {previewRecipeAvoidanceConflicts.length > 0 ? (
                         <RecipeAvoidanceWarning

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { DEFAULT_INSPIRATION_RECIPES, DEFAULT_RECIPE_SCALING_BY_ID } from "./defaultInspirationRecipes";
-import { applyCanonicalRecipeBodies } from "./recipeMacros";
+import { applyCanonicalRecipeBodies, type RecipeIngredientFoodOverrides } from "./recipeMacros";
 import { isRecipeProteinCategory, type RecipeProteinCategory } from "./recipeProteinCategory";
 import {
   fetchInspirationItemsForHub,
@@ -25,6 +25,7 @@ export type InspirationRecipeItem = {
   scalingMode?: "flexible" | "fixed";
   proteinCategory?: RecipeProteinCategory;
   servings?: number;
+  ingredientFoodOverrides?: RecipeIngredientFoodOverrides;
 };
 
 function pickPreferredRecipeVariant(
@@ -56,6 +57,15 @@ function normalizeRecipeItem(raw: unknown): InspirationRecipeItem | null {
     (row.scalingMode === "flexible" || row.scalingMode === "fixed" ? row.scalingMode : undefined) ??
     DEFAULT_RECIPE_SCALING_BY_ID.get(id);
   const servings = Number(row.servings);
+  const rawOverrides = row.ingredientFoodOverrides;
+  const ingredientFoodOverrides =
+    rawOverrides && typeof rawOverrides === "object" && !Array.isArray(rawOverrides)
+      ? Object.fromEntries(
+          Object.entries(rawOverrides as Record<string, unknown>).filter(
+            (entry): entry is [string, string] => typeof entry[0] === "string" && typeof entry[1] === "string" && entry[1].trim().length > 0,
+          ),
+        )
+      : undefined;
   return {
     id,
     title: String(row.title ?? "").trim() || "Oppskrift",
@@ -65,6 +75,9 @@ function normalizeRecipeItem(raw: unknown): InspirationRecipeItem | null {
     ...(scalingMode ? { scalingMode } : {}),
     ...(isRecipeProteinCategory(row.proteinCategory) ? { proteinCategory: row.proteinCategory } : {}),
     ...(Number.isFinite(servings) && servings > 0 ? { servings: Math.round(servings) } : {}),
+    ...(ingredientFoodOverrides && Object.keys(ingredientFoodOverrides).length
+      ? { ingredientFoodOverrides }
+      : {}),
     ...(imageUrl ? { imageUrl } : {}),
   };
 }
@@ -107,7 +120,8 @@ function recipeItemListsEqual(a: InspirationRecipeItem[], b: InspirationRecipeIt
       left.imageUrl !== right.imageUrl ||
       left.scalingMode !== right.scalingMode ||
       left.proteinCategory !== right.proteinCategory ||
-      left.servings !== right.servings
+      left.servings !== right.servings ||
+      JSON.stringify(left.ingredientFoodOverrides ?? {}) !== JSON.stringify(right.ingredientFoodOverrides ?? {})
     ) {
       return false;
     }

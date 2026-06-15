@@ -19,6 +19,7 @@ export type RecipeMacroOptions = {
 export type RecipeIngredient = {
   key: string;
   sourceLine: string;
+  searchText: string;
   displayAmount: string;
   foodId: string;
   foodName: string;
@@ -27,6 +28,8 @@ export type RecipeIngredient = {
   macros: MacroTotals;
   nutritionPer100g: FoodNutrition;
 };
+
+export type RecipeIngredientFoodOverrides = Record<string, string>;
 
 type SyntheticFood = { name: string; nutritionPer100g: FoodNutrition };
 
@@ -107,6 +110,8 @@ const FOOD_ALIASES: Record<string, string> = {
   paprika: "paprika",
   agurk: "agurk",
   kjottdeig: "karbonadedeig",
+  soyafarse: "soyafarse",
+  sojafarse: "soyafarse",
   lok: "løk",
   rodlog: "løk",
   hvitlok: "hvitløk",
@@ -465,6 +470,44 @@ function foodRowId(food: FoodItem | SyntheticFood): string {
   return "id" in food ? food.id : `synthetic:${normalizeFoodKey(food.name)}`;
 }
 
+export function isConfidentIngredientFoodMatch(searchText: string, foodName: string): boolean {
+  const key = normalizeFoodKey(searchText);
+  const foodKey = normalizeFoodKey(foodName);
+  if (!key || !foodKey) return false;
+  if (key === foodKey || foodKey.includes(key) || key.includes(foodKey)) return true;
+  for (const [aliasKey, targetName] of Object.entries(FOOD_ALIASES)) {
+    if (!key.includes(aliasKey)) continue;
+    const targetKey = normalizeFoodKey(targetName);
+    if (foodKey.includes(targetKey) || targetKey.includes(foodKey)) return true;
+  }
+  return false;
+}
+
+export function applyRecipeIngredientFoodOverrides(
+  ingredients: RecipeIngredient[],
+  overrides: RecipeIngredientFoodOverrides | undefined,
+  foodItems: FoodItem[],
+): RecipeIngredient[] {
+  if (!overrides || !Object.keys(overrides).length) return ingredients;
+  return ingredients.map((ingredient) => {
+    const overrideId = overrides[ingredient.key]?.trim();
+    if (!overrideId) return ingredient;
+    const food = foodItems.find((item) => item.id === overrideId);
+    if (!food) return ingredient;
+    const grams = ingredient.grams;
+    return {
+      ...ingredient,
+      foodId: food.id,
+      foodName: food.name,
+      category: food.category,
+      grams,
+      macros: computeMacrosForGrams(food.nutritionPer100g, grams),
+      nutritionPer100g: food.nutritionPer100g,
+      displayAmount: `${Math.round(grams)} g ${food.name}`,
+    };
+  });
+}
+
 function foodRowCategory(food: FoodItem | SyntheticFood): FoodCategoryId {
   if ("category" in food) return food.category;
   if (normalizeFoodKey(food.name).includes("pasta") || normalizeFoodKey(food.name).includes("ris")) {
@@ -510,7 +553,11 @@ export function formatIngredientDisplay(
   return `${Math.round(grams)} g ${foodName}`;
 }
 
-export function computeRecipeIngredients(body: string, foodItems: FoodItem[]): RecipeIngredient[] {
+export function computeRecipeIngredients(
+  body: string,
+  foodItems: FoodItem[],
+  overrides?: RecipeIngredientFoodOverrides,
+): RecipeIngredient[] {
   const lines = extractRecipeIngredientLines(body);
   const rows: RecipeIngredient[] = [];
 
@@ -532,6 +579,7 @@ export function computeRecipeIngredients(body: string, foodItems: FoodItem[]): R
     rows.push({
       key: `ing-${index}`,
       sourceLine: line,
+      searchText: parsed.searchText,
       displayAmount: formatIngredientDisplay(parsed, grams, name),
       foodId: foodRowId(food),
       foodName: name,
@@ -542,7 +590,7 @@ export function computeRecipeIngredients(body: string, foodItems: FoodItem[]): R
     });
   });
 
-  return rows;
+  return applyRecipeIngredientFoodOverrides(rows, overrides, foodItems);
 }
 
 /** Bytter inn standard oppskriftstekst når lagret versjon mangler ingrediensliste som kan beregnes. */
@@ -563,11 +611,15 @@ export function applyCanonicalRecipeBodies<T extends { id: string; category?: st
   });
 }
 
-export function computeRecipeMacros(body: string, foodItems: FoodItem[], options?: RecipeMacroOptions): RecipeMacroResult | null {
+export function computeRecipeMacros(
+  body: string,
+  foodItems: FoodItem[],
+  options?: RecipeMacroOptions & { ingredientFoodOverrides?: RecipeIngredientFoodOverrides },
+): RecipeMacroResult | null {
   const lines = extractRecipeIngredientLines(body);
   if (lines.length === 0) return null;
 
-  const ingredients = computeRecipeIngredients(body, foodItems);
+  const ingredients = computeRecipeIngredients(body, foodItems, options?.ingredientFoodOverrides);
   if (ingredients.length === 0) return null;
 
   const servings = parseRecipeServings(body, options?.servings);

@@ -182,4 +182,24 @@ Slik gjør du
     );
     expect(computeRecipeMacros(patched[0].body, foods)).not.toBeNull();
   });
+
+  it("matcher soyafarse i matvarebanken", () => {
+    const soyafarse = foods.find((item) => item.name === "Soyafarse");
+    expect(soyafarse).toBeTruthy();
+    const body = `**Ingredienser**\n- 200 g soyafarse`;
+    const ingredients = computeRecipeIngredients(body, foods);
+    expect(ingredients[0]?.foodName).toBe("Soyafarse");
+    expect(ingredients[0]?.grams).toBe(200);
+  });
+
+  it("bruker manuelle matvarekoblinger for oppskriftsingredienser", () => {
+    const body = `**Ingredienser**\n- 200 g kjøttdeig`;
+    const auto = computeRecipeIngredients(body, foods)[0];
+    expect(auto?.foodName).toBe("Karbonadedeig mager");
+    const soyafarse = foods.find((item) => item.name === "Soyafarse");
+    expect(soyafarse).toBeTruthy();
+    const overridden = computeRecipeIngredients(body, foods, { [auto!.key]: soyafarse!.id });
+    expect(overridden[0]?.foodName).toBe("Soyafarse");
+    expect(overridden[0]?.grams).toBe(200);
+  });
 });

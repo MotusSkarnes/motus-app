@@ -1734,6 +1734,38 @@
   font-weight: 500;
 }
 
+.motus-recipe-ingredient-row--review {
+  border-color: rgba(245, 158, 11, 0.35);
+  background: rgba(255, 251, 235, 0.65);
+}
+
+.motus-recipe-ingredient-match-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  width: fit-content;
+  margin-top: 0.15rem;
+  border-radius: 999px;
+  padding: 0.1rem 0.45rem;
+  font-size: 0.625rem;
+  font-weight: 600;
+}
+
+.motus-recipe-ingredient-match-badge.is-ok {
+  background: rgba(16, 185, 129, 0.12);
+  color: #047857;
+}
+
+.motus-recipe-ingredient-match-badge.is-review {
+  background: rgba(245, 158, 11, 0.15);
+  color: #b45309;
+}
+
+.motus-recipe-ingredient-match-badge.is-manual {
+  background: rgba(14, 165, 233, 0.12);
+  color: #0369a1;
+}
+
 .motus-recipe-ingredient-side {
   flex-shrink: 0;
   display: flex;

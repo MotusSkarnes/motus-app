@@ -9,6 +9,7 @@ import {
   persistFoodBankItems,
   persistRecentFoodIds,
 } from "./foodBankStorage";
+import { appendMissingSeedFoodItems } from "./foodBankSeed";
 import { applyKnownPortionDefaults } from "./foodPortionDefaults";
 import { fetchApprovedFoodItemsForMember, fetchApprovedFoodItemsForTrainer } from "./memberFoodSubmissionsCloud";
 import { dedupeFoodBankItems, remapFoodIdList } from "./foodBankDedup";
@@ -100,7 +101,8 @@ function dedupeTrainerFoodBankSnapshot(snapshot: TrainerFoodBankSnapshot): Train
 
 function cacheTrainerFoodBankSnapshot(snapshot: TrainerFoodBankSnapshot): void {
   const deduped = dedupeTrainerFoodBankSnapshot(snapshot);
-  persistFoodBankItems(deduped.items);
+  const items = appendMissingSeedFoodItems(deduped.items);
+  persistFoodBankItems(items);
   persistFavoriteFoodIds(deduped.favoriteIds);
   persistRecentFoodIds(deduped.recentIds);
 }

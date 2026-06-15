@@ -64,10 +64,16 @@ function RecipeDetail({
         dailyTargets,
         mealSlot,
         servings: item.servings,
+        ingredientFoodOverrides: item.ingredientFoodOverrides,
       }),
-    [item.body, item.servings, foodItems, scalingMode, dailyTargets, mealSlot],
+    [item.body, item.servings, item.ingredientFoodOverrides, foodItems, scalingMode, dailyTargets, mealSlot],
   );
-  const macros = scaledView?.macros ?? computeRecipeMacros(item.body, foodItems, { servings: item.servings });
+  const macros =
+    scaledView?.macros ??
+    computeRecipeMacros(item.body, foodItems, {
+      servings: item.servings,
+      ingredientFoodOverrides: item.ingredientFoodOverrides,
+    });
   const hasIngredientSection = useMemo(() => extractRecipeIngredientLines(item.body).length > 0, [item.body]);
 
   return (
@@ -126,6 +132,7 @@ function RecipeDetail({
             scalingMode={scalingMode}
             recipeId={item.id}
             servings={item.servings}
+            foodOverrides={item.ingredientFoodOverrides}
           />
           {item.body.trim() ? (
             <details className="mt-4 rounded-xl border border-slate-100 bg-slate-50/60 px-3 py-2">

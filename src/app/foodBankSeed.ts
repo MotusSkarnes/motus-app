@@ -1,6 +1,8 @@
 import { uid } from "./storage";
+import { dedupeFoodBankItems } from "./foodBankDedup";
 import { enrichFoodNutrition } from "./foodBankMicronutrientEnrichment";
 import { applyKnownPortionDefaults } from "./foodPortionDefaults";
+import { normalizeFoodBankNameKey } from "./foodBankNameKey";
 import type { FoodCategoryId, FoodItem } from "./foodBankTypes";
 
 type SeedRow = {
@@ -32,6 +34,7 @@ const SEED_ROWS: SeedRow[] = [
   { name: "Skyr naturell", category: "proteinkilder", origin: "Meieri", emoji: "🥣", kcal: 63, protein: 11, carbs: 4, fat: 0.2, fiber: 0, sugar: 4, saturatedFat: 0.1, sodium: 40, portionLabel: "1 beger", portionGrams: 130 },
   { name: "Cottage cheese", category: "proteinkilder", origin: "Meieri", emoji: "🧀", kcal: 98, protein: 11, carbs: 3.4, fat: 4.3, fiber: 0, sugar: 2.7, saturatedFat: 1.7, sodium: 364, portionLabel: "150 g", portionGrams: 150 },
   { name: "Tofu fast", category: "proteinkilder", origin: "Plantebasert", emoji: "🧈", kcal: 144, protein: 17, carbs: 3, fat: 8, fiber: 2, sugar: 0.7, saturatedFat: 1.2, sodium: 14 },
+  { name: "Soyafarse", category: "proteinkilder", origin: "Plantebasert", emoji: "🌱", kcal: 345, protein: 50, carbs: 33, fat: 1.5, fiber: 17, sugar: 7, saturatedFat: 0.3, sodium: 15, portionLabel: "75 g", portionGrams: 75 },
   { name: "Kalkunkjøtt", category: "proteinkilder", origin: "Kjøtt & fjærkre", emoji: "🦃", kcal: 135, protein: 30, carbs: 0, fat: 1, fiber: 0, sugar: 0, saturatedFat: 0.3, sodium: 68 },
   { name: "Skinke", category: "proteinkilder", origin: "Pålegg", emoji: "🥓", kcal: 120, protein: 20, carbs: 1, fat: 4, fiber: 0, sugar: 0.5, saturatedFat: 1.5, sodium: 900, portionLabel: "30 g", portionGrams: 30 },
   { name: "Leverpostei", category: "proteinkilder", origin: "Pålegg", emoji: "🍖", kcal: 270, protein: 12, carbs: 4, fat: 22, fiber: 0, sugar: 2, saturatedFat: 8, sodium: 650, portionLabel: "20 g", portionGrams: 20 },
@@ -143,4 +146,15 @@ export function buildDefaultFoodBankItems(createdBy = "Motus PT"): FoodItem[] {
       ),
     }),
   );
+}
+
+/** Legger til nye standardvarer fra seed når de mangler i eksisterende bank (match på navn). */
+export function appendMissingSeedFoodItems(items: FoodItem[]): FoodItem[] {
+  if (!items.length) return items;
+  const existingNames = new Set(items.map((item) => normalizeFoodBankNameKey(item.name)));
+  const missing = buildDefaultFoodBankItems().filter(
+    (seed) => !existingNames.has(normalizeFoodBankNameKey(seed.name)),
+  );
+  if (!missing.length) return items;
+  return dedupeFoodBankItems([...items, ...missing]).items;
 }

@@ -120,13 +120,17 @@ export function buildScaledRecipeView(
     scalingMode: RecipeScalingMode;
     dailyTargets?: MealPlanTargets;
     mealSlot?: RecipeMealSlot | null;
+    ingredientFoodOverrides?: RecipeIngredientFoodOverrides;
     servings?: number;
   },
 ): ScaledRecipeView | null {
-  const baseMacros = computeRecipeMacros(body, foodItems, { servings: options.servings });
+  const baseMacros = computeRecipeMacros(body, foodItems, {
+    servings: options.servings,
+    ingredientFoodOverrides: options.ingredientFoodOverrides,
+  });
   if (!baseMacros) return null;
 
-  const baseIngredients = computeRecipeIngredients(body, foodItems);
+  const baseIngredients = computeRecipeIngredients(body, foodItems, options.ingredientFoodOverrides);
   if (!baseIngredients.length) return null;
 
   const targetMealKcal = targetKcalForRecipeMeal(options.dailyTargets, options.mealSlot ?? null);

@@ -19,7 +19,7 @@ import {
   isRecipeProteinCategory,
   type RecipeProteinCategory,
 } from "../../app/recipeProteinCategory";
-import { computeRecipeMacros, parseRecipeServings } from "../../app/recipeMacros";
+import { computeRecipeIngredients, computeRecipeMacros, parseRecipeServings, type RecipeIngredientFoodOverrides } from "../../app/recipeMacros";
 import { RecipeAvoidanceWarning } from "../../components/RecipeAvoidanceWarning";
 import { RecipeImageField } from "../../components/RecipeImageField";
 import { RecipeIngredientList } from "../../components/RecipeIngredientList";
@@ -36,6 +36,7 @@ type RecipeDraftSnapshot = {
   servings: string;
   body: string;
   imageUrl: string;
+  ingredientFoodOverrides: RecipeIngredientFoodOverrides;
 };
 
 function buildRecipeDraftFromSource(
@@ -51,6 +52,7 @@ function buildRecipeDraftFromSource(
     servings: String(source?.servings ?? (source?.body ? parseRecipeServings(source.body) : "")),
     body: source?.body ?? "",
     imageUrl: source?.imageUrl ?? "",
+    ingredientFoodOverrides: duplicateFromItem ? {} : { ...(source?.ingredientFoodOverrides ?? {}) },
   };
 }
 
@@ -100,6 +102,7 @@ export function TrainerRecipeComposer({
   const [saving, setSaving] = useState(false);
   const [baselineSnapshot, setBaselineSnapshot] = useState<string | null>(null);
   const [confirmCloseOpen, setConfirmCloseOpen] = useState(false);
+  const [ingredientFoodOverrides, setIngredientFoodOverrides] = useState<RecipeIngredientFoodOverrides>({});
 
   useEffect(() => {
     if (!open) {
@@ -116,6 +119,7 @@ export function TrainerRecipeComposer({
     setServings(nextDraft.servings);
     setBody(nextDraft.body);
     setImageUrl(nextDraft.imageUrl);
+    setIngredientFoodOverrides(nextDraft.ingredientFoodOverrides);
     setStatus(null);
     setBaselineSnapshot(snapshotRecipeDraft(nextDraft));
   }, [open, editItem, duplicateFromItem]);
@@ -130,8 +134,9 @@ export function TrainerRecipeComposer({
         servings,
         body,
         imageUrl,
+        ingredientFoodOverrides,
       }),
-    [title, description, tag, proteinCategory, servings, body, imageUrl],
+    [title, description, tag, proteinCategory, servings, body, imageUrl, ingredientFoodOverrides],
   );
   const hasUnsavedChanges = baselineSnapshot !== null && currentSnapshot !== baselineSnapshot;
 
@@ -169,9 +174,22 @@ export function TrainerRecipeComposer({
   );
 
   const recipeMacros = useMemo(
-    () => computeRecipeMacros(draftBody, foodItemsForMacros, { servings: Number(servings) }),
-    [draftBody, foodItemsForMacros, servings],
+    () =>
+      computeRecipeMacros(draftBody, foodItemsForMacros, {
+        servings: Number(servings),
+        ingredientFoodOverrides,
+      }),
+    [draftBody, foodItemsForMacros, servings, ingredientFoodOverrides],
   );
+
+  useEffect(() => {
+    if (!open) return;
+    const validKeys = new Set(computeRecipeIngredients(draftBody, foodItemsForMacros).map((row) => row.key));
+    setIngredientFoodOverrides((prev) => {
+      const next = Object.fromEntries(Object.entries(prev).filter(([key]) => validKeys.has(key)));
+      return Object.keys(next).length === Object.keys(prev).length ? prev : next;
+    });
+  }, [draftBody, foodItemsForMacros, open]);
 
   const avoidanceConflicts = useMemo(
     () => findRecipeFoodAvoidanceConflicts(draftBody, foodItemsForMacros, members),
@@ -237,6 +255,7 @@ export function TrainerRecipeComposer({
       ...(scalingMode ? { scalingMode } : {}),
       ...(proteinCategory ? { proteinCategory } : {}),
       servings: servingsNumber,
+      ...(Object.keys(ingredientFoodOverrides).length ? { ingredientFoodOverrides } : {}),
     };
 
     const latestItems =
@@ -360,6 +379,18 @@ export function TrainerRecipeComposer({
               foodItems={foodItemsForMacros}
               recipeId={editItem?.id}
               servings={Number(servings)}
+              editable
+              foodOverrides={ingredientFoodOverrides}
+              onFoodOverrideChange={(ingredientKey, foodId) => {
+                setIngredientFoodOverrides((prev) => {
+                  if (!foodId) {
+                    const next = { ...prev };
+                    delete next[ingredientKey];
+                    return next;
+                  }
+                  return { ...prev, [ingredientKey]: foodId };
+                });
+              }}
             />
           ) : null}
           {avoidanceConflicts.length > 0 ? <RecipeAvoidanceWarning conflicts={avoidanceConflicts} /> : null}

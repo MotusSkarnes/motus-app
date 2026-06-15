@@ -2,7 +2,7 @@ import { enrichFoodItem } from "./foodBankMicronutrientEnrichment";
 import { applyKnownPortionDefaults } from "./foodPortionDefaults";
 import { normalizeMicronutrients } from "./foodBankMicronutrients";
 import { dedupeFoodBankItems } from "./foodBankDedup";
-import { buildDefaultFoodBankItems } from "./foodBankSeed";
+import { buildDefaultFoodBankItems, appendMissingSeedFoodItems } from "./foodBankSeed";
 import type { FoodItem, FoodNutrition } from "./foodBankTypes";
 
 function normalizeFoodNutrition(nutrition: FoodNutrition): FoodNutrition {
@@ -55,8 +55,9 @@ function dedupeAndNormalizeItems(items: FoodItem[]): FoodItem[] {
 export function loadFoodBankItems(): FoodItem[] {
   const stored = readJson<FoodItem[]>(FOOD_BANK_STORAGE_KEY);
   if (stored?.length) {
-    const deduped = dedupeAndNormalizeItems(stored);
-    if (deduped.length !== stored.length) persistFoodBankItems(deduped);
+    const withSeeds = appendMissingSeedFoodItems(stored);
+    const deduped = dedupeAndNormalizeItems(withSeeds);
+    if (deduped.length !== stored.length || withSeeds.length !== stored.length) persistFoodBankItems(deduped);
     return deduped;
   }
   const seeded = dedupeAndNormalizeItems(buildDefaultFoodBankItems());
