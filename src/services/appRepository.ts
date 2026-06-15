@@ -185,6 +185,7 @@ export type SetWorkoutLogResultsInput = {
 export type UpdateWorkoutLogDateInput = {
   logId: string;
   date: string;
+  onPersisted?: (result: PersistResult) => void;
 };
 
 export type UpdateWorkoutLogTrainerCommentInput = {

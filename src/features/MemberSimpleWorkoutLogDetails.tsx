@@ -12,6 +12,7 @@ import { periodPlanStartDateForDateInput } from "../app/dateFormat";
 import { ReflectionLevelPicker } from "./ReflectionLevelPicker";
 import { compressImageFile } from "../app/imageCompress";
 import type { WorkoutLog, WorkoutReflection } from "../app/types";
+import type { PersistResult } from "../services/appRepository";
 import { GradientButton, TextArea, TextInput } from "../app/ui";
 import { ActivityNameCombobox } from "./ActivityNameCombobox";
 
@@ -22,7 +23,7 @@ export type MemberSimpleWorkoutLogDetailsProps = {
   isEditing: boolean;
   onStartEdit: () => void;
   onCancelEdit: () => void;
-  onSaveDate?: (date: string) => void;
+  onSaveDate?: (date: string, onPersisted?: (result: PersistResult) => void) => void;
   onSaveActivity: (payload: {
     activityName: string;
     durationMinutes: string;
@@ -153,7 +154,11 @@ export function MemberSimpleWorkoutLogDetails({
         removePhoto: removePhoto && !photoDataUrl,
       });
       if (date && date !== periodPlanStartDateForDateInput(log.date)) {
-        onSaveDate?.(date);
+        onSaveDate?.(date, (result) => {
+          if (!result.ok) {
+            setStatus(result.message?.trim() || "Kunne ikke lagre dato i sky. Prøv igjen.");
+          }
+        });
       }
       return;
     }
@@ -167,7 +172,11 @@ export function MemberSimpleWorkoutLogDetails({
       reflection: buildReflection(),
     });
     if (date && date !== periodPlanStartDateForDateInput(log.date)) {
-      onSaveDate?.(date);
+      onSaveDate?.(date, (result) => {
+        if (!result.ok) {
+          setStatus(result.message?.trim() || "Kunne ikke lagre dato i sky. Prøv igjen.");
+        }
+      });
     }
   }
 

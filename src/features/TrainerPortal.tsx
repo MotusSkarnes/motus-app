@@ -115,6 +115,7 @@ import type {
   DeleteProgramContext,
   ReplaceWorkoutExerciseGroupInput,
   StartWorkoutModeOptions,
+  UpdateWorkoutLogDateInput,
   UpdateMemberInput,
 } from "../services/appRepository";
 import type { ExercisePrescriptionFieldKey } from "../app/types";
@@ -385,7 +386,7 @@ type TrainerPortalProps = {
     trainerCommentUpdatedAt?: string;
     trainerCommentAuthorName?: string;
   }) => void;
-  updateWorkoutLogDate?: (input: { logId: string; date: string }) => void;
+  updateWorkoutLogDate?: (input: UpdateWorkoutLogDateInput) => void;
   deleteWorkoutLog?: (input: { logId: string }) => void;
   clearLocalChatCache?: () => number;
   saveExercise: (input: {
@@ -3259,6 +3260,11 @@ function pickFirstName(value: unknown): string {
     updateWorkoutLogDate({
       logId: filteredSelectedWorkoutLog.id,
       date: trainerWorkoutDateDraft,
+      onPersisted: (result) => {
+        if (!result.ok) {
+          setTrainerWorkoutCommentStatus(result.message?.trim() || "Kunne ikke lagre dato i sky. Prøv igjen.");
+        }
+      },
     });
     setTrainerWorkoutCommentStatus("Dato lagret.");
   }

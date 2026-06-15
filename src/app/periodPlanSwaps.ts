@@ -143,16 +143,35 @@ export function mergePeriodPlanSwapPrefs(
   local: PeriodPlanSwapPrefs,
   remote: PeriodPlanSwapPrefs | null | undefined,
 ): PeriodPlanSwapPrefs {
+  const localSwapsByPlan = normalizePeriodPlanSwapsByPlan(local.swapsByPlan);
   if (!remote) {
     return {
       ...local,
-      swapsByPlan: normalizePeriodPlanSwapsByPlan(local.swapsByPlan),
+      swapsByPlan: localSwapsByPlan,
     };
   }
-  const selected = remote.updatedAt > local.updatedAt ? remote : local;
+  const remoteSwapsByPlan = normalizePeriodPlanSwapsByPlan(remote.swapsByPlan);
+  const useRemoteBase = remote.updatedAt > local.updatedAt;
+  const base = useRemoteBase ? remoteSwapsByPlan : localSwapsByPlan;
+  const other = useRemoteBase ? localSwapsByPlan : remoteSwapsByPlan;
+  const merged: PeriodPlanSwapsByPlan = {};
+  for (const [planId, weeks] of Object.entries(base)) {
+    merged[planId] = { ...weeks };
+  }
+  for (const [planId, weeks] of Object.entries(other)) {
+    const mergedWeeks = { ...(merged[planId] ?? {}) };
+    for (const [weekNumber, swaps] of Object.entries(weeks)) {
+      if (!Object.prototype.hasOwnProperty.call(mergedWeeks, weekNumber)) {
+        mergedWeeks[weekNumber] = swaps;
+      }
+    }
+    if (Object.keys(mergedWeeks).length > 0) {
+      merged[planId] = mergedWeeks;
+    }
+  }
   return {
     version: PERIOD_PLAN_SWAP_PREFS_VERSION,
-    swapsByPlan: normalizePeriodPlanSwapsByPlan(selected.swapsByPlan),
+    swapsByPlan: merged,
     updatedAt: Math.max(local.updatedAt, remote.updatedAt),
   };
 }

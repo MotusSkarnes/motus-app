@@ -5,6 +5,7 @@ import { periodPlanStartDateForDateInput } from "../app/dateFormat";
 import { isHoldBasedExerciseCategory } from "../app/exerciseCategories";
 import { formatWorkoutResultPerformedLabel } from "../app/programExercisePresentation";
 import type { WorkoutLog, WorkoutReflection } from "../app/types";
+import type { UpdateWorkoutLogDateInput } from "../services/appRepository";
 import { EmptyState, TextInput } from "../app/ui";
 import { MemberSimpleWorkoutLogDetails } from "./MemberSimpleWorkoutLogDetails";
 
@@ -71,7 +72,7 @@ export type MemberWorkoutHistoryLogListProps = {
   onCancelEdit: () => void;
   onDeleteExercise: (logId: string, exerciseId: string) => void;
   onDraftChange: (updater: (prev: EditingLoggedExerciseDraft | null) => EditingLoggedExerciseDraft | null) => void;
-  onUpdateWorkoutLogDate?: (input: { logId: string; date: string }) => void;
+  onUpdateWorkoutLogDate?: (input: UpdateWorkoutLogDateInput) => void;
   onUpdateActivityWorkout?: (input: {
     logId: string;
     activityName: string;
@@ -116,6 +117,20 @@ export function MemberWorkoutHistoryLogList({
   const [editingSimpleLogId, setEditingSimpleLogId] = useState<string | null>(null);
   const [editingDateLogId, setEditingDateLogId] = useState<string | null>(null);
   const [dateDraft, setDateDraft] = useState("");
+  const [dateEditStatus, setDateEditStatus] = useState<string | null>(null);
+
+  function saveWorkoutLogDate(input: UpdateWorkoutLogDateInput) {
+    setDateEditStatus(null);
+    onUpdateWorkoutLogDate?.({
+      ...input,
+      onPersisted: (result) => {
+        if (!result.ok) {
+          setDateEditStatus(result.message?.trim() || "Kunne ikke lagre dato i sky. Prøv igjen.");
+        }
+        input.onPersisted?.(result);
+      },
+    });
+  }
 
   return (
     <div className="motus-member-history-log-list space-y-3">
@@ -127,6 +142,11 @@ export function MemberWorkoutHistoryLogList({
               Angre
             </button>
           ) : null}
+        </div>
+      ) : null}
+      {dateEditStatus ? (
+        <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+          {dateEditStatus}
         </div>
       ) : null}
       {logs.length === 0 ? (
@@ -168,7 +188,7 @@ export function MemberWorkoutHistoryLogList({
                     <button
                       type="button"
                       onClick={() => {
-                        onUpdateWorkoutLogDate({ logId: log.id, date: dateDraft });
+                        saveWorkoutLogDate({ logId: log.id, date: dateDraft });
                         setEditingDateLogId(null);
                       }}
                       disabled={!dateDraft}
@@ -214,7 +234,7 @@ export function MemberWorkoutHistoryLogList({
                         <button
                           type="button"
                           onClick={() => {
-                            onUpdateWorkoutLogDate({ logId: log.id, date: dateDraft });
+                            saveWorkoutLogDate({ logId: log.id, date: dateDraft });
                             setEditingDateLogId(null);
                           }}
                           disabled={!dateDraft}
@@ -267,7 +287,7 @@ export function MemberWorkoutHistoryLogList({
                     isEditing={editingSimpleLogId === log.id}
                     onStartEdit={() => setEditingSimpleLogId(log.id)}
                     onCancelEdit={() => setEditingSimpleLogId(null)}
-                    onSaveDate={(date) => onUpdateWorkoutLogDate?.({ logId: log.id, date })}
+                    onSaveDate={(date, onPersisted) => saveWorkoutLogDate({ logId: log.id, date, onPersisted })}
                     onSaveActivity={(payload) => {
                       onUpdateActivityWorkout?.({ logId: log.id, ...payload });
                       setEditingSimpleLogId(null);
