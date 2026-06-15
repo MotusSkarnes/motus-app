@@ -293,29 +293,19 @@ export function isPeriodPlanDayComplete(input: {
 }): boolean {
   const key = buildPeriodPlanEntryKey(input.planId, input.weekNumber, input.day);
   const trimmedEntry = input.entry.trim();
-  if (
-    trimmedEntry &&
-    (input.logsForDate ?? []).some(
-      (log) =>
-        log.status.toLowerCase().replace(/ø/g, "o") === "fullfort" &&
-        periodPlanEntryMatchesCompletedProgram(trimmedEntry, log.programTitle, input.programs),
-    )
-  ) {
-    return true;
-  }
   if (input.dismissedKeys?.includes(key)) return false;
-  if (input.completedKeys.includes(key)) return true;
 
   if (!trimmedEntry) return false;
 
-  if (!input.logsForDate) return false;
-  if (!input.logsForDate.length) return false;
+  if (!input.logsForDate) return input.completedKeys.includes(key);
 
-  return input.logsForDate.some(
+  const hasMatchingLog = input.logsForDate.some(
     (log) =>
-      log.status === "Fullført" &&
+      log.status.toLowerCase().replace(/ø/g, "o") === "fullfort" &&
       periodPlanEntryMatchesCompletedProgram(trimmedEntry, log.programTitle, input.programs),
   );
+  if (input.completedKeys.includes(key)) return hasMatchingLog;
+  return hasMatchingLog;
 }
 
 /** Finn periodeplan-rader som skal hakkes av når et program er fullført på en kalenderdag. */
