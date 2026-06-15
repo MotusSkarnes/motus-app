@@ -33,6 +33,7 @@ type RecipeIngredientListProps = {
   mealSlot?: RecipeMealSlot | null;
   scalingMode?: RecipeScalingMode;
   recipeId?: string;
+  servings?: number;
 };
 
 function formatGramsLabel(grams: number, servings: number): string {
@@ -141,13 +142,14 @@ export function RecipeIngredientList({
   mealSlot = null,
   scalingMode: scalingModeProp,
   recipeId,
+  servings: servingsProp,
 }: RecipeIngredientListProps) {
-  const servings = useMemo(() => parseRecipeServings(body), [body]);
+  const servings = useMemo(() => parseRecipeServings(body, servingsProp), [body, servingsProp]);
   const scalingMode = useMemo(
     () =>
       scalingModeProp ??
-      resolveRecipeScalingMode({ id: recipeId, body }),
-    [scalingModeProp, recipeId, body, mealSlot],
+      resolveRecipeScalingMode({ id: recipeId, body, servings: servingsProp }),
+    [scalingModeProp, recipeId, body, mealSlot, servingsProp],
   );
   const scaledView = useMemo(
     () =>
@@ -155,8 +157,9 @@ export function RecipeIngredientList({
         scalingMode,
         dailyTargets,
         mealSlot,
+        servings: servingsProp,
       }),
-    [body, foodItems, scalingMode, dailyTargets, mealSlot],
+    [body, foodItems, scalingMode, dailyTargets, mealSlot, servingsProp],
   );
   const ingredients = useMemo(
     () => scaledView?.ingredients ?? computeRecipeIngredients(body, foodItems),

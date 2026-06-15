@@ -244,7 +244,7 @@ export function MemberMealPlanDashboard({ plan, memberId, onOpenAvoidances, onRe
   const recipeNutritionById = useMemo(() => {
     const byId = new Map<string, FoodItem["nutritionPer100g"]>();
     for (const recipe of inspirationRecipes) {
-      const macros = computeRecipeMacros(recipe.body, foodItems);
+      const macros = computeRecipeMacros(recipe.body, foodItems, { servings: recipe.servings });
       if (!macros) continue;
       byId.set(recipe.id, {
         kcal: Math.round(macros.perServing.kcal),
@@ -1417,7 +1417,12 @@ export function MemberMealPlanDashboard({ plan, memberId, onOpenAvoidances, onRe
               style={{ maxHeight: "calc(100dvh - 8rem)", paddingBottom: "max(1.5rem, env(safe-area-inset-bottom))" }}
             >
               {activeRecipe.description ? <p className="text-sm text-slate-600">{activeRecipe.description}</p> : null}
-              <RecipeIngredientList body={activeRecipe.body} foodItems={foodItems} recipeId={activeRecipe.id} />
+              <RecipeIngredientList
+                body={activeRecipe.body}
+                foodItems={foodItems}
+                recipeId={activeRecipe.id}
+                servings={activeRecipe.servings}
+              />
               {activeRecipeSteps.length > 0 ? (
                 <section className="rounded-xl border border-slate-200 bg-slate-50/70 p-3">
                   <h4 className="text-sm font-semibold text-slate-900">Slik gjør du</h4>
@@ -1428,8 +1433,8 @@ export function MemberMealPlanDashboard({ plan, memberId, onOpenAvoidances, onRe
                   </ol>
                 </section>
               ) : null}
-              {computeRecipeMacros(activeRecipe.body, foodItems) ? (
-                <RecipeMacroBlocks result={computeRecipeMacros(activeRecipe.body, foodItems)!} />
+              {computeRecipeMacros(activeRecipe.body, foodItems, { servings: activeRecipe.servings }) ? (
+                <RecipeMacroBlocks result={computeRecipeMacros(activeRecipe.body, foodItems, { servings: activeRecipe.servings })!} />
               ) : null}
             </div>
           </div>

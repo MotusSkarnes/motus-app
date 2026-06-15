@@ -19,7 +19,7 @@ import {
   isRecipeProteinCategory,
   type RecipeProteinCategory,
 } from "../../app/recipeProteinCategory";
-import { computeRecipeMacros } from "../../app/recipeMacros";
+import { computeRecipeMacros, parseRecipeServings } from "../../app/recipeMacros";
 import { RecipeAvoidanceWarning } from "../../components/RecipeAvoidanceWarning";
 import { RecipeImageField } from "../../components/RecipeImageField";
 import { RecipeIngredientList } from "../../components/RecipeIngredientList";
@@ -62,6 +62,7 @@ export function TrainerRecipeComposer({
   const [proteinCategory, setProteinCategory] = useState<RecipeProteinCategory | "">(
     sourceItem?.proteinCategory ?? "",
   );
+  const [servings, setServings] = useState(String(sourceItem?.servings ?? ""));
   const [body, setBody] = useState(sourceItem?.body ?? "");
   const [imageUrl, setImageUrl] = useState(sourceItem?.imageUrl ?? "");
   const [isImageProcessing, setIsImageProcessing] = useState(false);
@@ -76,27 +77,29 @@ export function TrainerRecipeComposer({
     setDescription(source?.description ?? "");
     setTag(source?.tag ?? "Oppskrift");
     setProteinCategory(source?.proteinCategory ?? "");
+    setServings(String(source?.servings ?? (source?.body ? parseRecipeServings(source.body) : "")));
     setBody(source?.body ?? "");
     setImageUrl(source?.imageUrl ?? "");
     setStatus(null);
   }, [open, editItem, duplicateFromItem]);
 
+  const draftServings = Math.max(1, Math.round(Number(servings) || 1));
   const draftBody = useMemo(
     () =>
       body.trim() ||
-      `**Til 1 porsjon**
+      `**Til ${draftServings} porsjon${draftServings === 1 ? "" : "er"}**
 
 **Ingredienser**
 - 
 
 **Slik gjør du**
 1. `,
-    [body],
+    [body, draftServings],
   );
 
   const recipeMacros = useMemo(
-    () => computeRecipeMacros(draftBody, foodItemsForMacros),
-    [draftBody, foodItemsForMacros],
+    () => computeRecipeMacros(draftBody, foodItemsForMacros, { servings: Number(servings) }),
+    [draftBody, foodItemsForMacros, servings],
   );
 
   const avoidanceConflicts = useMemo(
@@ -137,6 +140,7 @@ export function TrainerRecipeComposer({
       setStatus("Fyll inn oppskriftstekst med **Ingredienser**-liste.");
       return;
     }
+    const servingsNumber = Math.max(1, Math.round(Number(servings) || parseRecipeServings(body)));
 
     setSaving(true);
     setStatus(null);
@@ -161,6 +165,7 @@ export function TrainerRecipeComposer({
       ...(storedImageUrl ? { imageUrl: storedImageUrl } : {}),
       ...(scalingMode ? { scalingMode } : {}),
       ...(proteinCategory ? { proteinCategory } : {}),
+      servings: servingsNumber,
     };
 
     const latestItems =
@@ -212,6 +217,18 @@ export function TrainerRecipeComposer({
           <TextInput value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Kort beskrivelse" />
           <TextInput value={tag} onChange={(e) => setTag(e.target.value)} placeholder="F.eks. 15 min · Middag" />
           <label className="block">
+            <span className="motus-foodbank-field-label">Antall porsjoner oppskriften gjelder for</span>
+            <TextInput
+              type="number"
+              min={1}
+              step={1}
+              inputMode="numeric"
+              value={servings}
+              onChange={(event) => setServings(event.target.value)}
+              placeholder="F.eks. 4"
+            />
+          </label>
+          <label className="block">
             <span className="motus-foodbank-field-label">Råvaretype for lunsj/middag</span>
             <select
               className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 outline-none transition focus:border-teal-400 focus:ring-2 focus:ring-teal-100"
@@ -261,7 +278,12 @@ export function TrainerRecipeComposer({
             </p>
           ) : null}
           {body.trim() ? (
-            <RecipeIngredientList body={draftBody} foodItems={foodItemsForMacros} recipeId={editItem?.id} />
+            <RecipeIngredientList
+              body={draftBody}
+              foodItems={foodItemsForMacros}
+              recipeId={editItem?.id}
+              servings={Number(servings)}
+            />
           ) : null}
           {avoidanceConflicts.length > 0 ? <RecipeAvoidanceWarning conflicts={avoidanceConflicts} /> : null}
           {status ? <StatusMessage tone="error">{status}</StatusMessage> : null}

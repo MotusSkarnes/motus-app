@@ -24,6 +24,7 @@ export type InspirationRecipeItem = {
   imageUrl?: string;
   scalingMode?: "flexible" | "fixed";
   proteinCategory?: RecipeProteinCategory;
+  servings?: number;
 };
 
 function pickPreferredRecipeVariant(
@@ -54,6 +55,7 @@ function normalizeRecipeItem(raw: unknown): InspirationRecipeItem | null {
   const scalingMode =
     (row.scalingMode === "flexible" || row.scalingMode === "fixed" ? row.scalingMode : undefined) ??
     DEFAULT_RECIPE_SCALING_BY_ID.get(id);
+  const servings = Number(row.servings);
   return {
     id,
     title: String(row.title ?? "").trim() || "Oppskrift",
@@ -62,6 +64,7 @@ function normalizeRecipeItem(raw: unknown): InspirationRecipeItem | null {
     tag: String(row.tag ?? "").trim() || "Oppskrift",
     ...(scalingMode ? { scalingMode } : {}),
     ...(isRecipeProteinCategory(row.proteinCategory) ? { proteinCategory: row.proteinCategory } : {}),
+    ...(Number.isFinite(servings) && servings > 0 ? { servings: Math.round(servings) } : {}),
     ...(imageUrl ? { imageUrl } : {}),
   };
 }
@@ -103,7 +106,8 @@ function recipeItemListsEqual(a: InspirationRecipeItem[], b: InspirationRecipeIt
       left.tag !== right.tag ||
       left.imageUrl !== right.imageUrl ||
       left.scalingMode !== right.scalingMode ||
-      left.proteinCategory !== right.proteinCategory
+      left.proteinCategory !== right.proteinCategory ||
+      left.servings !== right.servings
     ) {
       return false;
     }

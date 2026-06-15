@@ -55,6 +55,7 @@ function RecipeDetail({
     body: item.body,
     title: item.title,
     tag: item.tag,
+    servings: item.servings,
   });
   const scaledView = useMemo(
     () =>
@@ -62,10 +63,11 @@ function RecipeDetail({
         scalingMode,
         dailyTargets,
         mealSlot,
+        servings: item.servings,
       }),
-    [item.body, foodItems, scalingMode, dailyTargets, mealSlot],
+    [item.body, item.servings, foodItems, scalingMode, dailyTargets, mealSlot],
   );
-  const macros = scaledView?.macros ?? computeRecipeMacros(item.body, foodItems);
+  const macros = scaledView?.macros ?? computeRecipeMacros(item.body, foodItems, { servings: item.servings });
   const hasIngredientSection = useMemo(() => extractRecipeIngredientLines(item.body).length > 0, [item.body]);
 
   return (
@@ -123,6 +125,7 @@ function RecipeDetail({
             mealSlot={mealSlot}
             scalingMode={scalingMode}
             recipeId={item.id}
+            servings={item.servings}
           />
           {item.body.trim() ? (
             <details className="mt-4 rounded-xl border border-slate-100 bg-slate-50/60 px-3 py-2">
@@ -269,13 +272,15 @@ export function NutritionRecipesPanel({ mealPlanTargets, canManage, onEdit, onDu
         body: item.body,
         title: item.title,
         tag: item.tag,
+        servings: item.servings,
       });
       const view = buildScaledRecipeView(item.body, foodItems, {
         scalingMode,
         dailyTargets: mealPlanTargets,
         mealSlot,
+        servings: item.servings,
       });
-      const macros = view?.macros ?? computeRecipeMacros(item.body, foodItems);
+      const macros = view?.macros ?? computeRecipeMacros(item.body, foodItems, { servings: item.servings });
       map.set(item.id, { macros, adjusted: view?.adjusted ?? false });
     }
     return map;

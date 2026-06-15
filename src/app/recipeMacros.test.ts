@@ -99,6 +99,36 @@ Slik gjør du
     expect(result?.perServing.kcal).toBeGreaterThan(300);
   });
 
+  it("lar eget porsjonsfelt overstyre tekst i oppskriften", () => {
+    const body = `**Til 1 porsjon**
+
+**Ingredienser**
+- 400 g linser
+
+**Slik gjÃ¸r du**
+1. Kok.`;
+    const result = computeRecipeMacros(body, foods, { servings: 4 });
+    expect(result?.servings).toBe(4);
+    expect(result?.matchedCount).toBe(1);
+  });
+
+  it("matcher linser og kokosmelk uten Ã¥ velge tomat eller bolle", () => {
+    const body = `**Til 4 porsjoner**
+
+**Ingredienser**
+- 400 g linser
+- 2 dl kokosmelk
+
+**Slik gjÃ¸r du**
+1. Kok.`;
+    const ingredients = computeRecipeIngredients(body, foods);
+    const names = ingredients.map((row) => row.foodName.toLowerCase()).join(" | ");
+    expect(names).toContain("linser");
+    expect(names).toContain("kokosmelk");
+    expect(names).not.toContain("tomat");
+    expect(names).not.toContain("bolle");
+  });
+
   it("beregner makroer for alle standardoppskrifter", () => {
     const foods = buildDefaultFoodBankItems();
     for (const recipe of DEFAULT_INSPIRATION_RECIPES) {

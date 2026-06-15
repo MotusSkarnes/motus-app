@@ -60,12 +60,13 @@ export function resolveRecipeScalingMode(input: {
   body: string;
   title?: string;
   tag?: string;
+  servings?: number;
 }): RecipeScalingMode {
   if (input.scalingMode === "flexible" || input.scalingMode === "fixed") return input.scalingMode;
   const fromDefault = input.id ? DEFAULT_RECIPE_SCALING_BY_ID.get(input.id) : undefined;
   if (fromDefault) return fromDefault;
 
-  const servings = parseRecipeServings(input.body);
+  const servings = parseRecipeServings(input.body, input.servings);
   const hay = `${input.tag ?? ""} ${input.title ?? ""}`.toLowerCase();
 
   if (servings > 1) return "fixed";
@@ -119,9 +120,10 @@ export function buildScaledRecipeView(
     scalingMode: RecipeScalingMode;
     dailyTargets?: MealPlanTargets;
     mealSlot?: RecipeMealSlot | null;
+    servings?: number;
   },
 ): ScaledRecipeView | null {
-  const baseMacros = computeRecipeMacros(body, foodItems);
+  const baseMacros = computeRecipeMacros(body, foodItems, { servings: options.servings });
   if (!baseMacros) return null;
 
   const baseIngredients = computeRecipeIngredients(body, foodItems);

@@ -12,6 +12,10 @@ export type RecipeMacroResult = {
   ingredientCount: number;
 };
 
+export type RecipeMacroOptions = {
+  servings?: number;
+};
+
 export type RecipeIngredient = {
   key: string;
   sourceLine: string;
@@ -51,6 +55,10 @@ const SYNTHETIC_FOODS: SyntheticFood[] = [
   {
     name: "sitron",
     nutritionPer100g: { kcal: 29, protein: 1.1, carbs: 9, fat: 0.3, fiber: 2.8, sugar: 2.5, saturatedFat: 0, sodium: 2 },
+  },
+  {
+    name: "kokosmelk",
+    nutritionPer100g: { kcal: 190, protein: 2, carbs: 3, fat: 18, fiber: 0, sugar: 2, saturatedFat: 16, sodium: 15 },
   },
 ];
 
@@ -113,6 +121,8 @@ const FOOD_ALIASES: Record<string, string> = {
   tørrris: "basmatiris tørr",
   brokkoli: "brokkoli",
   tunfisk: "tunfisk i vann",
+  linse: "linser kokt",
+  linser: "linser kokt",
   bonner: "bønner kidney",
   cannellini: "bønner kidney",
   lima: "bønner kidney",
@@ -126,6 +136,7 @@ const FOOD_ALIASES: Record<string, string> = {
   gresk: "gresk yoghurt",
   yoghurt: "gresk yoghurt",
   notter: "mandler",
+  kokosmelk: "kokosmelk",
   baer: "blåbær",
 };
 
@@ -158,7 +169,10 @@ function normalizeFoodKey(value: string): string {
     .replace(/æ/g, "ae");
 }
 
-export function parseRecipeServings(body: string): number {
+export function parseRecipeServings(body: string, override?: number): number {
+  if (typeof override === "number" && Number.isFinite(override) && override > 0) {
+    return Math.max(1, Math.round(override));
+  }
   const match = body.match(/\*\*Til\s+(\d+)\s+porsjon/i) ?? body.match(/Til\s+(\d+)\s+porsjon/i);
   const n = match ? Number.parseInt(match[1], 10) : 1;
   return Number.isFinite(n) && n > 0 ? n : 1;
@@ -418,7 +432,13 @@ function lookupFoodBankItem(searchText: string, foodItems: FoodItem[]): FoodItem
 
   let best: FoodItem | null = null;
   let bestScore = 0;
-  const tokens = key.split(/\s+/).filter((t) => t.length > 2);
+  const tokens = searchText
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/\p{M}/gu, "")
+    .split(/[^a-z0-9æøå]+/i)
+    .map((token) => normalizeFoodKey(token))
+    .filter((token) => token.length >= 4);
 
   for (const item of foodItems) {
     const itemKey = normalizeFoodKey(item.name);
@@ -426,14 +446,15 @@ function lookupFoodBankItem(searchText: string, foodItems: FoodItem[]): FoodItem
     for (const token of tokens) {
       if (itemKey.includes(token)) score += token.length;
     }
-    if (itemKey.includes(key) || key.includes(itemKey)) score += 4;
+    if (key.length >= 4 && itemKey.includes(key)) score += key.length + 2;
+    if (itemKey.length >= 4 && key === itemKey) score += itemKey.length + 4;
     if (score > bestScore) {
       bestScore = score;
       best = item;
     }
   }
 
-  return bestScore >= 4 ? best : null;
+  return bestScore >= Math.max(5, Math.min(8, Math.floor(key.length * 0.7))) ? best : null;
 }
 
 function foodRowId(food: FoodItem | SyntheticFood): string {
@@ -538,14 +559,14 @@ export function applyCanonicalRecipeBodies<T extends { id: string; category?: st
   });
 }
 
-export function computeRecipeMacros(body: string, foodItems: FoodItem[]): RecipeMacroResult | null {
+export function computeRecipeMacros(body: string, foodItems: FoodItem[], options?: RecipeMacroOptions): RecipeMacroResult | null {
   const lines = extractRecipeIngredientLines(body);
   if (lines.length === 0) return null;
 
   const ingredients = computeRecipeIngredients(body, foodItems);
   if (ingredients.length === 0) return null;
 
-  const servings = parseRecipeServings(body);
+  const servings = parseRecipeServings(body, options?.servings);
   const totals = ingredients.reduce(
     (acc, row) => ({
       kcal: acc.kcal + row.macros.kcal,
