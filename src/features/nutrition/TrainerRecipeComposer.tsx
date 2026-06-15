@@ -14,6 +14,11 @@ import { isInspirationRecipeItem } from "../../app/inspirationHubItems";
 import type { InspirationRecipeItem } from "../../app/inspirationRecipeItems";
 import { resolveInspirationImageForStorage } from "../../app/inspirationRecipeImage";
 import { compressImageFile } from "../../app/imageCompress";
+import {
+  RECIPE_PROTEIN_CATEGORIES,
+  isRecipeProteinCategory,
+  type RecipeProteinCategory,
+} from "../../app/recipeProteinCategory";
 import { computeRecipeMacros } from "../../app/recipeMacros";
 import { RecipeAvoidanceWarning } from "../../components/RecipeAvoidanceWarning";
 import { RecipeImageField } from "../../components/RecipeImageField";
@@ -54,6 +59,9 @@ export function TrainerRecipeComposer({
   const [title, setTitle] = useState(sourceItem?.title ?? "");
   const [description, setDescription] = useState(sourceItem?.description ?? "");
   const [tag, setTag] = useState(sourceItem?.tag ?? "Oppskrift");
+  const [proteinCategory, setProteinCategory] = useState<RecipeProteinCategory | "">(
+    sourceItem?.proteinCategory ?? "",
+  );
   const [body, setBody] = useState(sourceItem?.body ?? "");
   const [imageUrl, setImageUrl] = useState(sourceItem?.imageUrl ?? "");
   const [isImageProcessing, setIsImageProcessing] = useState(false);
@@ -67,6 +75,7 @@ export function TrainerRecipeComposer({
     setTitle(duplicateTitle || (source?.title ?? ""));
     setDescription(source?.description ?? "");
     setTag(source?.tag ?? "Oppskrift");
+    setProteinCategory(source?.proteinCategory ?? "");
     setBody(source?.body ?? "");
     setImageUrl(source?.imageUrl ?? "");
     setStatus(null);
@@ -151,6 +160,7 @@ export function TrainerRecipeComposer({
         : { createdAt: new Date().toISOString().slice(0, 10) }),
       ...(storedImageUrl ? { imageUrl: storedImageUrl } : {}),
       ...(scalingMode ? { scalingMode } : {}),
+      ...(proteinCategory ? { proteinCategory } : {}),
     };
 
     const latestItems =
@@ -201,6 +211,25 @@ export function TrainerRecipeComposer({
           <TextInput value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Tittel" />
           <TextInput value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Kort beskrivelse" />
           <TextInput value={tag} onChange={(e) => setTag(e.target.value)} placeholder="F.eks. 15 min · Middag" />
+          <label className="block">
+            <span className="motus-foodbank-field-label">Råvaretype for lunsj/middag</span>
+            <select
+              className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 outline-none transition focus:border-teal-400 focus:ring-2 focus:ring-teal-100"
+              value={proteinCategory}
+              onChange={(event) => {
+                const value = event.target.value;
+                setProteinCategory(isRecipeProteinCategory(value) ? value : "");
+              }}
+              disabled={saving}
+            >
+              <option value="">Automatisk</option>
+              {RECIPE_PROTEIN_CATEGORIES.map((category) => (
+                <option key={category.id} value={category.id}>
+                  {category.label}
+                </option>
+              ))}
+            </select>
+          </label>
           <RecipeImageField
             imageUrl={imageUrl}
             onImageUrlChange={setImageUrl}

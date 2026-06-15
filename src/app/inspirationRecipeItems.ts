@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { DEFAULT_INSPIRATION_RECIPES, DEFAULT_RECIPE_SCALING_BY_ID } from "./defaultInspirationRecipes";
 import { applyCanonicalRecipeBodies } from "./recipeMacros";
+import { isRecipeProteinCategory, type RecipeProteinCategory } from "./recipeProteinCategory";
 import {
   fetchInspirationItemsForHub,
   INSPIRATION_CHANGED_EVENT,
@@ -22,6 +23,7 @@ export type InspirationRecipeItem = {
   tag: string;
   imageUrl?: string;
   scalingMode?: "flexible" | "fixed";
+  proteinCategory?: RecipeProteinCategory;
 };
 
 function pickPreferredRecipeVariant(
@@ -59,6 +61,7 @@ function normalizeRecipeItem(raw: unknown): InspirationRecipeItem | null {
     body: body || description,
     tag: String(row.tag ?? "").trim() || "Oppskrift",
     ...(scalingMode ? { scalingMode } : {}),
+    ...(isRecipeProteinCategory(row.proteinCategory) ? { proteinCategory: row.proteinCategory } : {}),
     ...(imageUrl ? { imageUrl } : {}),
   };
 }
@@ -99,7 +102,8 @@ function recipeItemListsEqual(a: InspirationRecipeItem[], b: InspirationRecipeIt
       left.body !== right.body ||
       left.tag !== right.tag ||
       left.imageUrl !== right.imageUrl ||
-      left.scalingMode !== right.scalingMode
+      left.scalingMode !== right.scalingMode ||
+      left.proteinCategory !== right.proteinCategory
     ) {
       return false;
     }
