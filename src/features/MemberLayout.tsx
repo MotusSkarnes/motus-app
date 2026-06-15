@@ -87,11 +87,13 @@ type MemberLayoutProps = {
   updateProgramMemberLibraryStatus: ComponentProps<typeof MemberPortal>["updateProgramMemberLibraryStatus"];
   updateWorkoutExerciseResult: ComponentProps<typeof MemberPortal>["updateWorkoutExerciseResult"];
   replaceWorkoutExerciseGroup: ComponentProps<typeof MemberPortal>["replaceWorkoutExerciseGroup"];
+  addWorkoutExerciseToWorkout: ComponentProps<typeof MemberPortal>["addWorkoutExerciseToWorkout"];
   appendWorkoutSetForProgramExercise: ComponentProps<typeof MemberPortal>["appendWorkoutSetForProgramExercise"];
   removeLastWorkoutSetForProgramExercise: ComponentProps<typeof MemberPortal>["removeLastWorkoutSetForProgramExercise"];
   deferWorkoutExerciseGroup: ComponentProps<typeof MemberPortal>["deferWorkoutExerciseGroup"];
   removeWorkoutLogResult: ComponentProps<typeof MemberPortal>["removeWorkoutLogResult"];
   setWorkoutLogResults: ComponentProps<typeof MemberPortal>["setWorkoutLogResults"];
+  updateWorkoutLogDate: ComponentProps<typeof MemberPortal>["updateWorkoutLogDate"];
   updateWorkoutModeNote: ComponentProps<typeof MemberPortal>["updateWorkoutModeNote"];
   updateWorkoutExerciseNote: ComponentProps<typeof MemberPortal>["updateWorkoutExerciseNote"];
   finishWorkoutMode: ComponentProps<typeof MemberPortal>["finishWorkoutMode"];
@@ -154,11 +156,13 @@ export function MemberLayout({
   updateProgramMemberLibraryStatus,
   updateWorkoutExerciseResult,
   replaceWorkoutExerciseGroup,
+  addWorkoutExerciseToWorkout,
   appendWorkoutSetForProgramExercise,
   removeLastWorkoutSetForProgramExercise,
   deferWorkoutExerciseGroup,
   removeWorkoutLogResult,
   setWorkoutLogResults,
+  updateWorkoutLogDate,
   updateWorkoutModeNote,
   updateWorkoutExerciseNote,
   finishWorkoutMode,
@@ -499,11 +503,13 @@ export function MemberLayout({
     updateProgramMemberLibraryStatus,
     updateWorkoutExerciseResult,
     replaceWorkoutExerciseGroup,
+    addWorkoutExerciseToWorkout,
     appendWorkoutSetForProgramExercise,
     removeLastWorkoutSetForProgramExercise,
     deferWorkoutExerciseGroup,
     removeWorkoutLogResult,
     setWorkoutLogResults,
+    updateWorkoutLogDate,
     updateWorkoutModeNote,
     updateWorkoutExerciseNote,
     finishWorkoutMode,

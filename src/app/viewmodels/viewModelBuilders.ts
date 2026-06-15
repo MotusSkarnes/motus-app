@@ -45,6 +45,7 @@ export function buildTrainerLayoutProps(input: {
   toggleChatMessageReaction: TrainerLayoutProps["toggleChatMessageReaction"];
   markChatConversationRead: TrainerLayoutProps["markChatConversationRead"];
   updateWorkoutLogTrainerComment?: TrainerLayoutProps["updateWorkoutLogTrainerComment"];
+  updateWorkoutLogDate?: TrainerLayoutProps["updateWorkoutLogDate"];
   deleteWorkoutLog?: TrainerLayoutProps["deleteWorkoutLog"];
   clearLocalChatCache: TrainerLayoutProps["clearLocalChatCache"];
   saveExercise: TrainerLayoutProps["saveExercise"];
@@ -64,6 +65,7 @@ export function buildTrainerLayoutProps(input: {
   startWorkoutMode: TrainerLayoutProps["startWorkoutMode"];
   updateWorkoutExerciseResult: TrainerLayoutProps["updateWorkoutExerciseResult"];
   replaceWorkoutExerciseGroup: TrainerLayoutProps["replaceWorkoutExerciseGroup"];
+  addWorkoutExerciseToWorkout: TrainerLayoutProps["addWorkoutExerciseToWorkout"];
   appendWorkoutSetForProgramExercise: TrainerLayoutProps["appendWorkoutSetForProgramExercise"];
   removeLastWorkoutSetForProgramExercise: TrainerLayoutProps["removeLastWorkoutSetForProgramExercise"];
   deferWorkoutExerciseGroup: TrainerLayoutProps["deferWorkoutExerciseGroup"];
@@ -92,11 +94,13 @@ export function buildMemberLayoutProps(input: {
   updateProgramMemberLibraryStatus: MemberLayoutProps["updateProgramMemberLibraryStatus"];
   updateWorkoutExerciseResult: MemberLayoutProps["updateWorkoutExerciseResult"];
   replaceWorkoutExerciseGroup: MemberLayoutProps["replaceWorkoutExerciseGroup"];
+  addWorkoutExerciseToWorkout: MemberLayoutProps["addWorkoutExerciseToWorkout"];
   appendWorkoutSetForProgramExercise: MemberLayoutProps["appendWorkoutSetForProgramExercise"];
   removeLastWorkoutSetForProgramExercise: MemberLayoutProps["removeLastWorkoutSetForProgramExercise"];
   deferWorkoutExerciseGroup: MemberLayoutProps["deferWorkoutExerciseGroup"];
   removeWorkoutLogResult: MemberLayoutProps["removeWorkoutLogResult"];
   setWorkoutLogResults: MemberLayoutProps["setWorkoutLogResults"];
+  updateWorkoutLogDate: MemberLayoutProps["updateWorkoutLogDate"];
   updateWorkoutModeNote: MemberLayoutProps["updateWorkoutModeNote"];
   finishWorkoutMode: MemberLayoutProps["finishWorkoutMode"];
   logGroupWorkout: MemberLayoutProps["logGroupWorkout"];

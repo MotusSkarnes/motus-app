@@ -8,6 +8,7 @@ import {
   reflectionLevelToUi,
   workoutReflectionEmoji,
 } from "../app/activityWorkoutLog";
+import { periodPlanStartDateForDateInput } from "../app/dateFormat";
 import { ReflectionLevelPicker } from "./ReflectionLevelPicker";
 import { compressImageFile } from "../app/imageCompress";
 import type { WorkoutLog, WorkoutReflection } from "../app/types";
@@ -21,6 +22,7 @@ export type MemberSimpleWorkoutLogDetailsProps = {
   isEditing: boolean;
   onStartEdit: () => void;
   onCancelEdit: () => void;
+  onSaveDate?: (date: string) => void;
   onSaveActivity: (payload: {
     activityName: string;
     durationMinutes: string;
@@ -50,6 +52,7 @@ export function MemberSimpleWorkoutLogDetails({
   isEditing,
   onStartEdit,
   onCancelEdit,
+  onSaveDate,
   onSaveActivity,
   onSaveGroup,
   allowEdit = true,
@@ -61,6 +64,7 @@ export function MemberSimpleWorkoutLogDetails({
 
   const [activityName, setActivityName] = useState("");
   const [className, setClassName] = useState("");
+  const [date, setDate] = useState("");
   const [durationMinutes, setDurationMinutes] = useState("");
   const [comment, setComment] = useState("");
   const [energyLevel, setEnergyLevel] = useState<1 | 2 | 3 | 4 | 5>(3);
@@ -80,6 +84,7 @@ export function MemberSimpleWorkoutLogDetails({
     setMotivationLevel(reflection?.motivationLevel ?? 3);
     const note = log.note?.trim() || reflection?.note?.trim() || "";
     setComment(note);
+    setDate(periodPlanStartDateForDateInput(log.date));
     setRemovePhoto(false);
     setStatus(null);
     if (isActivity) {
@@ -147,6 +152,9 @@ export function MemberSimpleWorkoutLogDetails({
         photoUrl: photoDataUrl || undefined,
         removePhoto: removePhoto && !photoDataUrl,
       });
+      if (date && date !== periodPlanStartDateForDateInput(log.date)) {
+        onSaveDate?.(date);
+      }
       return;
     }
     if (!className.trim()) {
@@ -158,6 +166,9 @@ export function MemberSimpleWorkoutLogDetails({
       note: comment.trim(),
       reflection: buildReflection(),
     });
+    if (date && date !== periodPlanStartDateForDateInput(log.date)) {
+      onSaveDate?.(date);
+    }
   }
 
   if (!isEditing) {
@@ -223,6 +234,10 @@ export function MemberSimpleWorkoutLogDetails({
       <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">
         Rediger {isActivity ? "aktivitet" : "gruppetime"}
       </div>
+      <label className="space-y-1">
+        <span className="text-xs font-medium text-slate-600">Dato</span>
+        <TextInput type="date" value={date} onChange={(event) => setDate(event.target.value)} />
+      </label>
       {isActivity ? (
         <div className="grid gap-3 sm:grid-cols-2">
           <label className="space-y-1 sm:col-span-2">

@@ -33,6 +33,7 @@ type PeriodPlanActiveViewProps = {
   }) => void;
   onSwapDays: (planId: string, weekNumber: number, dayA: WeekdayPlanKey, dayB: WeekdayPlanKey) => void;
   onMoveDay: (planId: string, weekNumber: number, dayA: WeekdayPlanKey, dayB: WeekdayPlanKey) => void;
+  onChangeDayProgram: (planId: string, weekNumber: number, day: WeekdayPlanKey, programId: string) => void;
   onResetSwaps: (planId: string, weekNumber: number) => void;
   onStartProgram: (programId: string) => void;
   onLogGroup: (input: {
@@ -61,6 +62,7 @@ export function PeriodPlanActiveView({
   onToggleCompleted,
   onSwapDays,
   onMoveDay,
+  onChangeDayProgram,
   onResetSwaps,
   onStartProgram,
   onLogGroup,
@@ -113,6 +115,7 @@ export function PeriodPlanActiveView({
           onToggleCompleted={onToggleCompleted}
           onSwapDays={onSwapDays}
           onMoveDay={onMoveDay}
+          onChangeDayProgram={onChangeDayProgram}
           onResetSwaps={onResetSwaps}
           onStartProgram={onStartProgram}
           onLogGroup={onLogGroup}

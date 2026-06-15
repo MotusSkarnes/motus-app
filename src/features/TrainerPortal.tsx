@@ -385,6 +385,7 @@ type TrainerPortalProps = {
     trainerCommentUpdatedAt?: string;
     trainerCommentAuthorName?: string;
   }) => void;
+  updateWorkoutLogDate?: (input: { logId: string; date: string }) => void;
   deleteWorkoutLog?: (input: { logId: string }) => void;
   clearLocalChatCache?: () => number;
   saveExercise: (input: {
@@ -429,6 +430,7 @@ type TrainerPortalProps = {
     value: string | boolean,
   ) => void;
   replaceWorkoutExerciseGroup?: (input: ReplaceWorkoutExerciseGroupInput) => void;
+  addWorkoutExerciseToWorkout?: (input: { exerciseId: string; scope: "session" | "program" }) => void;
   appendWorkoutSetForProgramExercise?: (programExerciseId: string) => void;
   removeLastWorkoutSetForProgramExercise?: (programExerciseId: string) => void;
   deferWorkoutExerciseGroup?: (programExerciseId: string) => void;
@@ -768,6 +770,7 @@ function pickFirstName(value: unknown): string {
   toggleChatMessageReaction,
   markChatConversationRead,
     updateWorkoutLogTrainerComment,
+    updateWorkoutLogDate,
     deleteWorkoutLog,
     clearLocalChatCache,
     saveExercise,
@@ -787,6 +790,7 @@ function pickFirstName(value: unknown): string {
     startWorkoutMode = () => {},
     updateWorkoutExerciseResult = () => {},
     replaceWorkoutExerciseGroup = () => {},
+    addWorkoutExerciseToWorkout = () => {},
     appendWorkoutSetForProgramExercise = () => {},
     removeLastWorkoutSetForProgramExercise = () => {},
     deferWorkoutExerciseGroup = () => {},
@@ -1038,6 +1042,7 @@ function pickFirstName(value: unknown): string {
   const [workoutSearchQuery, setWorkoutSearchQuery] = useState("");
   const [workoutSortOrder, setWorkoutSortOrder] = useState<"newest" | "oldest">("newest");
   const [trainerWorkoutCommentDraft, setTrainerWorkoutCommentDraft] = useState("");
+  const [trainerWorkoutDateDraft, setTrainerWorkoutDateDraft] = useState("");
   const [trainerWorkoutCommentStatus, setTrainerWorkoutCommentStatus] = useState<string | null>(null);
   const [trainerLiveWorkoutSaveStatus, setTrainerLiveWorkoutSaveStatus] = useState<string | null>(null);
   useAutoClearStatus(trainerChatSendStatus, () => setTrainerChatSendStatus(null), getStatusClearDelayMs(trainerChatSendStatus));
@@ -1825,6 +1830,12 @@ function pickFirstName(value: unknown): string {
   useEffect(() => {
     setTrainerWorkoutCommentDraft(filteredSelectedWorkoutLog?.trainerComment ?? "");
   }, [filteredSelectedWorkoutLog?.id, filteredSelectedWorkoutLog?.trainerComment]);
+
+  useEffect(() => {
+    setTrainerWorkoutDateDraft(
+      filteredSelectedWorkoutLog ? periodPlanStartDateForDateInput(filteredSelectedWorkoutLog.date) : "",
+    );
+  }, [filteredSelectedWorkoutLog?.id, filteredSelectedWorkoutLog?.date]);
   const exercisePopularityScores = useMemo(
     () => computeExercisePopularityScores(exercises, programs, logs),
     [exercises, programs, logs],
@@ -3233,6 +3244,23 @@ function pickFirstName(value: unknown): string {
       trainerCommentAuthorName: trainerAccountName.trim() || undefined,
     });
     setTrainerWorkoutCommentStatus(trimmedComment ? "Kommentar lagret." : "Kommentar fjernet.");
+  }
+
+  function handleSaveWorkoutDate() {
+    if (!filteredSelectedWorkoutLog) return;
+    if (!trainerWorkoutDateDraft.trim()) {
+      setTrainerWorkoutCommentStatus("Velg dato for økten.");
+      return;
+    }
+    if (!updateWorkoutLogDate) {
+      setTrainerWorkoutCommentStatus("Kunne ikke lagre dato akkurat nå.");
+      return;
+    }
+    updateWorkoutLogDate({
+      logId: filteredSelectedWorkoutLog.id,
+      date: trainerWorkoutDateDraft,
+    });
+    setTrainerWorkoutCommentStatus("Dato lagret.");
   }
 
   function handleDeleteSelectedWorkoutLog() {
@@ -7060,6 +7088,29 @@ function pickFirstName(value: unknown): string {
                               <div className="text-xs text-slate-500">{filteredSelectedWorkoutLog.date}</div>
                             </div>
                             <div className="mt-1 text-xs text-slate-500">{filteredSelectedWorkoutLog.status}</div>
+                            <div className="mt-3 grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
+                              <label className="block">
+                                <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Endre dato</span>
+                                <TextInput
+                                  type="date"
+                                  value={trainerWorkoutDateDraft}
+                                  onChange={(event) => setTrainerWorkoutDateDraft(event.target.value)}
+                                  className="mt-1"
+                                />
+                              </label>
+                              <OutlineButton
+                                type="button"
+                                onClick={handleSaveWorkoutDate}
+                                disabled={
+                                  !trainerWorkoutDateDraft ||
+                                  !updateWorkoutLogDate ||
+                                  trainerWorkoutDateDraft === periodPlanStartDateForDateInput(filteredSelectedWorkoutLog.date)
+                                }
+                                className="px-4 py-2 text-xs"
+                              >
+                                Lagre dato
+                              </OutlineButton>
+                            </div>
                             <div className="mt-2 text-xs text-slate-700">
                               Følelse: {formatReflectionLevelForDisplay(filteredSelectedWorkoutLog.reflection?.energyLevel)} · Belastning:{" "}
                               {formatReflectionLevelForDisplay(filteredSelectedWorkoutLog.reflection?.difficultyLevel)} · Motivasjon:{" "}
@@ -7819,6 +7870,7 @@ function pickFirstName(value: unknown): string {
       trainerSubtitle={selectedMemberProfile?.name ?? selectedMember?.name ?? ""}
       updateWorkoutExerciseResult={updateWorkoutExerciseResult}
       replaceWorkoutExerciseGroup={replaceWorkoutExerciseGroup}
+      addWorkoutExerciseToWorkout={addWorkoutExerciseToWorkout}
       appendWorkoutSetForProgramExercise={appendWorkoutSetForProgramExercise}
       removeLastWorkoutSetForProgramExercise={removeLastWorkoutSetForProgramExercise}
       deferWorkoutExerciseGroup={deferWorkoutExerciseGroup}

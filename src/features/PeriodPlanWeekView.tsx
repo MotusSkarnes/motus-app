@@ -65,6 +65,7 @@ type PeriodPlanWeekViewProps = {
   }) => void;
   onSwapDays: (planId: string, weekNumber: number, dayA: WeekdayPlanKey, dayB: WeekdayPlanKey) => void;
   onMoveDay: (planId: string, weekNumber: number, dayA: WeekdayPlanKey, dayB: WeekdayPlanKey) => void;
+  onChangeDayProgram: (planId: string, weekNumber: number, day: WeekdayPlanKey, programId: string) => void;
   onResetSwaps: (planId: string, weekNumber: number) => void;
   onStartProgram: (
     programId: string,
@@ -93,6 +94,7 @@ export function PeriodPlanWeekView({
   onToggleCompleted,
   onSwapDays,
   onMoveDay,
+  onChangeDayProgram,
   onResetSwaps,
   onStartProgram,
   onLogGroup,
@@ -104,9 +106,24 @@ export function PeriodPlanWeekView({
     () => (activityTemplates.length > 0 ? activityTemplates : listActivityTemplates(memberPrograms)),
     [activityTemplates, memberPrograms],
   );
+  const memberProgramOptions = useMemo(
+    () =>
+      memberPrograms
+        .filter(
+          (program) =>
+            !program.ephemeral &&
+            program.memberId !== "__template__" &&
+            program.memberLibraryStatus !== "archived" &&
+            program.memberLibraryStatus !== "hidden" &&
+            program.exercises.length > 0,
+        )
+        .sort((a, b) => a.title.localeCompare(b.title, "nb")),
+    [memberPrograms],
+  );
   const weekSwaps = getSwapsForWeek(swapsByPlan, plan.id, week.weekNumber);
   const effectiveDays = applyPeriodPlanSwaps(week.days, weekSwaps);
   const [swapFromDay, setSwapFromDay] = useState<WeekdayPlanKey | null>(null);
+  const [programChangeDay, setProgramChangeDay] = useState<WeekdayPlanKey | null>(null);
   const [previewProgram, setPreviewProgram] = useState<TrainingProgram | null>(null);
   const [previewCanStart, setPreviewCanStart] = useState(false);
   const [previewStartContext, setPreviewStartContext] = useState<{
@@ -123,6 +140,7 @@ export function PeriodPlanWeekView({
 
   useEffect(() => {
     setSwapFromDay(null);
+    setProgramChangeDay(null);
     setPendingOverwriteMove(null);
     setPreviewProgram(null);
     setPreviewCanStart(false);
@@ -146,12 +164,18 @@ export function PeriodPlanWeekView({
   }
 
   function handleSwapButtonClick(dayKey: WeekdayPlanKey) {
+    setProgramChangeDay(null);
     if (swapFromDay && swapFromDay !== dayKey) {
       onSwapDays(plan.id, week.weekNumber, swapFromDay, dayKey);
       setSwapFromDay(null);
       return;
     }
     setSwapFromDay((prev) => (prev === dayKey ? null : dayKey));
+  }
+
+  function handleProgramChangeButtonClick(dayKey: WeekdayPlanKey) {
+    setSwapFromDay(null);
+    setProgramChangeDay((prev) => (prev === dayKey ? null : dayKey));
   }
 
   function handleMoveDayClick(dayA: WeekdayPlanKey, dayB: WeekdayPlanKey) {
@@ -231,6 +255,7 @@ export function PeriodPlanWeekView({
           const canMarkCompleted = completed || !isFutureDate;
           const isSwapSource = swapFromDay === dayKey;
           const canOpenPreview = Boolean(previewProgramForEntry);
+          const isProgramChangeOpen = programChangeDay === dayKey;
           const canStartFromPreview =
             canOpenPreview && !completed && entryAction.kind === "start-program" && !isFutureDate;
           const isLast = index === WEEKDAY_PLAN_ORDER.length - 1;
@@ -365,6 +390,18 @@ export function PeriodPlanWeekView({
                       >
                         {isSwapSource ? "Avbryt bytte" : "Bytt dag"}
                       </button>
+                      {memberProgramOptions.length > 0 ? (
+                        <button
+                          type="button"
+                          onClick={() => handleProgramChangeButtonClick(dayKey)}
+                          className={`motus-period-plan-day-swap-link ${
+                            isProgramChangeOpen ? "motus-period-plan-day-swap-link--active" : ""
+                          }`}
+                          aria-expanded={isProgramChangeOpen}
+                        >
+                          {isProgramChangeOpen ? "Avbryt program" : "Bytt program"}
+                        </button>
+                      ) : null}
                     </div>
                   ) : null}
                 </div>
@@ -395,6 +432,38 @@ export function PeriodPlanWeekView({
                           </button>
                         </div>
                       ))}
+                    </div>
+                  </div>
+                ) : null}
+
+                {isProgramChangeOpen ? (
+                  <div className="motus-period-plan-swap-panel">
+                    <div className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">
+                      Velg program for {dayLabel.toLowerCase()}
+                    </div>
+                    <div className="mt-2 grid gap-1.5">
+                      {memberProgramOptions.map((program) => {
+                        const isCurrentProgram = previewProgramForEntry?.id === program.id;
+                        return (
+                          <button
+                            key={program.id}
+                            type="button"
+                            disabled={isCurrentProgram}
+                            onClick={() => {
+                              onChangeDayProgram(plan.id, week.weekNumber, dayKey, program.id);
+                              setProgramChangeDay(null);
+                            }}
+                            className={`motus-period-plan-swap-row text-left transition ${
+                              isCurrentProgram ? "cursor-default opacity-60" : "hover:border-slate-300 hover:bg-white"
+                            }`}
+                          >
+                            <span className="min-w-0 text-[11px] font-semibold text-slate-800">{program.title}</span>
+                            <span className="shrink-0 text-[10px] font-semibold text-slate-500">
+                              {isCurrentProgram ? "Valgt" : "Velg"}
+                            </span>
+                          </button>
+                        );
+                      })}
                     </div>
                   </div>
                 ) : null}

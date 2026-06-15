@@ -54,6 +54,12 @@ describe("periodPlanSwaps", () => {
     expect(applyPeriodPlanSwaps(baseDays, overrides)).toEqual(nextDays);
   });
 
+  it("stores a single-day program replacement as a week override", () => {
+    const nextDays: WeeklyDayPlan = { ...baseDays, wednesday: "Program D" };
+    const overrides = buildPeriodPlanWeekOverride(baseDays, nextDays, "wednesday", "wednesday");
+    expect(applyPeriodPlanSwaps(baseDays, overrides).wednesday).toBe("Program D");
+  });
+
   it("reports source day for moved content", () => {
     const swaps = togglePeriodPlanSwap([], "tuesday", "wednesday");
     const effective = applyPeriodPlanSwaps(baseDays, swaps);

@@ -31,6 +31,7 @@ import {
   createMember,
   localAppRepository,
   type AppRepository,
+  type AddWorkoutExerciseToWorkoutInput,
   type CreateMemberInput,
   type CreateMemberResult,
   type DeleteProgramContext,
@@ -46,6 +47,7 @@ import {
   type RemoveGroupWorkoutLogInput,
   type RemoveWorkoutLogResultInput,
   type SetWorkoutLogResultsInput,
+  type UpdateWorkoutLogDateInput,
   type PersistResult,
   type SaveProgramInput,
   type SaveExerciseInput,
@@ -4569,6 +4571,39 @@ export const supabaseAppRepository: AppRepository = {
   replaceWorkoutExerciseGroup(state: AppState, input: ReplaceWorkoutExerciseGroupInput): AppState {
     return localAppRepository.replaceWorkoutExerciseGroup(state, input);
   },
+  addWorkoutExerciseToWorkout(state: AppState, input: AddWorkoutExerciseToWorkoutInput): AppState {
+    const nextState = localAppRepository.addWorkoutExerciseToWorkout(state, input);
+    if (input.scope === "program") {
+      const programId = state.workoutMode?.programId ?? "";
+      const updatedProgram = nextState.programs.find((program) => program.id === programId);
+      if (updatedProgram) {
+        const anchorMember = state.members.find((member) => member.id === updatedProgram.memberId);
+        const hints = {
+          targetEmail: String(anchorMember?.email ?? "").trim().toLowerCase(),
+          targetName: String(anchorMember?.name ?? "").trim(),
+          customerType: String(anchorMember?.customerType ?? "").trim(),
+          membershipType: String(anchorMember?.membershipType ?? "").trim(),
+          fallbackOwnerUserId: String(state.currentUser?.id ?? "").trim(),
+          trainerSave: state.currentUser?.role === "trainer" || updatedProgram.programCreatedBy === "trainer",
+        };
+        void persistProgram(
+          {
+            id: updatedProgram.id,
+            title: updatedProgram.title,
+            goal: updatedProgram.goal,
+            notes: updatedProgram.notes,
+            memberId: updatedProgram.memberId,
+            exercises: updatedProgram.exercises,
+            imageUrl: updatedProgram.imageUrl,
+            programCreatedBy: updatedProgram.programCreatedBy,
+            programCreatedByName: updatedProgram.programCreatedByName,
+          },
+          hints,
+        );
+      }
+    }
+    return nextState;
+  },
   appendWorkoutSetForProgramExercise(state: AppState, programExerciseId: string): AppState {
     return localAppRepository.appendWorkoutSetForProgramExercise(state, programExerciseId);
   },
@@ -4596,6 +4631,17 @@ export const supabaseAppRepository: AppRepository = {
   },
   setWorkoutLogResults(state: AppState, input: SetWorkoutLogResultsInput): AppState {
     const nextState = localAppRepository.setWorkoutLogResults(state, input);
+    const updatedLog = nextState.logs.find((log) => log.id === input.logId);
+    if (updatedLog) {
+      void persistWorkoutLog(
+        updatedLog,
+        buildMemberPersistenceHints(state, updatedLog.memberId, { programTitle: updatedLog.programTitle }),
+      );
+    }
+    return nextState;
+  },
+  updateWorkoutLogDate(state: AppState, input: UpdateWorkoutLogDateInput): AppState {
+    const nextState = localAppRepository.updateWorkoutLogDate(state, input);
     const updatedLog = nextState.logs.find((log) => log.id === input.logId);
     if (updatedLog) {
       void persistWorkoutLog(

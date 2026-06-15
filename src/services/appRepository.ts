@@ -45,6 +45,7 @@ import {
   formatDateDdMmYyyy,
   formatDateTimeDdMmYyyy,
   normalizeStoredLogDate,
+  parseStoredLogDate,
   resolveWorkoutLogDateTime,
   storedLogDatesMatch,
 } from "../app/dateFormat";
@@ -118,6 +119,13 @@ export type StartCustomWorkoutInput = {
   exercises: ProgramExercise[];
 };
 
+export type AddWorkoutExerciseScope = "session" | "program";
+
+export type AddWorkoutExerciseToWorkoutInput = {
+  exerciseId: string;
+  scope: AddWorkoutExerciseScope;
+};
+
 export type LogGroupWorkoutInput = {
   memberId: string;
   className: string;
@@ -172,6 +180,11 @@ export type RemoveWorkoutLogResultInput = {
 export type SetWorkoutLogResultsInput = {
   logId: string;
   results: WorkoutLog["results"];
+};
+
+export type UpdateWorkoutLogDateInput = {
+  logId: string;
+  date: string;
 };
 
 export type UpdateWorkoutLogTrainerCommentInput = {
@@ -272,12 +285,14 @@ export interface AppRepository {
   startCustomWorkout(state: AppState, input: StartCustomWorkoutInput, options?: StartWorkoutModeOptions): AppState;
   updateWorkoutResult(state: AppState, input: UpdateWorkoutResultInput): AppState;
   replaceWorkoutExerciseGroup(state: AppState, input: ReplaceWorkoutExerciseGroupInput): AppState;
+  addWorkoutExerciseToWorkout(state: AppState, input: AddWorkoutExerciseToWorkoutInput): AppState;
   appendWorkoutSetForProgramExercise(state: AppState, programExerciseId: string): AppState;
   removeLastWorkoutSetForProgramExercise(state: AppState, programExerciseId: string): AppState;
   deferWorkoutExerciseGroup(state: AppState, programExerciseId: string): AppState;
   removeWorkoutLogResult(state: AppState, input: RemoveWorkoutLogResultInput): AppState;
   removeGroupWorkoutLog(state: AppState, input: RemoveGroupWorkoutLogInput): AppState;
   setWorkoutLogResults(state: AppState, input: SetWorkoutLogResultsInput): AppState;
+  updateWorkoutLogDate(state: AppState, input: UpdateWorkoutLogDateInput): AppState;
   updateWorkoutLogTrainerComment(state: AppState, input: UpdateWorkoutLogTrainerCommentInput): AppState;
   updateWorkoutNote(state: AppState, note: string): AppState;
   cancelWorkoutMode(state: AppState): AppState;
@@ -819,6 +834,90 @@ export function replaceWorkoutExerciseGroupInState(state: AppState, input: Repla
 }
 
 /** Øvre grense for antall sett per øvelses-gruppe under økt (plan + ekstra sett underveis). */
+function buildWorkoutModeAddedProgramExercise(exercise: Exercise): ProgramExercise {
+  const isHoldBased = isHoldBasedExerciseCategory(exercise.category);
+  const isCardio = exercise.category === "Kondisjon";
+  return {
+    id: uid("prog-ex"),
+    exerciseId: exercise.id,
+    exerciseName: exercise.name,
+    sets: isCardio ? "1" : isHoldBased ? "2" : "3",
+    reps: isCardio ? "" : isHoldBased ? "1" : "10",
+    weight: isHoldBased || isCardio ? "" : "0",
+    holdSeconds: isHoldBased ? "30" : "",
+    durationMinutes: isCardio ? "20" : "",
+    speed: "",
+    incline: "",
+    restSeconds: "60",
+    notes: "",
+  };
+}
+
+export function addWorkoutExerciseToWorkoutInState(
+  state: AppState,
+  input: AddWorkoutExerciseToWorkoutInput,
+): AppState {
+  if (!state.workoutMode) return state;
+  const exerciseId = input.exerciseId.trim();
+  if (!exerciseId) return state;
+  const exercise = state.exercises.find((item) => item.id === exerciseId);
+  if (!exercise) return state;
+
+  const addedProgramExercise = buildWorkoutModeAddedProgramExercise(exercise);
+  const program = state.programs.find((item) => item.id === state.workoutMode?.programId) ?? null;
+  const sourceProgramForExpansion =
+    input.scope === "program" && program
+      ? { ...program, exercises: [...program.exercises, addedProgramExercise] }
+      : program ?? undefined;
+  const newRows = expandProgramExercisesToWorkoutResults([addedProgramExercise], state.exercises, {
+    program: sourceProgramForExpansion,
+  });
+  if (!newRows.length) return state;
+
+  const exerciseIndex = program ? program.exercises.length : state.workoutMode.results.length;
+  const planLabel = formatWorkoutPlanLabelFromProgramExercise(
+    addedProgramExercise,
+    exerciseIndex,
+    sourceProgramForExpansion?.exercises ?? [addedProgramExercise],
+    state.exercises,
+    parseProgramSetCount(addedProgramExercise.sets),
+  );
+  const groupId = addedProgramExercise.id;
+  const setCount = parseProgramSetCount(addedProgramExercise.sets);
+  const nextWorkoutMode: WorkoutModeState = {
+    ...state.workoutMode,
+    results: [...state.workoutMode.results, ...newRows],
+    baselineSetCountByProgramExerciseId: {
+      ...(state.workoutMode.baselineSetCountByProgramExerciseId ?? {}),
+      [groupId]: setCount,
+    },
+    frozenPlanLabelByProgramExerciseId: {
+      ...(state.workoutMode.frozenPlanLabelByProgramExerciseId ?? {}),
+      [groupId]: planLabel,
+    },
+    planDisplayByGroupId: {
+      ...(state.workoutMode.planDisplayByGroupId ?? {}),
+      [groupId]: planLabel,
+    },
+    plannedSetCountAtStartByGroupId: {
+      ...(state.workoutMode.plannedSetCountAtStartByGroupId ?? {}),
+      [groupId]: setCount,
+    },
+  };
+
+  if (input.scope !== "program" || !program) {
+    return { ...state, workoutMode: nextWorkoutMode };
+  }
+
+  return {
+    ...state,
+    workoutMode: nextWorkoutMode,
+    programs: state.programs.map((item) =>
+      item.id === program.id ? { ...item, exercises: [...item.exercises, addedProgramExercise] } : item,
+    ),
+  };
+}
+
 export const MAX_SETS_PER_EXERCISE_IN_WORKOUT_MODE = 18;
 
 export function appendWorkoutSetForProgramExerciseInState(state: AppState, programExerciseId: string): AppState {
@@ -1430,6 +1529,21 @@ export function setWorkoutLogResultsInState(state: AppState, input: SetWorkoutLo
   };
 }
 
+export function updateWorkoutLogDateInState(state: AppState, input: UpdateWorkoutLogDateInput): AppState {
+  const logId = input.logId.trim();
+  const dateInput = input.date.trim();
+  if (!logId || !dateInput) return state;
+  return {
+    ...state,
+    logs: state.logs.map((log) => {
+      if (log.id !== logId) return log;
+      const existingDate = parseStoredLogDate(log.date) ?? new Date();
+      const nextDate = resolveWorkoutLogDateTime(dateInput, existingDate);
+      return nextDate ? { ...log, date: nextDate } : log;
+    }),
+  };
+}
+
 export function updateWorkoutLogTrainerCommentInState(
   state: AppState,
   input: UpdateWorkoutLogTrainerCommentInput,
@@ -1577,6 +1691,7 @@ export const localAppRepository: AppRepository = {
   startCustomWorkout: (state, input, options) => startCustomWorkoutInState(state, input, options),
   updateWorkoutResult: (state, input) => updateWorkoutResultInState(state, input.exerciseId, input.field, input.value),
   replaceWorkoutExerciseGroup: (state, input) => replaceWorkoutExerciseGroupInState(state, input),
+  addWorkoutExerciseToWorkout: (state, input) => addWorkoutExerciseToWorkoutInState(state, input),
   appendWorkoutSetForProgramExercise: (state, programExerciseId) =>
     appendWorkoutSetForProgramExerciseInState(state, programExerciseId),
   removeLastWorkoutSetForProgramExercise: (state, programExerciseId) =>
@@ -1585,6 +1700,7 @@ export const localAppRepository: AppRepository = {
   removeWorkoutLogResult: (state, input) => removeWorkoutLogResultInState(state, input),
   removeGroupWorkoutLog: (state, input) => removeGroupWorkoutLogInState(state, input),
   setWorkoutLogResults: (state, input) => setWorkoutLogResultsInState(state, input),
+  updateWorkoutLogDate: (state, input) => updateWorkoutLogDateInState(state, input),
   updateWorkoutLogTrainerComment: (state, input) => updateWorkoutLogTrainerCommentInState(state, input),
   updateWorkoutNote: updateWorkoutNoteInState,
   updateWorkoutExerciseNote: updateWorkoutExerciseNoteInState,

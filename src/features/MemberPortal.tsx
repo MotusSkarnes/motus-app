@@ -338,11 +338,13 @@ type MemberPortalProps = {
     value: string | boolean,
   ) => void;
   replaceWorkoutExerciseGroup: (input: ReplaceWorkoutExerciseGroupInput) => void;
+  addWorkoutExerciseToWorkout: (input: { exerciseId: string; scope: "session" | "program" }) => void;
   appendWorkoutSetForProgramExercise: (programExerciseId: string) => void;
   removeLastWorkoutSetForProgramExercise: (programExerciseId: string) => void;
   deferWorkoutExerciseGroup: (programExerciseId: string) => void;
   removeWorkoutLogResult: (input: { logId: string; exerciseId: string }) => void;
   setWorkoutLogResults: (input: { logId: string; results: WorkoutLog["results"] }) => void;
+  updateWorkoutLogDate?: (input: { logId: string; date: string }) => void;
   updateWorkoutModeNote: (note: string) => void;
   updateWorkoutExerciseNote: (programExerciseId: string, note: string) => void;
   finishWorkoutMode: (input?: { reflection?: WorkoutReflection }) => void;
@@ -1100,11 +1102,13 @@ export function MemberPortal(props: MemberPortalProps) {
     updateProgramMemberLibraryStatus,
     updateWorkoutExerciseResult,
     replaceWorkoutExerciseGroup,
+    addWorkoutExerciseToWorkout,
     appendWorkoutSetForProgramExercise,
     removeLastWorkoutSetForProgramExercise,
     deferWorkoutExerciseGroup,
     removeWorkoutLogResult,
     setWorkoutLogResults,
+    updateWorkoutLogDate,
     updateWorkoutModeNote,
     updateWorkoutExerciseNote,
     finishWorkoutMode,
@@ -5415,6 +5419,28 @@ export function MemberPortal(props: MemberPortalProps) {
     });
   }
 
+  function changePeriodPlanDayProgram(planId: string, weekNumber: number, day: WeekdayPlanKey, programId: string) {
+    const program = memberProgramsForPeriodPlan.find((item) => item.id === programId);
+    if (!program) {
+      setPeriodPlanActionStatus("Fant ikke programmet du valgte.");
+      return;
+    }
+    periodPlanSwapsDirtyRef.current = true;
+    setPeriodPlanSwapsByPlan((prev) => {
+      const plan = visiblePeriodPlans.find((item) => item.id === planId);
+      const week = plan ? resolvePeriodPlanWeek(plan, weekNumber) : null;
+      if (!week) return prev;
+      const current = getSwapsForWeek(prev, planId, weekNumber);
+      const currentDays = applyPeriodPlanSwaps(week.days, current);
+      const nextDays = { ...currentDays, [day]: program.title.trim() || "Økt" };
+      const nextSwaps = buildPeriodPlanWeekOverride(week.days, nextDays, day, day);
+      return setSwapsForWeek(prev, planId, weekNumber, nextSwaps);
+    });
+    clearPeriodPlanDayDismissed(planId, weekNumber, day);
+    unmarkPeriodPlanDayCompleted(planId, weekNumber, day);
+    setPeriodPlanActionStatus(`Programmet på ${WEEKDAY_PLAN_LABELS[day].toLowerCase()} er byttet til «${program.title}».`);
+  }
+
   function resetPeriodPlanSwapsForWeek(planId: string, weekNumber: number) {
     periodPlanSwapsDirtyRef.current = true;
     setPeriodPlanSwapsByPlan((prev) => setSwapsForWeek(prev, planId, weekNumber, []));
@@ -6158,6 +6184,7 @@ export function MemberPortal(props: MemberPortalProps) {
                                     isEditing={editingCalendarSimpleLogId === selectedCalendarLog.id}
                                     onStartEdit={() => setEditingCalendarSimpleLogId(selectedCalendarLog.id)}
                                     onCancelEdit={() => setEditingCalendarSimpleLogId(null)}
+                                    onSaveDate={(date) => updateWorkoutLogDate?.({ logId: selectedCalendarLog.id, date })}
                                     onSaveActivity={(payload) => {
                                       updateActivityWorkout({ logId: selectedCalendarLog.id, ...payload });
                                       setEditingCalendarSimpleLogId(null);
@@ -7323,6 +7350,7 @@ export function MemberPortal(props: MemberPortalProps) {
                               onToggleCompleted={togglePeriodPlanEntryCompleted}
                               onSwapDays={swapPeriodPlanDays}
                               onMoveDay={movePeriodPlanDay}
+                              onChangeDayProgram={changePeriodPlanDayProgram}
                               onResetSwaps={resetPeriodPlanSwapsForWeek}
                               onStartProgram={handlePeriodPlanStartProgram}
                               onLogGroup={handlePeriodPlanLogGroup}
@@ -7510,6 +7538,7 @@ export function MemberPortal(props: MemberPortalProps) {
                     onCancelEdit: cancelEditLoggedExercise,
                     onDeleteExercise: handleDeleteLoggedExercise,
                     onDraftChange: setEditingLoggedExerciseDraft,
+                    onUpdateWorkoutLogDate: updateWorkoutLogDate,
                     onUpdateActivityWorkout: (input) =>
                       updateActivityWorkout({
                         logId: input.logId,
@@ -7731,6 +7760,7 @@ export function MemberPortal(props: MemberPortalProps) {
       onWorkoutExerciseIndexChange={setSyncedWorkoutExerciseIndex}
       updateWorkoutExerciseResult={updateWorkoutExerciseResult}
       replaceWorkoutExerciseGroup={replaceWorkoutExerciseGroup}
+      addWorkoutExerciseToWorkout={addWorkoutExerciseToWorkout}
       appendWorkoutSetForProgramExercise={appendWorkoutSetForProgramExercise}
       removeLastWorkoutSetForProgramExercise={removeLastWorkoutSetForProgramExercise}
       deferWorkoutExerciseGroup={deferWorkoutExerciseGroup}

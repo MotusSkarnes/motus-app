@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { ChevronRight } from "lucide-react";
 import { isActivityWorkoutLog, isGroupWorkoutLog } from "../app/activityWorkoutLog";
+import { periodPlanStartDateForDateInput } from "../app/dateFormat";
 import { isHoldBasedExerciseCategory } from "../app/exerciseCategories";
 import { formatWorkoutResultPerformedLabel } from "../app/programExercisePresentation";
 import type { WorkoutLog, WorkoutReflection } from "../app/types";
@@ -70,6 +71,7 @@ export type MemberWorkoutHistoryLogListProps = {
   onCancelEdit: () => void;
   onDeleteExercise: (logId: string, exerciseId: string) => void;
   onDraftChange: (updater: (prev: EditingLoggedExerciseDraft | null) => EditingLoggedExerciseDraft | null) => void;
+  onUpdateWorkoutLogDate?: (input: { logId: string; date: string }) => void;
   onUpdateActivityWorkout?: (input: {
     logId: string;
     activityName: string;
@@ -104,6 +106,7 @@ export function MemberWorkoutHistoryLogList({
   onCancelEdit,
   onDeleteExercise,
   onDraftChange,
+  onUpdateWorkoutLogDate,
   onUpdateActivityWorkout,
   onUpdateGroupWorkoutLog,
   onDeleteWorkoutLog,
@@ -111,6 +114,8 @@ export function MemberWorkoutHistoryLogList({
   emptyDescription = "Start en økt for å bygge historikk og fremgang.",
 }: MemberWorkoutHistoryLogListProps) {
   const [editingSimpleLogId, setEditingSimpleLogId] = useState<string | null>(null);
+  const [editingDateLogId, setEditingDateLogId] = useState<string | null>(null);
+  const [dateDraft, setDateDraft] = useState("");
 
   return (
     <div className="motus-member-history-log-list space-y-3">
@@ -157,6 +162,53 @@ export function MemberWorkoutHistoryLogList({
                 {fromPeriodPlan && log.note ? (
                   <div className="rounded-lg border motus-brand-surface px-2.5 py-1.5 text-xs text-emerald-900">{log.note}</div>
                 ) : null}
+                {onUpdateWorkoutLogDate ? (
+                  <div className="rounded-xl border bg-slate-50 p-3" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+                    {editingDateLogId === log.id ? (
+                      <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto_auto] sm:items-end">
+                        <label className="space-y-1">
+                          <span className="text-xs font-medium text-slate-600">Dato</span>
+                          <TextInput type="date" value={dateDraft} onChange={(event) => setDateDraft(event.target.value)} />
+                        </label>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            onUpdateWorkoutLogDate({ logId: log.id, date: dateDraft });
+                            setEditingDateLogId(null);
+                          }}
+                          disabled={!dateDraft}
+                          className="rounded-lg border motus-brand-surface px-3 py-2 text-[11px] font-semibold text-emerald-700 transition hover:bg-teal-100 disabled:cursor-not-allowed disabled:opacity-50"
+                        >
+                          Lagre dato
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setEditingDateLogId(null)}
+                          className="rounded-lg border border-slate-200 bg-slate-100 px-3 py-2 text-[11px] font-semibold text-slate-700 transition hover:bg-slate-200"
+                        >
+                          Avbryt
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="flex items-center justify-between gap-3">
+                        <div>
+                          <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Dato</div>
+                          <div className="mt-0.5 text-sm font-medium text-slate-800">{log.date}</div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setEditingDateLogId(log.id);
+                            setDateDraft(periodPlanStartDateForDateInput(log.date));
+                          }}
+                          className="rounded-lg border border-sky-200 bg-sky-50 px-2 py-1 text-[11px] font-semibold text-sky-700 transition hover:bg-sky-100"
+                        >
+                          Endre dato
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                ) : null}
                 {!fromPeriodPlan && log.note ? <div className="text-sm text-slate-600">{log.note}</div> : null}
                 {log.trainerComment ? (
                   <div className="rounded-lg border motus-brand-surface px-3 py-2 text-sm text-emerald-900">
@@ -174,6 +226,7 @@ export function MemberWorkoutHistoryLogList({
                     isEditing={editingSimpleLogId === log.id}
                     onStartEdit={() => setEditingSimpleLogId(log.id)}
                     onCancelEdit={() => setEditingSimpleLogId(null)}
+                    onSaveDate={(date) => onUpdateWorkoutLogDate?.({ logId: log.id, date })}
                     onSaveActivity={(payload) => {
                       onUpdateActivityWorkout?.({ logId: log.id, ...payload });
                       setEditingSimpleLogId(null);

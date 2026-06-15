@@ -6,6 +6,7 @@ import {
   createMember,
   ensureWorkoutModeSessionMetadata,
   localAppRepository,
+  type AddWorkoutExerciseToWorkoutInput,
   type CreateMemberInput,
   type CreateMemberResult,
   type DeleteProgramContext,
@@ -27,6 +28,7 @@ import {
   type StartCustomWorkoutInput,
   type StartWorkoutModeOptions,
   type UpdateMemberInput,
+  type UpdateWorkoutLogDateInput,
 } from "../services/appRepository";
 import type { ChatReactionActor, ChatReactionEmoji } from "./chatReactions";
 import {
@@ -2550,6 +2552,10 @@ export function useAppState() {
     setAppState((prev) => repository.replaceWorkoutExerciseGroup(prev, input));
   }
 
+  function addWorkoutExerciseToWorkout(input: AddWorkoutExerciseToWorkoutInput) {
+    setAppState((prev) => repository.addWorkoutExerciseToWorkout(prev, input));
+  }
+
   function deferWorkoutExerciseGroup(programExerciseId: string) {
     if (!programExerciseId.trim()) return;
     setAppState((prev) => repository.deferWorkoutExerciseGroup(prev, programExerciseId));
@@ -2561,6 +2567,10 @@ export function useAppState() {
 
   function setWorkoutLogResults(input: SetWorkoutLogResultsInput) {
     setAppState((prev) => repository.setWorkoutLogResults(prev, input));
+  }
+
+  function updateWorkoutLogDate(input: UpdateWorkoutLogDateInput) {
+    setAppState((prev) => repository.updateWorkoutLogDate(prev, input));
   }
 
   function updateWorkoutLogTrainerComment(input: {
@@ -3082,11 +3092,13 @@ export function useAppState() {
     startCustomWorkout,
     updateWorkoutExerciseResult,
     replaceWorkoutExerciseGroup,
+    addWorkoutExerciseToWorkout,
     appendWorkoutSetForProgramExercise,
     removeLastWorkoutSetForProgramExercise,
     deferWorkoutExerciseGroup,
     removeWorkoutLogResult,
     setWorkoutLogResults,
+    updateWorkoutLogDate,
     updateWorkoutLogTrainerComment,
     updateWorkoutModeNote,
     updateWorkoutExerciseNote,

@@ -61,6 +61,7 @@ export type LiveWorkoutSessionModalProps = {
     value: string | boolean,
   ) => void;
   replaceWorkoutExerciseGroup: (input: ReplaceWorkoutExerciseGroupInput) => void;
+  addWorkoutExerciseToWorkout: (input: { exerciseId: string; scope: "session" | "program" }) => void;
   appendWorkoutSetForProgramExercise: (programExerciseId: string) => void;
   removeLastWorkoutSetForProgramExercise: (programExerciseId: string) => void;
   deferWorkoutExerciseGroup: (programExerciseId: string) => void;
@@ -106,6 +107,7 @@ export function LiveWorkoutSessionModal({
   onBeforeNextExercise,
   updateWorkoutExerciseResult,
   replaceWorkoutExerciseGroup,
+  addWorkoutExerciseToWorkout,
   appendWorkoutSetForProgramExercise,
   removeLastWorkoutSetForProgramExercise,
   deferWorkoutExerciseGroup,
@@ -134,6 +136,9 @@ export function LiveWorkoutSessionModal({
   const [restCountdown, setRestCountdown] = useState<RestCountdownState | null>(null);
   const [pendingIncompleteFinishAction, setPendingIncompleteFinishAction] = useState<FinishWorkoutAction | null>(null);
   const [cancelConfirmOpen, setCancelConfirmOpen] = useState(false);
+  const [addExerciseOpen, setAddExerciseOpen] = useState(false);
+  const [addExerciseQuery, setAddExerciseQuery] = useState("");
+  const [pendingAddExerciseId, setPendingAddExerciseId] = useState("");
   const [blockSwapOpenForProgramExerciseId, setBlockSwapOpenForProgramExerciseId] = useState<string | null>(null);
   const [blockDetailExercise, setBlockDetailExercise] = useState<Exercise | null>(null);
   const deferredJumpTargetGroupIdRef = useRef<string | null>(null);
@@ -213,6 +218,7 @@ export function LiveWorkoutSessionModal({
   const nextWorkoutGroup = workoutResultGroups[workoutExerciseIndex + 1] ?? null;
   const canDeferCurrentExercise = Boolean(currentWorkoutGroup && nextWorkoutGroup);
   const isLastWorkoutGroup = workoutExerciseIndex >= workoutResultGroups.length - 1;
+  const canPersistAddedExerciseToProgram = Boolean(activeProgram && !activeProgram.ephemeral);
   const currentWorkoutGroupId = currentWorkoutGroup?.groupId ?? "";
   const currentGroupCompletedSets = currentWorkoutGroup?.rows.filter((row) => row.completed).length ?? 0;
   const currentGroupTotalSets = currentWorkoutGroup?.rows.length ?? 0;
@@ -263,6 +269,8 @@ export function LiveWorkoutSessionModal({
     setShowExerciseDetail(false);
     setBlockDetailExercise(null);
     setBlockSwapOpenForProgramExerciseId(null);
+    setAddExerciseOpen(false);
+    setPendingAddExerciseId("");
     setRestCountdown(null);
     lastRestBeepSecondRef.current = null;
     if (currentWorkoutGroupId) {
@@ -352,6 +360,22 @@ export function LiveWorkoutSessionModal({
   const exerciseByName = useMemo(
     () => new Map(exercises.map((exercise) => [exercise.name.trim().toLowerCase(), exercise])),
     [exercises],
+  );
+
+  const addExerciseCandidates = useMemo(() => {
+    const query = addExerciseQuery.trim().toLowerCase();
+    return exercises
+      .filter((exercise) => {
+        if (!query) return true;
+        const haystack = `${exercise.name} ${exercise.group} ${exercise.category} ${exercise.equipment}`.toLowerCase();
+        return haystack.includes(query);
+      })
+      .slice(0, 12);
+  }, [addExerciseQuery, exercises]);
+
+  const pendingAddExercise = useMemo(
+    () => exercises.find((exercise) => exercise.id === pendingAddExerciseId) ?? null,
+    [exercises, pendingAddExerciseId],
   );
 
   /** Velg «samme muskelgruppe + samme kategori» — fall tilbake til samme kategori om gruppen er tom. */
@@ -549,6 +573,16 @@ export function LiveWorkoutSessionModal({
       nextExerciseName: replacementExercise.name,
     });
     setBlockSwapOpenForProgramExerciseId(null);
+  }
+
+  function handleAddWorkoutExercise(scope: "session" | "program") {
+    if (!pendingAddExerciseId) return;
+    addWorkoutExerciseToWorkout({ exerciseId: pendingAddExerciseId, scope });
+    setWorkoutExerciseIndex(workoutResultGroups.length);
+    setAddExerciseOpen(false);
+    setAddExerciseQuery("");
+    setPendingAddExerciseId("");
+    motusHaptic("success");
   }
 
   function buildWorkoutReflection(): WorkoutReflection {
@@ -768,6 +802,18 @@ export function LiveWorkoutSessionModal({
                         Bytt
                       </button>
                     ) : null}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setAddExerciseOpen((prev) => !prev);
+                        setPendingAddExerciseId("");
+                      }}
+                      className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-white px-2.5 py-0.5 text-xs font-semibold text-slate-700 shadow-sm transition hover:border-teal-300 hover:bg-teal-50"
+                      aria-expanded={addExerciseOpen}
+                    >
+                      <Plus className="h-3.5 w-3.5" aria-hidden />
+                      Legg til øvelse
+                    </button>
                   </div>
                 </div>
                 {currentWorkoutExercise && !currentWorkoutGroup.blockType ? (
@@ -894,6 +940,88 @@ export function LiveWorkoutSessionModal({
                       </button>
                     ))}
                   </div>
+                </div>
+              ) : null}
+              {addExerciseOpen ? (
+                <div className="mt-3 rounded-xl border bg-white p-3" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Legg til øvelse</div>
+                      <div className="mt-0.5 text-xs text-slate-600">
+                        Velg øvelse, og bestem om den bare gjelder denne økten eller skal inn i programmet.
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setAddExerciseOpen(false);
+                        setPendingAddExerciseId("");
+                      }}
+                      className="rounded-full p-1 text-slate-400 transition hover:bg-slate-100 hover:text-slate-700"
+                      aria-label="Lukk legg til øvelse"
+                    >
+                      <X className="h-4 w-4" aria-hidden />
+                    </button>
+                  </div>
+                  <TextInput
+                    value={addExerciseQuery}
+                    onChange={(event) => setAddExerciseQuery(event.target.value)}
+                    placeholder="Søk øvelse"
+                    className="mt-3"
+                  />
+                  <div className="mt-2 max-h-56 space-y-1.5 overflow-auto pr-1">
+                    {addExerciseCandidates.length === 0 ? (
+                      <div className="rounded-lg border border-dashed border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-500">
+                        Ingen øvelser matcher søket.
+                      </div>
+                    ) : null}
+                    {addExerciseCandidates.map((exercise) => {
+                      const selected = pendingAddExerciseId === exercise.id;
+                      return (
+                        <button
+                          key={exercise.id}
+                          type="button"
+                          onClick={() => setPendingAddExerciseId(exercise.id)}
+                          className={`w-full rounded-lg border px-3 py-2 text-left text-xs transition ${
+                            selected
+                              ? "border-teal-300 bg-teal-50 text-slate-950"
+                              : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
+                          }`}
+                        >
+                          <span className="block font-semibold">{exercise.name}</span>
+                          <span className="mt-0.5 block text-[11px] text-slate-500">
+                            {exercise.category} · {exercise.group} · {exercise.equipment}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                  {pendingAddExercise ? (
+                    <div className="mt-3 rounded-xl border bg-slate-50 p-3" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+                      <div className="text-sm font-semibold text-slate-900">{pendingAddExercise.name}</div>
+                      <div className="mt-1 text-xs text-slate-600">
+                        Skal øvelsen kun lagres på denne økten, eller legges permanent inn i programmet?
+                      </div>
+                      <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                        <OutlineButton type="button" className="w-full text-xs" onClick={() => handleAddWorkoutExercise("session")}>
+                          Kun denne økten
+                        </OutlineButton>
+                        <GradientButton
+                          type="button"
+                          className="w-full text-xs"
+                          onClick={() => handleAddWorkoutExercise("program")}
+                          disabled={!canPersistAddedExerciseToProgram}
+                        >
+                          Lagre i programmet permanent
+                        </GradientButton>
+                      </div>
+                      {!canPersistAddedExerciseToProgram ? (
+                        <div className="mt-2 text-[11px] text-slate-500">
+                          Permanent lagring er bare tilgjengelig når økten er startet fra et lagret program.
+                        </div>
+                      ) : null}
+                    </div>
+                  ) : null}
                 </div>
               ) : null}
               {canDeferCurrentExercise ? (

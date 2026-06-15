@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { AppState } from "../app/types";
 import {
+  addWorkoutExerciseToWorkoutInState,
   appendWorkoutSetForProgramExerciseInState,
   canRemoveLastExtraWorkoutSet,
   countExtraWorkoutSets,
@@ -15,6 +16,7 @@ import {
   replaceWorkoutExerciseGroupInState,
   setWorkoutLogResultsInState,
   updateActivityWorkoutInState,
+  updateWorkoutLogDateInState,
   startCustomWorkoutInState,
   ensureWorkoutModeSessionMetadata,
   startWorkoutModeInState,
@@ -203,6 +205,32 @@ describe("appRepository workout log guards", () => {
       started.workoutMode?.planDisplayByGroupId?.["pex-1"],
     );
     expect(countExtraWorkoutSets("pex-1", appended.workoutMode!.results, appended.workoutMode, state.programs[0])).toBe(1);
+  });
+
+  it("adds an exercise to the active workout session only", () => {
+    const state = createBaseState();
+    state.exercises = [
+      { id: "ex-row", name: "Sittende roing", category: "Styrke", group: "Rygg", equipment: "Kabel", level: "Nybegynner", description: "" },
+    ];
+    const started = startWorkoutModeInState(state, "program-1");
+
+    const next = addWorkoutExerciseToWorkoutInState(started, { exerciseId: "ex-row", scope: "session" });
+
+    expect(next.workoutMode?.results.some((row) => row.exerciseName === "Sittende roing")).toBe(true);
+    expect(next.programs[0]?.exercises.some((exercise) => exercise.exerciseName === "Sittende roing")).toBe(false);
+  });
+
+  it("adds an exercise to the active workout and program permanently", () => {
+    const state = createBaseState();
+    state.exercises = [
+      { id: "ex-row", name: "Sittende roing", category: "Styrke", group: "Rygg", equipment: "Kabel", level: "Nybegynner", description: "" },
+    ];
+    const started = startWorkoutModeInState(state, "program-1");
+
+    const next = addWorkoutExerciseToWorkoutInState(started, { exerciseId: "ex-row", scope: "program" });
+
+    expect(next.workoutMode?.results.some((row) => row.exerciseName === "Sittende roing")).toBe(true);
+    expect(next.programs[0]?.exercises.some((exercise) => exercise.exerciseName === "Sittende roing")).toBe(true);
   });
 
   it("removes last extra set beyond program plan", () => {
@@ -847,6 +875,24 @@ describe("appRepository workout log guards", () => {
     });
     expect(next.logs[0].results?.[0].performedWeight).toBe("65");
     expect(next.logs[0].results?.[0].performedReps).toBe("6");
+  });
+
+  it("updates workout log date by id while keeping the original time", () => {
+    const state = createBaseState();
+    state.logs = [
+      {
+        id: "log-date",
+        memberId: "member-1",
+        programTitle: "Styrke A",
+        date: "24.04.2026 kl 18:35",
+        status: "FullfÃ¸rt",
+        note: "",
+        results: [],
+      },
+    ];
+
+    const next = updateWorkoutLogDateInState(state, { logId: "log-date", date: "2026-05-02" });
+    expect(next.logs[0]?.date).toBe("02.05.2026 kl 18:35");
   });
 
   it("removes completed plan logs when stored date format differs from input", () => {

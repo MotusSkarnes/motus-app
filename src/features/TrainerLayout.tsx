@@ -33,6 +33,7 @@ type TrainerWorkoutBridge = Pick<
   | "startWorkoutMode"
   | "updateWorkoutExerciseResult"
   | "replaceWorkoutExerciseGroup"
+  | "addWorkoutExerciseToWorkout"
   | "appendWorkoutSetForProgramExercise"
   | "removeLastWorkoutSetForProgramExercise"
   | "deferWorkoutExerciseGroup"
@@ -77,6 +78,7 @@ type TrainerLayoutProps = {
   toggleChatMessageReaction: ComponentProps<typeof TrainerPortal>["toggleChatMessageReaction"];
   markChatConversationRead: ComponentProps<typeof TrainerPortal>["markChatConversationRead"];
   updateWorkoutLogTrainerComment?: ComponentProps<typeof TrainerPortal>["updateWorkoutLogTrainerComment"];
+  updateWorkoutLogDate: ComponentProps<typeof TrainerPortal>["updateWorkoutLogDate"];
   deleteWorkoutLog?: ComponentProps<typeof TrainerPortal>["deleteWorkoutLog"];
   clearLocalChatCache: ComponentProps<typeof TrainerPortal>["clearLocalChatCache"];
   saveExercise: ComponentProps<typeof TrainerPortal>["saveExercise"];
@@ -163,6 +165,7 @@ export function TrainerLayout({
   toggleChatMessageReaction,
   markChatConversationRead,
   updateWorkoutLogTrainerComment,
+  updateWorkoutLogDate,
   deleteWorkoutLog,
   clearLocalChatCache,
   saveExercise,
@@ -182,6 +185,7 @@ export function TrainerLayout({
   startWorkoutMode,
   updateWorkoutExerciseResult,
   replaceWorkoutExerciseGroup,
+  addWorkoutExerciseToWorkout,
   appendWorkoutSetForProgramExercise,
   removeLastWorkoutSetForProgramExercise,
   deferWorkoutExerciseGroup,
@@ -272,6 +276,7 @@ export function TrainerLayout({
     toggleChatMessageReaction,
   markChatConversationRead,
     updateWorkoutLogTrainerComment,
+    updateWorkoutLogDate,
     deleteWorkoutLog,
     clearLocalChatCache,
     saveExercise,
@@ -292,6 +297,7 @@ export function TrainerLayout({
     startWorkoutMode,
     updateWorkoutExerciseResult,
     replaceWorkoutExerciseGroup,
+    addWorkoutExerciseToWorkout,
     appendWorkoutSetForProgramExercise,
     removeLastWorkoutSetForProgramExercise,
     deferWorkoutExerciseGroup,
