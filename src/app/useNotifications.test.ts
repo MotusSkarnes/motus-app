@@ -629,10 +629,10 @@ describe("useNotifications workout comment alerts", () => {
         { id: "default-recipe-1", title: "Gammel", description: "Eksisterer", createdAt: "2026-05-01" },
         {
           id: "inspiration-new",
-          title: "Proteinpannekaker",
+          title: "Sommerkondis",
           description: "Fersk inspo",
           createdAt: "2026-05-16",
-          category: "recipes",
+          category: "programs",
           kind: "article",
         },
       ]),
@@ -646,8 +646,8 @@ describe("useNotifications workout comment alerts", () => {
       expect(result.current.memberUnreadCount).toBe(1);
       const inspoAlert = result.current.memberVisibleAlerts.find((alert) => alert.kind === "inspiration");
       expect(inspoAlert).toBeDefined();
-      expect(inspoAlert?.title).toBe("Proteinpannekaker");
-      expect(inspoAlert?.detail).toBe("Ny oppskrift");
+      expect(inspoAlert?.title).toBe("Sommerkondis");
+      expect(inspoAlert?.detail).toBe("Nytt program");
     });
   });
 
