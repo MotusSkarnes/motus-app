@@ -760,6 +760,136 @@ describe("useNotifications workout comment alerts", () => {
     expect(result.current.memberFocusProgramId).toBe("program-1");
   });
 
+  it("keeps the same trainer program read when it is hydrated with a new local id", async () => {
+    const makeTrainerProgram = (id: string): TrainingProgram => ({
+      id,
+      memberId: "member-1",
+      title: "4x4 intervall",
+      goal: "Kondis",
+      notes: "",
+      exercises: [],
+      createdAt: "20.05.2026",
+      programCreatedBy: "trainer",
+      ownerUserId: "trainer-1",
+    });
+
+    const first = renderHook(() =>
+      useNotifications({
+        messages: [],
+        programs: [makeTrainerProgram("program-old-device")],
+        logs: [],
+        members: [{ id: "member-1", name: "Test", email: "test@example.com" } as never],
+        memberViewId: "member-1",
+        setMemberTab: () => {},
+      }),
+    );
+
+    const alert = first.result.current.memberVisibleAlerts.find((item) => item.kind === "program");
+    expect(alert).toBeDefined();
+
+    act(() => {
+      first.result.current.openAlert(alert!);
+    });
+
+    await waitFor(() => {
+      expect(window.localStorage.getItem("motus.notifications.memberSeenProgramIds")).toContain(
+        "program:trainer-1:4x4 intervall:kondis:20.05.2026",
+      );
+    });
+
+    first.unmount();
+
+    const second = renderHook(() =>
+      useNotifications({
+        messages: [],
+        programs: [makeTrainerProgram("program-new-device")],
+        logs: [],
+        members: [{ id: "member-1", name: "Test", email: "test@example.com" } as never],
+        memberViewId: "member-1",
+        setMemberTab: () => {},
+      }),
+    );
+
+    expect(second.result.current.memberVisibleAlerts.find((item) => item.kind === "program")).toBeUndefined();
+    expect(second.result.current.memberUnreadCount).toBe(0);
+  });
+
+  it("does not show future dates for program notification timestamps", () => {
+    const futureProgram: TrainingProgram = {
+      id: "program-future",
+      memberId: "member-1",
+      title: "Fremtidig dato",
+      goal: "Kondis",
+      notes: "",
+      exercises: [],
+      createdAt: "06.10.2026 kl 00:00",
+      programCreatedBy: "trainer",
+    };
+    const { result } = renderHook(() =>
+      useNotifications({
+        messages: [],
+        programs: [futureProgram],
+        logs: [],
+        members: [{ id: "member-1", name: "Test", email: "test@example.com" } as never],
+        memberViewId: "member-1",
+        setMemberTab: () => {},
+      }),
+    );
+
+    const alert = result.current.memberVisibleAlerts.find((item) => item.kind === "program");
+    expect(alert).toBeDefined();
+    expect(alert!.timestamp).toBeLessThanOrEqual(Date.now());
+  });
+
+  it("uses member notification preferences from profile before showing read program alerts on a new device", async () => {
+    const personalGoals = `MOTUS_PROFILE_V1:${JSON.stringify({
+      notificationPreferences: {
+        version: 1,
+        memberAlertsSeenAt: 0,
+        seenMemberProgramIds: ["program:trainer-1:4x4 intervall:kondis:20.05.2026"],
+        seenMemberWorkoutCommentKeys: [],
+        openedMemberAlertIds: [],
+        seenMemberInspirationIds: [],
+        seenMemberPeriodPlanKeys: [],
+        dismissedMemberCheckInMonths: [],
+        memberInspirationBaselineAt: 0,
+        seenHiddenBadgeIds: [],
+        lastCelebratedAchievedLevel: 0,
+        updatedAt: 100,
+      },
+    })}`;
+    const trainerProgram: TrainingProgram = {
+      id: "program-new-device",
+      memberId: "member-1",
+      title: "4x4 intervall",
+      goal: "Kondis",
+      notes: "",
+      exercises: [],
+      createdAt: "20.05.2026",
+      programCreatedBy: "trainer",
+      ownerUserId: "trainer-1",
+    };
+
+    const { result } = renderHook(() =>
+      useNotifications({
+        messages: [],
+        programs: [trainerProgram],
+        logs: [],
+        members: [{ id: "member-1", name: "Test", email: "test@example.com" } as never],
+        memberViewId: "member-1",
+        memberPersonalGoals: personalGoals,
+        memberNotificationProfileReady: true,
+        currentUserRole: "member",
+        setMemberTab: () => {},
+      }),
+    );
+
+    await waitFor(() => {
+      expect(result.current.memberVisibleAlerts.find((item) => item.kind === "program")).toBeUndefined();
+      expect(result.current.memberUnreadCount).toBe(0);
+    });
+  });
+
   it("ignores workout comments on non-completed logs", () => {
     const { result } = renderHook(() =>
       useNotifications({

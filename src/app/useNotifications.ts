@@ -60,6 +60,8 @@ export type MemberAlert = {
   isUnread: boolean;
   isOpened: boolean;
   inspirationItemId?: string;
+  programId?: string;
+  seenKey?: string;
 };
 
 export type TrainerAlert = {
@@ -77,6 +79,26 @@ export type TrainerAlert = {
 function parseTimestamp(value: string, fallbackOrder: number): number {
   const parsed = parseChatMessageCreatedAtMs(value);
   return parsed > 0 ? parsed : fallbackOrder;
+}
+
+function alertTimestamp(value: string, fallbackOrder: number): number {
+  const timestamp = parseTimestamp(value, fallbackOrder);
+  const now = Date.now();
+  return timestamp > now ? now : timestamp;
+}
+
+function normalizeSeenKeyPart(value: string | undefined): string {
+  return String(value ?? "").trim().toLowerCase().replace(/\s+/g, " ");
+}
+
+function memberProgramSeenKey(program: TrainingProgram): string {
+  return [
+    "program",
+    normalizeSeenKeyPart(program.ownerUserId || program.assignedTrainerName || program.programCreatedBy || "trainer"),
+    normalizeSeenKeyPart(program.title),
+    normalizeSeenKeyPart(program.goal),
+    normalizeSeenKeyPart(program.createdAt),
+  ].join(":");
 }
 
 function isOperationalTrainerAlertKind(kind?: string): boolean {
@@ -118,9 +140,9 @@ function periodPlanAlertTimestamp(plan: PeriodSchedulePlan, fallbackOrder: numbe
   const iso = plan.trainerSavedAtIso?.trim();
   if (iso) {
     const parsed = Date.parse(iso);
-    if (Number.isFinite(parsed) && parsed > 0) return parsed;
+    if (Number.isFinite(parsed) && parsed > 0) return Math.min(parsed, Date.now());
   }
-  return parseTimestamp(plan.createdAt, fallbackOrder);
+  return alertTimestamp(plan.createdAt, fallbackOrder);
 }
 
 function readMemberTabFromLocation(): MemberTab | null {
@@ -671,18 +693,26 @@ export function useNotifications({
       dedupeTrainingPrograms(memberPrograms)
         .filter((program) => program.programCreatedBy !== "member")
         .filter((program) => !programIsInMemberArchive(program.memberLibraryStatus))
-        .map((program) => ({
-          id: `member-program-${program.id}`,
-          kind: "program" as const,
-          title: "Nytt treningsprogram",
-          text: program.title,
-          detail: program.goal || "Programmet er klart i Trening.",
-          timestamp: program._effectiveTimestamp,
-          targetTab: "programs" as const,
-          unread: !seenMemberProgramIds.includes(program.id),
-          programId: program.id,
-        })),
-    [memberPrograms, seenMemberProgramIds],
+        .map((program, index) => {
+          const seenKey = memberProgramSeenKey(program);
+          const timestamp = alertTimestamp(program.createdAt, index + 1);
+          return {
+            id: `member-program-${program.id}`,
+            kind: "program" as const,
+            title: "Nytt treningsprogram",
+            text: program.title,
+            detail: program.goal || "Programmet er klart i Trening.",
+            timestamp,
+            targetTab: "programs" as const,
+            unread:
+              timestamp > memberAlertsSeenAt &&
+              !seenMemberProgramIds.includes(program.id) &&
+              !seenMemberProgramIds.includes(seenKey),
+            programId: program.id,
+            seenKey,
+          };
+        }),
+    [memberAlertsSeenAt, memberPrograms, seenMemberProgramIds],
   );
 
   const memberCheckInAlert = useMemo(() => {
@@ -718,20 +748,21 @@ export function useNotifications({
         })
         .map((plan, index) => {
           const seenKey = memberPeriodPlanSeenKey(plan);
+          const timestamp = periodPlanAlertTimestamp(plan, index + 1);
           return {
             id: `member-period-plan-${plan.id}`,
             kind: "period-plan" as const,
             title: "Ny periodeplan",
             text: plan.title,
             detail: plan.notes?.trim() || "Planen er klar under Oversikt.",
-            timestamp: periodPlanAlertTimestamp(plan, index + 1),
+            timestamp,
             targetTab: "overview" as const,
-            unread: !seenMemberPeriodPlanKeys.includes(seenKey),
+            unread: timestamp > memberAlertsSeenAt && !seenMemberPeriodPlanKeys.includes(seenKey),
             seenKey,
           };
         });
     },
-    [remoteMemberPeriodPlanRows, memberViewId, seenMemberPeriodPlanKeys],
+    [memberAlertsSeenAt, remoteMemberPeriodPlanRows, memberViewId, seenMemberPeriodPlanKeys],
   );
 
   const memberInspirationBaselineAt = readMemberInspirationBaselineAt();
@@ -809,6 +840,8 @@ export function useNotifications({
         targetTab: alert.targetTab,
         isUnread: alert.unread,
         isOpened: openedMemberAlertIds.includes(alert.id),
+        programId: alert.programId,
+        seenKey: alert.seenKey,
       })),
       ...memberWorkoutCommentAlerts.map((alert) => ({
         id: alert.id,
@@ -820,6 +853,7 @@ export function useNotifications({
         targetTab: alert.targetTab,
         isUnread: alert.unread,
         isOpened: openedMemberAlertIds.includes(alert.id),
+        seenKey: alert.seenKey,
       })),
       ...memberInspirationAlerts.map((alert) => ({
         id: alert.id,
@@ -842,6 +876,7 @@ export function useNotifications({
         targetTab: alert.targetTab,
         isUnread: alert.unread,
         isOpened: openedMemberAlertIds.includes(alert.id),
+        seenKey: alert.seenKey,
       })),
     ];
     return sortAlertsForDisplay(combined.filter((alert) => alert.isUnread)).slice(0, ALERT_HISTORY_LIMIT);
@@ -975,13 +1010,15 @@ export function useNotifications({
 
     for (const alert of memberUnreadAlerts) {
       nextOpenedIds.add(alert.id);
+      nextMemberAlertsSeenAt = Math.max(nextMemberAlertsSeenAt, alert.timestamp);
       if (alert.kind === "message") {
-        nextMemberAlertsSeenAt = Math.max(nextMemberAlertsSeenAt, alert.timestamp);
       } else if (alert.kind === "program") {
-        const programId = alert.id.replace(/^member-program-/, "");
+        const programId = alert.programId ?? alert.id.replace(/^member-program-/, "");
         if (programId) nextProgramIds.add(programId);
+        if (alert.seenKey) nextProgramIds.add(alert.seenKey);
       } else if (alert.kind === "workout-comment") {
         const workoutAlert = memberWorkoutCommentAlerts.find((item) => item.id === alert.id);
+        if (alert.seenKey) nextWorkoutCommentKeys.add(alert.seenKey);
         if (workoutAlert?.seenKey) nextWorkoutCommentKeys.add(workoutAlert.seenKey);
       } else if (alert.kind === "inspiration") {
         const inspirationId = alert.inspirationItemId ?? alert.id.replace(/^member-inspiration-/, "");
@@ -1016,13 +1053,13 @@ export function useNotifications({
   ]);
 
   function openAlert(alert: MemberAlert) {
+    setMemberAlertsSeenAt((prev) => Math.max(prev, alert.timestamp));
     if (alert.kind === "message") {
-      setMemberAlertsSeenAt((prev) => Math.max(prev, alert.timestamp));
       setOpenedMemberAlertIds((prev) => Array.from(new Set([...prev, alert.id])));
     } else if (alert.kind === "program") {
-      const programId = alert.id.replace(/^member-program-/, "");
+      const programId = alert.programId ?? alert.id.replace(/^member-program-/, "");
       if (programId) {
-        setSeenMemberProgramIds((prev) => Array.from(new Set([...prev, programId])));
+        setSeenMemberProgramIds((prev) => Array.from(new Set([...prev, programId, alert.seenKey].filter(Boolean))));
         setOpenedMemberAlertIds((prev) => Array.from(new Set([...prev, alert.id])));
         setMemberFocusProgramId(programId);
       }
