@@ -1371,27 +1371,6 @@ export function MemberPortal(props: MemberPortalProps) {
     () => onboardingSubstantivelyComplete || isMemberOnboardingSubmitted(editableMember, members),
     [editableMember, members, onboardingSubstantivelyComplete],
   );
-  if (editableMember?.id !== periodPlanSwapsOwnerId) {
-    const localSwaps =
-      editableMember?.id && typeof window !== "undefined"
-        ? parsePeriodPlanSwapsState(window.localStorage.getItem(getPeriodPlanSwapsStorageKey(editableMember.id)))
-        : {};
-    const remoteSwaps = readPeriodPlanSwapsFromPersonalGoals(
-      editableMember ? resolveBestPersonalGoalsForRelatedMembers(editableMember, members, relatedMemberIdSet) : undefined,
-    );
-    const mergedSwaps = mergePeriodPlanSwapPrefs(
-      {
-        version: 1,
-        swapsByPlan: localSwaps,
-        updatedAt: periodPlanSwapsLocalUpdatedAtRef.current,
-      },
-      remoteSwaps,
-    );
-    setPeriodPlanSwapsOwnerId(editableMember?.id ?? null);
-    setPeriodPlanSwapsByPlan(mergedSwaps.swapsByPlan);
-    periodPlanSwapsLocalUpdatedAtRef.current = mergedSwaps.updatedAt;
-    periodPlanSwapsDirtyRef.current = false;
-  }
   const memberNotificationPrefs = useMemo(
     () => readMemberNotificationPreferencesFromPersonalGoals(editableMember?.personalGoals),
     [editableMember?.personalGoals],
@@ -1590,6 +1569,27 @@ export function MemberPortal(props: MemberPortalProps) {
       relatedMembersForProfile.map((member) => `${member.id}:${member.personalGoals ?? ""}`).join("|"),
     [relatedMembersForProfile],
   );
+  if (editableMember?.id !== periodPlanSwapsOwnerId) {
+    const localSwaps =
+      editableMember?.id && typeof window !== "undefined"
+        ? parsePeriodPlanSwapsState(window.localStorage.getItem(getPeriodPlanSwapsStorageKey(editableMember.id)))
+        : {};
+    const remoteSwaps = readPeriodPlanSwapsFromPersonalGoals(
+      editableMember ? resolveBestPersonalGoalsForRelatedMembers(editableMember, members, relatedMemberIdSet) : undefined,
+    );
+    const mergedSwaps = mergePeriodPlanSwapPrefs(
+      {
+        version: 1,
+        swapsByPlan: localSwaps,
+        updatedAt: periodPlanSwapsLocalUpdatedAtRef.current,
+      },
+      remoteSwaps,
+    );
+    setPeriodPlanSwapsOwnerId(editableMember?.id ?? null);
+    setPeriodPlanSwapsByPlan(mergedSwaps.swapsByPlan);
+    periodPlanSwapsLocalUpdatedAtRef.current = mergedSwaps.updatedAt;
+    periodPlanSwapsDirtyRef.current = false;
+  }
   useEffect(() => {
     if (!editableMember?.id || periodPlanSwapsDirtyRef.current) return;
     const remoteSwaps = readPeriodPlanSwapsFromPersonalGoals(
