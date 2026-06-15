@@ -157,6 +157,47 @@ export function MemberWorkoutHistoryLogList({
               <span className="shrink-0 text-[11px] font-semibold text-teal-700">{isExpanded ? "Skjul" : "Detaljer"}</span>
               <ChevronRight className={`h-4 w-4 shrink-0 text-slate-400 transition ${isExpanded ? "rotate-90" : ""}`} aria-hidden />
             </button>
+            {!isExpanded && onUpdateWorkoutLogDate ? (
+              <div className="border-t border-slate-100 px-3 py-2">
+                {editingDateLogId === log.id ? (
+                  <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto_auto] sm:items-end">
+                    <label className="space-y-1">
+                      <span className="text-xs font-medium text-slate-600">Dato</span>
+                      <TextInput type="date" value={dateDraft} onChange={(event) => setDateDraft(event.target.value)} />
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        onUpdateWorkoutLogDate({ logId: log.id, date: dateDraft });
+                        setEditingDateLogId(null);
+                      }}
+                      disabled={!dateDraft}
+                      className="rounded-lg border motus-brand-surface px-3 py-2 text-[11px] font-semibold text-emerald-700 transition hover:bg-teal-100 disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      Lagre dato
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setEditingDateLogId(null)}
+                      className="rounded-lg border border-slate-200 bg-slate-100 px-3 py-2 text-[11px] font-semibold text-slate-700 transition hover:bg-slate-200"
+                    >
+                      Avbryt
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setEditingDateLogId(log.id);
+                      setDateDraft(periodPlanStartDateForDateInput(log.date));
+                    }}
+                    className="rounded-lg border border-sky-200 bg-sky-50 px-2 py-1 text-[11px] font-semibold text-sky-700 transition hover:bg-sky-100"
+                  >
+                    Endre dato
+                  </button>
+                )}
+              </div>
+            ) : null}
             {isExpanded ? (
               <div className="space-y-2 border-t border-slate-100 px-3 pb-3 pt-2">
                 {fromPeriodPlan && log.note ? (
