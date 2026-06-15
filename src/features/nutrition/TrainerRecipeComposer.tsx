@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { X } from "lucide-react";
 import { DEFAULT_RECIPE_SCALING_BY_ID } from "../../app/defaultInspirationRecipes";
 import { buildDefaultFoodBankItems } from "../../app/foodBankSeed";
@@ -24,9 +24,39 @@ import { RecipeAvoidanceWarning } from "../../components/RecipeAvoidanceWarning"
 import { RecipeImageField } from "../../components/RecipeImageField";
 import { RecipeIngredientList } from "../../components/RecipeIngredientList";
 import { RecipeMacroBlocks } from "../../components/RecipeMacroBlocks";
-import { GradientButton, OutlineButton, StatusMessage, TextArea, TextInput } from "../../app/ui";
+import { ConfirmDialog, GradientButton, OutlineButton, StatusMessage, TextArea, TextInput } from "../../app/ui";
 import { useFoodBankItems } from "../../app/useFoodBankItems";
 import { uid } from "../../app/storage";
+
+type RecipeDraftSnapshot = {
+  title: string;
+  description: string;
+  tag: string;
+  proteinCategory: string;
+  servings: string;
+  body: string;
+  imageUrl: string;
+};
+
+function buildRecipeDraftFromSource(
+  source: InspirationRecipeItem | null | undefined,
+  duplicateFromItem: InspirationRecipeItem | null,
+): RecipeDraftSnapshot {
+  const duplicateTitle = duplicateFromItem?.title?.trim() ? `${duplicateFromItem.title.trim()} (kopi)` : "";
+  return {
+    title: duplicateTitle || (source?.title ?? ""),
+    description: source?.description ?? "",
+    tag: source?.tag ?? "Oppskrift",
+    proteinCategory: source?.proteinCategory ?? "",
+    servings: String(source?.servings ?? (source?.body ? parseRecipeServings(source.body) : "")),
+    body: source?.body ?? "",
+    imageUrl: source?.imageUrl ?? "",
+  };
+}
+
+function snapshotRecipeDraft(input: RecipeDraftSnapshot): string {
+  return JSON.stringify(input);
+}
 
 type TrainerRecipeComposerProps = {
   open: boolean;
@@ -68,20 +98,61 @@ export function TrainerRecipeComposer({
   const [isImageProcessing, setIsImageProcessing] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [baselineSnapshot, setBaselineSnapshot] = useState<string | null>(null);
+  const [confirmCloseOpen, setConfirmCloseOpen] = useState(false);
+
+  useEffect(() => {
+    if (!open) {
+      setBaselineSnapshot(null);
+      setConfirmCloseOpen(false);
+      return;
+    }
+    const source = duplicateFromItem ?? editItem;
+    const nextDraft = buildRecipeDraftFromSource(source, duplicateFromItem);
+    setTitle(nextDraft.title);
+    setDescription(nextDraft.description);
+    setTag(nextDraft.tag);
+    setProteinCategory(nextDraft.proteinCategory);
+    setServings(nextDraft.servings);
+    setBody(nextDraft.body);
+    setImageUrl(nextDraft.imageUrl);
+    setStatus(null);
+    setBaselineSnapshot(snapshotRecipeDraft(nextDraft));
+  }, [open, editItem, duplicateFromItem]);
+
+  const currentSnapshot = useMemo(
+    () =>
+      snapshotRecipeDraft({
+        title,
+        description,
+        tag,
+        proteinCategory,
+        servings,
+        body,
+        imageUrl,
+      }),
+    [title, description, tag, proteinCategory, servings, body, imageUrl],
+  );
+  const hasUnsavedChanges = baselineSnapshot !== null && currentSnapshot !== baselineSnapshot;
+
+  const requestClose = useCallback(() => {
+    if (hasUnsavedChanges) {
+      setConfirmCloseOpen(true);
+      return;
+    }
+    onClose();
+  }, [hasUnsavedChanges, onClose]);
 
   useEffect(() => {
     if (!open) return;
-    const source = duplicateFromItem ?? editItem;
-    const duplicateTitle = duplicateFromItem?.title?.trim() ? `${duplicateFromItem.title.trim()} (kopi)` : "";
-    setTitle(duplicateTitle || (source?.title ?? ""));
-    setDescription(source?.description ?? "");
-    setTag(source?.tag ?? "Oppskrift");
-    setProteinCategory(source?.proteinCategory ?? "");
-    setServings(String(source?.servings ?? (source?.body ? parseRecipeServings(source.body) : "")));
-    setBody(source?.body ?? "");
-    setImageUrl(source?.imageUrl ?? "");
-    setStatus(null);
-  }, [open, editItem, duplicateFromItem]);
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== "Escape" || confirmCloseOpen || !hasUnsavedChanges) return;
+      event.preventDefault();
+      setConfirmCloseOpen(true);
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [confirmCloseOpen, hasUnsavedChanges, open]);
 
   const draftServings = Math.max(1, Math.round(Number(servings) || 1));
   const draftBody = useMemo(
@@ -195,20 +266,26 @@ export function TrainerRecipeComposer({
   }
 
   return (
-    <div className="motus-foodbank-modal-backdrop motus-recipe-composer-backdrop" role="presentation" onClick={onClose}>
+    <>
+    <div className="motus-foodbank-modal-backdrop motus-recipe-composer-backdrop" role="presentation">
       <div
         className="motus-foodbank-modal motus-foodbank-modal--wide motus-recipe-composer-modal"
         role="dialog"
         aria-label={editItem && !duplicateFromItem ? "Rediger oppskrift" : "Ny oppskrift"}
-        onClick={(e) => e.stopPropagation()}
+        aria-modal="true"
       >
         <div className="motus-foodbank-modal-head">
           <h3>{editItem && !duplicateFromItem ? "Rediger oppskrift" : duplicateFromItem ? "Dupliser oppskrift" : "Ny oppskrift"}</h3>
-          <button type="button" className="motus-foodbank-icon-btn" onClick={onClose} aria-label="Lukk">
+          <button type="button" className="motus-foodbank-icon-btn" onClick={requestClose} aria-label="Lukk">
             <X className="h-4 w-4" />
           </button>
         </div>
         <div className="motus-foodbank-modal-body motus-recipe-composer-body max-h-[min(80vh,40rem)] space-y-3 overflow-y-auto">
+          {hasUnsavedChanges ? (
+            <p className="rounded-xl border border-amber-100 bg-amber-50/80 px-3 py-2 text-xs text-amber-900">
+              Du har ulagrede endringer. Lukk med <strong>Avbryt</strong> eller ✕ for å forkaste, eller publiser for å lagre.
+            </p>
+          ) : null}
           <p className="text-xs text-slate-600">
             Oppskrifter vises kun under <strong>Ernæring</strong> for medlemmer og i matplan — ikke i Utforsk. Næringsinnhold
             beregnes automatisk fra ingredienslisten når du skriver.
@@ -288,7 +365,7 @@ export function TrainerRecipeComposer({
           {avoidanceConflicts.length > 0 ? <RecipeAvoidanceWarning conflicts={avoidanceConflicts} /> : null}
           {status ? <StatusMessage message={status} tone="error" /> : null}
           <div className="flex flex-wrap justify-end gap-2">
-            <OutlineButton type="button" onClick={onClose}>
+            <OutlineButton type="button" onClick={requestClose}>
               Avbryt
             </OutlineButton>
             <GradientButton type="button" onClick={() => void handleSave()} disabled={saving || isImageProcessing}>
@@ -298,5 +375,19 @@ export function TrainerRecipeComposer({
         </div>
       </div>
     </div>
+    <ConfirmDialog
+      open={confirmCloseOpen}
+      title="Forkaste ulagret oppskrift?"
+      message="Du har endringer som ikke er lagret. Vil du lukke uten å publisere?"
+      confirmLabel="Forkast endringer"
+      cancelLabel="Fortsett redigering"
+      tone="danger"
+      onCancel={() => setConfirmCloseOpen(false)}
+      onConfirm={() => {
+        setConfirmCloseOpen(false);
+        onClose();
+      }}
+    />
+    </>
   );
 }
