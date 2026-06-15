@@ -121,6 +121,7 @@ type MemberLayoutProps = {
   handleMemberBellToggle: () => void;
   openAlert: (alert: MemberAlert) => void;
   markAllMemberAlertsAsRead: () => void;
+  markMemberMessagesAsRead: () => void;
   markMemberInspirationAsSeen: () => void;
   memberFocusInspirationItemId: string | null;
   clearMemberFocusInspirationItemId: () => void;
@@ -190,6 +191,7 @@ export function MemberLayout({
   handleMemberBellToggle,
   openAlert,
   markAllMemberAlertsAsRead,
+  markMemberMessagesAsRead,
   markMemberInspirationAsSeen,
   memberFocusInspirationItemId,
   clearMemberFocusInspirationItemId,
@@ -322,6 +324,12 @@ export function MemberLayout({
     dismissWelcomeModal();
     setMemberTab("inspiration");
   }
+
+  useEffect(() => {
+    if (memberTab === "messages") {
+      markMemberMessagesAsRead();
+    }
+  }, [memberTab, markMemberMessagesAsRead]);
 
   useEffect(() => {
     if (memberTab === "inspiration") {

@@ -335,6 +335,7 @@ export function useRoleViewModel(state: AppStateHookResult): RoleViewModel {
     handleMemberBellToggle,
     openAlert,
     markAllMemberAlertsAsRead,
+    markMemberMessagesAsRead,
     markMemberInspirationAsSeen,
     memberFocusInspirationItemId,
     clearMemberFocusInspirationItemId,
