@@ -2298,6 +2298,35 @@ function buildMemberPersistenceHints(
   };
 }
 
+function persistWorkoutLogWithResult(
+  log: WorkoutLog,
+  hints: PersistWorkoutLogHints,
+  onPersisted?: (result: PersistResult) => void,
+): void {
+  void persistWorkoutLog(log, hints)
+    .then((result) => {
+      onPersisted?.(result);
+    })
+    .catch((error: unknown) => {
+      onPersisted?.({
+        ok: false,
+        message: error instanceof Error ? error.message : "Ukjent feil under lagring av økt.",
+      });
+    });
+}
+
+function notifyMissingWorkoutLog(onPersisted?: (result: PersistResult) => void): void {
+  onPersisted?.({
+    ok: false,
+    message: "Kunne ikke finne øktloggen som skulle lagres.",
+  });
+}
+
+function findCreatedWorkoutLog(previousLogs: WorkoutLog[], nextLogs: WorkoutLog[]): WorkoutLog | undefined {
+  const previousIds = new Set(previousLogs.map((log) => log.id));
+  return nextLogs.find((log) => !previousIds.has(log.id));
+}
+
 function pickWorkoutLogOwnerCandidate(candidate: string, requesterUserId: string): string | null {
   const trimmed = candidate.trim();
   if (!trimmed || trimmed === requesterUserId) return null;
@@ -4617,10 +4646,13 @@ export const supabaseAppRepository: AppRepository = {
     const nextState = localAppRepository.removeWorkoutLogResult(state, input);
     const updatedLog = nextState.logs.find((log) => log.id === input.logId);
     if (updatedLog) {
-      void persistWorkoutLog(
+      persistWorkoutLogWithResult(
         updatedLog,
         buildMemberPersistenceHints(state, updatedLog.memberId, { programTitle: updatedLog.programTitle }),
+        input.onPersisted,
       );
+    } else {
+      notifyMissingWorkoutLog(input.onPersisted);
     }
     return nextState;
   },
@@ -4633,10 +4665,13 @@ export const supabaseAppRepository: AppRepository = {
     const nextState = localAppRepository.setWorkoutLogResults(state, input);
     const updatedLog = nextState.logs.find((log) => log.id === input.logId);
     if (updatedLog) {
-      void persistWorkoutLog(
+      persistWorkoutLogWithResult(
         updatedLog,
         buildMemberPersistenceHints(state, updatedLog.memberId, { programTitle: updatedLog.programTitle }),
+        input.onPersisted,
       );
+    } else {
+      notifyMissingWorkoutLog(input.onPersisted);
     }
     return nextState;
   },
@@ -4644,10 +4679,13 @@ export const supabaseAppRepository: AppRepository = {
     const nextState = localAppRepository.updateWorkoutLogDate(state, input);
     const updatedLog = nextState.logs.find((log) => log.id === input.logId);
     if (updatedLog) {
-      void persistWorkoutLog(
+      persistWorkoutLogWithResult(
         updatedLog,
         buildMemberPersistenceHints(state, updatedLog.memberId, { programTitle: updatedLog.programTitle }),
+        input.onPersisted,
       );
+    } else {
+      notifyMissingWorkoutLog(input.onPersisted);
     }
     return nextState;
   },
@@ -4656,14 +4694,22 @@ export const supabaseAppRepository: AppRepository = {
     const updatedLog = nextState.logs.find((log) => log.id === input.logId);
     if (updatedLog) {
       void (async () => {
-        await persistWorkoutLog(
+        const result = await persistWorkoutLog(
           updatedLog,
           buildMemberPersistenceHints(state, updatedLog.memberId, { programTitle: updatedLog.programTitle }),
         );
-        if (input.trainerComment.trim()) {
+        input.onPersisted?.(result);
+        if (result.ok && input.trainerComment.trim()) {
           await notifyWorkoutCommentPush(updatedLog.id);
         }
-      })();
+      })().catch((error: unknown) => {
+        input.onPersisted?.({
+          ok: false,
+          message: error instanceof Error ? error.message : "Ukjent feil under lagring av kommentar.",
+        });
+      });
+    } else {
+      notifyMissingWorkoutLog(input.onPersisted);
     }
     return nextState;
   },
@@ -4684,12 +4730,11 @@ export const supabaseAppRepository: AppRepository = {
       ? nextState.logs.find((log) => !priorLogIds.has(log.id)) ?? null
       : null;
     if (finishedLog?.memberId?.trim()) {
-      void persistWorkoutLog(
+      persistWorkoutLogWithResult(
         finishedLog,
         buildMemberPersistenceHints(state, finishedLog.memberId, { programTitle: finishedLog.programTitle }),
-      ).then((result) => {
-        input?.onPersisted?.(result);
-      });
+        input?.onPersisted,
+      );
     } else if (hadWorkout) {
       input?.onPersisted?.({
         ok: false,
@@ -4701,24 +4746,32 @@ export const supabaseAppRepository: AppRepository = {
     return nextState;
   },
   logGroupWorkout(state: AppState, input: LogGroupWorkoutInput): AppState {
+    const previousLogs = state.logs;
     const nextState = localAppRepository.logGroupWorkout(state, input);
-    const latestLog = nextState.logs[0];
-    if (latestLog) {
-      void persistWorkoutLog(
-        latestLog,
-        buildMemberPersistenceHints(state, latestLog.memberId, { programTitle: latestLog.programTitle }),
+    const createdLog = findCreatedWorkoutLog(previousLogs, nextState.logs);
+    if (createdLog) {
+      persistWorkoutLogWithResult(
+        createdLog,
+        buildMemberPersistenceHints(state, createdLog.memberId, { programTitle: createdLog.programTitle }),
+        input.onPersisted,
       );
+    } else {
+      notifyMissingWorkoutLog(input.onPersisted);
     }
     return nextState;
   },
   logActivityWorkout(state: AppState, input: LogActivityWorkoutInput): AppState {
+    const previousLogs = state.logs;
     const nextState = localAppRepository.logActivityWorkout(state, input);
-    const latestLog = nextState.logs[0];
-    if (latestLog) {
-      void persistWorkoutLog(
-        latestLog,
-        buildMemberPersistenceHints(state, latestLog.memberId, { programTitle: latestLog.programTitle }),
+    const createdLog = findCreatedWorkoutLog(previousLogs, nextState.logs);
+    if (createdLog) {
+      persistWorkoutLogWithResult(
+        createdLog,
+        buildMemberPersistenceHints(state, createdLog.memberId, { programTitle: createdLog.programTitle }),
+        input.onPersisted,
       );
+    } else {
+      notifyMissingWorkoutLog(input.onPersisted);
     }
     return nextState;
   },
@@ -4726,10 +4779,13 @@ export const supabaseAppRepository: AppRepository = {
     const nextState = localAppRepository.updateActivityWorkout(state, input);
     const updatedLog = nextState.logs.find((log) => log.id === input.logId);
     if (updatedLog) {
-      void persistWorkoutLog(
+      persistWorkoutLogWithResult(
         updatedLog,
         buildMemberPersistenceHints(state, updatedLog.memberId, { programTitle: updatedLog.programTitle }),
+        input.onPersisted,
       );
+    } else {
+      notifyMissingWorkoutLog(input.onPersisted);
     }
     return nextState;
   },
@@ -4737,10 +4793,13 @@ export const supabaseAppRepository: AppRepository = {
     const nextState = localAppRepository.updateGroupWorkoutLog(state, input);
     const updatedLog = nextState.logs.find((log) => log.id === input.logId);
     if (updatedLog) {
-      void persistWorkoutLog(
+      persistWorkoutLogWithResult(
         updatedLog,
         buildMemberPersistenceHints(state, updatedLog.memberId, { programTitle: updatedLog.programTitle }),
+        input.onPersisted,
       );
+    } else {
+      notifyMissingWorkoutLog(input.onPersisted);
     }
     return nextState;
   },
@@ -4753,13 +4812,17 @@ export const supabaseAppRepository: AppRepository = {
     return prepareIntervalWorkoutLogState(state, input).nextState;
   },
   logCompletedPlanEntry(state: AppState, input: LogCompletedPlanEntryInput): AppState {
+    const previousLogs = state.logs;
     const nextState = localAppRepository.logCompletedPlanEntry(state, input);
-    const latestLog = nextState.logs[0];
-    if (latestLog) {
-      void persistWorkoutLog(
-        latestLog,
-        buildMemberPersistenceHints(state, latestLog.memberId, { programTitle: latestLog.programTitle }),
+    const createdLog = findCreatedWorkoutLog(previousLogs, nextState.logs);
+    if (createdLog) {
+      persistWorkoutLogWithResult(
+        createdLog,
+        buildMemberPersistenceHints(state, createdLog.memberId, { programTitle: createdLog.programTitle }),
+        input.onPersisted,
       );
+    } else {
+      notifyMissingWorkoutLog(input.onPersisted);
     }
     return nextState;
   },

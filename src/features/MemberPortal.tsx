@@ -122,6 +122,7 @@ import type {
   UpdateActivityWorkoutInput,
   UpdateGroupWorkoutLogInput,
   LogIntervalWorkoutInput,
+  PersistResult,
   ReplaceWorkoutExerciseGroupInput,
   SaveProgramInput,
   StartCustomWorkoutInput,
@@ -5227,6 +5228,11 @@ export function MemberPortal(props: MemberPortalProps) {
     };
   }
 
+  function formatPersistStatus(result: PersistResult, successMessage: string): string {
+    if (result.ok) return successMessage;
+    return result.message?.trim() || "Kunne ikke lagre til skyen. Sjekk nett og prøv igjen.";
+  }
+
   function handleLogGroupWorkout() {
     if (!activeMemberId || !groupWorkoutClassName.trim()) return;
     if (!groupWorkoutDateIso.trim()) {
@@ -5240,13 +5246,15 @@ export function MemberPortal(props: MemberPortalProps) {
       note: groupWorkoutNote.trim(),
       reflection: buildGroupWorkoutReflection(),
       date: groupWorkoutDateIso,
+      onPersisted: (result) => {
+        setGroupWorkoutStatus(formatPersistStatus(result, "Gruppetime lagret. PT kan nå se denne økta."));
+      },
     });
     const completedAt = parseStoredLogDate(groupWorkoutDateIso) ?? new Date();
     applyPeriodPlanAutoComplete({
       programTitle: groupWorkoutLogTitle(trimmedClassName),
       completedAt,
     });
-    setGroupWorkoutStatus("Gruppetime lagret. PT kan nå se denne økta.");
     setGroupWorkoutEnergyLevel(3);
     setGroupWorkoutDifficultyLevel(3);
     setGroupWorkoutMotivationLevel(3);
@@ -5337,7 +5345,15 @@ export function MemberPortal(props: MemberPortalProps) {
     const nextStoredDate = resolveWorkoutLogDateTime(input.date, previousDate ?? new Date());
     const nextDate = parseStoredLogDate(nextStoredDate);
 
-    updateWorkoutLogDate({ logId: input.logId, date: input.date });
+    updateWorkoutLogDate({
+      logId: input.logId,
+      date: input.date,
+      onPersisted: (result) => {
+        if (!result.ok) {
+          setPeriodPlanActionStatus(formatPersistStatus(result, ""));
+        }
+      },
+    });
 
     if (!existingLog || !previousDate || !nextDate) return;
     if (getStartOfDay(previousDate).getTime() === getStartOfDay(nextDate).getTime()) return;
@@ -5384,7 +5400,14 @@ export function MemberPortal(props: MemberPortalProps) {
     const snapshot = workoutMode;
     const periodPlanContext = pendingPeriodPlanWorkoutStartRef.current;
     pendingPeriodPlanWorkoutStartRef.current = null;
-    finishWorkoutMode(input);
+    finishWorkoutMode({
+      ...(input ?? {}),
+      onPersisted: (result) => {
+        if (!result.ok) {
+          setGroupWorkoutStatus(formatPersistStatus(result, ""));
+        }
+      },
+    });
     if (!snapshot?.programId) return;
     markPeriodPlanContextCompleted(periodPlanContext);
     applyPeriodPlanAutoComplete({
@@ -5397,7 +5420,15 @@ export function MemberPortal(props: MemberPortalProps) {
   function handleLogIntervalWorkout(input: LogIntervalWorkoutInput) {
     const periodPlanContext = pendingPeriodPlanWorkoutStartRef.current;
     pendingPeriodPlanWorkoutStartRef.current = null;
-    logIntervalWorkout(input);
+    logIntervalWorkout({
+      ...input,
+      onPersisted: (result) => {
+        input.onPersisted?.(result);
+        if (!result.ok) {
+          setIntervalTimerStatus(formatPersistStatus(result, ""));
+        }
+      },
+    });
     markPeriodPlanContextCompleted(periodPlanContext);
     applyPeriodPlanAutoComplete({
       programId: input.programId,
@@ -5738,6 +5769,9 @@ export function MemberPortal(props: MemberPortalProps) {
       reflection: defaultPeriodPlanReflection,
       keepCurrentTab: true,
       date: input.plannedDate ?? undefined,
+      onPersisted: (result) => {
+        setPeriodPlanActionStatus(formatPersistStatus(result, `«${trimmed}» er logget.`));
+      },
     });
     const completedAt = parseStoredLogDate(input.plannedDate ?? "") ?? new Date();
     clearPeriodPlanDayDismissed(input.planId, input.weekNumber, input.day);
@@ -5746,7 +5780,6 @@ export function MemberPortal(props: MemberPortalProps) {
       programTitle: groupWorkoutLogTitle(resolveGroupClassNameFromPeriodEntry(trimmed)),
       completedAt,
     });
-    setPeriodPlanActionStatus(`«${trimmed}» er logget.`);
   }
 
   function resolvePeriodPlanLogTitle(entry: string): string {
@@ -5785,6 +5818,9 @@ export function MemberPortal(props: MemberPortalProps) {
           reflection: defaultPeriodPlanReflection,
           keepCurrentTab: true,
           date: storedDate,
+          onPersisted: (result) => {
+            setPeriodPlanActionStatus(formatPersistStatus(result, `Registrert «${trimmed}» som gjennomført.`));
+          },
         });
       } else {
         logCompletedPlanEntry({
@@ -5794,10 +5830,12 @@ export function MemberPortal(props: MemberPortalProps) {
           reflection: defaultPeriodPlanReflection,
           keepCurrentTab: true,
           date: storedDate,
+          onPersisted: (result) => {
+            setPeriodPlanActionStatus(formatPersistStatus(result, `Registrert «${trimmed}» som gjennomført.`));
+          },
         });
       }
       markPeriodPlanDayCompleted(input.planId, input.weekNumber, input.day);
-      setPeriodPlanActionStatus(`Registrert «${trimmed}» som gjennomført.`);
       return;
     }
 
@@ -5888,7 +5926,13 @@ export function MemberPortal(props: MemberPortalProps) {
         if (log) {
           setLastDeletedLogResult({ logId, results: log.results ?? [] });
         }
-        removeWorkoutLogResult({ logId, exerciseId });
+        removeWorkoutLogResult({
+          logId,
+          exerciseId,
+          onPersisted: (result) => {
+            if (!result.ok) setGroupWorkoutStatus(formatPersistStatus(result, ""));
+          },
+        });
       },
     });
   }
@@ -5942,13 +5986,24 @@ export function MemberPortal(props: MemberPortalProps) {
         completed: editingLoggedExerciseDraft.completed,
       };
     });
-    setWorkoutLogResults({ logId, results: nextResults });
+    setWorkoutLogResults({
+      logId,
+      results: nextResults,
+      onPersisted: (result) => {
+        if (!result.ok) setGroupWorkoutStatus(formatPersistStatus(result, ""));
+      },
+    });
     cancelEditLoggedExercise();
   }
 
   function undoDeleteLoggedExercise() {
     if (!lastDeletedLogResult) return;
-    setWorkoutLogResults(lastDeletedLogResult);
+    setWorkoutLogResults({
+      ...lastDeletedLogResult,
+      onPersisted: (result) => {
+        if (!result.ok) setGroupWorkoutStatus(formatPersistStatus(result, ""));
+      },
+    });
     setLastDeletedLogResult(null);
   }
 
@@ -6358,11 +6413,23 @@ export function MemberPortal(props: MemberPortalProps) {
                                     onCancelEdit={() => setEditingCalendarSimpleLogId(null)}
                                     onSaveDate={(date) => handleUpdateWorkoutLogDate({ logId: selectedCalendarLog.id, date })}
                                     onSaveActivity={(payload) => {
-                                      updateActivityWorkout({ logId: selectedCalendarLog.id, ...payload });
+                                      updateActivityWorkout({
+                                        logId: selectedCalendarLog.id,
+                                        ...payload,
+                                        onPersisted: (result) => {
+                                          if (!result.ok) setGroupWorkoutStatus(formatPersistStatus(result, ""));
+                                        },
+                                      });
                                       setEditingCalendarSimpleLogId(null);
                                     }}
                                     onSaveGroup={(payload) => {
-                                      updateGroupWorkoutLog({ logId: selectedCalendarLog.id, ...payload });
+                                      updateGroupWorkoutLog({
+                                        logId: selectedCalendarLog.id,
+                                        ...payload,
+                                        onPersisted: (result) => {
+                                          if (!result.ok) setGroupWorkoutStatus(formatPersistStatus(result, ""));
+                                        },
+                                      });
                                       setEditingCalendarSimpleLogId(null);
                                     }}
                                     onDelete={() =>
@@ -7720,6 +7787,9 @@ export function MemberPortal(props: MemberPortalProps) {
                         reflection: input.reflection,
                         photoUrl: input.photoUrl,
                         removePhoto: input.removePhoto,
+                        onPersisted: (result) => {
+                          if (!result.ok) setGroupWorkoutStatus(formatPersistStatus(result, ""));
+                        },
                       }),
                     onUpdateGroupWorkoutLog: (input) =>
                       updateGroupWorkoutLog({
@@ -7727,6 +7797,9 @@ export function MemberPortal(props: MemberPortalProps) {
                         className: input.className,
                         note: input.note,
                         reflection: input.reflection,
+                        onPersisted: (result) => {
+                          if (!result.ok) setGroupWorkoutStatus(formatPersistStatus(result, ""));
+                        },
                       }),
                     onDeleteWorkoutLog: (logId, title) => handleDeleteSimpleWorkoutLog(logId, title),
                   }}

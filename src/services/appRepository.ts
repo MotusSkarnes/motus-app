@@ -133,6 +133,7 @@ export type LogGroupWorkoutInput = {
   reflection: WorkoutReflection;
   keepCurrentTab?: boolean;
   date?: string;
+  onPersisted?: (result: PersistResult) => void;
 };
 
 export type LogActivityWorkoutInput = {
@@ -144,6 +145,7 @@ export type LogActivityWorkoutInput = {
   photoUrl?: string;
   keepCurrentTab?: boolean;
   date?: string;
+  onPersisted?: (result: PersistResult) => void;
 };
 
 export type UpdateActivityWorkoutInput = {
@@ -154,6 +156,7 @@ export type UpdateActivityWorkoutInput = {
   reflection?: WorkoutReflection;
   photoUrl?: string;
   removePhoto?: boolean;
+  onPersisted?: (result: PersistResult) => void;
 };
 
 export type UpdateGroupWorkoutLogInput = {
@@ -161,6 +164,7 @@ export type UpdateGroupWorkoutLogInput = {
   className?: string;
   note?: string;
   reflection?: WorkoutReflection;
+  onPersisted?: (result: PersistResult) => void;
 };
 
 export type DeleteWorkoutLogInput = {
@@ -175,16 +179,19 @@ export type ReplaceWorkoutExerciseGroupInput = {
 export type RemoveWorkoutLogResultInput = {
   logId: string;
   exerciseId: string;
+  onPersisted?: (result: PersistResult) => void;
 };
 
 export type SetWorkoutLogResultsInput = {
   logId: string;
   results: WorkoutLog["results"];
+  onPersisted?: (result: PersistResult) => void;
 };
 
 export type UpdateWorkoutLogDateInput = {
   logId: string;
   date: string;
+  onPersisted?: (result: PersistResult) => void;
 };
 
 export type UpdateWorkoutLogTrainerCommentInput = {
@@ -192,6 +199,7 @@ export type UpdateWorkoutLogTrainerCommentInput = {
   trainerComment: string;
   trainerCommentUpdatedAt?: string;
   trainerCommentAuthorName?: string;
+  onPersisted?: (result: PersistResult) => void;
 };
 
 export type RemoveGroupWorkoutLogInput = {
@@ -207,6 +215,7 @@ export type LogCompletedPlanEntryInput = {
   reflection?: WorkoutReflection;
   keepCurrentTab?: boolean;
   date?: string;
+  onPersisted?: (result: PersistResult) => void;
 };
 
 export type LogIntervalWorkoutInput = {

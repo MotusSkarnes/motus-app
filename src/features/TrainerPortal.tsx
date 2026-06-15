@@ -3242,8 +3242,16 @@ function pickFirstName(value: unknown): string {
       trainerComment: trimmedComment,
       trainerCommentUpdatedAt: trimmedComment ? new Date().toISOString() : undefined,
       trainerCommentAuthorName: trainerAccountName.trim() || undefined,
+      onPersisted: (result) => {
+        setTrainerWorkoutCommentStatus(
+          result.ok
+            ? trimmedComment
+              ? "Kommentar lagret."
+              : "Kommentar fjernet."
+            : result.message?.trim() || "Kunne ikke lagre kommentar i skyen. Sjekk nett og prøv igjen.",
+        );
+      },
     });
-    setTrainerWorkoutCommentStatus(trimmedComment ? "Kommentar lagret." : "Kommentar fjernet.");
   }
 
   function handleSaveWorkoutDate() {
@@ -3259,8 +3267,14 @@ function pickFirstName(value: unknown): string {
     updateWorkoutLogDate({
       logId: filteredSelectedWorkoutLog.id,
       date: trainerWorkoutDateDraft,
+      onPersisted: (result) => {
+        setTrainerWorkoutCommentStatus(
+          result.ok
+            ? "Dato lagret."
+            : result.message?.trim() || "Kunne ikke lagre dato i skyen. Sjekk nett og prøv igjen.",
+        );
+      },
     });
-    setTrainerWorkoutCommentStatus("Dato lagret.");
   }
 
   function handleDeleteSelectedWorkoutLog() {
