@@ -41,6 +41,52 @@ function macroProfileDistance(a: FoodNutrition, b: FoodNutrition): number {
   return nk * nk + np * np + nc * nc + nf * nf;
 }
 
+type SwapFamily =
+  | "legumes"
+  | "starch"
+  | "vegetables"
+  | "fruit"
+  | "dairy"
+  | "nuts-fat"
+  | "chicken"
+  | "meat"
+  | "seafood"
+  | "egg"
+  | "other";
+
+function foodText(food: Pick<FoodItem, "name" | "origin">): string {
+  return `${food.name} ${food.origin}`.toLowerCase();
+}
+
+function isPowderOrSoup(food: Pick<FoodItem, "name" | "origin">): boolean {
+  return /\b(suppe|pulver|sausmix|gryterettpose|pose)\b/i.test(foodText(food));
+}
+
+function swapFamilyForFood(food: Pick<FoodItem, "name" | "origin" | "category">): SwapFamily {
+  const text = foodText(food);
+  if (/(belgfrukt|linse|linser|bønne|bonner|bønner|kikert|kikerter|erter|hummus)/i.test(text)) return "legumes";
+  if (/(potet|ris|pasta|nudler|quinoa|couscous|bulgur|havre|brød|brod|tortilla|lompe|korn)/i.test(text)) return "starch";
+  if (/(kylling|kalkun|fjærkre|fjaerkre)/i.test(text)) return "chicken";
+  if (/(laks|torsk|tunfisk|fisk|reke|reker|scampi|sei|ørret|orret|makrell|sjømat|sjomat)/i.test(text)) return "seafood";
+  if (/(storfe|biff|kjøtt|kjott|karbonade|svin|skinke|leverpostei)/i.test(text)) return "meat";
+  if (/\begg\b/i.test(text)) return "egg";
+  if (food.category === "gronnsaker") return "vegetables";
+  if (food.category === "frukt-baer") return "fruit";
+  if (food.category === "meieriprodukter") return "dairy";
+  if (food.category === "fettkilder") return "nuts-fat";
+  return "other";
+}
+
+function foodIsEquivalentSwapFamily(source: FoodItem, candidate: FoodItem): boolean {
+  if (isPowderOrSoup(candidate)) return false;
+  const sourceFamily = swapFamilyForFood(source);
+  const candidateFamily = swapFamilyForFood(candidate);
+  if (sourceFamily === "other" || candidateFamily === "other") {
+    return source.category === candidate.category;
+  }
+  return sourceFamily === candidateFamily;
+}
+
 export type RecipeIngredientSwapOption = {
   food: FoodItem;
   equivalentGrams: number;
@@ -55,12 +101,15 @@ export function findRecipeIngredientSwapOptions(
   sourceFoodId: string,
   foodItems: FoodItem[],
   limit = 10,
+  sourceFoodContext?: Pick<FoodItem, "name" | "origin" | "category">,
 ): RecipeIngredientSwapOption[] {
   const options: RecipeIngredientSwapOption[] = [];
+  const sourceFood = sourceFoodContext ?? foodItems.find((food) => food.id === sourceFoodId) ?? null;
 
   for (const food of foodItems) {
     if (food.id === sourceFoodId) continue;
     if (food.category !== sourceCategory) continue;
+    if (sourceFood && !foodIsEquivalentSwapFamily(sourceFood, food)) continue;
     const equivalentGrams = gramsForEquivalentMacros(sourceMacros, food.nutritionPer100g);
     if (equivalentGrams <= 0) continue;
     options.push({

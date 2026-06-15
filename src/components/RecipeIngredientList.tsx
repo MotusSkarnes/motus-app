@@ -63,6 +63,7 @@ function SwapModal({
         ingredient.foodId,
         foodItems,
         12,
+        { name: ingredient.foodName, origin: "", category: ingredient.category },
       ),
     [ingredient, foodItems],
   );
