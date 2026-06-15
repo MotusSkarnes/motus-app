@@ -63,6 +63,9 @@ describe("conditioningProgramMode", () => {
     expect(isConditioningLogAfterProgram(program)).toBe(true);
     const enriched = enrichProgramWithConditioningMode(program);
     expect(enriched.conditioningDeliveryMode).toBe("logAfter");
+    expect(enriched.exercises[0]?.holdSeconds).toBe("");
+    expect(enriched.exercises[0]?.restSeconds).toBe("");
+    expect(enriched.exercises[0]?.durationMinutes).toBe("30");
   });
 
   it("serializes mode back into notes after enrich stripped the marker", () => {

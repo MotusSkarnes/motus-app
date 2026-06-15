@@ -500,6 +500,51 @@ describe("period plan auto-complete", () => {
     expect(keys).toEqual(["plan-1:1:friday"]);
   });
 
+  it("derives completed keys when workout log member_id is legacy email", () => {
+    const plan = makePlan([{ id: "w1", weekNumber: 1, days: { ...empty, friday: "Styrke A" } }]);
+    plan.startDate = "2026-05-22";
+    const member = {
+      id: "member-nmn08uu",
+      name: "Lene",
+      email: "lene@example.com",
+      isActive: true,
+      invitedAt: "",
+      firstLoginAt: "",
+      phone: "",
+      birthDate: "",
+      weight: "",
+      height: "",
+      level: "Nybegynner" as const,
+      membershipType: "Standard" as const,
+      customerType: "PT-kunde" as const,
+      daysSinceActivity: "0",
+      goal: "",
+      focus: "",
+      personalGoals: "",
+      injuries: "",
+      coachNotes: "",
+      gender: "kvinne" as const,
+    };
+    const keys = derivePeriodPlanCompletedEntryKeysFromLogs({
+      plans: [plan],
+      swapsByPlan: {},
+      programs,
+      memberId: member.id,
+      memberIds: [member.id],
+      member,
+      allMembers: [member],
+      logs: [
+        {
+          memberId: "lene@example.com",
+          programTitle: "Styrke A",
+          date: "22.05.2026 kl 18:30",
+          status: "Fullført",
+        },
+      ],
+    });
+    expect(keys).toEqual(["plan-1:1:friday"]);
+  });
+
   it("derives completed keys from finished group workout logs", () => {
     const plan = makePlan([{ id: "w1", weekNumber: 1, days: { ...empty, tuesday: "Gruppetime: Yoga" } }]);
     plan.startDate = "2026-05-19";

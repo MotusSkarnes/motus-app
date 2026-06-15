@@ -200,8 +200,10 @@ import type {
   WorkoutLog,
 } from "../app/types";
 import {
+  computeRelatedMemberIdSet,
   daysSinceLastCompletedWorkout,
   formatTrainerMemberActivitySubtitle,
+  logsAttributedToMember,
   memberPriorityScore,
   memberPriorityTone,
   memberTrainedWithinDays,
@@ -710,12 +712,10 @@ function computeSelectedMemberRelatedIds(members: Member[], selectedMemberId: st
   if (!selectedMemberId) return [];
   const selected = members.find((member) => member.id === selectedMemberId);
   if (!selected) return [selectedMemberId];
-  const normalizedEmail = selected.email.trim().toLowerCase();
-  const byEmailIds = normalizedEmail
-    ? members.filter((member) => member.email.trim().toLowerCase() === normalizedEmail).map((member) => member.id)
-    : [];
-  const merged = Array.from(new Set([...byEmailIds, selectedMemberId]));
-  return merged.length ? merged : [selectedMemberId];
+  const related = computeRelatedMemberIdSet(selected, members);
+  const email = selected.email.trim().toLowerCase();
+  if (email) related.add(email);
+  return Array.from(related);
 }
 
 export function TrainerPortal(props: TrainerPortalProps) {
@@ -1652,22 +1652,11 @@ function pickFirstName(value: unknown): string {
   }, [templatePrograms, programsSubTab, exerciseCategoryById]);
   const selectedLogs = useMemo(() => {
     const selected = members.find((member) => member.id === selectedMemberId) ?? null;
-    const isSharedMember = selected?.customerType === "Medlem";
-    const selectedEmail = selected?.email.trim().toLowerCase() ?? "";
-    return logs
-      .filter((log) => {
-        if (selectedMemberRelatedIdSet.has(log.memberId)) return true;
-        if (!isSharedMember) return false;
-        const rawLogMemberId = log.memberId.trim().toLowerCase();
-        if (selectedEmail && rawLogMemberId === selectedEmail) return true;
-        const ownerMember = memberById.get(log.memberId);
-        if (!ownerMember) return false;
-        const ownerEmail = ownerMember.email.trim().toLowerCase();
-        if (selectedEmail && ownerEmail && ownerEmail === selectedEmail) return true;
-        return false;
-      })
-      .sort((a, b) => parseLogDateMs(b.date) - parseLogDateMs(a.date));
-  }, [logs, selectedMemberRelatedIdSet, members, selectedMemberId, memberById]);
+    if (!selected) return [] as WorkoutLog[];
+    return logsAttributedToMember(selected, members, logs).sort(
+      (a, b) => parseLogDateMs(b.date) - parseLogDateMs(a.date),
+    );
+  }, [logs, members, selectedMemberId]);
   const lastSessionResultsByExercise = useMemo(
     () => buildLastSessionByExerciseFromLogs(selectedLogs),
     [selectedLogs],

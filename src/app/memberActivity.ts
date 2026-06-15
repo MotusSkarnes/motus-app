@@ -50,15 +50,16 @@ export function programsAttributedToMember(
 /** Samme attributtering som valgt kunde sin øktliste (relaterte ID-er + delt «Medlem» med e-post/navn-matching). */
 export function logsAttributedToMember(member: Member, allMembers: Member[], workoutLogs: WorkoutLog[]): WorkoutLog[] {
   const relatedIdSet = computeRelatedMemberIdSet(member, allMembers);
-  const isSharedMember = member.customerType === "Medlem";
   const selectedEmail = member.email.trim().toLowerCase();
   const selectedName = member.name.trim().toLowerCase();
   const memberById = new Map(allMembers.map((m) => [m.id, m]));
   return workoutLogs.filter((log) => {
     if (relatedIdSet.has(log.memberId)) return true;
-    if (!isSharedMember) return false;
     const rawLogMemberId = log.memberId.trim().toLowerCase();
     if (selectedEmail && rawLogMemberId === selectedEmail) return true;
+    if (selectedEmail && (rawLogMemberId === `auth-${selectedEmail}` || rawLogMemberId.endsWith(`:${selectedEmail}`))) {
+      return true;
+    }
     const ownerMember = memberById.get(log.memberId);
     if (!ownerMember) return false;
     const ownerEmail = ownerMember.email.trim().toLowerCase();

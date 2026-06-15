@@ -1,7 +1,8 @@
 import { getDefaultPeriodPlanStartMondayISO, parseStoredLogDate } from "./dateFormat";
+import { logsAttributedToMember } from "./memberActivity";
 import { findProgramForPeriodPlanEntry, isPassivePeriodPlanEntry, isGroupPeriodPlanEntry, groupWorkoutLogTitle, resolveGroupClassNameFromPeriodEntry } from "./periodPlanEntryActions";
 import { applyPeriodPlanSwaps, getSwapsForWeek, WEEKDAY_PLAN_ORDER, type PeriodPlanSwapsByPlan } from "./periodPlanSwaps";
-import type { PeriodSchedulePlan, TrainingProgram, WeekdayPlanKey, WeeklyDayPlan, WeeklySchedulePlan } from "./types";
+import type { Member, PeriodSchedulePlan, TrainingProgram, WeekdayPlanKey, WeeklyDayPlan, WeeklySchedulePlan, WorkoutLog } from "./types";
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 export const MAX_PERIOD_PLAN_WEEKS = 24;
@@ -386,6 +387,8 @@ export function derivePeriodPlanCompletedEntryKeysFromLogs(input: {
   logs: Array<{ memberId: string; programTitle: string; date: string; status: string }>;
   memberId: string;
   memberIds?: string[];
+  member?: Member;
+  allMembers?: Member[];
   dismissedKeys?: string[];
 }): string[] {
   const memberIds = new Set(
@@ -393,11 +396,15 @@ export function derivePeriodPlanCompletedEntryKeysFromLogs(input: {
       .map((id) => id.trim())
       .filter(Boolean),
   );
-  if (!memberIds.size) return [];
+  if (!memberIds.size && !input.member) return [];
+
+  const attributedLogs =
+    input.member && input.allMembers?.length
+      ? logsAttributedToMember(input.member, input.allMembers, input.logs as WorkoutLog[])
+      : input.logs.filter((log) => memberIds.has(log.memberId.trim()));
 
   const keys = new Set<string>();
-  for (const log of input.logs) {
-    if (!memberIds.has(log.memberId.trim())) continue;
+  for (const log of attributedLogs) {
     if (log.status !== "Fullført") continue;
     const completedAt = parseStoredLogDate(log.date);
     if (!completedAt) continue;

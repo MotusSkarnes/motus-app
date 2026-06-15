@@ -97,6 +97,52 @@ export function filterDeletedPrograms(programs: TrainingProgram[]): TrainingProg
   return programs.filter((program) => !isProgramDeleted(program));
 }
 
+function programMatchesScopedTombstone(
+  program: TrainingProgram,
+  _scope: string,
+  payload: string,
+  kind: "id" | "fingerprint",
+): boolean {
+  if (kind === "id") return program.id.trim() === payload;
+  return buildTrainingProgramDisplayKey(program) === payload;
+}
+
+/**
+ * Fjern tombstones når sletting i sky feilet og programmet fortsatt finnes —
+ * ellers skjules det for treneren uten mulighet til å slette på nytt.
+ */
+export function reconcileProgramTombstonesWithRemote(programs: TrainingProgram[]): void {
+  if (!programs.length) return;
+  hydrateStoredTombstones();
+  let changed = false;
+
+  for (const value of Array.from(deletedProgramIds)) {
+    const parsed = parseScopedTombstoneValue(value);
+    if (!parsed) continue;
+    const stillRemote = programs.some((program) =>
+      programMatchesScopedTombstone(program, parsed.scope, parsed.payload, "id"),
+    );
+    if (stillRemote) {
+      deletedProgramIds.delete(value);
+      changed = true;
+    }
+  }
+
+  for (const value of Array.from(deletedProgramFingerprints)) {
+    const parsed = parseScopedTombstoneValue(value);
+    if (!parsed) continue;
+    const stillRemote = programs.some((program) =>
+      programMatchesScopedTombstone(program, parsed.scope, parsed.payload, "fingerprint"),
+    );
+    if (stillRemote) {
+      deletedProgramFingerprints.delete(value);
+      changed = true;
+    }
+  }
+
+  if (changed) persistStoredTombstones();
+}
+
 function parseScopedTombstoneValue(value: string): { scope: string; payload: string } | null {
   const idx = value.indexOf("::");
   if (idx < 0) return { scope: "__unknown_member__", payload: value.trim() };

@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { filterDeletedPrograms, registerDeletedProgram } from "./deletedProgramTombstones";
+import {
+  filterDeletedPrograms,
+  reconcileProgramTombstonesWithRemote,
+  registerDeletedProgram,
+} from "./deletedProgramTombstones";
 import type { TrainingProgram } from "./types";
 
 function program(overrides: Partial<TrainingProgram> = {}): TrainingProgram {
@@ -39,5 +43,15 @@ describe("deleted program tombstones", () => {
     registerDeletedProgram(deleted);
 
     expect(filterDeletedPrograms([deleted, otherMemberCopy])).toEqual([otherMemberCopy]);
+  });
+
+  it("clears tombstones when deleted program still exists in remote hydrate", () => {
+    const deleted = program({ id: "ghost-program", memberId: "member-a" });
+    registerDeletedProgram(deleted, { relatedMemberIds: ["member-a"] });
+    expect(filterDeletedPrograms([deleted])).toEqual([]);
+
+    reconcileProgramTombstonesWithRemote([deleted]);
+
+    expect(filterDeletedPrograms([deleted])).toEqual([deleted]);
   });
 });

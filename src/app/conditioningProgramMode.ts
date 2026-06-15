@@ -29,10 +29,13 @@ export function buildConditioningProgramNotes(mode: ConditioningDeliveryMode, de
 export function enrichProgramWithConditioningMode(program: TrainingProgram): TrainingProgram {
   const mode = resolveConditioningDeliveryMode(program);
   if (!mode) return program;
+  const exercises =
+    mode === "logAfter" ? sanitizeProgramExercisesForLogAfter(program.exercises) : program.exercises;
   return {
     ...program,
     conditioningDeliveryMode: mode,
     notes: stripConditioningModeMarker(program.notes),
+    exercises,
   };
 }
 

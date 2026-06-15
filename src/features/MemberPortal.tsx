@@ -206,7 +206,7 @@ import {
 import { computeMemberProgressScores } from "../app/memberMomentumScores";
 import { getTrainingProgramSubTab, trainingProgramCategoryLabel, isConditioningTrainingProgram } from "../app/trainingProgramKind";
 import { isMemberIntervalWorkoutProgram } from "../app/memberIntervalWorkout";
-import { programsAttributedToMember } from "../app/memberActivity";
+import { programsAttributedToMember, logsAttributedToMember } from "../app/memberActivity";
 import { BadgeImage } from "./BadgeImage";
 import { MemberBadgesCarousel } from "./MemberBadgesCarousel";
 import { MemberProfileDashboard } from "./MemberProfileDashboard";
@@ -1459,9 +1459,18 @@ export function MemberPortal(props: MemberPortalProps) {
       for (const rawId of candidateIds) {
         const id = rawId.trim();
         if (!id) continue;
+        const normalizedId = id.toLowerCase();
+        if (primaryLower && normalizedId === primaryLower) {
+          collectedIds.add(id);
+          continue;
+        }
+        if (primaryLower && (normalizedId === `auth-${primaryLower}` || normalizedId.endsWith(`:${primaryLower}`))) {
+          collectedIds.add(id);
+          continue;
+        }
         const row = memberRowById.get(id);
-        if (row) {
-          if (primaryLower && row.email.trim().toLowerCase() === primaryLower) collectedIds.add(id);
+        if (row && primaryLower && row.email.trim().toLowerCase() === primaryLower) {
+          collectedIds.add(id);
         }
       }
     }
@@ -1750,7 +1759,10 @@ export function MemberPortal(props: MemberPortalProps) {
     () => (editingMemberProgramId ? memberPrograms.find((program) => program.id === editingMemberProgramId) ?? null : null),
     [editingMemberProgramId, memberPrograms],
   );
-  const memberLogs = useMemo(() => logs.filter((log) => relatedMemberIdSet.has(log.memberId)), [logs, relatedMemberIdSet]);
+  const memberLogs = useMemo(() => {
+    if (editableMember) return logsAttributedToMember(editableMember, members, logs);
+    return logs.filter((log) => relatedMemberIdSet.has(log.memberId));
+  }, [logs, relatedMemberIdSet, editableMember, members]);
   const memberMessages = useMemo(() => {
     if (currentUserRole === "member") {
       const anchorEmail = (editableMember?.email ?? normalizedCurrentUserEmail).trim().toLowerCase();
@@ -3351,6 +3363,8 @@ export function MemberPortal(props: MemberPortalProps) {
       logs: memberLogs,
       memberId,
       memberIds: relatedMemberIds,
+      member: editableMember ?? undefined,
+      allMembers: members,
       dismissedKeys: storedDismissed,
     });
 

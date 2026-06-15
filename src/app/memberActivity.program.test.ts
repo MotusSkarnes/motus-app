@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { programBelongsToMember, programsAttributedToMember } from "./memberActivity";
-import type { Member, TrainingProgram } from "./types";
+import { logsAttributedToMember, programBelongsToMember, programsAttributedToMember } from "./memberActivity";
+import type { Member, TrainingProgram, WorkoutLog } from "./types";
 
 const ptMember: Member = {
   id: "m-local",
@@ -89,5 +89,19 @@ describe("programBelongsToMember", () => {
     };
 
     expect(programBelongsToMember(ptMember, [ptMember], memberSavedOnAuthId)).toBe(true);
+  });
+});
+
+describe("logsAttributedToMember", () => {
+  it("matches legacy email member_id for PT customers", () => {
+    const log: WorkoutLog = {
+      id: "log-1",
+      memberId: "kari@example.com",
+      programTitle: "Styrke A",
+      date: "22.05.2026 kl 18:30",
+      status: "Fullført",
+      results: [],
+    };
+    expect(logsAttributedToMember(ptMember, [ptMember, canonicalMember], [log])).toEqual([log]);
   });
 });

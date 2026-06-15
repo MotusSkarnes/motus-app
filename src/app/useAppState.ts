@@ -66,6 +66,7 @@ import {
   filterDeletedPrograms,
   isProgramDeleted,
   listStoredDeletedProgramTombstones,
+  reconcileProgramTombstonesWithRemote,
   registerDeletedProgram,
   unregisterDeletedProgram,
 } from "./deletedProgramTombstones";
@@ -1292,6 +1293,7 @@ export function useAppState() {
         (hydratedTrainer ? mergeTrainingProgramsById(hydratedTrainer.programs, directTrainerPrograms) : null) ??
         (isMemberLikeSession ? mergeTrainingProgramsById(hydratedMember?.programs, directMemberPrograms) : null);
       if (remotePrograms) {
+        reconcileProgramTombstonesWithRemote(remotePrograms);
         if (isMemberLikeSession) {
           cleanupRemoteProgramsDeletedLocally(remotePrograms, {
             requestedBy: "member",
@@ -1362,10 +1364,11 @@ export function useAppState() {
             const retryPrograms = await fetchProgramsFromSupabase();
             const retryLogs = await fetchLogsFromSupabase();
             if (retryPrograms?.length) {
+              reconcileProgramTombstonesWithRemote(retryPrograms);
               cleanupRemoteProgramsDeletedLocally(retryPrograms, {
                 requestedBy: "member",
                 targetEmail: email,
-                memberIds: remoteMembers?.map((member) => member.id) ?? [],
+                memberIds: memberCleanupScopeIds(remoteMembers),
               });
               remotePrograms = filterProgramsHiddenFromCloudViews(retryPrograms);
             }
