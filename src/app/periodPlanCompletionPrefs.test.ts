@@ -69,6 +69,22 @@ describe("periodPlanCompletionPrefs", () => {
     expect(result.completedKeys).toEqual(["plan-1:1:monday", "plan-1:1:tuesday", "plan-1:1:wednesday"]);
   });
 
+  it("drops stale completed keys once hydrated logs are authoritative", () => {
+    const result = reconcilePeriodPlanCompletionKeys({
+      storedCompleted: ["plan-1:1:monday"],
+      storedDismissed: [],
+      remotePrefs: {
+        version: 1,
+        completedEntryKeys: ["plan-1:1:monday"],
+        dismissedEntryKeys: [],
+        updatedAt: 500,
+      },
+      derivedCompleted: ["plan-1:1:sunday"],
+      derivedCompletedIsAuthoritative: true,
+    });
+    expect(result.completedKeys).toEqual(["plan-1:1:sunday"]);
+  });
+
   it("local dismissed clear with newer timestamp overrides stale remote dismissed", () => {
     const result = reconcilePeriodPlanCompletionKeys({
       storedCompleted: ["plan-1:1:tuesday"],

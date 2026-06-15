@@ -3358,6 +3358,7 @@ export function MemberPortal(props: MemberPortalProps) {
       storedDismissed,
       remotePrefs,
       derivedCompleted: derived,
+      derivedCompletedIsAuthoritative: memberRemoteHydrated,
       localUpdatedAt: periodPlanCompletionLocalUpdatedAtRef.current,
     });
 

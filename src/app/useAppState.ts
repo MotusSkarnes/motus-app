@@ -502,7 +502,7 @@ function mergeWorkoutLogsById(
 const LOCAL_OPTIMISTIC_WORKOUT_LOG_KEEP_MS = 48 * 60 * 60 * 1000;
 /** Medlem: behold kun nylig opprettede lokale logger som ikke finnes i sky ennå (PT-sletting skal ikke gjenoppstå). */
 const MEMBER_PENDING_WORKOUT_LOG_MS = 25 * 60 * 1000;
-const PENDING_WORKOUT_LOG_EDIT_MS = 2 * 60 * 1000;
+const PENDING_WORKOUT_LOG_EDIT_MS = 24 * 60 * 60 * 1000;
 const pendingWorkoutLogEdits = new Map<string, { log: WorkoutLog; expiresAt: number }>();
 const remoteTombstoneCleanupInFlight = new Set<string>();
 

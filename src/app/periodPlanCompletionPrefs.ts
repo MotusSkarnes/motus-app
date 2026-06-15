@@ -108,6 +108,7 @@ export function reconcilePeriodPlanCompletionKeys(input: {
   storedDismissed: string[];
   remotePrefs: PeriodPlanCompletionPrefs | null;
   derivedCompleted: string[];
+  derivedCompletedIsAuthoritative?: boolean;
   /**
    * Tidsstempel som indikerer hvor «friskt» lokal state er. Settes til `Date.now()` når
    * brukeren akkurat har gjort en lokal endring (markert/avmarkert/fjernet avhuking) slik
@@ -125,7 +126,10 @@ export function reconcilePeriodPlanCompletionKeys(input: {
     input.remotePrefs,
   );
 
-  const completedKeys = uniqueKeys([...merged.completedEntryKeys, ...input.derivedCompleted]).filter(
+  const completedSource = input.derivedCompletedIsAuthoritative
+    ? input.derivedCompleted
+    : [...merged.completedEntryKeys, ...input.derivedCompleted];
+  const completedKeys = uniqueKeys(completedSource).filter(
     (key) => !merged.dismissedEntryKeys.includes(key),
   );
 
