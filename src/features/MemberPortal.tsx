@@ -176,7 +176,10 @@ import {
   buildPeriodPlanWeekOverride,
   getPeriodPlanSwapsStorageKey,
   getSwapsForWeek,
+  mergePeriodPlanSwapPrefs,
+  mergePeriodPlanSwapsIntoPersonalGoals,
   parsePeriodPlanSwapsState,
+  readPeriodPlanSwapsFromPersonalGoals,
   setSwapsForWeek,
   togglePeriodPlanMove,
   togglePeriodPlanSwap,
@@ -1293,6 +1296,7 @@ export function MemberPortal(props: MemberPortalProps) {
   const periodPlanCompletionLocalUpdatedAtRef = useRef(0);
   const pendingPeriodPlanWorkoutStartRef = useRef<PeriodPlanWorkoutStartContext | null>(null);
   const periodPlanSwapsDirtyRef = useRef(false);
+  const periodPlanSwapsLocalUpdatedAtRef = useRef(0);
   const [expandedProgramId, setExpandedProgramId] = useState<string | null>(null);
   const [programLibraryMenuId, setProgramLibraryMenuId] = useState<string | null>(null);
   const [programLibraryFilter, setProgramLibraryFilter] = useState<"all" | "standalone" | "periodPlan">("all");
@@ -1368,14 +1372,42 @@ export function MemberPortal(props: MemberPortalProps) {
     [editableMember, members, onboardingSubstantivelyComplete],
   );
   if (editableMember?.id !== periodPlanSwapsOwnerId) {
-    setPeriodPlanSwapsOwnerId(editableMember?.id ?? null);
-    setPeriodPlanSwapsByPlan(
+    const localSwaps =
       editableMember?.id && typeof window !== "undefined"
         ? parsePeriodPlanSwapsState(window.localStorage.getItem(getPeriodPlanSwapsStorageKey(editableMember.id)))
-        : {},
+        : {};
+    const remoteSwaps = readPeriodPlanSwapsFromPersonalGoals(
+      editableMember ? resolveBestPersonalGoalsForRelatedMembers(editableMember, members, relatedMemberIdSet) : undefined,
     );
+    const mergedSwaps = mergePeriodPlanSwapPrefs(
+      {
+        version: 1,
+        swapsByPlan: localSwaps,
+        updatedAt: periodPlanSwapsLocalUpdatedAtRef.current,
+      },
+      remoteSwaps,
+    );
+    setPeriodPlanSwapsOwnerId(editableMember?.id ?? null);
+    setPeriodPlanSwapsByPlan(mergedSwaps.swapsByPlan);
+    periodPlanSwapsLocalUpdatedAtRef.current = mergedSwaps.updatedAt;
     periodPlanSwapsDirtyRef.current = false;
   }
+  useEffect(() => {
+    if (!editableMember?.id || periodPlanSwapsDirtyRef.current) return;
+    const remoteSwaps = readPeriodPlanSwapsFromPersonalGoals(
+      resolveBestPersonalGoalsForRelatedMembers(editableMember, members, relatedMemberIdSet),
+    );
+    if (!remoteSwaps || remoteSwaps.updatedAt <= periodPlanSwapsLocalUpdatedAtRef.current) return;
+    periodPlanSwapsLocalUpdatedAtRef.current = remoteSwaps.updatedAt;
+    setPeriodPlanSwapsByPlan(remoteSwaps.swapsByPlan);
+    if (typeof window !== "undefined") {
+      try {
+        window.localStorage.setItem(getPeriodPlanSwapsStorageKey(editableMember.id), JSON.stringify(remoteSwaps.swapsByPlan));
+      } catch {
+        // ignore storage write errors (quota/private mode)
+      }
+    }
+  }, [editableMember, members, relatedMemberIdSet, relatedProfileGoalsSignature]);
   const memberNotificationPrefs = useMemo(
     () => readMemberNotificationPreferencesFromPersonalGoals(editableMember?.personalGoals),
     [editableMember?.personalGoals],
@@ -3415,15 +3447,45 @@ export function MemberPortal(props: MemberPortalProps) {
   useEffect(() => {
     if (!editableMember || typeof window === "undefined") return;
     if (!periodPlanSwapsDirtyRef.current) return;
-    try {
-      window.localStorage.setItem(
-        getPeriodPlanSwapsStorageKey(editableMember.id),
-        JSON.stringify(periodPlanSwapsByPlan),
-      );
-    } catch {
-      // ignore storage write errors (quota/private mode)
-    }
-  }, [editableMember?.id, periodPlanSwapsByPlan]);
+    const timer = window.setTimeout(() => {
+      try {
+        window.localStorage.setItem(
+          getPeriodPlanSwapsStorageKey(editableMember.id),
+          JSON.stringify(periodPlanSwapsByPlan),
+        );
+      } catch {
+        // ignore storage write errors (quota/private mode)
+      }
+
+      if (currentUserRole === "member") {
+        const updatedAt = periodPlanSwapsLocalUpdatedAtRef.current || Date.now();
+        const encoded = mergePeriodPlanSwapsIntoPersonalGoals(
+          resolveBestPersonalGoalsForRelatedMembers(editableMember, members, relatedMemberIdSet),
+          {
+            version: 1,
+            swapsByPlan: periodPlanSwapsByPlan,
+            updatedAt,
+          },
+        );
+        const targetIds = Array.from(new Set([editableMember.id, ...relatedMemberIds].filter(Boolean)));
+        targetIds.forEach((targetMemberId) => {
+          updateMember({
+            memberId: targetMemberId,
+            changes: { personalGoals: encoded },
+          });
+        });
+      }
+    }, 350);
+    return () => window.clearTimeout(timer);
+  }, [
+    editableMember,
+    members,
+    relatedMemberIdSet,
+    relatedMemberIds,
+    periodPlanSwapsByPlan,
+    currentUserRole,
+    updateMember,
+  ]);
   useEffect(() => {
     setFavoritePersonalRecordPreferencesHydrated(false);
     achievementCelebrationBaselineRef.current = null;
@@ -5373,6 +5435,7 @@ export function MemberPortal(props: MemberPortalProps) {
   function swapPeriodPlanDays(planId: string, weekNumber: number, dayA: WeekdayPlanKey, dayB: WeekdayPlanKey) {
     if (dayA === dayB) return;
     periodPlanSwapsDirtyRef.current = true;
+    periodPlanSwapsLocalUpdatedAtRef.current = Date.now();
     setPeriodPlanSwapsByPlan((prev) => {
       const plan = visiblePeriodPlans.find((item) => item.id === planId);
       const week = plan ? resolvePeriodPlanWeek(plan, weekNumber) : null;
@@ -5400,6 +5463,7 @@ export function MemberPortal(props: MemberPortalProps) {
   function movePeriodPlanDay(planId: string, weekNumber: number, dayA: WeekdayPlanKey, dayB: WeekdayPlanKey) {
     if (dayA === dayB) return;
     periodPlanSwapsDirtyRef.current = true;
+    periodPlanSwapsLocalUpdatedAtRef.current = Date.now();
     setPeriodPlanSwapsByPlan((prev) => {
       const plan = visiblePeriodPlans.find((item) => item.id === planId);
       const week = plan ? resolvePeriodPlanWeek(plan, weekNumber) : null;
@@ -5426,6 +5490,7 @@ export function MemberPortal(props: MemberPortalProps) {
       return;
     }
     periodPlanSwapsDirtyRef.current = true;
+    periodPlanSwapsLocalUpdatedAtRef.current = Date.now();
     setPeriodPlanSwapsByPlan((prev) => {
       const plan = visiblePeriodPlans.find((item) => item.id === planId);
       const week = plan ? resolvePeriodPlanWeek(plan, weekNumber) : null;
@@ -5443,6 +5508,7 @@ export function MemberPortal(props: MemberPortalProps) {
 
   function resetPeriodPlanSwapsForWeek(planId: string, weekNumber: number) {
     periodPlanSwapsDirtyRef.current = true;
+    periodPlanSwapsLocalUpdatedAtRef.current = Date.now();
     setPeriodPlanSwapsByPlan((prev) => setSwapsForWeek(prev, planId, weekNumber, []));
     setPeriodPlanActionStatus("Uken er tilbakestilt til original periodeplan.");
   }

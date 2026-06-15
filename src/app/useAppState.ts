@@ -502,7 +502,31 @@ function mergeWorkoutLogsById(
 const LOCAL_OPTIMISTIC_WORKOUT_LOG_KEEP_MS = 48 * 60 * 60 * 1000;
 /** Medlem: behold kun nylig opprettede lokale logger som ikke finnes i sky ennå (PT-sletting skal ikke gjenoppstå). */
 const MEMBER_PENDING_WORKOUT_LOG_MS = 25 * 60 * 1000;
+const PENDING_WORKOUT_LOG_EDIT_MS = 2 * 60 * 1000;
+const pendingWorkoutLogEdits = new Map<string, { log: WorkoutLog; expiresAt: number }>();
 const remoteTombstoneCleanupInFlight = new Set<string>();
+
+function registerPendingWorkoutLogEdit(log: WorkoutLog, nowMs = Date.now()) {
+  const id = log.id.trim();
+  if (!id) return;
+  pendingWorkoutLogEdits.set(id, { log, expiresAt: nowMs + PENDING_WORKOUT_LOG_EDIT_MS });
+}
+
+function pendingWorkoutLogEditFor(localLog: WorkoutLog, remoteLog: WorkoutLog | undefined, nowMs: number): WorkoutLog | null {
+  const id = localLog.id.trim();
+  if (!id) return null;
+  const pending = pendingWorkoutLogEdits.get(id);
+  if (!pending) return null;
+  if (pending.expiresAt < nowMs) {
+    pendingWorkoutLogEdits.delete(id);
+    return null;
+  }
+  if (remoteLog && remoteLog.date === pending.log.date) {
+    pendingWorkoutLogEdits.delete(id);
+    return null;
+  }
+  return pending.log;
+}
 
 function memberCleanupScopeIds(members: Member[] | null | undefined): string[] {
   if (!members?.length) return [];
@@ -582,7 +606,13 @@ function mergeRemoteWorkoutLogsWithLocalOptimistic(
 
   for (const localLog of localLogs) {
     const id = localLog.id.trim();
-    if (!id || byId.has(id)) continue;
+    if (!id) continue;
+    const pendingEdit = pendingWorkoutLogEditFor(localLog, byId.get(id), nowMs);
+    if (pendingEdit) {
+      byId.set(id, pendingEdit);
+      continue;
+    }
+    if (byId.has(id)) continue;
     if (!visibleMemberIds.has(localLog.memberId.trim())) continue;
     if (wasWorkoutLogSeenInRemote(id)) continue;
     const dateMs = workoutLogDateMs(localLog);
@@ -609,7 +639,13 @@ function mergeMemberWorkoutLogsWithRemote(
 
   for (const localLog of localLogs) {
     const id = localLog.id.trim();
-    if (!id || byId.has(id)) continue;
+    if (!id) continue;
+    const pendingEdit = pendingWorkoutLogEditFor(localLog, byId.get(id), nowMs);
+    if (pendingEdit) {
+      byId.set(id, pendingEdit);
+      continue;
+    }
+    if (byId.has(id)) continue;
     if (wasWorkoutLogSeenInRemote(id)) continue;
     if (remoteLogs.some((remoteLog) => workoutLogsRepresentSameSession(remoteLog, localLog))) continue;
 
@@ -2570,7 +2606,14 @@ export function useAppState() {
   }
 
   function updateWorkoutLogDate(input: UpdateWorkoutLogDateInput) {
-    setAppState((prev) => repository.updateWorkoutLogDate(prev, input));
+    setAppState((prev) => {
+      const next = repository.updateWorkoutLogDate(prev, input);
+      const updatedLog = next.logs.find((log) => log.id === input.logId);
+      if (updatedLog) {
+        registerPendingWorkoutLogEdit(updatedLog);
+      }
+      return next;
+    });
   }
 
   function updateWorkoutLogTrainerComment(input: {

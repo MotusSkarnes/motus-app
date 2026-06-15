@@ -1,3 +1,4 @@
+import { PROFILE_METRICS_PREFIX, parsePersonalGoalsJson } from "./memberProfilePayload";
 import type { WeekdayPlanKey, WeeklyDayPlan } from "./types";
 
 export const WEEKDAY_PLAN_ORDER: WeekdayPlanKey[] = [
@@ -31,6 +32,14 @@ export type PeriodPlanDaySwap = {
 /** planId -> weekNumber -> swaps */
 export type PeriodPlanSwapsByPlan = Record<string, Record<string, PeriodPlanDaySwap[]>>;
 
+export const PERIOD_PLAN_SWAP_PREFS_VERSION = 1;
+
+export type PeriodPlanSwapPrefs = {
+  version: typeof PERIOD_PLAN_SWAP_PREFS_VERSION;
+  swapsByPlan: PeriodPlanSwapsByPlan;
+  updatedAt: number;
+};
+
 export function getPeriodPlanSwapsStorageKey(memberId: string): string {
   return `motus.member.periodPlanSwaps.${memberId}`;
 }
@@ -38,12 +47,114 @@ export function getPeriodPlanSwapsStorageKey(memberId: string): string {
 export function parsePeriodPlanSwapsState(raw: string | null): PeriodPlanSwapsByPlan {
   if (!raw) return {};
   try {
-    const parsed = JSON.parse(raw) as PeriodPlanSwapsByPlan;
-    if (!parsed || typeof parsed !== "object") return {};
-    return parsed;
+    return normalizePeriodPlanSwapsByPlan(JSON.parse(raw) as unknown);
   } catch {
     return {};
   }
+}
+
+function normalizeDayKey(value: unknown): WeekdayPlanKey | null {
+  return typeof value === "string" && WEEKDAY_PLAN_ORDER.includes(value as WeekdayPlanKey)
+    ? (value as WeekdayPlanKey)
+    : null;
+}
+
+function normalizePeriodPlanDaySwap(raw: unknown): PeriodPlanDaySwap | null {
+  if (!raw || typeof raw !== "object") return null;
+  const record = raw as Record<string, unknown>;
+  const dayA = normalizeDayKey(record.dayA);
+  const dayB = normalizeDayKey(record.dayB);
+  if (!dayA || !dayB) return null;
+  const mode = record.mode === "move" || record.mode === "set" || record.mode === "swap" ? record.mode : undefined;
+  const values: Partial<WeeklyDayPlan> = {};
+  if (record.values && typeof record.values === "object") {
+    const rawValues = record.values as Record<string, unknown>;
+    for (const key of WEEKDAY_PLAN_ORDER) {
+      if (Object.prototype.hasOwnProperty.call(rawValues, key)) {
+        values[key] = String(rawValues[key] ?? "");
+      }
+    }
+  }
+  return {
+    dayA,
+    dayB,
+    ...(mode ? { mode } : {}),
+    ...(Object.keys(values).length > 0 ? { values } : {}),
+  };
+}
+
+export function normalizePeriodPlanSwapsByPlan(raw: unknown): PeriodPlanSwapsByPlan {
+  if (!raw || typeof raw !== "object") return {};
+  const next: PeriodPlanSwapsByPlan = {};
+  for (const [planId, weeks] of Object.entries(raw as Record<string, unknown>)) {
+    const trimmedPlanId = planId.trim();
+    if (!trimmedPlanId || !weeks || typeof weeks !== "object") continue;
+    const normalizedWeeks: Record<string, PeriodPlanDaySwap[]> = {};
+    for (const [weekNumber, swaps] of Object.entries(weeks as Record<string, unknown>)) {
+      const normalizedSwaps = Array.isArray(swaps)
+        ? swaps.map(normalizePeriodPlanDaySwap).filter((item): item is PeriodPlanDaySwap => item !== null)
+        : [];
+      if (normalizedSwaps.length > 0) {
+        normalizedWeeks[String(weekNumber)] = normalizedSwaps;
+      }
+    }
+    if (Object.keys(normalizedWeeks).length > 0) {
+      next[trimmedPlanId] = normalizedWeeks;
+    }
+  }
+  return next;
+}
+
+function normalizePeriodPlanSwapPrefs(raw: unknown): PeriodPlanSwapPrefs | null {
+  if (!raw || typeof raw !== "object") return null;
+  const record = raw as Record<string, unknown>;
+  if (Number(record.version) !== PERIOD_PLAN_SWAP_PREFS_VERSION) return null;
+  return {
+    version: PERIOD_PLAN_SWAP_PREFS_VERSION,
+    swapsByPlan: normalizePeriodPlanSwapsByPlan(record.swapsByPlan),
+    updatedAt: Number(record.updatedAt) || 0,
+  };
+}
+
+export function readPeriodPlanSwapsFromPersonalGoals(personalGoals: string | undefined): PeriodPlanSwapPrefs | null {
+  const payload = parsePersonalGoalsJson(personalGoals);
+  if (!payload) return null;
+  return normalizePeriodPlanSwapPrefs(payload.periodPlanSwaps);
+}
+
+export function mergePeriodPlanSwapsIntoPersonalGoals(
+  existingPersonalGoals: string | undefined,
+  prefs: PeriodPlanSwapPrefs,
+): string {
+  const existing = parsePersonalGoalsJson(existingPersonalGoals) ?? {};
+  const updatedAt = Number.isFinite(prefs.updatedAt) && prefs.updatedAt > 0 ? prefs.updatedAt : Date.now();
+  const payload = {
+    ...existing,
+    periodPlanSwaps: {
+      version: PERIOD_PLAN_SWAP_PREFS_VERSION,
+      swapsByPlan: normalizePeriodPlanSwapsByPlan(prefs.swapsByPlan),
+      updatedAt,
+    },
+  };
+  return `${PROFILE_METRICS_PREFIX}${JSON.stringify(payload)}`;
+}
+
+export function mergePeriodPlanSwapPrefs(
+  local: PeriodPlanSwapPrefs,
+  remote: PeriodPlanSwapPrefs | null | undefined,
+): PeriodPlanSwapPrefs {
+  if (!remote) {
+    return {
+      ...local,
+      swapsByPlan: normalizePeriodPlanSwapsByPlan(local.swapsByPlan),
+    };
+  }
+  const selected = remote.updatedAt > local.updatedAt ? remote : local;
+  return {
+    version: PERIOD_PLAN_SWAP_PREFS_VERSION,
+    swapsByPlan: normalizePeriodPlanSwapsByPlan(selected.swapsByPlan),
+    updatedAt: Math.max(local.updatedAt, remote.updatedAt),
+  };
 }
 
 export function getSwapsForWeek(

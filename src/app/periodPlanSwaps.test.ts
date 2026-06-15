@@ -3,7 +3,10 @@ import {
   applyPeriodPlanSwaps,
   buildPeriodPlanWeekOverride,
   getSwapsForWeek,
+  mergePeriodPlanSwapPrefs,
+  mergePeriodPlanSwapsIntoPersonalGoals,
   periodPlanSourceDay,
+  readPeriodPlanSwapsFromPersonalGoals,
   setSwapsForWeek,
   togglePeriodPlanMove,
   togglePeriodPlanSwap,
@@ -72,5 +75,27 @@ describe("periodPlanSwaps", () => {
     expect(getSwapsForWeek(state, "plan-1", 1)).toHaveLength(0);
     state = setSwapsForWeek(state, "plan-1", 2, []);
     expect(getSwapsForWeek(state, "plan-1", 2)).toHaveLength(0);
+  });
+
+  it("round-trips period plan swaps in personal goals", () => {
+    const swapsByPlan = setSwapsForWeek({}, "plan-1", 3, buildPeriodPlanWeekOverride(baseDays, { ...baseDays, friday: "Program D" }, "friday", "friday"));
+    const encoded = mergePeriodPlanSwapsIntoPersonalGoals("", {
+      version: 1,
+      swapsByPlan,
+      updatedAt: 1234,
+    });
+    const read = readPeriodPlanSwapsFromPersonalGoals(encoded);
+    expect(read?.updatedAt).toBe(1234);
+    expect(applyPeriodPlanSwaps(baseDays, getSwapsForWeek(read?.swapsByPlan ?? {}, "plan-1", 3)).friday).toBe("Program D");
+  });
+
+  it("prefers newer period plan swaps when merging local and remote", () => {
+    const localSwaps = setSwapsForWeek({}, "plan-1", 1, [{ dayA: "monday", dayB: "tuesday", mode: "swap" }]);
+    const remoteSwaps = setSwapsForWeek({}, "plan-1", 1, [{ dayA: "wednesday", dayB: "thursday", mode: "swap" }]);
+    const merged = mergePeriodPlanSwapPrefs(
+      { version: 1, swapsByPlan: localSwaps, updatedAt: 100 },
+      { version: 1, swapsByPlan: remoteSwaps, updatedAt: 200 },
+    );
+    expect(getSwapsForWeek(merged.swapsByPlan, "plan-1", 1)[0]?.dayA).toBe("wednesday");
   });
 });

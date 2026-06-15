@@ -19,6 +19,7 @@ export function pickBestPersonalGoals(candidates: Array<string | undefined | nul
     if (value.includes('"foodAvoidances"')) score += 100;
     if (value.includes('"foodAvoidances"') && /"items"\s*:\s*\[\s*\{/.test(value)) score += 250;
     if (value.includes('"periodPlanCompletion"')) score += 140;
+    if (value.includes('"periodPlanSwaps"')) score += 140;
     if (value.includes('"openedMemberAlertIds"')) score += 40;
     if (value.includes('"seenHiddenBadgeIds"')) score += 40;
     score += Math.min(20, Math.floor(value.length / 200));
