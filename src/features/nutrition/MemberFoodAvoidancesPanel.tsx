@@ -272,7 +272,7 @@ export function MemberFoodAvoidancesPanel({
         </p>
       ) : null}
 
-      {status ? <StatusMessage tone="success">{status}</StatusMessage> : null}
+      {status ? <StatusMessage message={status} tone="success" /> : null}
       <input type="hidden" value={memberId} readOnly aria-hidden />
     </Card>
   );

@@ -286,7 +286,7 @@ export function TrainerRecipeComposer({
             />
           ) : null}
           {avoidanceConflicts.length > 0 ? <RecipeAvoidanceWarning conflicts={avoidanceConflicts} /> : null}
-          {status ? <StatusMessage tone="error">{status}</StatusMessage> : null}
+          {status ? <StatusMessage message={status} tone="error" /> : null}
           <div className="flex flex-wrap justify-end gap-2">
             <OutlineButton type="button" onClick={onClose}>
               Avbryt
