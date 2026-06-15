@@ -32,11 +32,28 @@ describe("memberLocalCatalog", () => {
     expect(isDemoSeedMemberId("member-nmn08uu")).toBe(false);
   });
 
-  it("strips demo seed members, programs and logs", () => {
-    const next = stripDemoSeedCatalog(baseState());
+  it("strips demo seed members that were merged onto real emails", () => {
+    const next = stripDemoSeedCatalog({
+      members: [
+        { id: "m1", name: "Emma", email: "emma@real.com", isActive: true } as AppState["members"][number],
+        { id: "member-nmn08uu", name: "Lene", email: "leneruud@msn.com", isActive: true } as AppState["members"][number],
+      ],
+      programs: [
+        { id: "p1", memberId: "m1", title: "Demo" } as AppState["programs"][number],
+        { id: "p2", memberId: "member-nmn08uu", title: "Ekte" } as AppState["programs"][number],
+      ],
+      logs: [{ id: "l1", memberId: "m1", programTitle: "Demo", date: "01.01.2026", status: "Fullført", note: "", results: [] }],
+    });
     expect(next.members.map((m) => m.id)).toEqual(["member-nmn08uu"]);
     expect(next.programs.map((p) => p.id)).toEqual(["p2"]);
     expect(next.logs).toEqual([]);
+  });
+
+  it("keeps built-in example.com demo catalog for local sessions", () => {
+    const next = stripDemoSeedCatalog(baseState());
+    expect(next.members.map((m) => m.id)).toEqual(["m1", "member-nmn08uu"]);
+    expect(next.programs.map((p) => p.id)).toEqual(["p1", "p2"]);
+    expect(next.logs).toHaveLength(1);
   });
 
   it("detects demo name on real member email as contaminated", () => {

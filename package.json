@@ -15,6 +15,7 @@
     "check:supabase-env": "node ./scripts/check-supabase-env.mjs",
     "check:supabase-schema": "node ./scripts/check-supabase-schema.mjs",
     "check:production-readiness": "node ./scripts/check-production-readiness.mjs",
+    "check:rls-security": "node ./scripts/check-rls-security-patches.mjs",
     "supabase:deploy-core": "npx supabase functions deploy hydrate-trainer-data && npx supabase functions deploy hydrate-member-data && npx supabase functions deploy link-member-auth && npx supabase functions deploy invite-member && npx supabase functions deploy archive-member && npx supabase functions deploy delete-member && npx supabase functions deploy restore-member && npx supabase functions deploy send-chat-message",
     "generate:rehab-sketches": "node ./scripts/generate-rehab-medical-sketches.mjs",
     "supabase:deploy-onboarding": "npx supabase functions deploy update-member-profile && npx supabase functions deploy hydrate-trainer-data && npx supabase functions deploy hydrate-member-data",

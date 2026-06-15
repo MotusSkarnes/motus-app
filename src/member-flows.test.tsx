@@ -20,9 +20,10 @@ describe("Member flows", () => {
 
     await user.click(screen.getAllByRole("button", { name: /Logg inn som Emma/i })[0]);
     await user.click(screen.getAllByRole("button", { name: "Trening" })[0]);
-    await user.click(screen.getByRole("button", { name: "Start" }));
+    await user.click(screen.getByRole("button", { name: "Programmer" }));
+    await user.click((await screen.findAllByRole("button", { name: /Start økt/i }))[0]);
 
-    expect(await screen.findByText("Økt-modus")).toBeInTheDocument();
+    expect(await screen.findByText("Øktmodus")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Avbryt" })).toBeInTheDocument();
   });
 
@@ -32,7 +33,7 @@ describe("Member flows", () => {
 
     const memberMessage = "Medlem testmelding";
     await user.click(screen.getAllByRole("button", { name: /Logg inn som Emma/i })[0]);
-    await user.click(screen.getAllByRole("button", { name: "Meldinger" })[0]);
+    await user.click(screen.getByRole("button", { name: /Åpne meldinger/i }));
     await user.type(screen.getByPlaceholderText("Skriv melding..."), memberMessage);
     await user.click(screen.getByRole("button", { name: "Send" }));
 
@@ -45,7 +46,7 @@ describe("Member flows", () => {
     const first = render(<App />);
 
     await user.click(screen.getAllByRole("button", { name: /Logg inn som Emma/i })[0]);
-    await user.click(screen.getAllByRole("button", { name: "Meldinger" })[0]);
+    await user.click(screen.getByRole("button", { name: /Åpne meldinger/i }));
     await user.type(screen.getByPlaceholderText("Skriv melding..."), memberMessage);
     await user.click(screen.getByRole("button", { name: "Send" }));
 
@@ -60,7 +61,7 @@ describe("Member flows", () => {
     if (emmaLogin.length) {
       await user.click(emmaLogin[0]);
     }
-    await user.click(screen.getAllByRole("button", { name: "Meldinger" })[0]);
+    await user.click(screen.getByRole("button", { name: /Åpne meldinger/i }));
     expect(screen.getByText(memberMessage)).toBeInTheDocument();
   });
 

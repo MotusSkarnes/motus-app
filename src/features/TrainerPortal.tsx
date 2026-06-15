@@ -107,7 +107,7 @@ import {
   getTrainingProgramSubTab,
 } from "../app/trainingProgramKind";
 import { Card, ConfirmDialog, DangerButton, EmptyState, GradientButton, MotusSectionIcon, OutlineButton, PillButton, SelectBox, StatCard, StatusMessage, TextArea, TextInput } from "../app/ui";
-import { useToastStatus } from "../app/toast";
+import { useToast, useToastStatus } from "../app/toast";
 import motusLogo from "../assets/motus-logo-transparent.svg";
 import type {
   CreateMemberInput,
@@ -800,6 +800,7 @@ function pickFirstName(value: unknown): string {
     cancelWorkoutMode = () => {},
   } = props;
 
+  const { pushToast } = useToast();
   const [programTitle, setProgramTitle] = useState("Nytt treningsprogram");
   const [programGoal, setProgramGoal] = useState("");
   const [programNotes, setProgramNotes] = useState("");
@@ -1345,7 +1346,7 @@ function pickFirstName(value: unknown): string {
         if (memberFilter === "followUp") return (trainerInactiveDaysForFollowUp(member, members, logs) ?? -1) >= 7;
         if (memberFilter === "invited") return memberEffectivelyInvited(member, members, { messages, logs });
         if (memberFilter === "notInvited") return !memberEffectivelyInvited(member, members, { messages, logs });
-        if (memberFilter === "noProgram") return !programs.some((program) => program.memberId === member.id);
+        if (memberFilter === "noProgram") return programsAttributedToMember(member, members, programs).length === 0;
         if (memberFilter === "unreadMessages") {
           return unreadCountForMember(member, unreadMessagesByIdentityKey) > 0;
         }
@@ -1579,23 +1580,38 @@ function pickFirstName(value: unknown): string {
     return programs.find((p) => p.id === workoutMode.programId) ?? null;
   }, [workoutMode, programs]);
 
-  function handleTrainerStartLiveWorkout(program: TrainingProgram) {
-    if (!program.exercises.length) {
-      window.alert("Programmet har ingen øvelser.");
-      return;
-    }
-    if (!selectedMemberId) {
-      window.alert("Velg en kunde før du starter live økt.");
-      return;
-    }
+  function startTrainerLiveWorkout(program: TrainingProgram) {
+    if (!selectedMemberId) return;
     if (workoutMode) {
-      if (!window.confirm("Det pågår allerede en økt. Vil du avbryte den uten å lagre og starte denne?")) return;
       cancelWorkoutMode();
     }
     startWorkoutMode(program.id, {
       ...buildDefaultStartWorkoutOptions(program, exercises),
       memberId: selectedMemberId,
     });
+  }
+
+  function handleTrainerStartLiveWorkout(program: TrainingProgram) {
+    if (!program.exercises.length) {
+      pushToast({ title: "Live økt", message: "Programmet har ingen øvelser.", tone: "error" });
+      return;
+    }
+    if (!selectedMemberId) {
+      pushToast({ title: "Live økt", message: "Velg en kunde før du starter live økt.", tone: "info" });
+      return;
+    }
+    if (workoutMode) {
+      setConfirmDialog({
+        title: "Avbryt pågående økt?",
+        message: "Det pågår allerede en økt. Vil du avbryte den uten å lagre og starte denne?",
+        confirmLabel: "Start ny økt",
+        cancelLabel: "Behold pågående",
+        tone: "danger",
+        onConfirm: () => startTrainerLiveWorkout(program),
+      });
+      return;
+    }
+    startTrainerLiveWorkout(program);
   }
 
   function handleFinishTrainerLiveWorkout(input?: {
@@ -2288,8 +2304,8 @@ function pickFirstName(value: unknown): string {
     });
   }
 
-  function formatInvitedAt(iso: string): string {
-    if (!iso.trim()) return "";
+  function formatInvitedAt(iso: string | null | undefined): string {
+    if (!iso?.trim()) return "";
     const date = new Date(iso);
     if (Number.isNaN(date.getTime())) return iso.trim();
     try {
@@ -2299,12 +2315,12 @@ function pickFirstName(value: unknown): string {
     }
   }
 
-  function inviteSentAtLabel(invitedAt: string): string {
+  function inviteSentAtLabel(invitedAt: string | null | undefined): string {
     const formatted = formatInvitedAt(invitedAt);
     return formatted ? `Sendt ${formatted}` : "Ikke sendt ennå";
   }
 
-  function firstLoginAtLabel(firstLoginAt: string): string {
+  function firstLoginAtLabel(firstLoginAt: string | null | undefined): string {
     const formatted = formatInvitedAt(firstLoginAt);
     return formatted ? `Logget inn ${formatted}` : "Ikke logget inn ennå";
   }
@@ -2552,11 +2568,7 @@ function pickFirstName(value: unknown): string {
     );
   }
 
-  function startNewCardioTemplateDraft() {
-    if (programExercisesDraft.length > 0) {
-      const ok = typeof window !== "undefined" && window.confirm("Erstatte gjeldende utkast med ny kondisjonsmal (kun oppvarming)?");
-      if (!ok) return;
-    }
+  function applyNewCardioTemplateDraft() {
     const base = pickCardioExerciseForEquipment(exercises, cardioEquipmentId);
     if (!base) {
       setTemplateAssignStatus("Fant ingen kondisjonsøvelse for valgt utstyr. Legg til øvelsen i øvelsesbanken først.");
@@ -2571,6 +2583,19 @@ function pickFirstName(value: unknown): string {
     setTemplateAssignStatus(
       `Oppvarming er lagt til. Legg til drag, juster verdier og legg til ${CARDIO_COOLDOWN_STEP_NAME.toLowerCase()} til slutt.`,
     );
+  }
+
+  function startNewCardioTemplateDraft() {
+    if (programExercisesDraft.length > 0) {
+      setConfirmDialog({
+        title: "Erstatt utkast?",
+        message: "Erstatte gjeldende utkast med ny kondisjonsmal (kun oppvarming)?",
+        confirmLabel: "Erstatt",
+        onConfirm: applyNewCardioTemplateDraft,
+      });
+      return;
+    }
+    applyNewCardioTemplateDraft();
   }
 
   function appendCardioDragRow() {
@@ -6122,25 +6147,33 @@ function pickFirstName(value: unknown): string {
                             : "Ingen oppfølgingsnotater er lagret på kunden ennå."}
                         </div>
                       </div>
-                      <span
-                        className={`rounded-full px-3 py-1 text-xs font-bold ${
-                          selectedFollowUpTone === "critical"
-                            ? "bg-rose-100 text-rose-800"
+                      <div className="flex flex-wrap items-center gap-2">
+                        <OutlineButton
+                          type="button"
+                          onClick={() => selectedMember && markMemberFollowedUp(selectedMember)}
+                        >
+                          Marker fulgt opp
+                        </OutlineButton>
+                        <span
+                          className={`rounded-full px-3 py-1 text-xs font-bold ${
+                            selectedFollowUpTone === "critical"
+                              ? "bg-rose-100 text-rose-800"
+                              : selectedFollowUpTone === "watch"
+                                ? "bg-amber-100 text-amber-800"
+                                : selectedFollowUpTone === "good"
+                                  ? "bg-emerald-100 text-emerald-800"
+                                  : "bg-slate-100 text-slate-600"
+                          }`}
+                        >
+                          {selectedFollowUpTone === "critical"
+                            ? "Høy prioritet"
                             : selectedFollowUpTone === "watch"
-                              ? "bg-amber-100 text-amber-800"
+                              ? "Bør følges opp"
                               : selectedFollowUpTone === "good"
-                                ? "bg-emerald-100 text-emerald-800"
-                                : "bg-slate-100 text-slate-600"
-                        }`}
-                      >
-                        {selectedFollowUpTone === "critical"
-                          ? "Høy prioritet"
-                          : selectedFollowUpTone === "watch"
-                            ? "Bør følges opp"
-                            : selectedFollowUpTone === "good"
-                              ? "I rute"
-                              : "Ny kunde"}
-                      </span>
+                                ? "I rute"
+                                : "Ny kunde"}
+                        </span>
+                      </div>
                     </div>
                     <div className="mt-4">
                       <GradientButton

@@ -73,7 +73,7 @@ describe("Trainer flows", () => {
     const trainerMessage = "Trener testmelding";
     await user.click(screen.getAllByRole("button", { name: /Logg inn som trener/i })[0]);
     await user.click(screen.getAllByRole("button", { name: "Klienter" })[0]);
-    await user.click(screen.getByRole("button", { name: "Meldinger" }));
+    await user.click(screen.getAllByRole("button", { name: "Meldinger" })[0]);
     await user.type(screen.getByPlaceholderText("Skriv melding..."), trainerMessage);
     await user.click(screen.getAllByRole("button", { name: "Send" })[0]);
 
@@ -180,7 +180,7 @@ describe("Trainer flows", () => {
       />
     );
 
-    await user.click(screen.getByRole("button", { name: "Økter" }));
+    await user.click(screen.getAllByRole("button", { name: "Økter" })[0]);
     expect((await screen.findAllByText("Legacy styrkeøkt")).length).toBeGreaterThan(0);
   });
 
@@ -278,7 +278,7 @@ describe("Trainer flows", () => {
       />
     );
 
-    await user.click(screen.getByRole("button", { name: "Økter" }));
+    await user.click(screen.getAllByRole("button", { name: "Økter" })[0]);
     expect(screen.getByText("Økter siste 7 dager")).toBeInTheDocument();
     expect(screen.getByText("Gruppetimer siste 30 dager")).toBeInTheDocument();
     expect(screen.getByText("Snitt belastning 30 dager")).toBeInTheDocument();
@@ -361,13 +361,13 @@ describe("Trainer flows", () => {
       />
     );
 
-    expect(screen.getByText("Dagens fokus")).toBeInTheDocument();
-    expect(screen.getByText("Bør kontaktes nå")).toBeInTheDocument();
+    expect(screen.getByText(/Hei,/)).toBeInTheDocument();
+    expect(screen.getByText("Klienter som trenger din oppmerksomhet")).toBeInTheDocument();
     expect(screen.getAllByText(/^Lene$/).length).toBeGreaterThanOrEqual(1);
     expect(screen.queryByText(/lene@example\.com/i)).not.toBeInTheDocument();
   });
 
-  it("allows marking follow-up from suggested contact list", async () => {
+  it("allows marking follow-up from customer overview", async () => {
     const user = userEvent.setup();
     const formatDate = (date: Date) =>
       `${String(date.getDate()).padStart(2, "0")}.${String(date.getMonth() + 1).padStart(2, "0")}.${date.getFullYear()}`;
@@ -429,7 +429,7 @@ describe("Trainer flows", () => {
         exercises={[] as Exercise[]}
         selectedMemberId="m-followup"
         setSelectedMemberId={() => {}}
-        trainerTab="dashboard"
+        trainerTab="customers"
         setTrainerTab={() => {}}
         addMember={() => {}}
         deactivateMember={() => {}}
@@ -451,10 +451,9 @@ describe("Trainer flows", () => {
       />
     );
 
-    expect(screen.getByText("Bør kontaktes nå")).toBeInTheDocument();
-    expect(screen.getByText("Sist fulgt opp: Aldri")).toBeInTheDocument();
+    expect(screen.getByText("Ingen oppfølgingsnotater er lagret på kunden ennå.")).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Marker fulgt opp" }));
-    expect(screen.queryByText("Sist fulgt opp: Aldri")).not.toBeInTheDocument();
+    expect(screen.queryByText("Ingen oppfølgingsnotater er lagret på kunden ennå.")).not.toBeInTheDocument();
   });
 
 });

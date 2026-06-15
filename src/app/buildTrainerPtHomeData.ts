@@ -156,12 +156,16 @@ export function buildTrainerPtHomeAttentionClients(input: {
   resolveAvatar: (member: Member) => string | null;
   limit?: number;
 }): TrainerPtHomeAttentionClient[] {
-  const seen = new Set<string>();
+  const seenIds = new Set<string>();
+  const seenEmails = new Set<string>();
   const rows: TrainerPtHomeAttentionClient[] = [];
 
   const pushMember = (member: Member, statusLabel: string, statusTone: TrainerPtHomeAttentionClient["statusTone"]) => {
-    if (seen.has(member.id)) return;
-    seen.add(member.id);
+    const email = member.email.trim().toLowerCase();
+    if (email && seenEmails.has(email)) return;
+    if (seenIds.has(member.id)) return;
+    seenIds.add(member.id);
+    if (email) seenEmails.add(email);
     const days = trainerInactiveDaysForFollowUp(member, input.allMembers, input.logs);
     const lastActiveLabel =
       days === null
@@ -190,7 +194,9 @@ export function buildTrainerPtHomeAttentionClients(input: {
 
   for (const member of input.members.filter((row) => row.isActive !== false)) {
     if (rows.length >= (input.limit ?? 4)) break;
-    if (seen.has(member.id)) continue;
+    if (seenIds.has(member.id)) continue;
+    const email = member.email.trim().toLowerCase();
+    if (email && seenEmails.has(email)) continue;
     if (memberHasRecentMessage(member.id, input.messages)) {
       pushMember(member, "Ny melding", "message");
       continue;
@@ -203,7 +209,9 @@ export function buildTrainerPtHomeAttentionClients(input: {
 
   for (const member of input.members.filter((row) => row.isActive !== false)) {
     if (rows.length >= (input.limit ?? 4)) break;
-    if (seen.has(member.id)) continue;
+    if (seenIds.has(member.id)) continue;
+    const email = member.email.trim().toLowerCase();
+    if (email && seenEmails.has(email)) continue;
     pushMember(member, "Avventer svar", "waiting");
   }
 

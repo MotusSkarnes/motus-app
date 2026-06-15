@@ -1255,11 +1255,12 @@ export function useAppState() {
         (hydratedTrainer?.debug?.status === "invoke_error" || hydratedTrainer?.debug?.status === "invalid_payload");
       const trainerHydrateOkEarly = Boolean(hydratedTrainer) && !trainerHydrateFailedEarly;
       const memberHydrateOkEarly = hydratedMember !== null && !hydratedMember.accessDenied;
-      const [directMemberPrograms, directMemberLogs, directTrainerPrograms, directMemberMembers, directTrainerMembers] =
+      const [directMemberPrograms, directMemberLogs, directTrainerPrograms, directTrainerLogs, directMemberMembers, directTrainerMembers] =
         await Promise.all([
           isMemberLikeSession && !memberHydrateOkEarly ? fetchProgramsFromSupabase() : Promise.resolve(null),
           isMemberLikeSession && !memberHydrateOkEarly ? fetchLogsFromSupabase() : Promise.resolve(null),
           isTrainerSession && !trainerHydrateOkEarly ? fetchProgramsFromSupabase() : Promise.resolve(null),
+          isTrainerSession && !trainerHydrateOkEarly ? fetchLogsFromSupabase() : Promise.resolve(null),
           isMemberLikeSession && !memberHydrateOkEarly ? fetchMembersFromSupabase() : Promise.resolve(null),
           isTrainerSession && !trainerHydrateOkEarly ? fetchMembersFromSupabase() : Promise.resolve(null),
         ]);
@@ -1326,9 +1327,9 @@ export function useAppState() {
         }
         remotePrograms = ensureDefaultMotusGroupClassTemplates(remotePrograms);
       }
-      let remoteLogs =
-        hydratedTrainer?.logs ??
-        (isMemberLikeSession ? mergeWorkoutLogsById(hydratedMember?.logs, directMemberLogs) : null);
+      let remoteLogs = isTrainerSession
+        ? mergeWorkoutLogsById(hydratedTrainer?.logs, directTrainerLogs)
+        : mergeWorkoutLogsById(hydratedMember?.logs, directMemberLogs);
 
       // One-shot: JWT app_metadata.member_id often mismatches DB; RLS then returns no rows. Re-link + refresh + refetch.
       if (

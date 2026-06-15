@@ -165,7 +165,7 @@ describe("Stability regressions", () => {
       />,
     );
 
-    await user.click(screen.getByRole("button", { name: "Program" }));
+    await user.click(screen.getAllByRole("button", { name: /Program & planer/i })[0]);
     const saveButton = await screen.findByRole("button", { name: "Lagre program på kunde" });
 
     expect(saveButton).toBeDisabled();

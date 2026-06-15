@@ -14,10 +14,11 @@ export function isDemoSeedMemberId(memberId: string): boolean {
 
 /** Demo-navn på ekte e-post (feil merge fra localStorage) — skal aldri synkes til sky eller vises som innlogget bruker. */
 export function isContaminatedDemoMemberProfile(member: Pick<Member, "id" | "name" | "email">): boolean {
+  const email = member.email.trim().toLowerCase();
+  if (email.endsWith("@example.com") && isDemoSeedMemberId(member.id)) return false;
   if (isDemoSeedMemberId(member.id)) return true;
   const name = member.name.trim().toLowerCase();
   if (!DEMO_SEED_MEMBER_NAMES.has(name)) return false;
-  const email = member.email.trim().toLowerCase();
   return Boolean(email.includes("@") && !email.endsWith("@example.com"));
 }
 

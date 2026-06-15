@@ -21,7 +21,7 @@ const plan: PeriodSchedulePlan = {
   id: "plan-1",
   title: "Mai",
   notes: "",
-  startDate: "2026-05-01",
+  startDate: "2026-05-04",
   weeklyPlans: [
     {
       weekNumber: 1,
