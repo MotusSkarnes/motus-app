@@ -60,6 +60,10 @@ const SYNTHETIC_FOODS: SyntheticFood[] = [
     name: "kokosmelk",
     nutritionPer100g: { kcal: 190, protein: 2, carbs: 3, fat: 18, fiber: 0, sugar: 2, saturatedFat: 16, sodium: 15 },
   },
+  {
+    name: "linser kokt",
+    nutritionPer100g: { kcal: 116, protein: 9, carbs: 20, fat: 0.4, fiber: 8, sugar: 1.8, saturatedFat: 0.1, sodium: 2 },
+  },
 ];
 
 const SYNTHETIC_BY_KEY = new Map(

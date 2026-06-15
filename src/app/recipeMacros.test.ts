@@ -129,6 +129,21 @@ Slik gjør du
     expect(names).not.toContain("bolle");
   });
 
+  it("bruker trygg linse-fallback selv nÃ¥r matvarebanken mangler linser", () => {
+    const tomatoOnlyBank = foods.filter((food) => food.name.toLowerCase().includes("tomat"));
+    const body = `**Til 4 porsjoner**
+
+**Ingredienser**
+- 400 g linser
+
+**Slik gjÃ¸r du**
+1. Kok.`;
+    const ingredients = computeRecipeIngredients(body, tomatoOnlyBank);
+    expect(ingredients).toHaveLength(1);
+    expect(ingredients[0]?.foodName.toLowerCase()).toContain("linser");
+    expect(ingredients[0]?.foodName.toLowerCase()).not.toContain("tomat");
+  });
+
   it("beregner makroer for alle standardoppskrifter", () => {
     const foods = buildDefaultFoodBankItems();
     for (const recipe of DEFAULT_INSPIRATION_RECIPES) {
