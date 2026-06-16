@@ -351,7 +351,11 @@ type MemberPortalProps = {
   updateWorkoutLogDate?: (input: { logId: string; date: string }) => void;
   updateWorkoutModeNote: (note: string) => void;
   updateWorkoutExerciseNote: (programExerciseId: string, note: string) => void;
-  finishWorkoutMode: (input?: { reflection?: WorkoutReflection }) => void;
+  finishWorkoutMode: (input?: {
+    note?: string;
+    reflection?: WorkoutReflection;
+    onPersisted?: (result: { ok: boolean; message?: string }) => void;
+  }) => void;
   logGroupWorkout: (input: LogGroupWorkoutInput) => void;
   logActivityWorkout: (input: LogActivityWorkoutInput) => void;
   updateActivityWorkout: (input: UpdateActivityWorkoutInput) => void;
@@ -5410,7 +5414,11 @@ export function MemberPortal(props: MemberPortalProps) {
     });
   }
 
-  function handleFinishWorkoutMode(input?: { reflection?: WorkoutReflection }) {
+  function handleFinishWorkoutMode(input?: {
+    note?: string;
+    reflection?: WorkoutReflection;
+    onPersisted?: (result: { ok: boolean; message?: string }) => void;
+  }) {
     const snapshot = workoutMode;
     const periodPlanContext = pendingPeriodPlanWorkoutStartRef.current;
     pendingPeriodPlanWorkoutStartRef.current = null;
@@ -7931,6 +7939,8 @@ export function MemberPortal(props: MemberPortalProps) {
                   setMemberBirthDateDraft={setMemberBirthDateDraft}
                   memberGoalDraft={memberGoalDraft}
                   setMemberGoalDraft={setMemberGoalDraft}
+                  profileSessionsPerWeekTarget={profileSessionsPerWeekTarget}
+                  setProfileSessionsPerWeekTarget={setProfileSessionsPerWeekTarget}
                   memberInjuriesDraft={memberInjuriesDraft}
                   setMemberInjuriesDraft={setMemberInjuriesDraft}
                   streakWeeks={streakWeeks}

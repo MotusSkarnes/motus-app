@@ -3,7 +3,8 @@ import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { MemberPortal } from "./MemberPortal";
 import { TrainerPortal } from "./TrainerPortal";
-import type { Exercise, Member, ProgramExercise, TrainingProgram } from "../app/types";
+import { LiveWorkoutSessionModal } from "./LiveWorkoutSessionModal";
+import type { Exercise, Member, ProgramExercise, TrainingProgram, WorkoutModeState } from "../app/types";
 
 function createMember(input: Partial<Member>): Member {
   return {
@@ -170,5 +171,59 @@ describe("Stability regressions", () => {
 
     expect(saveButton).toBeDisabled();
     expect(saveProgramForMember).not.toHaveBeenCalled();
+  });
+
+  it("lets members type a completion comment after workout mode", async () => {
+    const user = userEvent.setup();
+    const finishWorkoutMode = vi.fn();
+    const workoutMode: WorkoutModeState = {
+      programId: "p1",
+      memberId: "m1",
+      programTitle: "Program",
+      note: "",
+      results: [
+        {
+          exerciseId: "e1",
+          programExerciseId: "pe1",
+          setNumber: 1,
+          exerciseName: "Knebøy",
+          exerciseCategory: "Styrke",
+          exerciseEquipment: "Stang",
+          plannedSets: "1",
+          plannedReps: "8",
+          plannedWeight: "40",
+          performedWeight: "40",
+          performedReps: "8",
+          completed: true,
+        },
+      ],
+    };
+
+    render(
+      <LiveWorkoutSessionModal
+        variant="member"
+        workoutMode={workoutMode}
+        activeProgram={createProgram({ exercises: [{ ...baseProgramExercise, sets: "1" }] })}
+        exercises={[baseExercise]}
+        updateWorkoutExerciseResult={vi.fn()}
+        replaceWorkoutExerciseGroup={vi.fn()}
+        addWorkoutExerciseToWorkout={vi.fn()}
+        appendWorkoutSetForProgramExercise={vi.fn()}
+        removeLastWorkoutSetForProgramExercise={vi.fn()}
+        deferWorkoutExerciseGroup={vi.fn()}
+        updateWorkoutModeNote={vi.fn()}
+        updateWorkoutExerciseNote={vi.fn()}
+        finishWorkoutMode={finishWorkoutMode}
+        cancelWorkoutMode={vi.fn()}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: /Lagre økt|Avslutt og lagre økt/i }));
+    const commentField = screen.getByPlaceholderText("Hvordan gikk økta som helhet?");
+    await user.type(commentField, "Fin flyt i dag");
+    expect(commentField).toHaveValue("Fin flyt i dag");
+
+    await user.click(screen.getByRole("button", { name: /^Lagre økt$/i }));
+    expect(finishWorkoutMode).toHaveBeenCalledWith(expect.objectContaining({ note: "Fin flyt i dag" }));
   });
 });

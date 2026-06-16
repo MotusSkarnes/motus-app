@@ -59,6 +59,8 @@ type MemberProfileDashboardProps = {
   setMemberBirthDateDraft: (value: string) => void;
   memberGoalDraft: string;
   setMemberGoalDraft: (value: string) => void;
+  profileSessionsPerWeekTarget: string;
+  setProfileSessionsPerWeekTarget: (value: string) => void;
   memberInjuriesDraft: string;
   setMemberInjuriesDraft: (value: string) => void;
   streakWeeks: number;
@@ -107,6 +109,8 @@ export function MemberProfileDashboard({
   setMemberBirthDateDraft,
   memberGoalDraft,
   setMemberGoalDraft,
+  profileSessionsPerWeekTarget,
+  setProfileSessionsPerWeekTarget,
   memberInjuriesDraft,
   setMemberInjuriesDraft,
   streakWeeks,
@@ -245,6 +249,21 @@ export function MemberProfileDashboard({
               className="motus-profile-field !h-9"
               options={[{ value: "", label: "Velg mål" }, ...MEMBER_GOAL_OPTIONS.map((goal) => ({ value: goal, label: goal }))]}
             />
+          </ProfileInfoRow>
+          <ProfileInfoRow icon={Dumbbell} label="Ukemål">
+            <div className="space-y-1">
+              <TextInput
+                type="number"
+                min="0"
+                max="14"
+                inputMode="numeric"
+                value={profileSessionsPerWeekTarget}
+                onChange={(e) => setProfileSessionsPerWeekTarget(e.target.value)}
+                placeholder="F.eks. 3"
+                className="motus-profile-field"
+              />
+              <p className="text-[11px] leading-snug text-slate-500">Antall økter du vil gjennomføre per uke.</p>
+            </div>
           </ProfileInfoRow>
           <ProfileInfoRow icon={HeartPulse} label="Skader / hensyn">
             <TextArea

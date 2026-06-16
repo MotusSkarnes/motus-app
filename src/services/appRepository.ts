@@ -104,6 +104,7 @@ export type UpdateWorkoutResultInput = {
 };
 
 export type FinishWorkoutInput = {
+  note?: string;
   reflection?: WorkoutReflection;
   onPersisted?: (result: PersistResult) => void;
 };
@@ -1228,7 +1229,7 @@ export function finishWorkoutModeInState(state: AppState, input?: FinishWorkoutI
         programTitle,
         date: formatDateTimeDdMmYyyy(new Date()),
         status: "Fullført",
-        note: current.note,
+        note: input?.note ?? current.note,
         reflection: input?.reflection,
         results: deduplicatedResults,
       },

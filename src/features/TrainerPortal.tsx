@@ -438,7 +438,11 @@ type TrainerPortalProps = {
   deferWorkoutExerciseGroup?: (programExerciseId: string) => void;
   updateWorkoutModeNote?: (note: string) => void;
   updateWorkoutExerciseNote?: (programExerciseId: string, note: string) => void;
-  finishWorkoutMode?: (input?: { reflection?: WorkoutReflection }) => void;
+  finishWorkoutMode?: (input?: {
+    note?: string;
+    reflection?: WorkoutReflection;
+    onPersisted?: (result: { ok: boolean; message?: string }) => void;
+  }) => void;
   cancelWorkoutMode?: () => void;
 };
 
@@ -1615,6 +1619,7 @@ function pickFirstName(value: unknown): string {
   }
 
   function handleFinishTrainerLiveWorkout(input?: {
+    note?: string;
     reflection?: WorkoutReflection;
     onPersisted?: (result: { ok: boolean; message?: string }) => void;
   }) {

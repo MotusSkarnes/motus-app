@@ -641,6 +641,7 @@ export function TrainerProgramBuilderView({
                   onDrop={(event) => {
                     event.preventDefault();
                     if (draggedDraftExerciseId) {
+                      event.stopPropagation();
                       onMoveDraftExercise(draggedDraftExerciseId, item.id);
                       onDragOverDraftExerciseIdChange(null);
                     }
@@ -760,6 +761,7 @@ export function TrainerProgramBuilderView({
               }}
               onDrop={(event) => {
                 event.preventDefault();
+                event.stopPropagation();
                 if (draggedExerciseIdFromLibrary) handleLibraryDrop(draggedExerciseIdFromLibrary);
               }}
             >

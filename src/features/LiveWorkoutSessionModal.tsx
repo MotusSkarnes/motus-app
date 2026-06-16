@@ -68,6 +68,7 @@ export type LiveWorkoutSessionModalProps = {
   updateWorkoutModeNote: (note: string) => void;
   updateWorkoutExerciseNote: (programExerciseId: string, note: string) => void;
   finishWorkoutMode: (input?: {
+    note?: string;
     reflection?: WorkoutReflection;
     onPersisted?: (result: { ok: boolean; message?: string }) => void;
   }) => void;
@@ -131,6 +132,7 @@ export function LiveWorkoutSessionModal({
   const [reflectionEnergyLevel, setReflectionEnergyLevel] = useState<1 | 2 | 3 | 4 | 5>(3);
   const [reflectionDifficultyLevel, setReflectionDifficultyLevel] = useState<1 | 2 | 3 | 4 | 5>(3);
   const [reflectionMotivationLevel, setReflectionMotivationLevel] = useState<1 | 2 | 3 | 4 | 5>(3);
+  const [workoutCompletionNote, setWorkoutCompletionNote] = useState("");
   const [reflectionNote, setReflectionNote] = useState("");
   const [showExerciseDetail, setShowExerciseDetail] = useState(false);
   const [restCountdown, setRestCountdown] = useState<RestCountdownState | null>(null);
@@ -192,6 +194,7 @@ export function LiveWorkoutSessionModal({
     setReflectionEnergyLevel(3);
     setReflectionDifficultyLevel(3);
     setReflectionMotivationLevel(3);
+    setWorkoutCompletionNote("");
     setReflectionNote("");
   }, [activeWorkoutModeProgramId]);
 
@@ -618,12 +621,14 @@ export function LiveWorkoutSessionModal({
 
   function continueMemberFinishFlow() {
     if (!showWorkoutReflection) {
+      setWorkoutCompletionNote(workoutMode?.note ?? "");
       setShowWorkoutReflection(true);
       return;
     }
     if (isSavingWorkout) return;
     setIsSavingWorkout(true);
     finishWorkoutMode({
+      note: workoutCompletionNote.trim(),
       reflection: buildWorkoutReflection(),
       onPersisted: () => setIsSavingWorkout(false),
     });
@@ -766,7 +771,7 @@ export function LiveWorkoutSessionModal({
           </div>
         </div>
 
-        <div className="motus-scroll-touch flex-1 space-y-2 overflow-auto bg-slate-950 p-2 sm:space-y-3 sm:p-4">
+        <div className="motus-scroll-touch flex-1 space-y-2 overflow-auto bg-slate-950 p-2 pb-36 sm:space-y-3 sm:p-4 sm:pb-40">
           {currentWorkoutGroup ? (
             <div
               key={currentWorkoutGroup.groupId}
@@ -1144,8 +1149,8 @@ export function LiveWorkoutSessionModal({
                 <label className="block space-y-1">
                   <span className="text-xs font-semibold text-slate-700">Kommentar til økten (valgfritt)</span>
                   <TextArea
-                    value={workoutMode.note}
-                    onChange={(e) => updateWorkoutModeNote(e.target.value)}
+                    value={workoutCompletionNote}
+                    onChange={(e) => setWorkoutCompletionNote(e.target.value)}
                     className="min-h-[90px]"
                     placeholder="Hvordan gikk økta som helhet?"
                   />
@@ -1165,12 +1170,15 @@ export function LiveWorkoutSessionModal({
                   value={reflectionMotivationLevel}
                   onChange={setReflectionMotivationLevel}
                 />
-                <TextArea
-                  value={reflectionNote}
-                  onChange={(e) => setReflectionNote(e.target.value)}
-                  className="min-h-[90px]"
-                  placeholder="Notat til PT (valgfritt)"
-                />
+                <label className="block space-y-1">
+                  <span className="text-xs font-semibold text-slate-700">Notat til PT (valgfritt)</span>
+                  <TextArea
+                    value={reflectionNote}
+                    onChange={(e) => setReflectionNote(e.target.value)}
+                    className="min-h-[90px]"
+                    placeholder="Noe du vil at PT skal vite?"
+                  />
+                </label>
               </div>
           ) : null}
 

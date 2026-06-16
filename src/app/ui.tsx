@@ -103,7 +103,20 @@ export const TextInput = React.forwardRef<HTMLInputElement, React.InputHTMLAttri
 });
 
 export const TextArea = React.forwardRef<HTMLTextAreaElement, React.TextareaHTMLAttributes<HTMLTextAreaElement>>(function TextArea(props, ref) {
-  return <textarea ref={ref} {...props} className={`w-full rounded-lg border px-3 py-2.5 text-sm outline-none ${props.className ?? ""}`} style={{ borderColor: "rgba(15,23,42,0.12)" }} />;
+  return (
+    <textarea
+      ref={ref}
+      {...props}
+      className={`w-full rounded-lg border bg-white px-3 py-2.5 text-sm text-slate-800 outline-none placeholder:text-slate-400 ${props.className ?? ""}`}
+      style={{
+        backgroundColor: "#fff",
+        borderColor: "rgba(15,23,42,0.12)",
+        caretColor: "#1f2937",
+        color: "#1f2937",
+        ...props.style,
+      }}
+    />
+  );
 });
 
 type SelectOption = { value: string; label: string };
