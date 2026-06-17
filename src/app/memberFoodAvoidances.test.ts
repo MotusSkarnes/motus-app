@@ -48,6 +48,41 @@ describe("memberFoodAvoidances", () => {
     expect(conflicts[0]?.avoidanceLabel).toBe("Laks");
   });
 
+  it("finner konflikt mot manuelt valgt oppskriftsmatvare", () => {
+    const foods = buildDefaultFoodBankItems();
+    const soyafarse = foods.find((f) => f.name === "Soyafarse");
+    expect(soyafarse).toBeDefined();
+
+    const personalGoals = mergeMemberFoodAvoidancesIntoPersonalGoals("", {
+      items: [{ foodId: soyafarse!.id, label: "Soyafarse", key: "soyafarse" }],
+      notes: "",
+      updatedAt: Date.now(),
+    });
+
+    const body = `**Til 1 porsjon**
+
+**Ingredienser**
+- 200 g kjøttdeig`;
+
+    const conflictsWithoutOverride = findRecipeFoodAvoidanceConflicts(body, foods, [
+      { id: "m1", name: "Test Medlem", personalGoals, isActive: true },
+    ]);
+    expect(conflictsWithoutOverride).toHaveLength(0);
+
+    const auto = foods.find((f) => f.name === "Karbonadedeig mager");
+    expect(auto).toBeDefined();
+    const conflicts = findRecipeFoodAvoidanceConflicts(
+      body,
+      foods,
+      [{ id: "m1", name: "Test Medlem", personalGoals, isActive: true }],
+      { "ing-0": soyafarse!.id },
+    );
+
+    expect(conflicts).toHaveLength(1);
+    expect(conflicts[0]?.avoidanceLabel).toBe("Soyafarse");
+    expect(conflicts[0]?.ingredientLabel).toBe("Soyafarse");
+  });
+
   it("mergeFoodAvoidancesAcrossCandidates unioner rader", () => {
     const rowA = mergeMemberFoodAvoidancesIntoPersonalGoals("", {
       items: [foodAvoidanceFromLabel("Laks")!],
