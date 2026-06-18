@@ -48,7 +48,10 @@ export function buildInspirationRecipeNutritionById(
   for (const recipe of recipes) {
     const body = recipe.body.trim() || recipe.description.trim();
     if (!body) continue;
-    const macros = computeRecipeMacros(body, bank, { servings: recipe.servings });
+    const macros = computeRecipeMacros(body, bank, {
+      servings: recipe.servings,
+      ingredientFoodOverrides: recipe.ingredientFoodOverrides,
+    });
     if (!macros) continue;
     const per = macros.perServing;
     byId.set(recipe.id, {
@@ -91,6 +94,7 @@ export function recipeToMealPlanEntry(
         dailyTargets: options?.dailyTargets,
         mealSlot: options?.mealSlot ?? null,
         servings: recipe.servings,
+        ingredientFoodOverrides: recipe.ingredientFoodOverrides,
       })
     : null;
   const ingredientLines = body ? extractRecipeIngredientLines(body) : [];
