@@ -48,6 +48,61 @@ describe("memberFoodAvoidances", () => {
     expect(conflicts[0]?.avoidanceLabel).toBe("Laks");
   });
 
+  it("finner konflikt når manuell ingredienskobling treffer mat som unngås", () => {
+    const foods = buildDefaultFoodBankItems();
+    const soyafarse = foods.find((f) => f.name === "Soyafarse");
+    expect(soyafarse).toBeDefined();
+
+    const personalGoals = mergeMemberFoodAvoidancesIntoPersonalGoals("", {
+      items: [{ foodId: soyafarse!.id, label: "Soyafarse", key: "soyafarse" }],
+      notes: "",
+      updatedAt: Date.now(),
+    });
+
+    const body = `**Til 1 porsjon**
+
+**Ingredienser**
+- 100 g kylling`;
+
+    const conflicts = findRecipeFoodAvoidanceConflicts(
+      body,
+      foods,
+      [{ id: "m1", name: "Test Medlem", personalGoals, isActive: true }],
+      { "ing-0": soyafarse!.id },
+    );
+
+    expect(conflicts).toHaveLength(1);
+    expect(conflicts[0]?.ingredientLabel).toBe("Soyafarse");
+  });
+
+  it("unngår falsk konflikt når manuell ingredienskobling bytter bort mat som unngås", () => {
+    const foods = buildDefaultFoodBankItems();
+    const kylling = foods.find((f) => f.name === "Kyllingbryst");
+    const soyafarse = foods.find((f) => f.name === "Soyafarse");
+    expect(kylling).toBeDefined();
+    expect(soyafarse).toBeDefined();
+
+    const personalGoals = mergeMemberFoodAvoidancesIntoPersonalGoals("", {
+      items: [{ foodId: kylling!.id, label: "Kyllingbryst", key: "kyllingbryst" }],
+      notes: "",
+      updatedAt: Date.now(),
+    });
+
+    const body = `**Til 1 porsjon**
+
+**Ingredienser**
+- 100 g kylling`;
+
+    const conflicts = findRecipeFoodAvoidanceConflicts(
+      body,
+      foods,
+      [{ id: "m1", name: "Test Medlem", personalGoals, isActive: true }],
+      { "ing-0": soyafarse!.id },
+    );
+
+    expect(conflicts).toHaveLength(0);
+  });
+
   it("mergeFoodAvoidancesAcrossCandidates unioner rader", () => {
     const rowA = mergeMemberFoodAvoidancesIntoPersonalGoals("", {
       items: [foodAvoidanceFromLabel("Laks")!],

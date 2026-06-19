@@ -104,4 +104,22 @@ describe("logsAttributedToMember", () => {
     };
     expect(logsAttributedToMember(ptMember, [ptMember, canonicalMember], [log])).toEqual([log]);
   });
+
+  it("does not expose logs from another customer with the same display name", () => {
+    const sameNameOtherEmail: Member = {
+      ...ptMember,
+      id: "m-other-kari",
+      email: "other-kari@example.com",
+    };
+    const otherLog: WorkoutLog = {
+      id: "log-other",
+      memberId: sameNameOtherEmail.id,
+      programTitle: "Privat økt",
+      date: "22.05.2026 kl 18:30",
+      status: "Fullført",
+      results: [],
+    };
+
+    expect(logsAttributedToMember(ptMember, [ptMember, sameNameOtherEmail], [otherLog])).toEqual([]);
+  });
 });
