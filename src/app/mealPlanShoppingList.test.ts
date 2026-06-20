@@ -4,6 +4,7 @@ import { buildDefaultFoodBankItems } from "./foodBankSeed";
 import { recipeToMealPlanEntry } from "./mealPlanRecipeEntry";
 import type { MealPlan } from "./mealPlanTypes";
 import { buildWeeklyShoppingList } from "./mealPlanShoppingList";
+import { computeRecipeIngredients } from "./recipeMacros";
 
 const BOLOGNESE = DEFAULT_INSPIRATION_RECIPES.find((r) => r.id === "default-recipe-7")!;
 
@@ -76,5 +77,51 @@ describe("buildWeeklyShoppingList", () => {
     const baseGrams = base.groups.reduce((sum, g) => sum + g.items.reduce((s, i) => s + i.grams, 0), 0);
     const doubledGrams = doubled.groups.reduce((sum, g) => sum + g.items.reduce((s, i) => s + i.grams, 0), 0);
     expect(doubledGrams).toBeGreaterThan(baseGrams * 1.8);
+  });
+
+  it("bruker lagrede manuelle matvarekoblinger i handlelisten", () => {
+    const foods = buildDefaultFoodBankItems();
+    const foodById = new Map(foods.map((f) => [f.id, f]));
+    const body = "**Til 1 porsjon**\n\n**Ingredienser**\n- 200 g kjøttdeig";
+    const [autoIngredient] = computeRecipeIngredients(body, foods);
+    const soyafarse = foods.find((item) => item.name === "Soyafarse");
+    expect(autoIngredient?.foodName).toBe("Karbonadedeig mager");
+    expect(soyafarse).toBeDefined();
+
+    const recipe = {
+      id: "recipe-soya",
+      title: "Soya bolognese",
+      description: "Middag",
+      tag: "Middag",
+      body,
+      servings: 1,
+      ingredientFoodOverrides: { [autoIngredient!.key]: soyafarse!.id },
+    };
+    const entry = recipeToMealPlanEntry(recipe, foods);
+    const plan: MealPlan = {
+      id: "plan-soya",
+      memberId: "m1",
+      title: "Test",
+      notes: "",
+      createdAt: new Date().toISOString(),
+      days: [
+        {
+          id: "day-mon",
+          label: "Mandag",
+          meals: [{ id: "meal-dinner", name: "Middag", items: [entry] }],
+        },
+      ],
+    };
+
+    const result = buildWeeklyShoppingList({
+      plan,
+      foodById,
+      foodItems: foods,
+      recipesById: new Map([[recipe.id, recipe]]),
+    });
+    const allNames = result.groups.flatMap((group) => group.items.map((item) => item.name));
+
+    expect(allNames).toContain("Soyafarse");
+    expect(allNames).not.toContain("Karbonadedeig mager");
   });
 });

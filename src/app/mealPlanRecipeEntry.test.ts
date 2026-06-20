@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
+import { buildDefaultFoodBankItems } from "./foodBankSeed";
 import type { InspirationRecipeItem } from "./inspirationRecipeItems";
-import { recipeToMealPlanEntry } from "./mealPlanRecipeEntry";
+import { buildInspirationRecipeNutritionById, recipeToMealPlanEntry } from "./mealPlanRecipeEntry";
+import { computeRecipeIngredients } from "./recipeMacros";
 
 const EGG_RECIPE: InspirationRecipeItem = {
   id: "r-egg",
@@ -29,5 +31,29 @@ describe("recipeToMealPlanEntry", () => {
     );
     expect(entry.nutritionPer100g.kcal).toBe(0);
     expect(entry.note).toContain("Ingredienser");
+  });
+
+  it("bruker lagrede manuelle matvarekoblinger når oppskriften legges i matplan", () => {
+    const foods = buildDefaultFoodBankItems();
+    const body = "**Til 1 porsjon**\n\n**Ingredienser**\n- 200 g kjøttdeig";
+    const [autoIngredient] = computeRecipeIngredients(body, foods);
+    const soyafarse = foods.find((item) => item.name === "Soyafarse");
+    expect(autoIngredient?.foodName).toBe("Karbonadedeig mager");
+    expect(soyafarse).toBeDefined();
+
+    const recipe: InspirationRecipeItem = {
+      id: "r-soya",
+      title: "Manuelt koblet gryte",
+      description: "Middag",
+      body,
+      servings: 1,
+      ingredientFoodOverrides: { [autoIngredient!.key]: soyafarse!.id },
+    };
+    const entry = recipeToMealPlanEntry(recipe, foods);
+    const nutritionById = buildInspirationRecipeNutritionById([recipe], foods);
+
+    expect(entry.nutritionPer100g.kcal).toBe(690);
+    expect(entry.nutritionPer100g.protein).toBe(100);
+    expect(nutritionById.get(recipe.id)?.kcal).toBe(690);
   });
 });
