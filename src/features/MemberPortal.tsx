@@ -488,27 +488,10 @@ function encodeMemberProfileMetrics(
   );
   const profileExtensions = readProfileExtensions(existingPersonalGoals);
   const payload: ProfileMetricsPayload = {
+    ...profileExtensions,
     ...metrics,
     ...(normalizedHomeVisibility ? { homeVisibility: normalizedHomeVisibility } : {}),
     ...(normalizedFavoritePersonalRecords ? { favoritePersonalRecords: normalizedFavoritePersonalRecords } : {}),
-    ...(profileExtensions.onboarding
-      ? {
-          onboarding: profileExtensions.onboarding as ProfileMetricsPayload["onboarding"],
-          onboardingCompletedAt: String(profileExtensions.onboardingCompletedAt ?? ""),
-        }
-      : profileExtensions.onboardingCompletedAt
-        ? { onboardingCompletedAt: String(profileExtensions.onboardingCompletedAt) }
-        : {}),
-    ...(Array.isArray(profileExtensions.monthlyCheckIns)
-      ? { monthlyCheckIns: profileExtensions.monthlyCheckIns }
-      : {}),
-    ...(Array.isArray(profileExtensions.bodyMetrics) ? { bodyMetrics: profileExtensions.bodyMetrics } : {}),
-    ...(profileExtensions.notificationPreferences && typeof profileExtensions.notificationPreferences === "object"
-      ? { notificationPreferences: profileExtensions.notificationPreferences }
-      : {}),
-    ...(profileExtensions.foodAvoidances && typeof profileExtensions.foodAvoidances === "object"
-      ? { foodAvoidances: profileExtensions.foodAvoidances }
-      : {}),
   };
   return `${PROFILE_METRICS_PREFIX}${JSON.stringify(payload)}`;
 }
@@ -5400,7 +5383,6 @@ export function MemberPortal(props: MemberPortalProps) {
       if (seenPreviousTargets.has(key)) continue;
       seenPreviousTargets.add(key);
       unmarkPeriodPlanDayCompleted(target.planId, target.weekNumber, target.day);
-      dismissPeriodPlanDay(target.planId, target.weekNumber, target.day);
     }
 
     applyPeriodPlanAutoComplete({
