@@ -90,7 +90,7 @@ Deno.serve(async (req) => {
   const jwtMemberId = readJwtMemberId(user as { app_metadata?: Record<string, unknown>; user_metadata?: Record<string, unknown> });
   const requesterRole = (() => {
     const appRole = user.app_metadata?.role;
-    if (appRole === "member" || appRole === "trainer") return app;
+    if (appRole === "member" || appRole === "trainer") return appRole;
     const userRole = user.user_metadata?.role;
     if (userRole === "member" || userRole === "trainer") return userRole;
     return "";

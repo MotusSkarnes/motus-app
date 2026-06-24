@@ -614,9 +614,12 @@ export function TrainerMealPlanEditor({
 
   const previewRecipeAvoidanceConflicts = useMemo(() => {
     if (!previewRecipe) return [];
-    return findRecipeFoodAvoidanceConflicts(previewRecipe.body, foodItemsForMacros, [
-      { id: memberId, name: memberName, personalGoals: memberPersonalGoals, isActive: true },
-    ]);
+    return findRecipeFoodAvoidanceConflicts(
+      previewRecipe.body,
+      foodItemsForMacros,
+      [{ id: memberId, name: memberName, personalGoals: memberPersonalGoals, isActive: true }],
+      { ingredientFoodOverrides: previewRecipe.ingredientFoodOverrides },
+    );
   }, [foodItemsForMacros, memberId, memberName, memberPersonalGoals, previewRecipe]);
 
   const gramPreview = useMemo(() => {
