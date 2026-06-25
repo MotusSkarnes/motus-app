@@ -184,16 +184,20 @@ export function TrainerRecipeComposer({
 
   useEffect(() => {
     if (!open) return;
-    const validKeys = new Set(computeRecipeIngredients(draftBody, foodItemsForMacros).map((row) => row.key));
+    const ingredientRows = computeRecipeIngredients(draftBody, foodItemsForMacros);
     setIngredientFoodOverrides((prev) => {
-      const next = Object.fromEntries(Object.entries(prev).filter(([key]) => validKeys.has(key)));
-      return Object.keys(next).length === Object.keys(prev).length ? prev : next;
+      const next: RecipeIngredientFoodOverrides = {};
+      for (const row of ingredientRows) {
+        const override = prev[row.key] ?? (row.legacyKey ? prev[row.legacyKey] : undefined);
+        if (override) next[row.key] = override;
+      }
+      return JSON.stringify(next) === JSON.stringify(prev) ? prev : next;
     });
   }, [draftBody, foodItemsForMacros, open]);
 
   const avoidanceConflicts = useMemo(
-    () => findRecipeFoodAvoidanceConflicts(draftBody, foodItemsForMacros, members),
-    [draftBody, foodItemsForMacros, members],
+    () => findRecipeFoodAvoidanceConflicts(draftBody, foodItemsForMacros, members, ingredientFoodOverrides),
+    [draftBody, foodItemsForMacros, members, ingredientFoodOverrides],
   );
 
   async function handleImageFile(file: File | null) {

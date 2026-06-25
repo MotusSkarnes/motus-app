@@ -9,6 +9,7 @@ import {
   computeRecipeMacros,
   parseRecipeServings,
   type RecipeIngredient,
+  type RecipeIngredientFoodOverrides,
   type RecipeMacroResult,
 } from "./recipeMacros";
 

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { buildDefaultFoodBankItems } from "./foodBankSeed";
+import { computeRecipeIngredients } from "./recipeMacros";
 import {
   findRecipeFoodAvoidanceConflicts,
   foodAvoidanceFromLabel,
@@ -46,6 +47,35 @@ describe("memberFoodAvoidances", () => {
 
     expect(conflicts.length).toBeGreaterThan(0);
     expect(conflicts[0]?.avoidanceLabel).toBe("Laks");
+  });
+
+  it("finner konflikt når manuell ingrediens-matvare er unngått", () => {
+    const foods = buildDefaultFoodBankItems();
+    const body = "**Til 1 porsjon**\n\n**Ingredienser**\n- 200 g kjøttdeig";
+    const meat = computeRecipeIngredients(body, foods)[0];
+    const soyafarse = foods.find((item) => item.name === "Soyafarse");
+    expect(meat).toBeTruthy();
+    expect(soyafarse).toBeTruthy();
+
+    const personalGoals = mergeMemberFoodAvoidancesIntoPersonalGoals("", {
+      items: [{ foodId: soyafarse!.id, label: "Soyafarse", key: "soyafarse" }],
+      notes: "",
+      updatedAt: Date.now(),
+    });
+
+    const withoutOverride = findRecipeFoodAvoidanceConflicts(body, foods, [
+      { id: "m1", name: "Test Medlem", personalGoals, isActive: true },
+    ]);
+    const withOverride = findRecipeFoodAvoidanceConflicts(
+      body,
+      foods,
+      [{ id: "m1", name: "Test Medlem", personalGoals, isActive: true }],
+      { [meat!.key]: soyafarse!.id },
+    );
+
+    expect(withoutOverride).toHaveLength(0);
+    expect(withOverride).toHaveLength(1);
+    expect(withOverride[0]?.avoidanceLabel).toBe("Soyafarse");
   });
 
   it("mergeFoodAvoidancesAcrossCandidates unioner rader", () => {

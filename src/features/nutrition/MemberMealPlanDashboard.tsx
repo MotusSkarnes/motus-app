@@ -244,7 +244,10 @@ export function MemberMealPlanDashboard({ plan, memberId, onOpenAvoidances, onRe
   const recipeNutritionById = useMemo(() => {
     const byId = new Map<string, FoodItem["nutritionPer100g"]>();
     for (const recipe of inspirationRecipes) {
-      const macros = computeRecipeMacros(recipe.body, foodItems, { servings: recipe.servings });
+      const macros = computeRecipeMacros(recipe.body, foodItems, {
+        servings: recipe.servings,
+        ingredientFoodOverrides: recipe.ingredientFoodOverrides,
+      });
       if (!macros) continue;
       byId.set(recipe.id, {
         kcal: Math.round(macros.perServing.kcal),
@@ -516,6 +519,16 @@ export function MemberMealPlanDashboard({ plan, memberId, onOpenAvoidances, onRe
   const activeRecipeSteps = useMemo(
     () => (activeRecipe ? extractRecipeMethodSteps(activeRecipe.body) : []),
     [activeRecipe],
+  );
+  const activeRecipeMacros = useMemo(
+    () =>
+      activeRecipe
+        ? computeRecipeMacros(activeRecipe.body, foodItems, {
+            servings: activeRecipe.servings,
+            ingredientFoodOverrides: activeRecipe.ingredientFoodOverrides,
+          })
+        : null,
+    [activeRecipe, foodItems],
   );
 
   const handleRecipePortionChange = useCallback(
@@ -1422,6 +1435,7 @@ export function MemberMealPlanDashboard({ plan, memberId, onOpenAvoidances, onRe
                 foodItems={foodItems}
                 recipeId={activeRecipe.id}
                 servings={activeRecipe.servings}
+                foodOverrides={activeRecipe.ingredientFoodOverrides}
               />
               {activeRecipeSteps.length > 0 ? (
                 <section className="rounded-xl border border-slate-200 bg-slate-50/70 p-3">
@@ -1433,9 +1447,7 @@ export function MemberMealPlanDashboard({ plan, memberId, onOpenAvoidances, onRe
                   </ol>
                 </section>
               ) : null}
-              {computeRecipeMacros(activeRecipe.body, foodItems, { servings: activeRecipe.servings }) ? (
-                <RecipeMacroBlocks result={computeRecipeMacros(activeRecipe.body, foodItems, { servings: activeRecipe.servings })!} />
-              ) : null}
+              {activeRecipeMacros ? <RecipeMacroBlocks result={activeRecipeMacros} /> : null}
             </div>
           </div>
         </div>
