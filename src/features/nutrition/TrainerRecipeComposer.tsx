@@ -192,8 +192,8 @@ export function TrainerRecipeComposer({
   }, [draftBody, foodItemsForMacros, open]);
 
   const avoidanceConflicts = useMemo(
-    () => findRecipeFoodAvoidanceConflicts(draftBody, foodItemsForMacros, members),
-    [draftBody, foodItemsForMacros, members],
+    () => findRecipeFoodAvoidanceConflicts(draftBody, foodItemsForMacros, members, ingredientFoodOverrides),
+    [draftBody, foodItemsForMacros, members, ingredientFoodOverrides],
   );
 
   async function handleImageFile(file: File | null) {
