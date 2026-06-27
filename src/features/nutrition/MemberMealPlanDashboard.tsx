@@ -244,7 +244,10 @@ export function MemberMealPlanDashboard({ plan, memberId, onOpenAvoidances, onRe
   const recipeNutritionById = useMemo(() => {
     const byId = new Map<string, FoodItem["nutritionPer100g"]>();
     for (const recipe of inspirationRecipes) {
-      const macros = computeRecipeMacros(recipe.body, foodItems, { servings: recipe.servings });
+      const macros = computeRecipeMacros(recipe.body, foodItems, {
+        servings: recipe.servings,
+        ingredientFoodOverrides: recipe.ingredientFoodOverrides,
+      });
       if (!macros) continue;
       byId.set(recipe.id, {
         kcal: Math.round(macros.perServing.kcal),

@@ -172,6 +172,19 @@ Slik gjør du
     expect(Math.round(ingredients[0]?.grams ?? 0)).toBe(100);
   });
 
+  it("matcher hvitløk som hvitløk, ikke den kortere løk-aliasen", () => {
+    const recipe = `**Til 1 porsjon**
+
+**Ingredienser**
+- 2 fedd hvitløk
+
+**Slik gjør du**
+1. Stek.`;
+    const ingredients = computeRecipeIngredients(recipe, foods);
+    expect(ingredients[0]?.foodName).toBe("Hvitløk");
+    expect(Math.round(ingredients[0]?.grams ?? 0)).toBe(10);
+  });
+
   it("bytter inn kanonisk oppskriftstekst når lagret versjon mangler ingredienser", () => {
     const foods = buildDefaultFoodBankItems();
     const canonical = DEFAULT_INSPIRATION_RECIPES[0];

@@ -4,6 +4,7 @@ import { buildDefaultFoodBankItems } from "./foodBankSeed";
 import { recipeToMealPlanEntry } from "./mealPlanRecipeEntry";
 import type { MealPlan } from "./mealPlanTypes";
 import { buildWeeklyShoppingList } from "./mealPlanShoppingList";
+import { computeRecipeIngredients } from "./recipeMacros";
 
 const BOLOGNESE = DEFAULT_INSPIRATION_RECIPES.find((r) => r.id === "default-recipe-7")!;
 
@@ -76,5 +77,38 @@ describe("buildWeeklyShoppingList", () => {
     const baseGrams = base.groups.reduce((sum, g) => sum + g.items.reduce((s, i) => s + i.grams, 0), 0);
     const doubledGrams = doubled.groups.reduce((sum, g) => sum + g.items.reduce((s, i) => s + i.grams, 0), 0);
     expect(doubledGrams).toBeGreaterThan(baseGrams * 1.8);
+  });
+
+  it("bruker lagrede ingrediens-koblinger når handlelisten ekspanderer oppskrifter", () => {
+    const foods = buildDefaultFoodBankItems();
+    const foodById = new Map(foods.map((f) => [f.id, f]));
+    const body = "**Til 1 porsjon**\n\n**Ingredienser**\n- 200 g kjøttdeig\n\n**Slik gjør du**\n1. Stek.";
+    const auto = computeRecipeIngredients(body, foods)[0];
+    const soyafarse = foods.find((item) => item.name === "Soyafarse");
+    expect(auto?.foodName).toBe("Karbonadedeig mager");
+    expect(soyafarse).toBeTruthy();
+    const recipe = {
+      id: "r-override",
+      title: "Override gryte",
+      description: "Middag",
+      tag: "Middag",
+      body,
+      servings: 1,
+      ingredientFoodOverrides: { [auto!.key]: soyafarse!.id },
+    };
+    const entry = recipeToMealPlanEntry(recipe, foods);
+    const plan = makePlanWithRecipe();
+    plan.days[0].meals[0].items = [entry];
+
+    const result = buildWeeklyShoppingList({
+      plan,
+      foodById,
+      foodItems: foods,
+      recipesById: new Map([[recipe.id, recipe]]),
+    });
+    const allNames = result.groups.flatMap((group) => group.items.map((item) => item.name));
+
+    expect(allNames).toContain("Soyafarse");
+    expect(allNames).not.toContain("Karbonadedeig mager");
   });
 });

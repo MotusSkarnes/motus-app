@@ -149,6 +149,10 @@ const FOOD_ALIASES: Record<string, string> = {
   baer: "blåbær",
 };
 
+const FOOD_ALIAS_ENTRIES = Object.entries(FOOD_ALIASES).sort(
+  ([left], [right]) => right.length - left.length,
+);
+
 const NEGLIGIBLE_PATTERN =
   /^(kanel|salt|pepper|chiliflak|gresslok|persille|basilikum|dill|oregano|paprikakrydder|sukker|valgfritt)/i;
 
@@ -403,13 +407,13 @@ function resolveFoodForIngredient(
 
 function lookupSynthetic(searchText: string): SyntheticFood | null {
   const key = normalizeFoodKey(searchText);
-  for (const [aliasKey, target] of Object.entries(FOOD_ALIASES)) {
+  const direct = SYNTHETIC_BY_KEY.get(key);
+  if (direct) return direct;
+  for (const [aliasKey, target] of FOOD_ALIAS_ENTRIES) {
     if (key.includes(aliasKey) && SYNTHETIC_BY_KEY.has(normalizeFoodKey(target))) {
       return SYNTHETIC_BY_KEY.get(normalizeFoodKey(target)) ?? null;
     }
   }
-  const direct = SYNTHETIC_BY_KEY.get(key);
-  if (direct) return direct;
   for (const [synKey, row] of SYNTHETIC_BY_KEY) {
     if (key.includes(synKey) || synKey.includes(key)) return row;
   }
@@ -429,7 +433,7 @@ function lookupFoodBankItem(searchText: string, foodItems: FoodItem[]): FoodItem
   const exact = foodItems.find((item) => normalizeFoodKey(item.name) === key);
   if (exact) return exact;
 
-  for (const [aliasKey, targetName] of Object.entries(FOOD_ALIASES)) {
+  for (const [aliasKey, targetName] of FOOD_ALIAS_ENTRIES) {
     if (key.includes(aliasKey)) {
       const normalizedTarget = normalizeFoodKey(targetName);
       const hit = foodItems.find((item) => normalizeFoodKey(item.name).includes(normalizedTarget));
@@ -475,7 +479,7 @@ export function isConfidentIngredientFoodMatch(searchText: string, foodName: str
   const foodKey = normalizeFoodKey(foodName);
   if (!key || !foodKey) return false;
   if (key === foodKey || foodKey.includes(key) || key.includes(foodKey)) return true;
-  for (const [aliasKey, targetName] of Object.entries(FOOD_ALIASES)) {
+  for (const [aliasKey, targetName] of FOOD_ALIAS_ENTRIES) {
     if (!key.includes(aliasKey)) continue;
     const targetKey = normalizeFoodKey(targetName);
     if (foodKey.includes(targetKey) || targetKey.includes(foodKey)) return true;
