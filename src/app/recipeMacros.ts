@@ -178,6 +178,54 @@ function normalizeFoodKey(value: string): string {
     .replace(/æ/g, "ae");
 }
 
+function recipeIngredientOverrideKey(searchText: string, occurrence: number): string {
+  const key = normalizeFoodKey(searchText) || "ingredient";
+  return occurrence > 0 ? `ing-${key}-${occurrence + 1}` : `ing-${key}`;
+}
+
+function nextRecipeIngredientOverrideKey(parsed: ParsedIngredient, occurrences: Map<string, number>): string {
+  const base = normalizeFoodKey(parsed.searchText) || "ingredient";
+  const occurrence = occurrences.get(base) ?? 0;
+  occurrences.set(base, occurrence + 1);
+  return recipeIngredientOverrideKey(parsed.searchText, occurrence);
+}
+
+export function normalizeRecipeIngredientFoodOverrides(
+  body: string,
+  overrides: RecipeIngredientFoodOverrides | undefined,
+): RecipeIngredientFoodOverrides {
+  if (!overrides || !Object.keys(overrides).length) return {};
+
+  const cleaned = Object.entries(overrides).flatMap(([key, value]) => {
+    const trimmedKey = key.trim();
+    const trimmedValue = value.trim();
+    return trimmedKey && trimmedValue ? [[trimmedKey, trimmedValue] as const] : [];
+  });
+  if (!cleaned.length) return {};
+
+  const legacyToStable = new Map<string, string>();
+  const occurrences = new Map<string, number>();
+  extractRecipeIngredientLines(body).forEach((line, index) => {
+    const parsed = parseIngredientLine(line);
+    if (!parsed) return;
+    legacyToStable.set(`ing-${index}`, nextRecipeIngredientOverrideKey(parsed, occurrences));
+  });
+
+  const normalized: RecipeIngredientFoodOverrides = {};
+  for (const [key, value] of cleaned) {
+    if (/^ing-\d+$/.test(key)) continue;
+    normalized[key] = value;
+  }
+  for (const [key, value] of cleaned) {
+    if (!/^ing-\d+$/.test(key)) continue;
+    const stableKey = legacyToStable.get(key);
+    if (stableKey && !normalized[stableKey]) {
+      normalized[stableKey] = value;
+    }
+  }
+  return normalized;
+}
+
 export function parseRecipeServings(body: string, override?: number): number {
   if (typeof override === "number" && Number.isFinite(override) && override > 0) {
     return Math.max(1, Math.round(override));
@@ -560,10 +608,12 @@ export function computeRecipeIngredients(
 ): RecipeIngredient[] {
   const lines = extractRecipeIngredientLines(body);
   const rows: RecipeIngredient[] = [];
+  const occurrences = new Map<string, number>();
 
-  lines.forEach((line, index) => {
+  lines.forEach((line) => {
     const parsed = parseIngredientLine(line);
     if (!parsed) return;
+    const key = nextRecipeIngredientOverrideKey(parsed, occurrences);
 
     const food = resolveFoodForIngredient(parsed.searchText, foodItems);
     if (!food) return;
@@ -577,7 +627,7 @@ export function computeRecipeIngredients(
 
     const name = food.name;
     rows.push({
-      key: `ing-${index}`,
+      key,
       sourceLine: line,
       searchText: parsed.searchText,
       displayAmount: formatIngredientDisplay(parsed, grams, name),

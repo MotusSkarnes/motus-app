@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
+import { buildDefaultFoodBankItems } from "./foodBankSeed";
 import { filterRecipeInspirationItems } from "./inspirationRecipeItems";
+import { computeRecipeIngredients } from "./recipeMacros";
 
 describe("filterRecipeInspirationItems", () => {
   it("lar lagrede oppskrifter overstyre standardoppskrifter med samme id", () => {
@@ -56,5 +58,27 @@ describe("filterRecipeInspirationItems", () => {
     ]);
     const hit = merged.find((row) => row.id === "default-recipe-1");
     expect(hit?.imageUrl).toBe("https://example.com/protein-bowl.jpg");
+  });
+
+  it("migrerer lagrede indeksbaserte ingredienskoblinger ved lasting", () => {
+    const foods = buildDefaultFoodBankItems();
+    const soyafarse = foods.find((item) => item.name === "Soyafarse");
+    expect(soyafarse).toBeTruthy();
+    const body = "**Til 1 porsjon**\n\n**Ingredienser**\n- 200 g kjøttdeig";
+    const merged = filterRecipeInspirationItems([
+      {
+        id: "custom-recipe",
+        category: "recipes",
+        title: "Vegetar bolognese",
+        description: "Middag",
+        body,
+        tag: "Middag",
+        ingredientFoodOverrides: { "ing-0": soyafarse!.id },
+      },
+    ]);
+
+    const hit = merged.find((row) => row.id === "custom-recipe");
+    const key = computeRecipeIngredients(body, foods)[0]?.key;
+    expect(hit?.ingredientFoodOverrides).toEqual({ [key!]: soyafarse!.id });
   });
 });
