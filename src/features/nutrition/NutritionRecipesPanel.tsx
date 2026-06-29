@@ -286,8 +286,14 @@ export function NutritionRecipesPanel({ mealPlanTargets, canManage, onEdit, onDu
         dailyTargets: mealPlanTargets,
         mealSlot,
         servings: item.servings,
+        ingredientFoodOverrides: item.ingredientFoodOverrides,
       });
-      const macros = view?.macros ?? computeRecipeMacros(item.body, foodItems, { servings: item.servings });
+      const macros =
+        view?.macros ??
+        computeRecipeMacros(item.body, foodItems, {
+          servings: item.servings,
+          ingredientFoodOverrides: item.ingredientFoodOverrides,
+        });
       map.set(item.id, { macros, adjusted: view?.adjusted ?? false });
     }
     return map;

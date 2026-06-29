@@ -6,6 +6,7 @@ import {
   computeRecipeIngredients,
   computeRecipeMacros,
   extractRecipeIngredientLines,
+  normalizeRecipeIngredientFoodOverrides,
   parseIngredientLine,
   parseRecipeServings,
 } from "./recipeMacros";
@@ -201,5 +202,30 @@ Slik gjør du
     const overridden = computeRecipeIngredients(body, foods, { [auto!.key]: soyafarse!.id });
     expect(overridden[0]?.foodName).toBe("Soyafarse");
     expect(overridden[0]?.grams).toBe(200);
+  });
+
+  it("beholder manuelle matvarekoblinger når ingredienser settes inn før raden", () => {
+    const originalBody = `**Ingredienser**\n- 200 g kjøttdeig`;
+    const editedBody = `**Ingredienser**\n- 1 ss olivenolje\n- 200 g kjøttdeig`;
+    const soyafarse = foods.find((item) => item.name === "Soyafarse");
+    expect(soyafarse).toBeTruthy();
+
+    const [original] = computeRecipeIngredients(originalBody, foods);
+    const overrides = { [original!.key]: soyafarse!.id };
+    const edited = computeRecipeIngredients(editedBody, foods, overrides);
+
+    expect(original?.key).toBe("ing-kjottdeig");
+    expect(edited.find((row) => row.searchText === "kjøttdeig")?.foodName).toBe("Soyafarse");
+    expect(edited.find((row) => row.searchText === "olivenolje")?.foodName).not.toBe("Soyafarse");
+  });
+
+  it("migrerer gamle indeksbaserte koblinger til stabile ingrediensnøkler", () => {
+    const body = `**Ingredienser**\n- 200 g kjøttdeig`;
+    const soyafarse = foods.find((item) => item.name === "Soyafarse");
+    expect(soyafarse).toBeTruthy();
+
+    const normalized = normalizeRecipeIngredientFoodOverrides(body, foods, { "ing-0": soyafarse!.id });
+
+    expect(normalized).toEqual({ "ing-kjottdeig": soyafarse!.id });
   });
 });
