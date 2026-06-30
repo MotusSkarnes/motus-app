@@ -19,7 +19,13 @@ import {
   isRecipeProteinCategory,
   type RecipeProteinCategory,
 } from "../../app/recipeProteinCategory";
-import { computeRecipeIngredients, computeRecipeMacros, parseRecipeServings, type RecipeIngredientFoodOverrides } from "../../app/recipeMacros";
+import {
+  computeRecipeIngredients,
+  computeRecipeMacros,
+  normalizeRecipeIngredientFoodOverrides,
+  parseRecipeServings,
+  type RecipeIngredientFoodOverrides,
+} from "../../app/recipeMacros";
 import { RecipeAvoidanceWarning } from "../../components/RecipeAvoidanceWarning";
 import { RecipeImageField } from "../../components/RecipeImageField";
 import { RecipeIngredientList } from "../../components/RecipeIngredientList";
@@ -186,14 +192,18 @@ export function TrainerRecipeComposer({
     if (!open) return;
     const validKeys = new Set(computeRecipeIngredients(draftBody, foodItemsForMacros).map((row) => row.key));
     setIngredientFoodOverrides((prev) => {
-      const next = Object.fromEntries(Object.entries(prev).filter(([key]) => validKeys.has(key)));
-      return Object.keys(next).length === Object.keys(prev).length ? prev : next;
+      const normalized = normalizeRecipeIngredientFoodOverrides(draftBody, foodItemsForMacros, prev);
+      const next = Object.fromEntries(Object.entries(normalized).filter(([key]) => validKeys.has(key)));
+      const unchanged =
+        Object.keys(next).length === Object.keys(prev).length &&
+        Object.entries(next).every(([key, value]) => prev[key] === value);
+      return unchanged ? prev : next;
     });
   }, [draftBody, foodItemsForMacros, open]);
 
   const avoidanceConflicts = useMemo(
-    () => findRecipeFoodAvoidanceConflicts(draftBody, foodItemsForMacros, members),
-    [draftBody, foodItemsForMacros, members],
+    () => findRecipeFoodAvoidanceConflicts(draftBody, foodItemsForMacros, members, { ingredientFoodOverrides }),
+    [draftBody, foodItemsForMacros, members, ingredientFoodOverrides],
   );
 
   async function handleImageFile(file: File | null) {

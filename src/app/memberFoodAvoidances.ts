@@ -1,6 +1,6 @@
 import { parsePersonalGoalsJson, readProfileExtensions } from "./memberProfilePayload";
 import type { FoodItem } from "./foodBankTypes";
-import { computeRecipeIngredients, type RecipeIngredient } from "./recipeMacros";
+import { computeRecipeIngredients, type RecipeIngredient, type RecipeIngredientFoodOverrides } from "./recipeMacros";
 
 const PROFILE_METRICS_PREFIX = "MOTUS_PROFILE_V1:";
 
@@ -181,13 +181,17 @@ function ingredientMatchesAvoidance(ingredient: RecipeIngredient, avoidance: Mem
 
   const foodKey = normalizeAvoidanceKey(ingredient.foodName);
   const lineKey = normalizeAvoidanceKey(ingredient.sourceLine);
+  const allowSourceLineMatch = !ingredient.isFoodOverride;
 
-  if (foodKey === avoidKey || lineKey === avoidKey) return true;
+  if (foodKey === avoidKey || (allowSourceLineMatch && lineKey === avoidKey)) return true;
   if (foodKey.includes(avoidKey) || avoidKey.includes(foodKey)) return true;
-  if (lineKey.includes(avoidKey)) return true;
+  if (allowSourceLineMatch && lineKey.includes(avoidKey)) return true;
 
   const tokens = avoidKey.match(/[a-z0-9]{3,}/g) ?? [];
-  if (tokens.length >= 2 && tokens.every((token) => foodKey.includes(token) || lineKey.includes(token))) {
+  if (
+    tokens.length >= 2 &&
+    tokens.every((token) => foodKey.includes(token) || (allowSourceLineMatch && lineKey.includes(token)))
+  ) {
     return true;
   }
 
@@ -198,8 +202,9 @@ export function findRecipeFoodAvoidanceConflicts(
   recipeBody: string,
   foodItems: FoodItem[],
   members: MemberAvoidanceSource[],
+  options?: { ingredientFoodOverrides?: RecipeIngredientFoodOverrides },
 ): RecipeFoodAvoidanceConflict[] {
-  const ingredients = computeRecipeIngredients(recipeBody, foodItems);
+  const ingredients = computeRecipeIngredients(recipeBody, foodItems, options?.ingredientFoodOverrides);
   if (!ingredients.length) return [];
 
   const conflicts: RecipeFoodAvoidanceConflict[] = [];
