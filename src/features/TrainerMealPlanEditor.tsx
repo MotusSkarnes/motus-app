@@ -162,10 +162,16 @@ export function TrainerMealPlanEditor({
   const suppressReloadUntilRef = useRef(0);
   const memberEmailRef = useRef(memberEmail);
   const trackedMemberIdRef = useRef(memberId.trim());
-  memberEmailRef.current = memberEmail;
   const foodItemsForMacrosRef = useRef(foodItemsForMacros);
-  foodItemsForMacrosRef.current = foodItemsForMacros;
   const recipesById = useMemo(() => new Map(recipeItems.map((recipe) => [recipe.id, recipe])), [recipeItems]);
+
+  useEffect(() => {
+    memberEmailRef.current = memberEmail;
+  }, [memberEmail]);
+
+  useEffect(() => {
+    foodItemsForMacrosRef.current = foodItemsForMacros;
+  }, [foodItemsForMacros]);
 
   const applyPendingFood = useCallback(
     (currentPlan: MealPlan) => {
@@ -345,7 +351,7 @@ export function TrainerMealPlanEditor({
       creatingPlanRef.current = false;
       setCreatingPlan(false);
     }
-  }, [memberId, memberEmail, trainerOwnerUserId, applyLoadedPlan, creatingPlan, draftMealSlotIds]);
+  }, [memberId, trainerOwnerUserId, applyLoadedPlan, creatingPlan, draftMealSlotIds]);
 
   const handleDeleteMealPlan = useCallback(async () => {
     const trimmedMemberId = memberId.trim();
@@ -850,7 +856,7 @@ export function TrainerMealPlanEditor({
   const targetBalanceHint = useMemo(() => {
     if (!plan?.targets) return null;
     return describeTargetBalance(plan.targets, derivedTargetField);
-  }, [plan?.targets, derivedTargetField]);
+  }, [plan, derivedTargetField]);
 
   const macroSplit = useMemo(() => resolveMacroSplit(plan?.targets), [plan?.targets]);
   const macroSplitLocked = useMemo(
