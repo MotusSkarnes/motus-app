@@ -4,6 +4,7 @@ import { buildDefaultFoodBankItems } from "./foodBankSeed";
 import { recipeToMealPlanEntry } from "./mealPlanRecipeEntry";
 import type { MealPlan } from "./mealPlanTypes";
 import { buildWeeklyShoppingList } from "./mealPlanShoppingList";
+import { computeRecipeIngredients } from "./recipeMacros";
 
 const BOLOGNESE = DEFAULT_INSPIRATION_RECIPES.find((r) => r.id === "default-recipe-7")!;
 
@@ -76,5 +77,37 @@ describe("buildWeeklyShoppingList", () => {
     const baseGrams = base.groups.reduce((sum, g) => sum + g.items.reduce((s, i) => s + i.grams, 0), 0);
     const doubledGrams = doubled.groups.reduce((sum, g) => sum + g.items.reduce((s, i) => s + i.grams, 0), 0);
     expect(doubledGrams).toBeGreaterThan(baseGrams * 1.8);
+  });
+
+  it("bruker manuelle ingrediensmatvarer i handlelisten", () => {
+    const foods = buildDefaultFoodBankItems();
+    const foodById = new Map(foods.map((f) => [f.id, f]));
+    const body = "**Til 1 porsjon**\n\n**Ingredienser**\n- 200 g kjøttdeig";
+    const autoIngredient = computeRecipeIngredients(body, foods)[0];
+    const soyafarse = foods.find((f) => f.name === "Soyafarse");
+    expect(autoIngredient?.foodName).toBe("Karbonadedeig mager");
+    expect(soyafarse).toBeDefined();
+
+    const recipe = {
+      id: "r-soya",
+      title: "Soya bolognese",
+      description: "Middag",
+      body,
+      tag: "Middag",
+      ingredientFoodOverrides: { [autoIngredient!.key]: soyafarse!.id },
+    };
+    const plan = makePlanWithRecipe();
+    plan.days[0].meals[0].items = [recipeToMealPlanEntry(recipe, foods)];
+
+    const result = buildWeeklyShoppingList({
+      plan,
+      foodById,
+      foodItems: foods,
+      recipesById: new Map([[recipe.id, recipe]]),
+    });
+    const names = result.groups.flatMap((group) => group.items.map((item) => item.name));
+
+    expect(names).toContain("Soyafarse");
+    expect(names).not.toContain("Karbonadedeig mager");
   });
 });

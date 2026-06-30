@@ -192,7 +192,7 @@ export function RecipeIngredientList({
     return ingredients.map((ing) => {
       const auto = baseIngredients.find((row) => row.key === ing.key);
       const autoName = auto?.foodName ?? ing.foodName;
-      const manualOverride = Boolean(foodOverrides?.[ing.key]);
+      const manualOverride = Boolean(foodOverrides?.[ing.key] ?? (ing.legacyKey ? foodOverrides?.[ing.legacyKey] : undefined));
       const previewSwapId = editable ? undefined : previewSwaps[ing.key];
       const effectiveId = previewSwapId ?? ing.foodId;
       let row: DisplayIngredient = {

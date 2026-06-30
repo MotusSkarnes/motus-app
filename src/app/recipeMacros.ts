@@ -18,6 +18,7 @@ export type RecipeMacroOptions = {
 
 export type RecipeIngredient = {
   key: string;
+  legacyKey?: string;
   sourceLine: string;
   searchText: string;
   displayAmount: string;
@@ -27,6 +28,7 @@ export type RecipeIngredient = {
   grams: number;
   macros: MacroTotals;
   nutritionPer100g: FoodNutrition;
+  isFoodOverride?: boolean;
 };
 
 export type RecipeIngredientFoodOverrides = Record<string, string>;
@@ -470,6 +472,13 @@ function foodRowId(food: FoodItem | SyntheticFood): string {
   return "id" in food ? food.id : `synthetic:${normalizeFoodKey(food.name)}`;
 }
 
+function recipeIngredientKey(parsed: ParsedIngredient, seenKeys: Map<string, number>): string {
+  const base = `ing:${normalizeFoodKey(parsed.searchText) || "ingredient"}`;
+  const count = (seenKeys.get(base) ?? 0) + 1;
+  seenKeys.set(base, count);
+  return count === 1 ? base : `${base}:${count}`;
+}
+
 export function isConfidentIngredientFoodMatch(searchText: string, foodName: string): boolean {
   const key = normalizeFoodKey(searchText);
   const foodKey = normalizeFoodKey(foodName);
@@ -490,7 +499,7 @@ export function applyRecipeIngredientFoodOverrides(
 ): RecipeIngredient[] {
   if (!overrides || !Object.keys(overrides).length) return ingredients;
   return ingredients.map((ingredient) => {
-    const overrideId = overrides[ingredient.key]?.trim();
+    const overrideId = (overrides[ingredient.key] ?? (ingredient.legacyKey ? overrides[ingredient.legacyKey] : undefined))?.trim();
     if (!overrideId) return ingredient;
     const food = foodItems.find((item) => item.id === overrideId);
     if (!food) return ingredient;
@@ -504,6 +513,7 @@ export function applyRecipeIngredientFoodOverrides(
       macros: computeMacrosForGrams(food.nutritionPer100g, grams),
       nutritionPer100g: food.nutritionPer100g,
       displayAmount: `${Math.round(grams)} g ${food.name}`,
+      isFoodOverride: true,
     };
   });
 }
@@ -553,6 +563,22 @@ export function formatIngredientDisplay(
   return `${Math.round(grams)} g ${foodName}`;
 }
 
+export function normalizeRecipeIngredientFoodOverrides(
+  body: string,
+  foodItems: FoodItem[],
+  overrides: RecipeIngredientFoodOverrides | undefined,
+): RecipeIngredientFoodOverrides {
+  if (!overrides || !Object.keys(overrides).length) return {};
+  const ingredients = computeRecipeIngredients(body, foodItems);
+  const normalized: RecipeIngredientFoodOverrides = {};
+  for (const ingredient of ingredients) {
+    const overrideId = (overrides[ingredient.key] ?? (ingredient.legacyKey ? overrides[ingredient.legacyKey] : undefined))?.trim();
+    if (!overrideId) continue;
+    normalized[ingredient.key] = overrideId;
+  }
+  return normalized;
+}
+
 export function computeRecipeIngredients(
   body: string,
   foodItems: FoodItem[],
@@ -560,6 +586,7 @@ export function computeRecipeIngredients(
 ): RecipeIngredient[] {
   const lines = extractRecipeIngredientLines(body);
   const rows: RecipeIngredient[] = [];
+  const seenKeys = new Map<string, number>();
 
   lines.forEach((line, index) => {
     const parsed = parseIngredientLine(line);
@@ -577,7 +604,8 @@ export function computeRecipeIngredients(
 
     const name = food.name;
     rows.push({
-      key: `ing-${index}`,
+      key: recipeIngredientKey(parsed, seenKeys),
+      legacyKey: `ing-${index}`,
       sourceLine: line,
       searchText: parsed.searchText,
       displayAmount: formatIngredientDisplay(parsed, grams, name),
