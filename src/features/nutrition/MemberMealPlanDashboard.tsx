@@ -158,7 +158,7 @@ function firstRecipeIdFromMeal(
 }
 
 export function isRecipeEntry(foodId: string, note?: string): boolean {
-  if (Boolean(parseInspirationRecipeFoodId(foodId))) return true;
+  if (parseInspirationRecipeFoodId(foodId)) return true;
   return String(note ?? "").toLowerCase().includes("oppskrift");
 }
 
@@ -180,7 +180,7 @@ export function extractRecipeMethodSteps(body: string): string[] {
     if (/^tips\s*:?/i.test(raw.replace(/^\*\*|\*\*$/g, "").trim())) break;
     const cleaned = raw
       .replace(/^[-*]\s+/, "")
-      .replace(/^\d+[\).]?\s+/, "")
+      .replace(/^\d+[).]?\s+/, "")
       .trim();
     if (cleaned) steps.push(cleaned);
   }
