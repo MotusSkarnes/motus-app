@@ -163,7 +163,7 @@ export function RecipeIngredientList({
     () =>
       scalingModeProp ??
       resolveRecipeScalingMode({ id: recipeId, body, servings: servingsProp }),
-    [scalingModeProp, recipeId, body, mealSlot, servingsProp],
+    [scalingModeProp, recipeId, body, servingsProp],
   );
   const scaledView = useMemo(
     () =>
@@ -194,7 +194,6 @@ export function RecipeIngredientList({
       const autoName = auto?.foodName ?? ing.foodName;
       const manualOverride = Boolean(foodOverrides?.[ing.key] ?? (ing.legacyKey ? foodOverrides?.[ing.legacyKey] : undefined));
       const previewSwapId = editable ? undefined : previewSwaps[ing.key];
-      const effectiveId = previewSwapId ?? ing.foodId;
       let row: DisplayIngredient = {
         ...ing,
         autoMatchedName: autoName,
