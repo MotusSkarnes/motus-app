@@ -202,7 +202,7 @@ export function extractRecipeIngredientLines(body: string): string[] {
   return section
     .split("\n")
     .map((line) => line.trim())
-    .map((line) => line.replace(/^[-*•]\s+/, "").replace(/^\d+[\).]\s+/, "").trim())
+    .map((line) => line.replace(/^[-*•]\s+/, "").replace(/^\d+[).]\s+/, "").trim())
     .filter(
       (line) =>
         line.length > 0 &&
