@@ -418,7 +418,7 @@ function lookupSynthetic(searchText: string): SyntheticFood | null {
   return null;
 }
 
-function lookupFoodBankItem(searchText: string, foodItems: FoodItem[]): FoodItem | null {
+function lookupFoodBankItem(searchText: string, foodItems: FoodItem[]): FoodItem | SyntheticFood | null {
   const key = normalizeFoodKey(searchText);
 
   if (key.includes("eller")) {
