@@ -123,6 +123,8 @@ function expandRecipeEntryToTotals(
     scalingMode,
     dailyTargets: planTargets,
     mealSlot,
+    servings: recipe.servings,
+    ingredientFoodOverrides: recipe.ingredientFoodOverrides,
   });
 
   if (!scaled?.ingredients.length) {

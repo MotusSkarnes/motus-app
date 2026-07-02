@@ -21,6 +21,7 @@ describe("recipeMealScaling", () => {
     expect(view!.adjusted).toBe(true);
     expect(view!.macros.perServing.kcal).toBeGreaterThan(400);
     expect(view!.macros.perServing.kcal).toBeLessThan(900);
+    expect(view!.macros.perServingMicronutrients.calcium).toBeGreaterThanOrEqual(0);
   });
 
   it("skalerer ikke faste oppskrifter", () => {

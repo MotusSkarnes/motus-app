@@ -1,4 +1,5 @@
 import type { FoodItem } from "./foodBankTypes";
+import { EMPTY_MICRONUTRIENTS, type FoodMicronutrients } from "./foodBankMicronutrients";
 import { computeMacrosForGrams, type MacroTotals } from "./mealPlanMacros";
 import type { MealPlanTargets } from "./mealPlanTypes";
 import { DEFAULT_RECIPE_SCALING_BY_ID } from "./defaultInspirationRecipes";
@@ -9,6 +10,7 @@ import {
   computeRecipeMacros,
   parseRecipeServings,
   type RecipeIngredient,
+  type RecipeIngredientFoodOverrides,
   type RecipeMacroResult,
 } from "./recipeMacros";
 
@@ -99,6 +101,15 @@ function macrosFromIngredients(ingredients: RecipeIngredient[], servings: number
     }),
     { kcal: 0, protein: 0, carbs: 0, fat: 0 },
   );
+  const micronutrientTotals = ingredients.reduce((acc, row) => {
+    const micros = row.nutritionPer100g.micronutrients;
+    if (!micros) return acc;
+    const factor = row.grams / 100;
+    for (const key of Object.keys(acc) as (keyof FoodMicronutrients)[]) {
+      acc[key] += (micros[key] ?? 0) * factor;
+    }
+    return acc;
+  }, { ...EMPTY_MICRONUTRIENTS });
   const safeServings = servings > 0 ? servings : 1;
   return {
     perServing: {
@@ -107,6 +118,12 @@ function macrosFromIngredients(ingredients: RecipeIngredient[], servings: number
       carbs: totals.carbs / safeServings,
       fat: totals.fat / safeServings,
     },
+    perServingMicronutrients: Object.fromEntries(
+      (Object.keys(micronutrientTotals) as (keyof FoodMicronutrients)[]).map((key) => [
+        key,
+        micronutrientTotals[key] / safeServings,
+      ]),
+    ) as FoodMicronutrients,
     servings: safeServings,
     matchedCount: ingredients.length,
     ingredientCount: ingredients.length,
