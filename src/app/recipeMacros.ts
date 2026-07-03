@@ -260,6 +260,11 @@ export type ParsedIngredient = {
   unit?: string;
 };
 
+function recipeIngredientIdentityKey(parsed: ParsedIngredient, sourceLine: string): string {
+  const key = normalizeFoodKey(parsed.searchText) || normalizeFoodKey(sourceLine) || "ingredient";
+  return `ingredient-${key}`;
+}
+
 export function parseIngredientLine(line: string): ParsedIngredient | null {
   let text = line.trim();
   if (!text) return null;
@@ -489,8 +494,8 @@ export function applyRecipeIngredientFoodOverrides(
   foodItems: FoodItem[],
 ): RecipeIngredient[] {
   if (!overrides || !Object.keys(overrides).length) return ingredients;
-  return ingredients.map((ingredient) => {
-    const overrideId = overrides[ingredient.key]?.trim();
+  return ingredients.map((ingredient, index) => {
+    const overrideId = (overrides[ingredient.key] ?? overrides[`ing-${index}`])?.trim();
     if (!overrideId) return ingredient;
     const food = foodItems.find((item) => item.id === overrideId);
     if (!food) return ingredient;
@@ -560,8 +565,9 @@ export function computeRecipeIngredients(
 ): RecipeIngredient[] {
   const lines = extractRecipeIngredientLines(body);
   const rows: RecipeIngredient[] = [];
+  const keyOccurrences = new Map<string, number>();
 
-  lines.forEach((line, index) => {
+  lines.forEach((line) => {
     const parsed = parseIngredientLine(line);
     if (!parsed) return;
 
@@ -576,8 +582,11 @@ export function computeRecipeIngredients(
     if (grams <= 0) return;
 
     const name = food.name;
+    const baseKey = recipeIngredientIdentityKey(parsed, line);
+    const occurrence = (keyOccurrences.get(baseKey) ?? 0) + 1;
+    keyOccurrences.set(baseKey, occurrence);
     rows.push({
-      key: `ing-${index}`,
+      key: occurrence === 1 ? baseKey : `${baseKey}-${occurrence}`,
       sourceLine: line,
       searchText: parsed.searchText,
       displayAmount: formatIngredientDisplay(parsed, grams, name),
@@ -591,6 +600,37 @@ export function computeRecipeIngredients(
   });
 
   return applyRecipeIngredientFoodOverrides(rows, overrides, foodItems);
+}
+
+export function normalizeRecipeIngredientFoodOverrides(
+  body: string,
+  foodItems: FoodItem[],
+  overrides: RecipeIngredientFoodOverrides | undefined,
+): RecipeIngredientFoodOverrides {
+  if (!overrides || !Object.keys(overrides).length) return {};
+
+  const ingredients = computeRecipeIngredients(body, foodItems);
+  const validKeys = new Set(ingredients.map((row) => row.key));
+  const next: RecipeIngredientFoodOverrides = {};
+
+  for (const [key, foodId] of Object.entries(overrides)) {
+    const trimmedFoodId = foodId.trim();
+    if (!trimmedFoodId) continue;
+    if (validKeys.has(key)) {
+      next[key] = trimmedFoodId;
+      continue;
+    }
+
+    const legacyMatch = key.match(/^ing-(\d+)$/);
+    if (!legacyMatch) continue;
+    const legacyIndex = Number.parseInt(legacyMatch[1], 10);
+    const target = ingredients[legacyIndex];
+    if (target && !next[target.key]) {
+      next[target.key] = trimmedFoodId;
+    }
+  }
+
+  return next;
 }
 
 /** Bytter inn standard oppskriftstekst når lagret versjon mangler ingrediensliste som kan beregnes. */
