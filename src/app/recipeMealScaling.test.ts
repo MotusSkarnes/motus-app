@@ -34,6 +34,18 @@ describe("recipeMealScaling", () => {
     expect(view?.adjusted).toBe(false);
   });
 
+  it("beholder mikronæringsverdier i skalert oppskriftsvisning", () => {
+    const recipe = DEFAULT_INSPIRATION_RECIPES.find((row) => row.id === "default-recipe-13")!;
+    const view = buildScaledRecipeView(recipe.body, foods, {
+      scalingMode: "flexible",
+      dailyTargets: { kcal: 2000 },
+      mealSlot: "middag",
+    });
+
+    expect(view?.macros.perServingMicronutrients.calcium).toBeGreaterThanOrEqual(0);
+    expect(view?.macros.perServingMicronutrients.iron).toBeGreaterThanOrEqual(0);
+  });
+
   it("begrenser skaleringsfaktor", () => {
     expect(computeIngredientScaleFactor(500, 700, "flexible")).toBeCloseTo(1.4, 1);
     expect(computeIngredientScaleFactor(900, 400, "flexible")).toBe(0.7);
