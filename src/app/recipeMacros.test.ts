@@ -202,4 +202,22 @@ Slik gjør du
     expect(overridden[0]?.foodName).toBe("Soyafarse");
     expect(overridden[0]?.grams).toBe(200);
   });
+
+  it("beholder manuelle matvarekoblinger når ingredienser settes inn før raden", () => {
+    const body = `**Ingredienser**\n- 200 g kjøttdeig`;
+    const auto = computeRecipeIngredients(body, foods)[0];
+    const soyafarse = foods.find((item) => item.name === "Soyafarse");
+    expect(auto?.key).toBeTruthy();
+    expect(soyafarse).toBeTruthy();
+
+    const editedBody = `**Ingredienser**\n- 1 løk\n- 200 g kjøttdeig`;
+    const overridden = computeRecipeIngredients(editedBody, foods, { [auto!.key]: soyafarse!.id });
+    const onion = overridden.find((row) => row.searchText.includes("løk"));
+    const meat = overridden.find((row) => row.searchText.includes("kjøttdeig"));
+    expect(onion?.foodName).toBe("Løk");
+    expect(meat?.foodName).toBe("Soyafarse");
+
+    const legacyOverridden = computeRecipeIngredients(body, foods, { [auto!.legacyKey!]: soyafarse!.id });
+    expect(legacyOverridden[0]?.foodName).toBe("Soyafarse");
+  });
 });

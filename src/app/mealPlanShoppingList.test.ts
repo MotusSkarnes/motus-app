@@ -4,6 +4,7 @@ import { buildDefaultFoodBankItems } from "./foodBankSeed";
 import { recipeToMealPlanEntry } from "./mealPlanRecipeEntry";
 import type { MealPlan } from "./mealPlanTypes";
 import { buildWeeklyShoppingList } from "./mealPlanShoppingList";
+import { computeRecipeIngredients } from "./recipeMacros";
 
 const BOLOGNESE = DEFAULT_INSPIRATION_RECIPES.find((r) => r.id === "default-recipe-7")!;
 
@@ -76,5 +77,50 @@ describe("buildWeeklyShoppingList", () => {
     const baseGrams = base.groups.reduce((sum, g) => sum + g.items.reduce((s, i) => s + i.grams, 0), 0);
     const doubledGrams = doubled.groups.reduce((sum, g) => sum + g.items.reduce((s, i) => s + i.grams, 0), 0);
     expect(doubledGrams).toBeGreaterThan(baseGrams * 1.8);
+  });
+
+  it("viser ingrediensmengder per oppskriftsporsjon", () => {
+    const foods = buildDefaultFoodBankItems();
+    const foodById = new Map(foods.map((f) => [f.id, f]));
+    const recipesById = new Map([[BOLOGNESE.id, { ...BOLOGNESE, scalingMode: BOLOGNESE.scalingMode }]]);
+    const result = buildWeeklyShoppingList({
+      plan: makePlanWithRecipe(),
+      foodById,
+      foodItems: foods,
+      recipesById,
+    });
+
+    const meat = result.groups
+      .flatMap((group) => group.items)
+      .find((item) => item.name.toLowerCase().includes("karbonadedeig"));
+    expect(meat?.grams).toBeGreaterThanOrEqual(95);
+    expect(meat?.grams).toBeLessThanOrEqual(105);
+  });
+
+  it("bruker lagrede ingredienskoblinger i handlelisten", () => {
+    const foods = buildDefaultFoodBankItems();
+    const foodById = new Map(foods.map((f) => [f.id, f]));
+    const soyafarse = foods.find((item) => item.name === "Soyafarse");
+    const meat = computeRecipeIngredients(BOLOGNESE.body, foods).find((row) =>
+      row.searchText.includes("kjøttdeig"),
+    );
+    expect(soyafarse).toBeTruthy();
+    expect(meat).toBeTruthy();
+
+    const recipe = {
+      ...BOLOGNESE,
+      scalingMode: BOLOGNESE.scalingMode,
+      ingredientFoodOverrides: { [meat!.key]: soyafarse!.id },
+    };
+    const result = buildWeeklyShoppingList({
+      plan: makePlanWithRecipe(),
+      foodById,
+      foodItems: foods,
+      recipesById: new Map([[BOLOGNESE.id, recipe]]),
+    });
+
+    const names = result.groups.flatMap((group) => group.items.map((item) => item.name));
+    expect(names).toContain("Soyafarse");
+    expect(names).not.toContain("Karbonadedeig mager");
   });
 });

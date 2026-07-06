@@ -184,16 +184,24 @@ export function TrainerRecipeComposer({
 
   useEffect(() => {
     if (!open) return;
-    const validKeys = new Set(computeRecipeIngredients(draftBody, foodItemsForMacros).map((row) => row.key));
+    const ingredients = computeRecipeIngredients(draftBody, foodItemsForMacros);
+    const validKeys = new Set(ingredients.map((row) => row.key));
+    const legacyKeyMap = new Map(
+      ingredients.flatMap((row) => (row.legacyKey ? [[row.legacyKey, row.key] as const] : [])),
+    );
     setIngredientFoodOverrides((prev) => {
-      const next = Object.fromEntries(Object.entries(prev).filter(([key]) => validKeys.has(key)));
-      return Object.keys(next).length === Object.keys(prev).length ? prev : next;
+      const next: Record<string, string> = {};
+      for (const [key, value] of Object.entries(prev)) {
+        const nextKey = validKeys.has(key) ? key : legacyKeyMap.get(key);
+        if (nextKey) next[nextKey] = value;
+      }
+      return JSON.stringify(next) === JSON.stringify(prev) ? prev : next;
     });
   }, [draftBody, foodItemsForMacros, open]);
 
   const avoidanceConflicts = useMemo(
-    () => findRecipeFoodAvoidanceConflicts(draftBody, foodItemsForMacros, members),
-    [draftBody, foodItemsForMacros, members],
+    () => findRecipeFoodAvoidanceConflicts(draftBody, foodItemsForMacros, members, { ingredientFoodOverrides }),
+    [draftBody, foodItemsForMacros, members, ingredientFoodOverrides],
   );
 
   async function handleImageFile(file: File | null) {

@@ -2861,7 +2861,14 @@ export function useAppState() {
             }
           : {}),
         ...(remotePrograms ? { programs: mergeRemoteProgramsWithLocal(remotePrograms, prev.programs) } : {}),
-        ...(remoteLogs ? { logs: remoteLogs } : {}),
+        ...(remoteLogs
+          ? {
+              logs: mergeRemoteWorkoutLogsWithLocalOptimistic(remoteLogs, prev.logs, [
+                ...prev.members,
+                ...remoteMembers,
+              ]),
+            }
+          : {}),
         ...(hydratedTrainer?.periodPlansByMemberId
           ? { remoteTrainerPeriodPlansByMemberId: hydratedTrainer.periodPlansByMemberId }
           : {}),

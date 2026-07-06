@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
+import { buildDefaultFoodBankItems } from "./foodBankSeed";
 import type { InspirationRecipeItem } from "./inspirationRecipeItems";
 import { recipeToMealPlanEntry } from "./mealPlanRecipeEntry";
+import { computeRecipeIngredients } from "./recipeMacros";
 
 const EGG_RECIPE: InspirationRecipeItem = {
   id: "r-egg",
@@ -29,5 +31,28 @@ describe("recipeToMealPlanEntry", () => {
     );
     expect(entry.nutritionPer100g.kcal).toBe(0);
     expect(entry.note).toContain("Ingredienser");
+  });
+
+  it("bruker lagrede ingredienskoblinger når oppskrift legges i matplan", () => {
+    const foods = buildDefaultFoodBankItems();
+    const soyafarse = foods.find((item) => item.name === "Soyafarse");
+    expect(soyafarse).toBeTruthy();
+    const body = "**Til 1 porsjon**\n\n**Ingredienser**\n- 200 g kjøttdeig";
+    const meat = computeRecipeIngredients(body, foods)[0];
+    expect(meat?.foodName).toBe("Karbonadedeig mager");
+
+    const entry = recipeToMealPlanEntry(
+      {
+        id: "r-override",
+        title: "Bolognese vegetar",
+        description: "Middag",
+        tag: "Middag",
+        body,
+        ingredientFoodOverrides: { [meat!.key]: soyafarse!.id },
+      },
+      foods,
+    );
+
+    expect(entry.nutritionPer100g.kcal).toBe(Math.round(soyafarse!.nutritionPer100g.kcal * 2));
   });
 });
