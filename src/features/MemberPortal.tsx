@@ -1207,6 +1207,8 @@ export function MemberPortal(props: MemberPortalProps) {
   const [favoritePersonalRecordNames, setFavoritePersonalRecordNames] = useState<string[]>([]);
   const [favoritePersonalRecordPreferencesHydrated, setFavoritePersonalRecordPreferencesHydrated] = useState(false);
   const [profileMetricsHydrated, setProfileMetricsHydrated] = useState(false);
+  const profileMetricsDraftDirtyRef = useRef(false);
+  const profileMetricsDraftDirtyMemberIdRef = useRef<string | null>(null);
   const [pausedWorkoutsTick, setPausedWorkoutsTick] = useState(0);
   const [profileSaveInfo, setProfileSaveInfo] = useState<string | null>(null);
   const [isSavingBodyMetric, setIsSavingBodyMetric] = useState(false);
@@ -1372,6 +1374,15 @@ export function MemberPortal(props: MemberPortalProps) {
     currentUserRole === "member"
       ? currentMemberByEmail ?? viewedMember ?? null
       : viewedMember ?? members[0] ?? null;
+  const updateProfileSessionsPerWeekTargetDraft = useCallback(
+    (value: string) => {
+      profileMetricsDraftDirtyRef.current = true;
+      profileMetricsDraftDirtyMemberIdRef.current = editableMember?.id ?? null;
+      setProfileSessionsPerWeekTarget(value);
+      setProfileSaveInfo(null);
+    },
+    [editableMember?.id],
+  );
   const onboardingCompleteForHome = useMemo(
     () => onboardingSubstantivelyComplete || isMemberOnboardingSubmitted(editableMember, members),
     [editableMember, members, onboardingSubstantivelyComplete],
@@ -3027,6 +3038,8 @@ export function MemberPortal(props: MemberPortalProps) {
     }
     const profileAnchor = pickCanonicalMemberRowForProfile(editableMember, members);
     window.localStorage.setItem(getProfileStorageKey(profileAnchor.id), JSON.stringify(next));
+    profileMetricsDraftDirtyRef.current = false;
+    profileMetricsDraftDirtyMemberIdRef.current = null;
     const targetMemberIds = Array.from(
       new Set(
         members
@@ -3162,6 +3175,15 @@ export function MemberPortal(props: MemberPortalProps) {
 
   useEffect(() => {
     if (!editableMember) return;
+    if (
+      profileMetricsDraftDirtyRef.current &&
+      profileMetricsDraftDirtyMemberIdRef.current === editableMember.id
+    ) {
+      setProfileMetricsHydrated(true);
+      return;
+    }
+    profileMetricsDraftDirtyRef.current = false;
+    profileMetricsDraftDirtyMemberIdRef.current = null;
     setProfileMetricsHydrated(false);
 
     const fallback: ProfileMetricsDraft = {
@@ -7940,7 +7962,7 @@ export function MemberPortal(props: MemberPortalProps) {
                   memberGoalDraft={memberGoalDraft}
                   setMemberGoalDraft={setMemberGoalDraft}
                   profileSessionsPerWeekTarget={profileSessionsPerWeekTarget}
-                  setProfileSessionsPerWeekTarget={setProfileSessionsPerWeekTarget}
+                  setProfileSessionsPerWeekTarget={updateProfileSessionsPerWeekTargetDraft}
                   memberInjuriesDraft={memberInjuriesDraft}
                   setMemberInjuriesDraft={setMemberInjuriesDraft}
                   streakWeeks={streakWeeks}
