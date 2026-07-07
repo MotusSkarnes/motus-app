@@ -2181,7 +2181,6 @@ export function MemberPortal(props: MemberPortalProps) {
     return resolved;
   }, [todayPlanEntry, memberProgramsForPeriodPlan, memberPrograms]);
   const profileMetricsFromDb = decodeMemberProfileMetrics(editableMember?.personalGoals);
-  const profileHasUnsavedChanges = useMemo(() => {
   const stopGoalFromDb = getStopGoalFromPersonalGoals(editableMember?.personalGoals);
   const effectiveStopGoal = useMemo(() => {
     const fromDraft = {
@@ -2193,6 +2192,7 @@ export function MemberPortal(props: MemberPortalProps) {
   }, [stopGoalCustomTarget, stopGoalFromDb, stopGoalStartedAt, stopGoalTarget]);
   const stopGoalLabel = resolveStopGoalLabel(effectiveStopGoal);
   const stopGoalDays = stopGoalLabel ? computeStopGoalDays(effectiveStopGoal?.startedAt ?? "", nowDate) : 0;
+  const profileHasUnsavedChanges = useMemo(() => {
     if (!editableMember) return false;
     return (
       memberNameDraft.trim() !== editableMember.name.trim() ||
@@ -2227,13 +2227,13 @@ export function MemberPortal(props: MemberPortalProps) {
     profileMetricsFromDb?.dailyStepsTarget,
     profileMetricsFromDb?.targetWeight,
     profileMetricsFromDb?.currentDailySteps,
-  ]);
     stopGoalTarget,
     stopGoalCustomTarget,
     stopGoalStartedAt,
     stopGoalFromDb?.target,
     stopGoalFromDb?.customTarget,
     stopGoalFromDb?.startedAt,
+  ]);
 
   function resolveSuggestedWorkoutWeight(programExercise: TrainingProgram["exercises"][number]): string {
     const override = suggestedWeightOverridesByProgramExerciseId[programExercise.id];
