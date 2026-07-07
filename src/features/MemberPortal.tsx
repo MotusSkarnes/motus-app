@@ -521,10 +521,10 @@ function encodeMemberProfileMetrics(
     ...(profileExtensions.foodAvoidances && typeof profileExtensions.foodAvoidances === "object"
       ? { foodAvoidances: profileExtensions.foodAvoidances }
       : {}),
-  };
     ...(profileExtensions.stopGoal && typeof profileExtensions.stopGoal === "object"
       ? { stopGoal: profileExtensions.stopGoal as MemberStopGoal }
       : {}),
+  };
   return `${PROFILE_METRICS_PREFIX}${JSON.stringify(payload)}`;
 }
 
