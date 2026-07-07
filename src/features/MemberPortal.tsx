@@ -1223,6 +1223,8 @@ export function MemberPortal(props: MemberPortalProps) {
   const [profileMetricsHydrated, setProfileMetricsHydrated] = useState(false);
   const profileMetricsDraftDirtyRef = useRef(false);
   const profileMetricsDraftDirtyMemberIdRef = useRef<string | null>(null);
+  const stopGoalDraftDirtyRef = useRef(false);
+  const stopGoalDraftDirtyMemberIdRef = useRef<string | null>(null);
   const [pausedWorkoutsTick, setPausedWorkoutsTick] = useState(0);
   const [profileSaveInfo, setProfileSaveInfo] = useState<string | null>(null);
   const [isSavingBodyMetric, setIsSavingBodyMetric] = useState(false);
@@ -1402,24 +1404,30 @@ export function MemberPortal(props: MemberPortalProps) {
   }, []);
   const updateStopGoalTargetDraft = useCallback(
     (value: string) => {
+      stopGoalDraftDirtyRef.current = true;
+      stopGoalDraftDirtyMemberIdRef.current = editableMember?.id ?? null;
       setStopGoalTarget(value);
       setProfileSaveInfo(null);
       if (value.trim() || stopGoalCustomTarget.trim()) ensureStopGoalStartDate();
     },
-    [ensureStopGoalStartDate, stopGoalCustomTarget],
+    [editableMember?.id, ensureStopGoalStartDate, stopGoalCustomTarget],
   );
   const updateStopGoalCustomTargetDraft = useCallback(
     (value: string) => {
+      stopGoalDraftDirtyRef.current = true;
+      stopGoalDraftDirtyMemberIdRef.current = editableMember?.id ?? null;
       setStopGoalCustomTarget(value);
       setProfileSaveInfo(null);
       if (value.trim() || stopGoalTarget.trim()) ensureStopGoalStartDate();
     },
-    [ensureStopGoalStartDate, stopGoalTarget],
+    [editableMember?.id, ensureStopGoalStartDate, stopGoalTarget],
   );
   const updateStopGoalStartedAtDraft = useCallback((value: string) => {
+    stopGoalDraftDirtyRef.current = true;
+    stopGoalDraftDirtyMemberIdRef.current = editableMember?.id ?? null;
     setStopGoalStartedAt(value);
     setProfileSaveInfo(null);
-  }, []);
+  }, [editableMember?.id]);
   const onboardingCompleteForHome = useMemo(
     () => onboardingSubstantivelyComplete || isMemberOnboardingSubmitted(editableMember, members),
     [editableMember, members, onboardingSubstantivelyComplete],
@@ -3115,6 +3123,8 @@ export function MemberPortal(props: MemberPortalProps) {
     window.localStorage.setItem(getProfileStorageKey(profileAnchor.id), JSON.stringify(next));
     profileMetricsDraftDirtyRef.current = false;
     profileMetricsDraftDirtyMemberIdRef.current = null;
+    stopGoalDraftDirtyRef.current = false;
+    stopGoalDraftDirtyMemberIdRef.current = null;
     const targetMemberIds = Array.from(
       new Set(
         members
@@ -3255,6 +3265,14 @@ export function MemberPortal(props: MemberPortalProps) {
 
   useEffect(() => {
     if (!editableMember) return;
+    if (
+      stopGoalDraftDirtyRef.current &&
+      stopGoalDraftDirtyMemberIdRef.current === editableMember.id
+    ) {
+      return;
+    }
+    stopGoalDraftDirtyRef.current = false;
+    stopGoalDraftDirtyMemberIdRef.current = null;
     const stopGoal = getStopGoalFromPersonalGoals(editableMember.personalGoals);
     setStopGoalTarget(stopGoal?.target ?? "");
     setStopGoalCustomTarget(stopGoal?.customTarget ?? "");
