@@ -12,7 +12,7 @@ import {
 } from "lucide-react";
 import { MOTUS } from "../app/data";
 import { imageObjectPositionFromSrc } from "../app/imageFocalPoint";
-import { formatStopGoalTitle } from "../app/memberStopGoal";
+import { formatStopGoalTitle, type MemberStopGoal } from "../app/memberStopGoal";
 import { GradientButton, OutlineButton, TrainingStartButton } from "../app/ui";
 
 export type MemberHomeStatusCard = {
@@ -27,6 +27,11 @@ export type MemberHomeWeekStats = {
   streakWeeks: number;
 };
 
+export type MemberHomeStopGoal = MemberStopGoal & {
+  label: string;
+  days: number;
+};
+
 export type MemberHomeOverviewProps = {
   memberFirstName: string;
   todayDateLabel: string;
@@ -38,8 +43,7 @@ export type MemberHomeOverviewProps = {
   dashboardSubline?: string | null;
   dashboardProgressPct?: number;
   momentumPct: number;
-  stopGoalLabel?: string | null;
-  stopGoalDays?: number | null;
+  stopGoals?: MemberHomeStopGoal[];
   weekSessionsLabel?: string | null;
   weekMinutesLabel?: string | null;
   workoutTitle: string;
@@ -73,8 +77,7 @@ export function MemberHomeOverview({
   dashboardSubline,
   dashboardProgressPct,
   momentumPct,
-  stopGoalLabel,
-  stopGoalDays,
+  stopGoals = [],
   weekSessionsLabel,
   weekMinutesLabel,
   workoutTitle,
@@ -94,7 +97,9 @@ export function MemberHomeOverview({
 }: MemberHomeOverviewProps) {
   const streakLabel = streakWeeks > 0 ? `${streakWeeks} ${streakWeeks === 1 ? "uke" : "uker"}` : "0 uker";
   const headerLine = headerMotivation?.trim() || todayDateLabel;
-  const stopGoalTitle = formatStopGoalTitle(stopGoalLabel ?? "");
+  const visibleStopGoals = stopGoals
+    .map((goal) => ({ ...goal, title: formatStopGoalTitle(goal.label) }))
+    .filter((goal) => goal.title);
 
   return (
     <div className="motus-home motus-fade-in-up">
@@ -262,18 +267,38 @@ export function MemberHomeOverview({
         </div>
       </section>
 
-      {stopGoalTitle ? (
-        <section className="motus-home-stop-card" aria-label={stopGoalTitle}>
-          <div className="motus-home-stop-card__icon" aria-hidden>
-            <ShieldCheck className="h-5 w-5" strokeWidth={2.3} />
+      {visibleStopGoals.length ? (
+        <section className="motus-home-stop-carousel" aria-label="Stopp">
+          <div className="motus-home-stop-carousel__track" tabIndex={0}>
+            {visibleStopGoals.map((goal, index) => {
+              const days = Math.max(0, Number(goal.days ?? 0));
+              return (
+                <article
+                  key={`${goal.title}-${goal.startedAt}-${index}`}
+                  className="motus-home-stop-card"
+                  aria-label={`${goal.title}: ${days} ${days === 1 ? "døgn" : "døgn"}`}
+                >
+                  <div className="motus-home-stop-card__icon" aria-hidden>
+                    <ShieldCheck className="h-5 w-5" strokeWidth={2.3} />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="motus-home-stop-card__label">{goal.title}</p>
+                    <p className="motus-home-stop-card__value">
+                      {days} døgn
+                    </p>
+                  </div>
+                  <div className="motus-home-stop-card__spark" aria-hidden />
+                </article>
+              );
+            })}
           </div>
-          <div className="min-w-0 flex-1">
-            <p className="motus-home-stop-card__label">{stopGoalTitle}</p>
-            <p className="motus-home-stop-card__value">
-              {Math.max(0, Number(stopGoalDays ?? 0))} {Number(stopGoalDays ?? 0) === 1 ? "dag" : "dager"}
-            </p>
-          </div>
-          <div className="motus-home-stop-card__spark" aria-hidden />
+          {visibleStopGoals.length > 1 ? (
+            <div className="motus-home-stop-carousel__dots" aria-hidden>
+              {visibleStopGoals.map((goal, index) => (
+                <span key={`${goal.title}-${index}`} />
+              ))}
+            </div>
+          ) : null}
         </section>
       ) : null}
 

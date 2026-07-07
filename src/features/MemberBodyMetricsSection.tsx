@@ -1,5 +1,5 @@
 import { useMemo, useState, type FormEvent } from "react";
-import { LineChart, Scale, ShieldCheck } from "lucide-react";
+import { LineChart, Plus, Scale, ShieldCheck, Trash2 } from "lucide-react";
 import { MOTUS } from "../app/data";
 import {
   bodyMetricSourceLabel,
@@ -8,8 +8,8 @@ import {
   computeMetricChange,
   type BodyMetricChartPoint,
 } from "../app/memberBodyMetrics";
-import { MEMBER_STOP_GOAL_OPTIONS } from "../app/memberStopGoal";
-import { GradientButton, SelectBox, TextInput } from "../app/ui";
+import { MEMBER_STOP_GOAL_OPTIONS, type MemberStopGoal } from "../app/memberStopGoal";
+import { GradientButton, OutlineButton, SelectBox, TextInput } from "../app/ui";
 
 const CHART_WIDTH = 340;
 const CHART_HEIGHT = 180;
@@ -20,12 +20,10 @@ type MemberBodyMetricsSectionProps = {
   targetWeight?: string;
   onLog: (input: { weightKg?: number; bodyFatPct?: number }) => void | Promise<void>;
   isSaving?: boolean;
-  stopGoalTarget: string;
-  setStopGoalTarget: (value: string) => void;
-  stopGoalCustomTarget: string;
-  setStopGoalCustomTarget: (value: string) => void;
-  stopGoalStartedAt: string;
-  setStopGoalStartedAt: (value: string) => void;
+  stopGoals: MemberStopGoal[];
+  setStopGoals: (value: MemberStopGoal[]) => void;
+  onSaveStopGoals: () => void | Promise<void>;
+  stopGoalsSaveStatus?: string | null;
 };
 
 function MetricLineChart({
@@ -179,17 +177,19 @@ function parseDecimalInput(raw: string): number | undefined {
   return n;
 }
 
+function createEmptyStopGoal(): MemberStopGoal {
+  return { target: "", customTarget: "", startedAt: new Date().toISOString().slice(0, 10) };
+}
+
 export function MemberBodyMetricsSection({
   personalGoals,
   targetWeight,
   onLog,
   isSaving = false,
-  stopGoalTarget,
-  setStopGoalTarget,
-  stopGoalCustomTarget,
-  setStopGoalCustomTarget,
-  stopGoalStartedAt,
-  setStopGoalStartedAt,
+  stopGoals,
+  setStopGoals,
+  onSaveStopGoals,
+  stopGoalsSaveStatus,
 }: MemberBodyMetricsSectionProps) {
   const [weightInput, setWeightInput] = useState("");
   const [bodyFatInput, setBodyFatInput] = useState("");
@@ -216,6 +216,28 @@ export function MemberBodyMetricsSection({
     await onLog({ weightKg, bodyFatPct });
     setWeightInput("");
     setBodyFatInput("");
+  }
+
+  function updateStopGoal(index: number, patch: Partial<MemberStopGoal>) {
+    const source = stopGoals.length ? stopGoals : [createEmptyStopGoal()];
+    setStopGoals(
+      source.map((goal, goalIndex) =>
+        goalIndex === index
+          ? {
+              ...goal,
+              ...patch,
+            }
+          : goal,
+      ),
+    );
+  }
+
+  function addStopGoal() {
+    setStopGoals([...stopGoals, createEmptyStopGoal()]);
+  }
+
+  function removeStopGoal(index: number) {
+    setStopGoals(stopGoals.filter((_, goalIndex) => goalIndex !== index));
   }
 
   return (
@@ -331,26 +353,59 @@ export function MemberBodyMetricsSection({
           <p className="mt-0.5 text-xs text-slate-500">Velg hva du vil stoppe med, eller skriv inn ditt eget.</p>
         </div>
       </div>
-      <div className="mt-4 grid gap-3 sm:grid-cols-2">
-        <SelectBox
-          value={stopGoalTarget}
-          onChange={setStopGoalTarget}
-          options={[{ value: "", label: "Velg stopp" }, ...MEMBER_STOP_GOAL_OPTIONS.map((option) => ({ value: option, label: option }))]}
-        />
-        <TextInput
-          value={stopGoalCustomTarget}
-          onChange={(event) => setStopGoalCustomTarget(event.target.value)}
-          placeholder="Eget stopp"
-        />
+      <div className="mt-4 space-y-3">
+        {(stopGoals.length ? stopGoals : [createEmptyStopGoal()]).map((goal, index) => (
+          <div key={`${index}-${goal.startedAt}`} className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+            <div className="grid gap-3 sm:grid-cols-[1fr_1fr_10rem_auto] sm:items-end">
+              <label className="space-y-1">
+                <span className="text-xs font-semibold text-slate-700">Stopp</span>
+                <SelectBox
+                  value={goal.target}
+                  onChange={(value) => updateStopGoal(index, { target: value })}
+                  options={[{ value: "", label: "Velg stopp" }, ...MEMBER_STOP_GOAL_OPTIONS.map((option) => ({ value: option, label: option }))]}
+                />
+              </label>
+              <label className="space-y-1">
+                <span className="text-xs font-semibold text-slate-700">Eget stopp</span>
+                <TextInput
+                  value={goal.customTarget}
+                  onChange={(event) => updateStopGoal(index, { customTarget: event.target.value })}
+                  placeholder="F.eks. kaffe"
+                />
+              </label>
+              <label className="space-y-1">
+                <span className="text-xs font-semibold text-slate-700">Startdato</span>
+                <TextInput
+                  type="date"
+                  value={goal.startedAt}
+                  onChange={(event) => updateStopGoal(index, { startedAt: event.target.value })}
+                />
+              </label>
+              <button
+                type="button"
+                onClick={() => removeStopGoal(index)}
+                className="inline-flex h-10 items-center justify-center rounded-xl border border-slate-200 bg-white px-3 text-slate-500 transition hover:border-rose-200 hover:bg-rose-50 hover:text-rose-700"
+                aria-label="Fjern stopp"
+                title="Fjern stopp"
+              >
+                <Trash2 className="h-4 w-4" aria-hidden />
+              </button>
+            </div>
+          </div>
+        ))}
       </div>
-      <label className="mt-3 block text-sm">
-        <span className="mb-1 block font-medium text-slate-700">Startdato</span>
-        <TextInput
-          type="date"
-          value={stopGoalStartedAt}
-          onChange={(event) => setStopGoalStartedAt(event.target.value)}
-        />
-      </label>
+      <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:items-center">
+        <OutlineButton type="button" onClick={addStopGoal} className="w-full sm:w-auto">
+          <span className="inline-flex items-center gap-2">
+            <Plus className="h-4 w-4" aria-hidden />
+            Legg til stopp
+          </span>
+        </OutlineButton>
+        <GradientButton type="button" onClick={() => void onSaveStopGoals()} className="w-full sm:w-auto">
+          Lagre stopp
+        </GradientButton>
+        {stopGoalsSaveStatus ? <span className="text-xs font-medium text-slate-600">{stopGoalsSaveStatus}</span> : null}
+      </div>
     </section>
     </>
   );

@@ -34,10 +34,33 @@ export function normalizeStopGoal(value: unknown): MemberStopGoal | null {
   };
 }
 
+export function normalizeStopGoals(value: unknown): MemberStopGoal[] {
+  if (!Array.isArray(value)) {
+    const single = normalizeStopGoal(value);
+    return single ? [single] : [];
+  }
+  const seen = new Set<string>();
+  return value.reduce<MemberStopGoal[]>((items, item) => {
+    const normalized = normalizeStopGoal(item);
+    if (!normalized) return items;
+    const key = `${normalized.target.toLocaleLowerCase("nb-NO")}|${normalized.customTarget.toLocaleLowerCase("nb-NO")}|${normalized.startedAt}`;
+    if (seen.has(key)) return items;
+    seen.add(key);
+    items.push(normalized);
+    return items;
+  }, []);
+}
+
 export function getStopGoalFromPersonalGoals(personalGoals: string | undefined): MemberStopGoal | null {
+  return getStopGoalsFromPersonalGoals(personalGoals)[0] ?? null;
+}
+
+export function getStopGoalsFromPersonalGoals(personalGoals: string | undefined): MemberStopGoal[] {
   const payload = parsePersonalGoalsJson(personalGoals);
-  if (!payload) return null;
-  return normalizeStopGoal(payload.stopGoal);
+  if (!payload) return [];
+  const stopGoals = normalizeStopGoals(payload.stopGoals);
+  if (stopGoals.length) return stopGoals;
+  return normalizeStopGoals(payload.stopGoal);
 }
 
 export function resolveStopGoalLabel(stopGoal: MemberStopGoal | null): string {
@@ -60,5 +83,5 @@ export function computeStopGoalDays(startedAt: string, now = new Date()): number
   const start = new Date(year, month - 1, day);
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   const diffDays = Math.floor((today.getTime() - start.getTime()) / 86_400_000);
-  return Math.max(0, diffDays + 1);
+  return Math.max(0, diffDays);
 }
