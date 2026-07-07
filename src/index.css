@@ -466,9 +466,9 @@ button {
 
 .motus-home-stop-card__value {
   margin-top: 0.125rem;
-  font-size: 1.5rem;
+  font-size: clamp(1.1rem, 5vw, 1.5rem);
   font-weight: 800;
-  line-height: 1.05;
+  line-height: 1.12;
   color: #0f172a;
 }
 

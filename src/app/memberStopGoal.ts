@@ -76,6 +76,15 @@ export function formatStopGoalTitle(label: string): string {
   return `${trimmed}stopp`;
 }
 
+export function formatStopGoalWithoutLabel(label: string): string {
+  const trimmed = label.trim();
+  if (!trimmed) return "";
+  const withoutSuffix = trimmed.toLocaleLowerCase("nb-NO").endsWith("stopp")
+    ? trimmed.slice(0, -5).trim()
+    : trimmed;
+  return withoutSuffix.toLocaleLowerCase("nb-NO");
+}
+
 export function computeStopGoalDays(startedAt: string, now = new Date()): number {
   const normalized = normalizeDateKey(startedAt);
   if (!normalized) return 0;

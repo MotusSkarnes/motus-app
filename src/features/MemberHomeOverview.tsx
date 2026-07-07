@@ -12,7 +12,7 @@ import {
 } from "lucide-react";
 import { MOTUS } from "../app/data";
 import { imageObjectPositionFromSrc } from "../app/imageFocalPoint";
-import { formatStopGoalTitle, type MemberStopGoal } from "../app/memberStopGoal";
+import { formatStopGoalWithoutLabel, type MemberStopGoal } from "../app/memberStopGoal";
 import { GradientButton, OutlineButton, TrainingStartButton } from "../app/ui";
 
 export type MemberHomeStatusCard = {
@@ -98,8 +98,8 @@ export function MemberHomeOverview({
   const streakLabel = streakWeeks > 0 ? `${streakWeeks} ${streakWeeks === 1 ? "uke" : "uker"}` : "0 uker";
   const headerLine = headerMotivation?.trim() || todayDateLabel;
   const visibleStopGoals = stopGoals
-    .map((goal) => ({ ...goal, title: formatStopGoalTitle(goal.label) }))
-    .filter((goal) => goal.title);
+    .map((goal) => ({ ...goal, withoutLabel: formatStopGoalWithoutLabel(goal.label) }))
+    .filter((goal) => goal.withoutLabel);
 
   return (
     <div className="motus-home motus-fade-in-up">
@@ -274,17 +274,17 @@ export function MemberHomeOverview({
               const days = Math.max(0, Number(goal.days ?? 0));
               return (
                 <article
-                  key={`${goal.title}-${goal.startedAt}-${index}`}
+                  key={`${goal.withoutLabel}-${goal.startedAt}-${index}`}
                   className="motus-home-stop-card"
-                  aria-label={`${goal.title}: ${days} ${days === 1 ? "døgn" : "døgn"}`}
+                  aria-label={`${days} døgn uten ${goal.withoutLabel}`}
                 >
                   <div className="motus-home-stop-card__icon" aria-hidden>
                     <ShieldCheck className="h-5 w-5" strokeWidth={2.3} />
                   </div>
                   <div className="min-w-0 flex-1">
-                    <p className="motus-home-stop-card__label">{goal.title}</p>
+                    <p className="motus-home-stop-card__label">Stopp</p>
                     <p className="motus-home-stop-card__value">
-                      {days} døgn
+                      {days} døgn uten {goal.withoutLabel}
                     </p>
                   </div>
                   <div className="motus-home-stop-card__spark" aria-hidden />
@@ -295,7 +295,7 @@ export function MemberHomeOverview({
           {visibleStopGoals.length > 1 ? (
             <div className="motus-home-stop-carousel__dots" aria-hidden>
               {visibleStopGoals.map((goal, index) => (
-                <span key={`${goal.title}-${index}`} />
+                <span key={`${goal.withoutLabel}-${index}`} />
               ))}
             </div>
           ) : null}

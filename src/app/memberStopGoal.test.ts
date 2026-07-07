@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   computeStopGoalDays,
   formatStopGoalTitle,
+  formatStopGoalWithoutLabel,
   getStopGoalFromPersonalGoals,
   getStopGoalsFromPersonalGoals,
 } from "./memberStopGoal";
@@ -40,5 +41,11 @@ describe("memberStopGoal", () => {
     expect(formatStopGoalTitle("Røyk")).toBe("Røykestopp");
     expect(formatStopGoalTitle("Brus")).toBe("Brusstopp");
     expect(formatStopGoalTitle("Kaffestopp")).toBe("Kaffestopp");
+  });
+
+  it("formats home stop labels as days without the target", () => {
+    expect(formatStopGoalWithoutLabel("Godteri")).toBe("godteri");
+    expect(formatStopGoalWithoutLabel("Energidrikk")).toBe("energidrikk");
+    expect(formatStopGoalWithoutLabel("Kaffestopp")).toBe("kaffe");
   });
 });
