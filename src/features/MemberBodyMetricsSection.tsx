@@ -219,6 +219,7 @@ export function MemberBodyMetricsSection({
   }
 
   return (
+    <>
     <section className="motus-progress-section-card">
       <div className="flex items-start gap-3">
         <span className="inline-flex shrink-0 rounded-xl p-2.5 text-white shadow-sm" style={{ background: MOTUS_GRADIENT }}>
@@ -290,38 +291,6 @@ export function MemberBodyMetricsSection({
         </GradientButton>
       </form>
 
-      <div className="mt-4 rounded-xl border border-teal-100 bg-teal-50/40 p-4">
-        <div className="flex items-start gap-3">
-          <span className="inline-flex shrink-0 rounded-xl bg-white p-2.5 text-teal-700 shadow-sm" aria-hidden>
-            <ShieldCheck className="h-5 w-5" />
-          </span>
-          <div className="min-w-0 flex-1">
-            <p className="text-sm font-semibold text-slate-900">Stopp</p>
-            <p className="mt-0.5 text-xs leading-relaxed text-slate-600">Velg hva du vil stoppe med, eller skriv inn ditt eget.</p>
-          </div>
-        </div>
-        <div className="mt-3 grid gap-3 sm:grid-cols-2">
-          <SelectBox
-            value={stopGoalTarget}
-            onChange={setStopGoalTarget}
-            options={[{ value: "", label: "Velg stopp" }, ...MEMBER_STOP_GOAL_OPTIONS.map((option) => ({ value: option, label: option }))]}
-          />
-          <TextInput
-            value={stopGoalCustomTarget}
-            onChange={(event) => setStopGoalCustomTarget(event.target.value)}
-            placeholder="Eget stopp"
-          />
-        </div>
-        <label className="mt-3 block text-sm">
-          <span className="mb-1 block font-medium text-slate-700">Startdato</span>
-          <TextInput
-            type="date"
-            value={stopGoalStartedAt}
-            onChange={(event) => setStopGoalStartedAt(event.target.value)}
-          />
-        </label>
-      </div>
-
       <div className="mt-5 space-y-5">
         <div>
           <div className="mb-2 flex items-center gap-2 text-sm font-semibold text-slate-800">
@@ -351,5 +320,38 @@ export function MemberBodyMetricsSection({
         </div>
       </div>
     </section>
+    <section className="motus-progress-section-card">
+      <div className="flex items-start gap-3">
+        <span className="inline-flex shrink-0 rounded-xl p-2.5 text-white shadow-sm" style={{ background: MOTUS_GRADIENT }} aria-hidden>
+          <ShieldCheck className="h-5 w-5" />
+        </span>
+        <div className="min-w-0 flex-1">
+          <p className="text-xs font-semibold uppercase tracking-wide text-teal-700">Profil</p>
+          <h3 className="mt-0.5 text-lg font-bold text-slate-900">Stopp</h3>
+          <p className="mt-0.5 text-xs text-slate-500">Velg hva du vil stoppe med, eller skriv inn ditt eget.</p>
+        </div>
+      </div>
+      <div className="mt-4 grid gap-3 sm:grid-cols-2">
+        <SelectBox
+          value={stopGoalTarget}
+          onChange={setStopGoalTarget}
+          options={[{ value: "", label: "Velg stopp" }, ...MEMBER_STOP_GOAL_OPTIONS.map((option) => ({ value: option, label: option }))]}
+        />
+        <TextInput
+          value={stopGoalCustomTarget}
+          onChange={(event) => setStopGoalCustomTarget(event.target.value)}
+          placeholder="Eget stopp"
+        />
+      </div>
+      <label className="mt-3 block text-sm">
+        <span className="mb-1 block font-medium text-slate-700">Startdato</span>
+        <TextInput
+          type="date"
+          value={stopGoalStartedAt}
+          onChange={(event) => setStopGoalStartedAt(event.target.value)}
+        />
+      </label>
+    </section>
+    </>
   );
 }
