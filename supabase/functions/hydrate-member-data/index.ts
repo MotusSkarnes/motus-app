@@ -734,7 +734,7 @@ Deno.serve(async (req) => {
   }
 
   const memberDataLookupIdSet = new Set(memberDataLookupList);
-  let programs = mergedPrograms
+  const programs = mergedPrograms
     .filter((row) => {
       const memberId = String((row as { member_id?: string }).member_id ?? "").trim();
       const ownerUserId = String((row as { owner_user_id?: string }).owner_user_id ?? "").trim();
