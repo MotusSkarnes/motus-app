@@ -9,14 +9,12 @@ import {
   Mail,
   MessageSquare,
   Phone,
-  ShieldCheck,
   Target,
   Timer,
   User,
 } from "lucide-react";
 import { MOTUS } from "../app/data";
 import { MEMBER_GOAL_OPTIONS } from "../app/memberGoals";
-import { MEMBER_STOP_GOAL_OPTIONS } from "../app/memberStopGoal";
 import type { WorkoutLog } from "../app/types";
 import { GradientButton, OutlineButton, SelectBox, StatusMessage, TextArea, TextInput } from "../app/ui";
 
@@ -88,12 +86,6 @@ type MemberProfileDashboardProps = {
   setMicroCelebrationsEnabled: (value: boolean) => void;
   celebrationSoundEnabled: boolean;
   setCelebrationSoundEnabled: (value: boolean) => void;
-  stopGoalTarget: string;
-  setStopGoalTarget: (value: string) => void;
-  stopGoalCustomTarget: string;
-  setStopGoalCustomTarget: (value: string) => void;
-  stopGoalStartedAt: string;
-  setStopGoalStartedAt: (value: string) => void;
   showWebPushSettings: boolean;
   onRegisterWebPush: () => void;
   pushRegisterBusy: boolean;
@@ -144,12 +136,6 @@ export function MemberProfileDashboard({
   setMicroCelebrationsEnabled,
   celebrationSoundEnabled,
   setCelebrationSoundEnabled,
-  stopGoalTarget,
-  setStopGoalTarget,
-  stopGoalCustomTarget,
-  setStopGoalCustomTarget,
-  stopGoalStartedAt,
-  setStopGoalStartedAt,
   showWebPushSettings,
   onRegisterWebPush,
   pushRegisterBusy,
@@ -288,41 +274,6 @@ export function MemberProfileDashboard({
             />
           </ProfileInfoRow>
         </div>
-      </section>
-
-      <section className="motus-profile-panel space-y-3">
-        <div className="flex items-start gap-3">
-          <span className="motus-profile-status-icon" aria-hidden>
-            <ShieldCheck className="h-4 w-4" />
-          </span>
-          <div className="min-w-0">
-            <p className="text-sm font-semibold text-slate-900">Stopp</p>
-            <p className="mt-1 text-xs leading-relaxed text-slate-600">Velg hva du vil stoppe med, eller skriv inn ditt eget.</p>
-          </div>
-        </div>
-        <div className="grid gap-3 sm:grid-cols-2">
-          <SelectBox
-            value={stopGoalTarget}
-            onChange={setStopGoalTarget}
-            className="motus-profile-field"
-            options={[{ value: "", label: "Velg stopp" }, ...MEMBER_STOP_GOAL_OPTIONS.map((option) => ({ value: option, label: option }))]}
-          />
-          <TextInput
-            value={stopGoalCustomTarget}
-            onChange={(event) => setStopGoalCustomTarget(event.target.value)}
-            placeholder="Eget stopp"
-            className="motus-profile-field"
-          />
-        </div>
-        <label className="block text-sm">
-          <span className="mb-1 block text-[10px] font-semibold uppercase tracking-wide text-slate-400">Startdato</span>
-          <TextInput
-            type="date"
-            value={stopGoalStartedAt}
-            onChange={(event) => setStopGoalStartedAt(event.target.value)}
-            className="motus-profile-field"
-          />
-        </label>
       </section>
 
       {!isMemberLimited ? (

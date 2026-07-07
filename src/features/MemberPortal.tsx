@@ -8080,12 +8080,6 @@ export function MemberPortal(props: MemberPortalProps) {
                   setMicroCelebrationsEnabled={setMicroCelebrationsEnabled}
                   celebrationSoundEnabled={celebrationSoundEnabled}
                   setCelebrationSoundEnabled={setCelebrationSoundEnabled}
-                  stopGoalTarget={stopGoalTarget}
-                  setStopGoalTarget={updateStopGoalTargetDraft}
-                  stopGoalCustomTarget={stopGoalCustomTarget}
-                  setStopGoalCustomTarget={updateStopGoalCustomTargetDraft}
-                  stopGoalStartedAt={stopGoalStartedAt}
-                  setStopGoalStartedAt={updateStopGoalStartedAtDraft}
                   showWebPushSettings={!isMemberLimited && Boolean(supabaseClient) && isWebPushConfigurable()}
                   onRegisterWebPush={() => void handleRegisterWebPush()}
                   pushRegisterBusy={pushRegisterBusy}
