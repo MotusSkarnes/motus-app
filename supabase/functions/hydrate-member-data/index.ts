@@ -25,6 +25,86 @@ function normalizeEmail(value: unknown): string {
   return String(value ?? "").trim().toLowerCase();
 }
 
+const PROFILE_METRICS_PREFIX = "MOTUS_PROFILE_V1:";
+
+type MemberStopGoal = {
+  target: string;
+  customTarget: string;
+  startedAt: string;
+};
+
+function parsePersonalGoalsJson(personalGoals: unknown): Record<string, unknown> | null {
+  const trimmed = String(personalGoals ?? "").trim();
+  if (!trimmed) return null;
+  let jsonPart = "";
+  if (trimmed.startsWith(PROFILE_METRICS_PREFIX)) {
+    jsonPart = trimmed.slice(PROFILE_METRICS_PREFIX.length);
+  } else if (trimmed.startsWith("{")) {
+    jsonPart = trimmed;
+  } else {
+    return null;
+  }
+  try {
+    const parsed = JSON.parse(jsonPart) as unknown;
+    if (!parsed || typeof parsed !== "object") return null;
+    return parsed as Record<string, unknown>;
+  } catch {
+    return null;
+  }
+}
+
+function normalizeStopGoal(value: unknown): MemberStopGoal | null {
+  if (!value || typeof value !== "object") return null;
+  const raw = value as Record<string, unknown>;
+  const target = String(raw.target ?? "").trim();
+  const customTarget = String(raw.customTarget ?? "").trim();
+  const startedAt = /^\d{4}-\d{2}-\d{2}$/.test(String(raw.startedAt ?? "").trim())
+    ? String(raw.startedAt).trim()
+    : "";
+  if (!target && !customTarget) return null;
+  return { target, customTarget, startedAt };
+}
+
+function normalizeStopGoals(value: unknown): MemberStopGoal[] {
+  const rawItems = Array.isArray(value) ? value : [value];
+  const byKey = new Map<string, MemberStopGoal>();
+  for (const item of rawItems) {
+    const normalized = normalizeStopGoal(item);
+    if (!normalized) continue;
+    const key = `${normalized.target.toLowerCase()}|${normalized.customTarget.toLowerCase()}|${normalized.startedAt}`;
+    byKey.set(key, normalized);
+  }
+  return Array.from(byKey.values());
+}
+
+function getStopGoalsFromPersonalGoals(personalGoals: unknown): MemberStopGoal[] {
+  const payload = parsePersonalGoalsJson(personalGoals);
+  if (!payload) return [];
+  const stopGoals = normalizeStopGoals(payload.stopGoals);
+  return stopGoals.length ? stopGoals : normalizeStopGoals(payload.stopGoal);
+}
+
+function mergeStopGoalsFromRows(rows: Array<Record<string, unknown>>): MemberStopGoal[] {
+  const byKey = new Map<string, MemberStopGoal>();
+  for (const row of rows) {
+    for (const stopGoal of getStopGoalsFromPersonalGoals(row.personal_goals)) {
+      const key = `${stopGoal.target.toLowerCase()}|${stopGoal.customTarget.toLowerCase()}|${stopGoal.startedAt}`;
+      byKey.set(key, stopGoal);
+    }
+  }
+  return Array.from(byKey.values());
+}
+
+function mergeStopGoalsIntoPersonalGoals(personalGoals: string, stopGoals: MemberStopGoal[]): string {
+  if (!stopGoals.length) return personalGoals;
+  const payload = parsePersonalGoalsJson(personalGoals) ?? {};
+  return `${PROFILE_METRICS_PREFIX}${JSON.stringify({
+    ...payload,
+    stopGoal: stopGoals[0],
+    stopGoals,
+  })}`;
+}
+
 function rowIsActive(row: Record<string, unknown>): boolean {
   return (row as { is_active?: boolean | null }).is_active !== false;
 }
@@ -119,6 +199,9 @@ function scorePersonalGoalsBlob(value: string): number {
   if (raw.includes('"onboarding"') && raw.includes("completedAt")) score += 160;
   else if (raw.includes('"onboarding"')) score += 80;
   if (raw.includes('"monthlyCheckIns"')) score += 50;
+  if (raw.includes('"stopGoal"')) score += 100;
+  if (raw.includes('"stopGoals"')) score += 140;
+  if (raw.includes('"stopGoals"') && /"stopGoals"\s*:\s*\[\s*\{/.test(raw)) score += 180;
   score += Math.min(20, Math.floor(raw.length / 200));
   return score;
 }
@@ -149,7 +232,10 @@ function harmonizeMemberProfilesByEmail(rows: Array<Record<string, unknown>>): A
   }
   for (const [, group] of byEmail) {
     if (group.length <= 1) continue;
-    const bestPersonalGoals = pickBestPersonalGoalsFromRows(group);
+    const bestPersonalGoals = mergeStopGoalsIntoPersonalGoals(
+      pickBestPersonalGoalsFromRows(group),
+      mergeStopGoalsFromRows(group),
+    );
     if (bestPersonalGoals) {
       for (const row of group) {
         row.personal_goals = bestPersonalGoals;
