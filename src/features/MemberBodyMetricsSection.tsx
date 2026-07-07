@@ -1,5 +1,5 @@
 import { useMemo, useState, type FormEvent } from "react";
-import { LineChart, Scale } from "lucide-react";
+import { LineChart, Scale, ShieldCheck } from "lucide-react";
 import { MOTUS } from "../app/data";
 import {
   bodyMetricSourceLabel,
@@ -8,7 +8,8 @@ import {
   computeMetricChange,
   type BodyMetricChartPoint,
 } from "../app/memberBodyMetrics";
-import { GradientButton, TextInput } from "../app/ui";
+import { MEMBER_STOP_GOAL_OPTIONS } from "../app/memberStopGoal";
+import { GradientButton, SelectBox, TextInput } from "../app/ui";
 
 const CHART_WIDTH = 340;
 const CHART_HEIGHT = 180;
@@ -19,6 +20,12 @@ type MemberBodyMetricsSectionProps = {
   targetWeight?: string;
   onLog: (input: { weightKg?: number; bodyFatPct?: number }) => void | Promise<void>;
   isSaving?: boolean;
+  stopGoalTarget: string;
+  setStopGoalTarget: (value: string) => void;
+  stopGoalCustomTarget: string;
+  setStopGoalCustomTarget: (value: string) => void;
+  stopGoalStartedAt: string;
+  setStopGoalStartedAt: (value: string) => void;
 };
 
 function MetricLineChart({
@@ -177,6 +184,12 @@ export function MemberBodyMetricsSection({
   targetWeight,
   onLog,
   isSaving = false,
+  stopGoalTarget,
+  setStopGoalTarget,
+  stopGoalCustomTarget,
+  setStopGoalCustomTarget,
+  stopGoalStartedAt,
+  setStopGoalStartedAt,
 }: MemberBodyMetricsSectionProps) {
   const [weightInput, setWeightInput] = useState("");
   const [bodyFatInput, setBodyFatInput] = useState("");
@@ -276,6 +289,38 @@ export function MemberBodyMetricsSection({
           {isSaving ? "Lagrer…" : "Lagre måling"}
         </GradientButton>
       </form>
+
+      <div className="mt-4 rounded-xl border border-teal-100 bg-teal-50/40 p-4">
+        <div className="flex items-start gap-3">
+          <span className="inline-flex shrink-0 rounded-xl bg-white p-2.5 text-teal-700 shadow-sm" aria-hidden>
+            <ShieldCheck className="h-5 w-5" />
+          </span>
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-semibold text-slate-900">Stopp</p>
+            <p className="mt-0.5 text-xs leading-relaxed text-slate-600">Velg hva du vil stoppe med, eller skriv inn ditt eget.</p>
+          </div>
+        </div>
+        <div className="mt-3 grid gap-3 sm:grid-cols-2">
+          <SelectBox
+            value={stopGoalTarget}
+            onChange={setStopGoalTarget}
+            options={[{ value: "", label: "Velg stopp" }, ...MEMBER_STOP_GOAL_OPTIONS.map((option) => ({ value: option, label: option }))]}
+          />
+          <TextInput
+            value={stopGoalCustomTarget}
+            onChange={(event) => setStopGoalCustomTarget(event.target.value)}
+            placeholder="Eget stopp"
+          />
+        </div>
+        <label className="mt-3 block text-sm">
+          <span className="mb-1 block font-medium text-slate-700">Startdato</span>
+          <TextInput
+            type="date"
+            value={stopGoalStartedAt}
+            onChange={(event) => setStopGoalStartedAt(event.target.value)}
+          />
+        </label>
+      </div>
 
       <div className="mt-5 space-y-5">
         <div>

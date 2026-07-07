@@ -8082,12 +8082,6 @@ export function MemberPortal(props: MemberPortalProps) {
                   setCelebrationSoundEnabled={setCelebrationSoundEnabled}
                   showWebPushSettings={!isMemberLimited && Boolean(supabaseClient) && isWebPushConfigurable()}
                   onRegisterWebPush={() => void handleRegisterWebPush()}
-                  stopGoalTarget={stopGoalTarget}
-                  setStopGoalTarget={updateStopGoalTargetDraft}
-                  stopGoalCustomTarget={stopGoalCustomTarget}
-                  setStopGoalCustomTarget={updateStopGoalCustomTargetDraft}
-                  stopGoalStartedAt={stopGoalStartedAt}
-                  setStopGoalStartedAt={updateStopGoalStartedAtDraft}
                   pushRegisterBusy={pushRegisterBusy}
                   pushRegisterStatus={pushRegisterStatus}
                 />
@@ -8096,6 +8090,12 @@ export function MemberPortal(props: MemberPortalProps) {
                   targetWeight={profileTargetWeight}
                   onLog={persistBodyMetric}
                   isSaving={isSavingBodyMetric}
+                  stopGoalTarget={stopGoalTarget}
+                  setStopGoalTarget={updateStopGoalTargetDraft}
+                  stopGoalCustomTarget={stopGoalCustomTarget}
+                  setStopGoalCustomTarget={updateStopGoalCustomTargetDraft}
+                  stopGoalStartedAt={stopGoalStartedAt}
+                  setStopGoalStartedAt={updateStopGoalStartedAtDraft}
                 />
               </div>
             ) : (
