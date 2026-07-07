@@ -1,5 +1,5 @@
 import type { LucideIcon } from "lucide-react";
-import { Apple, ClipboardList, LayoutDashboard, Sparkles, TrendingUp } from "lucide-react";
+import { Apple, ClipboardList, LayoutDashboard, Sparkles, TrendingUp, UserCircle2 } from "lucide-react";
 import { MOTUS } from "../app/data";
 import { motusHaptic } from "../app/haptics";
 import type { MemberTab } from "../app/types";
@@ -14,6 +14,7 @@ export function memberNavTabs(_isMemberLimited: boolean, _hasNutritionAccess = f
     { id: "nutrition", label: "Ernæring", icon: Apple },
     { id: "inspiration", label: "Utforsk", icon: Sparkles },
     { id: "progress", label: "Fremgang", icon: TrendingUp },
+    { id: "profile", label: "Profil", icon: UserCircle2 },
   ];
 }
 
