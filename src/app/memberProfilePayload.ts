@@ -58,6 +58,9 @@ export function readProfileExtensions(personalGoals: string | undefined): Record
   if (payload.foodAvoidances && typeof payload.foodAvoidances === "object") {
     extensions.foodAvoidances = payload.foodAvoidances;
   }
+  if (payload.stopGoal && typeof payload.stopGoal === "object") {
+    extensions.stopGoal = payload.stopGoal;
+  }
   if (payload.memberAppUi && typeof payload.memberAppUi === "object") {
     extensions.memberAppUi = payload.memberAppUi;
   }

@@ -7,10 +7,12 @@ import {
   Dumbbell,
   Flame,
   Play,
+  ShieldCheck,
   X,
 } from "lucide-react";
 import { MOTUS } from "../app/data";
 import { imageObjectPositionFromSrc } from "../app/imageFocalPoint";
+import { formatStopGoalTitle } from "../app/memberStopGoal";
 import { GradientButton, OutlineButton, TrainingStartButton } from "../app/ui";
 
 export type MemberHomeStatusCard = {
@@ -36,6 +38,8 @@ export type MemberHomeOverviewProps = {
   dashboardSubline?: string | null;
   dashboardProgressPct?: number;
   momentumPct: number;
+  stopGoalLabel?: string | null;
+  stopGoalDays?: number | null;
   weekSessionsLabel?: string | null;
   weekMinutesLabel?: string | null;
   workoutTitle: string;
@@ -69,6 +73,8 @@ export function MemberHomeOverview({
   dashboardSubline,
   dashboardProgressPct,
   momentumPct,
+  stopGoalLabel,
+  stopGoalDays,
   weekSessionsLabel,
   weekMinutesLabel,
   workoutTitle,
@@ -88,6 +94,7 @@ export function MemberHomeOverview({
 }: MemberHomeOverviewProps) {
   const streakLabel = streakWeeks > 0 ? `${streakWeeks} ${streakWeeks === 1 ? "uke" : "uker"}` : "0 uker";
   const headerLine = headerMotivation?.trim() || todayDateLabel;
+  const stopGoalTitle = formatStopGoalTitle(stopGoalLabel ?? "");
 
   return (
     <div className="motus-home motus-fade-in-up">
@@ -254,6 +261,21 @@ export function MemberHomeOverview({
           </div>
         </div>
       </section>
+
+      {stopGoalTitle ? (
+        <section className="motus-home-stop-card" aria-label={stopGoalTitle}>
+          <div className="motus-home-stop-card__icon" aria-hidden>
+            <ShieldCheck className="h-5 w-5" strokeWidth={2.3} />
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="motus-home-stop-card__label">{stopGoalTitle}</p>
+            <p className="motus-home-stop-card__value">
+              {Math.max(0, Number(stopGoalDays ?? 0))} {Number(stopGoalDays ?? 0) === 1 ? "dag" : "dager"}
+            </p>
+          </div>
+          <div className="motus-home-stop-card__spark" aria-hidden />
+        </section>
+      ) : null}
 
       {belowWorkout}
       {onboardingPrompt ? <div className="w-full">{onboardingPrompt}</div> : null}

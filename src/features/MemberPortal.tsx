@@ -223,6 +223,13 @@ import { MemberHomeNextPlanCard, MemberHomeStatusGradientCard } from "./MemberHo
 import { MemberProgressScoresCard } from "./MemberProgressScoresCard";
 import { MemberBodyMetricsSection } from "./MemberBodyMetricsSection";
 import { createMemberBodyMetricEntry, mergeBodyMetricIntoPersonalGoals } from "../app/memberBodyMetrics";
+import {
+  computeStopGoalDays,
+  getStopGoalFromPersonalGoals,
+  resolveStopGoalLabel,
+  toLocalDateKey,
+  type MemberStopGoal,
+} from "../app/memberStopGoal";
 import { buildShareProgramChatMessage } from "../app/chatFormat";
 import { computeWeekProgressPct } from "../app/memberHomeWeekInsights";
 import type { ChatReactionActor, ChatReactionEmoji } from "../app/chatReactions";
@@ -452,6 +459,7 @@ type ProfileMetricsPayload = SyncedHomePreferences &
     onboarding?: import("../app/memberOnboarding").MemberOnboardingAnswers;
     onboardingCompletedAt?: string;
     monthlyCheckIns?: unknown[];
+    stopGoal?: MemberStopGoal;
   };
 
 function normalizeFavoritePersonalRecordNames(names?: string[]): string[] | undefined {
@@ -514,6 +522,9 @@ function encodeMemberProfileMetrics(
       ? { foodAvoidances: profileExtensions.foodAvoidances }
       : {}),
   };
+    ...(profileExtensions.stopGoal && typeof profileExtensions.stopGoal === "object"
+      ? { stopGoal: profileExtensions.stopGoal as MemberStopGoal }
+      : {}),
   return `${PROFILE_METRICS_PREFIX}${JSON.stringify(payload)}`;
 }
 
@@ -1193,6 +1204,9 @@ export function MemberPortal(props: MemberPortalProps) {
   const [profileDailyStepsTarget, setProfileDailyStepsTarget] = useState("");
   const [profileTargetWeight, setProfileTargetWeight] = useState("");
   const [profileCurrentDailySteps, setProfileCurrentDailySteps] = useState("");
+  const [stopGoalTarget, setStopGoalTarget] = useState("");
+  const [stopGoalCustomTarget, setStopGoalCustomTarget] = useState("");
+  const [stopGoalStartedAt, setStopGoalStartedAt] = useState("");
   const [microCelebrationsEnabled, setMicroCelebrationsEnabled] = useState(true);
   const [celebrationSoundEnabled, setCelebrationSoundEnabled] = useState(false);
   const [restCountdownEnabled, setRestCountdownEnabled] = useState(true);
@@ -1383,6 +1397,29 @@ export function MemberPortal(props: MemberPortalProps) {
     },
     [editableMember?.id],
   );
+  const ensureStopGoalStartDate = useCallback(() => {
+    setStopGoalStartedAt((current) => current.trim() || toLocalDateKey(new Date()));
+  }, []);
+  const updateStopGoalTargetDraft = useCallback(
+    (value: string) => {
+      setStopGoalTarget(value);
+      setProfileSaveInfo(null);
+      if (value.trim() || stopGoalCustomTarget.trim()) ensureStopGoalStartDate();
+    },
+    [ensureStopGoalStartDate, stopGoalCustomTarget],
+  );
+  const updateStopGoalCustomTargetDraft = useCallback(
+    (value: string) => {
+      setStopGoalCustomTarget(value);
+      setProfileSaveInfo(null);
+      if (value.trim() || stopGoalTarget.trim()) ensureStopGoalStartDate();
+    },
+    [ensureStopGoalStartDate, stopGoalTarget],
+  );
+  const updateStopGoalStartedAtDraft = useCallback((value: string) => {
+    setStopGoalStartedAt(value);
+    setProfileSaveInfo(null);
+  }, []);
   const onboardingCompleteForHome = useMemo(
     () => onboardingSubstantivelyComplete || isMemberOnboardingSubmitted(editableMember, members),
     [editableMember, members, onboardingSubstantivelyComplete],
@@ -2145,6 +2182,17 @@ export function MemberPortal(props: MemberPortalProps) {
   }, [todayPlanEntry, memberProgramsForPeriodPlan, memberPrograms]);
   const profileMetricsFromDb = decodeMemberProfileMetrics(editableMember?.personalGoals);
   const profileHasUnsavedChanges = useMemo(() => {
+  const stopGoalFromDb = getStopGoalFromPersonalGoals(editableMember?.personalGoals);
+  const effectiveStopGoal = useMemo(() => {
+    const fromDraft = {
+      target: stopGoalTarget.trim(),
+      customTarget: stopGoalCustomTarget.trim(),
+      startedAt: stopGoalStartedAt.trim(),
+    };
+    return resolveStopGoalLabel(fromDraft) ? fromDraft : stopGoalFromDb;
+  }, [stopGoalCustomTarget, stopGoalFromDb, stopGoalStartedAt, stopGoalTarget]);
+  const stopGoalLabel = resolveStopGoalLabel(effectiveStopGoal);
+  const stopGoalDays = stopGoalLabel ? computeStopGoalDays(effectiveStopGoal?.startedAt ?? "", nowDate) : 0;
     if (!editableMember) return false;
     return (
       memberNameDraft.trim() !== editableMember.name.trim() ||
@@ -2157,7 +2205,10 @@ export function MemberPortal(props: MemberPortalProps) {
       profileSessionsPerWeekTarget.trim() !== String(profileMetricsFromDb?.sessionsPerWeekTarget ?? "").trim() ||
       profileDailyStepsTarget.trim() !== String(profileMetricsFromDb?.dailyStepsTarget ?? "").trim() ||
       profileTargetWeight.trim() !== String(profileMetricsFromDb?.targetWeight ?? "").trim() ||
-      profileCurrentDailySteps.trim() !== String(profileMetricsFromDb?.currentDailySteps ?? "").trim()
+      profileCurrentDailySteps.trim() !== String(profileMetricsFromDb?.currentDailySteps ?? "").trim() ||
+      stopGoalTarget.trim() !== String(stopGoalFromDb?.target ?? "").trim() ||
+      stopGoalCustomTarget.trim() !== String(stopGoalFromDb?.customTarget ?? "").trim() ||
+      stopGoalStartedAt.trim() !== String(stopGoalFromDb?.startedAt ?? "").trim()
     );
   }, [
     editableMember,
@@ -2177,6 +2228,12 @@ export function MemberPortal(props: MemberPortalProps) {
     profileMetricsFromDb?.targetWeight,
     profileMetricsFromDb?.currentDailySteps,
   ]);
+    stopGoalTarget,
+    stopGoalCustomTarget,
+    stopGoalStartedAt,
+    stopGoalFromDb?.target,
+    stopGoalFromDb?.customTarget,
+    stopGoalFromDb?.startedAt,
 
   function resolveSuggestedWorkoutWeight(programExercise: TrainingProgram["exercises"][number]): string {
     const override = suggestedWeightOverridesByProgramExerciseId[programExercise.id];
@@ -3030,6 +3087,24 @@ export function MemberPortal(props: MemberPortalProps) {
       },
       resolveMemberPersonalGoals(editableMember, members),
     );
+    const stopLabel = stopGoalCustomTarget.trim() || stopGoalTarget.trim();
+    if (stopLabel) {
+      const parsed = parsePersonalGoalsJson(metricsForSync) ?? {};
+      const startedAt = stopGoalStartedAt.trim() || stopGoalFromDb?.startedAt || toLocalDateKey(new Date());
+      metricsForSync = `${PROFILE_METRICS_PREFIX}${JSON.stringify({
+        ...parsed,
+        stopGoal: {
+          target: stopGoalTarget.trim(),
+          customTarget: stopGoalCustomTarget.trim(),
+          startedAt,
+        },
+      })}`;
+      setStopGoalStartedAt(startedAt);
+    } else if (stopGoalFromDb) {
+      const parsed = parsePersonalGoalsJson(metricsForSync) ?? {};
+      delete parsed.stopGoal;
+      metricsForSync = `${PROFILE_METRICS_PREFIX}${JSON.stringify(parsed)}`;
+    }
     const trimmedDisplayName = memberNameDraft.trim();
     if (trimmedDisplayName) {
       metricsForSync = patchMemberAppUiStateInPersonalGoals(metricsForSync, {
@@ -3129,6 +3204,10 @@ export function MemberPortal(props: MemberPortalProps) {
     profileTargetWeight,
     profileCurrentDailySteps,
     homeVisibility,
+    stopGoalTarget,
+    stopGoalCustomTarget,
+    stopGoalStartedAt,
+    stopGoalFromDb,
     cleanedFavoritePersonalRecordNames,
     members,
     relatedMemberIds,
@@ -3173,6 +3252,14 @@ export function MemberPortal(props: MemberPortalProps) {
     editableMember?.injuries,
   ]);
 
+
+  useEffect(() => {
+    if (!editableMember) return;
+    const stopGoal = getStopGoalFromPersonalGoals(editableMember.personalGoals);
+    setStopGoalTarget(stopGoal?.target ?? "");
+    setStopGoalCustomTarget(stopGoal?.customTarget ?? "");
+    setStopGoalStartedAt(stopGoal?.startedAt ?? "");
+  }, [editableMember?.id, editableMember?.personalGoals]);
   useEffect(() => {
     if (!editableMember) return;
     if (
@@ -6579,6 +6666,8 @@ export function MemberPortal(props: MemberPortalProps) {
                 momentumPct={homeMomentumPct}
                 weekSessionsLabel={homeWeekSessionsLabel}
                 weekMinutesLabel={homeWeekMinutesLabel}
+                stopGoalLabel={stopGoalLabel}
+                stopGoalDays={stopGoalDays}
                 workoutTitle={homeDisplayTitle}
                 workoutTitleLoading={homeDisplayLoading}
                 workoutSubtitle={homeDisplaySubtitle}
@@ -7993,6 +8082,12 @@ export function MemberPortal(props: MemberPortalProps) {
                   setCelebrationSoundEnabled={setCelebrationSoundEnabled}
                   showWebPushSettings={!isMemberLimited && Boolean(supabaseClient) && isWebPushConfigurable()}
                   onRegisterWebPush={() => void handleRegisterWebPush()}
+                  stopGoalTarget={stopGoalTarget}
+                  setStopGoalTarget={updateStopGoalTargetDraft}
+                  stopGoalCustomTarget={stopGoalCustomTarget}
+                  setStopGoalCustomTarget={updateStopGoalCustomTargetDraft}
+                  stopGoalStartedAt={stopGoalStartedAt}
+                  setStopGoalStartedAt={updateStopGoalStartedAtDraft}
                   pushRegisterBusy={pushRegisterBusy}
                   pushRegisterStatus={pushRegisterStatus}
                 />

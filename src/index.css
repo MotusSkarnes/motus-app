@@ -394,6 +394,60 @@ button {
   color: #94a3b8;
 }
 
+.motus-home-stop-card {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0.875rem;
+  overflow: hidden;
+  border-radius: 1.125rem;
+  border: 1px solid rgba(48, 227, 190, 0.18);
+  background:
+    linear-gradient(135deg, rgba(48, 227, 190, 0.14), rgba(255, 255, 255, 0.96) 52%, rgba(217, 18, 120, 0.08)),
+    #ffffff;
+  padding: 0.875rem 1rem;
+  box-shadow: 0 10px 24px -18px rgba(15, 23, 42, 0.28);
+}
+
+.motus-home-stop-card__icon {
+  display: inline-flex;
+  height: 2.75rem;
+  width: 2.75rem;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9999px;
+  background: #ffffff;
+  color: #0f766e;
+  box-shadow: 0 8px 18px -12px rgba(15, 23, 42, 0.35);
+}
+
+.motus-home-stop-card__label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  line-height: 1.2;
+  text-transform: uppercase;
+  color: #64748b;
+}
+
+.motus-home-stop-card__value {
+  margin-top: 0.125rem;
+  font-size: 1.5rem;
+  font-weight: 800;
+  line-height: 1.05;
+  color: #0f172a;
+}
+
+.motus-home-stop-card__spark {
+  position: absolute;
+  right: -1.75rem;
+  top: -1.75rem;
+  height: 5rem;
+  width: 5rem;
+  border-radius: 9999px;
+  background: rgba(217, 18, 120, 0.12);
+}
+
 .motus-profile-dashboard {
   display: flex;
   flex-direction: column;
