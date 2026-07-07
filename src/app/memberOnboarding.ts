@@ -9,6 +9,10 @@ import {
   readProfileExtensions,
 } from "./memberProfilePayload";
 import { pickBestPersonalGoals } from "./memberProfileGoals";
+import {
+  mergeStopGoalsAcrossCandidates,
+  mergeStopGoalsIntoPersonalGoals,
+} from "./memberStopGoal";
 import { mergeRosterFieldsFromMemberCandidates } from "../services/memberAccessRules";
 import { supabaseClient } from "../services/supabaseClient";
 import type { Level, Member } from "./types";
@@ -361,10 +365,11 @@ export function mergePersonalGoalsFromCandidates(candidates: Array<string | unde
   const values = candidates.map((value) => String(value ?? "").trim()).filter(Boolean);
   if (!values.length) return "";
   const mergedAvoidances = mergeFoodAvoidancesAcrossCandidates(values);
+  const mergedStopGoals = mergeStopGoalsAcrossCandidates(values);
   let merged = pickBestPersonalGoals(values);
   if (onboardingAnswersAreSubstantive(getOnboardingFromPersonalGoals(merged))) {
     merged = mergeFoodAvoidancesIntoPersonalGoals(merged, mergedAvoidances);
-    return merged;
+    return mergeStopGoalsIntoPersonalGoals(merged, mergedStopGoals);
   }
   for (const value of values) {
     const onboarding = getOnboardingFromPersonalGoals(value);
@@ -373,7 +378,8 @@ export function mergePersonalGoalsFromCandidates(candidates: Array<string | unde
       break;
     }
   }
-  return mergeFoodAvoidancesIntoPersonalGoals(merged, mergedAvoidances);
+  merged = mergeFoodAvoidancesIntoPersonalGoals(merged, mergedAvoidances);
+  return mergeStopGoalsIntoPersonalGoals(merged, mergedStopGoals);
 }
 
 export function resolveMemberPersonalGoals(
@@ -483,18 +489,13 @@ export function mergeOnboardingIntoPersonalGoals(
   onboarding: MemberOnboardingAnswers,
 ): string {
   const existing = parsePersonalGoalsJson(existingPersonalGoals) ?? {};
+  const extensions = readProfileExtensions(existingPersonalGoals);
   const payload = {
     sessionsPerWeekTarget: String(existing.sessionsPerWeekTarget ?? onboarding.sessionsPerWeekTarget ?? ""),
     dailyStepsTarget: String(existing.dailyStepsTarget ?? ""),
     targetWeight: String(existing.targetWeight ?? ""),
     currentDailySteps: String(existing.currentDailySteps ?? ""),
-    ...(existing.homeVisibility && typeof existing.homeVisibility === "object"
-      ? { homeVisibility: existing.homeVisibility }
-      : {}),
-    ...(Array.isArray(existing.favoritePersonalRecords)
-      ? { favoritePersonalRecords: existing.favoritePersonalRecords }
-      : {}),
-    ...(Array.isArray(existing.monthlyCheckIns) ? { monthlyCheckIns: existing.monthlyCheckIns } : {}),
+    ...extensions,
     onboarding,
     onboardingCompletedAt: onboarding.completedAt,
   };

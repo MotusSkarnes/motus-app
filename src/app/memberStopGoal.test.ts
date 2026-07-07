@@ -5,6 +5,8 @@ import {
   formatStopGoalWithoutLabel,
   getStopGoalFromPersonalGoals,
   getStopGoalsFromPersonalGoals,
+  mergeStopGoalsAcrossCandidates,
+  mergeStopGoalsIntoPersonalGoals,
 } from "./memberStopGoal";
 
 describe("memberStopGoal", () => {
@@ -30,6 +32,26 @@ describe("memberStopGoal", () => {
 
     expect(getStopGoalsFromPersonalGoals(personalGoals)).toHaveLength(2);
     expect(getStopGoalFromPersonalGoals(personalGoals)?.target).toBe("Brus");
+  });
+
+  it("merges stop goals from duplicate profile payloads", () => {
+    const withBrus = `MOTUS_PROFILE_V1:${JSON.stringify({
+      notificationPreferences: { seenHiddenBadgeIds: ["badge-1"] },
+      stopGoals: [{ target: "Brus", customTarget: "", startedAt: "2026-07-01" }],
+    })}`;
+    const withRoyk = `MOTUS_PROFILE_V1:${JSON.stringify({
+      stopGoal: { target: "Røyk", customTarget: "", startedAt: "2026-07-02" },
+    })}`;
+
+    const merged = mergeStopGoalsIntoPersonalGoals(
+      withBrus,
+      mergeStopGoalsAcrossCandidates([withBrus, withRoyk]),
+    );
+
+    expect(getStopGoalsFromPersonalGoals(merged)).toEqual([
+      { target: "Brus", customTarget: "", startedAt: "2026-07-01" },
+      { target: "Røyk", customTarget: "", startedAt: "2026-07-02" },
+    ]);
   });
 
   it("counts whole stop days after the start date", () => {

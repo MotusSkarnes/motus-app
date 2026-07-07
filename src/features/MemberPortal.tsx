@@ -3089,7 +3089,7 @@ export function MemberPortal(props: MemberPortalProps) {
         stopGoals: stopGoalsForSync,
       })}`;
       setStopGoalsDraft(stopGoalsForSync);
-    } else if (stopGoalFromDb || stopGoalsFromDb.length) {
+    } else if (stopGoalDraftDirtyRef.current && (stopGoalFromDb || stopGoalsFromDb.length)) {
       const parsed = parsePersonalGoalsJson(metricsForSync) ?? {};
       delete parsed.stopGoal;
       delete parsed.stopGoals;
