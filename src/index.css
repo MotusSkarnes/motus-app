@@ -6521,27 +6521,35 @@ html:has(.motus-trainer-app) {
   color: rgba(255, 255, 255, 0.64) !important;
 }
 
-.motus-interval-session:not(.motus-interval-session--complete) .motus-interval-timer-countdown > div {
+.motus-interval-session:not(.motus-interval-session--complete) .motus-interval-countdown-face {
   position: relative;
-  display: grid;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
   min-width: min(86vw, 28rem);
   aspect-ratio: 1;
-  place-items: center;
   border-radius: 9999px;
   isolation: isolate;
 }
 
-.motus-interval-session:not(.motus-interval-session--complete) .motus-interval-timer-countdown > div::before {
+.motus-interval-session:not(.motus-interval-session--complete) .motus-interval-countdown-face::before {
   content: "";
   position: absolute;
   inset: 0;
   z-index: -2;
   border-radius: inherit;
-  background: conic-gradient(from -90deg, var(--motus-brand) 0deg, var(--motus-pink) 230deg, rgba(255,255,255,0.14) 230deg 360deg);
+  background: conic-gradient(
+    from -90deg,
+    var(--motus-brand) 0%,
+    var(--motus-pink) var(--motus-interval-progress, 100%),
+    rgba(255,255,255,0.14) var(--motus-interval-progress, 100%) 100%
+  );
   box-shadow: 0 0 46px rgba(48, 227, 190, 0.22);
+  transition: background 220ms linear;
 }
 
-.motus-interval-session:not(.motus-interval-session--complete) .motus-interval-timer-countdown > div::after {
+.motus-interval-session:not(.motus-interval-session--complete) .motus-interval-countdown-face::after {
   content: "";
   position: absolute;
   inset: 0.55rem;
@@ -6657,7 +6665,7 @@ html:has(.motus-trainer-app) {
   font-size: clamp(4.5rem, 31vh, 8rem) !important;
 }
 
-.motus-interval-session--timer-focus:not(.motus-interval-session--complete) .motus-interval-timer-countdown > div {
+.motus-interval-session--timer-focus:not(.motus-interval-session--complete) .motus-interval-countdown-face {
   min-width: min(46vw, 58vh, 30rem);
 }
 

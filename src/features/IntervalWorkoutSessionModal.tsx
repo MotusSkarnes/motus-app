@@ -1,5 +1,5 @@
 import { ArrowLeft, Check, Maximize2, Minimize2 } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { createPortal } from "react-dom";
 import { MOTUS } from "../app/data";
 import { useIntervalTimerFocusLayout } from "../app/useIntervalTimerFocusLayout";
@@ -342,6 +342,12 @@ export function IntervalWorkoutSessionModal({
 
   const progressDegrees = (progressPercent / 100) * 360;
   const nextStep = intervalProgramSteps[stepIndex + 1] ?? null;
+  const countdownProgressPct = currentStep?.durationSeconds
+    ? Math.max(0, Math.min(100, (Math.max(0, remainingSeconds) / currentStep.durationSeconds) * 100))
+    : 0;
+  const countdownProgressStyle = {
+    "--motus-interval-progress": `${countdownProgressPct}%`,
+  } as CSSProperties;
   const intervalFooterBtn =
     "w-full !min-h-8 !h-8 !px-1.5 !py-1 !text-[10px] !font-semibold !leading-tight sm:!min-h-9 sm:!text-[11px]";
 
@@ -579,7 +585,7 @@ export function IntervalWorkoutSessionModal({
                   </div>
                 </div>
                 <div className="motus-interval-timer-countdown flex justify-center py-2 sm:py-3">
-                  <div className="text-center">
+                  <div className="motus-interval-countdown-face text-center" style={countdownProgressStyle}>
                     <div className="text-[10px] font-semibold uppercase tracking-wide text-slate-500 sm:text-xs">Gjenstår</div>
                     <div className="motus-interval-countdown-value text-6xl font-black tabular-nums tracking-tight text-slate-900 sm:text-7xl">
                       {formatSeconds(remainingSeconds)}
