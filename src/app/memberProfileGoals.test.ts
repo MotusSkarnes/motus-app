@@ -40,4 +40,14 @@ describe("pickBestPersonalGoals", () => {
     })}`;
     expect(pickBestPersonalGoals([notificationOnly, withAvoidances])).toBe(withAvoidances);
   });
+
+  it("prefers blob with stop goals over notification-only", () => {
+    const withStopGoals = `MOTUS_PROFILE_V1:${JSON.stringify({
+      stopGoals: [{ target: "Brus", customTarget: "", startedAt: "2026-07-01" }],
+    })}`;
+    const notificationOnly = `MOTUS_PROFILE_V1:${JSON.stringify({
+      notificationPreferences: { seenHiddenBadgeIds: ["badge-1"] },
+    })}`;
+    expect(pickBestPersonalGoals([notificationOnly, withStopGoals])).toBe(withStopGoals);
+  });
 });

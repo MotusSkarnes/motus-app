@@ -20,6 +20,7 @@ import {
   resolveMemberOnboarding,
 } from "./memberOnboarding";
 import { patchMemberAppUiStateInPersonalGoals } from "./memberAppUiState";
+import { getStopGoalsFromPersonalGoals } from "./memberStopGoal";
 import type { Member } from "./types";
 
 describe("memberOnboarding", () => {
@@ -268,6 +269,50 @@ describe("memberOnboarding", () => {
     const merged = mergePersonalGoalsFromCandidates([notificationOnly, onboardingBlob]);
     expect(isOnboardingCompleted(merged)).toBe(true);
     expect(getOnboardingFromPersonalGoals(merged)?.trainingGoals).toEqual(["Styrke"]);
+  });
+
+  it("mergePersonalGoalsFromCandidates preserves stop goals from duplicate rows", () => {
+    const onboardingBlob = mergeOnboardingIntoPersonalGoals("", {
+      ...createEmptyOnboardingDraft(),
+      version: 1,
+      trainingGoals: ["Styrke"],
+      motivations: ["Helse"],
+      completedAt: "2026-05-16T12:00:00.000Z",
+    });
+    const stopGoalBlob = `MOTUS_PROFILE_V1:${JSON.stringify({
+      stopGoals: [
+        { target: "Brus", customTarget: "", startedAt: "2026-07-01" },
+        { target: "Røyk", customTarget: "", startedAt: "2026-07-02" },
+      ],
+    })}`;
+
+    const merged = mergePersonalGoalsFromCandidates([onboardingBlob, stopGoalBlob]);
+
+    expect(isOnboardingCompleted(merged)).toBe(true);
+    expect(getStopGoalsFromPersonalGoals(merged)).toEqual([
+      { target: "Brus", customTarget: "", startedAt: "2026-07-01" },
+      { target: "Røyk", customTarget: "", startedAt: "2026-07-02" },
+    ]);
+  });
+
+  it("mergeOnboardingIntoPersonalGoals preserves existing stop goals", () => {
+    const existing = `MOTUS_PROFILE_V1:${JSON.stringify({
+      stopGoal: { target: "Brus", customTarget: "", startedAt: "2026-07-01" },
+      stopGoals: [{ target: "Brus", customTarget: "", startedAt: "2026-07-01" }],
+    })}`;
+
+    const merged = mergeOnboardingIntoPersonalGoals(existing, {
+      ...createEmptyOnboardingDraft(),
+      version: 1,
+      trainingGoals: ["Styrke"],
+      motivations: ["Helse"],
+      completedAt: "2026-05-16T12:00:00.000Z",
+    });
+
+    expect(isOnboardingCompleted(merged)).toBe(true);
+    expect(getStopGoalsFromPersonalGoals(merged)).toEqual([
+      { target: "Brus", customTarget: "", startedAt: "2026-07-01" },
+    ]);
   });
 
   it("isMemberOnboardingComplete respects local completion marker", () => {

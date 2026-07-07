@@ -18,6 +18,7 @@ export function useDeadlineIntervalTimer<T extends IntervalTimerDeadlineStep>({
 }: UseDeadlineIntervalTimerOptions<T>) {
   const [stepIndex, setStepIndex] = useState(0);
   const [remainingSeconds, setRemainingSeconds] = useState(0);
+  const [deadlineVersion, setDeadlineVersion] = useState(0);
   const stepEndsAtMsRef = useRef<number | null>(null);
   const onCompleteRef = useRef(onAllStepsComplete);
 
@@ -48,6 +49,7 @@ export function useDeadlineIntervalTimer<T extends IntervalTimerDeadlineStep>({
       stepEndsAtMsRef.current = nowMs + durationMs;
       setStepIndex(safeIndex);
       setRemainingSeconds(remainingSecondsUntilDeadline(stepEndsAtMsRef.current, nowMs));
+      setDeadlineVersion((version) => version + 1);
     },
     [steps.length],
   );
@@ -104,7 +106,7 @@ export function useDeadlineIntervalTimer<T extends IntervalTimerDeadlineStep>({
       window.removeEventListener("focus", onVisibilityOrFocus);
       window.removeEventListener("pageshow", onVisibilityOrFocus);
     };
-  }, [applySync, isPaused, isRunning]);
+  }, [applySync, deadlineVersion, isPaused, isRunning]);
 
   useEffect(() => {
     if (!isRunning || !isPaused || stepEndsAtMsRef.current == null) return;

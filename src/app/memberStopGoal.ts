@@ -1,4 +1,4 @@
-import { parsePersonalGoalsJson } from "./memberProfilePayload";
+import { parsePersonalGoalsJson, PROFILE_METRICS_PREFIX } from "./memberProfilePayload";
 
 export const MEMBER_STOP_GOAL_OPTIONS = ["Snus", "Godteri", "Sukker", "Røyk", "Alkohol", "Energidrikk", "Brus"] as const;
 
@@ -49,6 +49,34 @@ export function normalizeStopGoals(value: unknown): MemberStopGoal[] {
     items.push(normalized);
     return items;
   }, []);
+}
+
+function stopGoalKey(stopGoal: MemberStopGoal): string {
+  return `${stopGoal.target.toLocaleLowerCase("nb-NO")}|${stopGoal.customTarget.toLocaleLowerCase("nb-NO")}|${stopGoal.startedAt}`;
+}
+
+export function mergeStopGoalsAcrossCandidates(candidates: Array<string | undefined | null>): MemberStopGoal[] {
+  const byKey = new Map<string, MemberStopGoal>();
+  for (const raw of candidates) {
+    for (const stopGoal of getStopGoalsFromPersonalGoals(raw ?? undefined)) {
+      byKey.set(stopGoalKey(stopGoal), stopGoal);
+    }
+  }
+  return Array.from(byKey.values());
+}
+
+export function mergeStopGoalsIntoPersonalGoals(
+  personalGoals: string | undefined,
+  stopGoals: MemberStopGoal[],
+): string {
+  const normalized = normalizeStopGoals(stopGoals);
+  if (!normalized.length) return String(personalGoals ?? "");
+  const existing = parsePersonalGoalsJson(personalGoals) ?? {};
+  return `${PROFILE_METRICS_PREFIX}${JSON.stringify({
+    ...existing,
+    stopGoal: normalized[0],
+    stopGoals: normalized,
+  })}`;
 }
 
 export function getStopGoalFromPersonalGoals(personalGoals: string | undefined): MemberStopGoal | null {
