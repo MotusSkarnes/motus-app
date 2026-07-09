@@ -12,7 +12,7 @@ import {
 } from "lucide-react";
 import { MOTUS } from "../app/data";
 import { imageObjectPositionFromSrc } from "../app/imageFocalPoint";
-import { formatStopGoalWithoutLabel, type MemberStopGoal } from "../app/memberStopGoal";
+import { formatStopGoalBreakCount, formatStopGoalWithoutLabel, type MemberStopGoal } from "../app/memberStopGoal";
 import { GradientButton, OutlineButton, TrainingStartButton } from "../app/ui";
 
 export type MemberHomeStatusCard = {
@@ -44,6 +44,7 @@ export type MemberHomeOverviewProps = {
   dashboardProgressPct?: number;
   momentumPct: number;
   stopGoals?: MemberHomeStopGoal[];
+  onRecordStopGoalBreak?: (index: number) => void;
   weekSessionsLabel?: string | null;
   weekMinutesLabel?: string | null;
   workoutTitle: string;
@@ -78,6 +79,7 @@ export function MemberHomeOverview({
   dashboardProgressPct,
   momentumPct,
   stopGoals = [],
+  onRecordStopGoalBreak,
   weekSessionsLabel,
   weekMinutesLabel,
   workoutTitle,
@@ -272,6 +274,7 @@ export function MemberHomeOverview({
           <div className="motus-home-stop-carousel__track" tabIndex={0}>
             {visibleStopGoals.map((goal, index) => {
               const days = Math.max(0, Number(goal.days ?? 0));
+              const breakCount = Math.max(0, Number(goal.breakCount ?? 0));
               return (
                 <article
                   key={`${goal.withoutLabel}-${goal.startedAt}-${index}`}
@@ -284,9 +287,21 @@ export function MemberHomeOverview({
                   <div className="min-w-0 flex-1">
                     <p className="motus-home-stop-card__label">Stopp</p>
                     <p className="motus-home-stop-card__value">
-                      {days} døgn uten {goal.withoutLabel}
+                      {days} {days === 1 ? "døgn" : "døgn"} uten {goal.withoutLabel}
                     </p>
+                    <p className="motus-home-stop-card__meta">{formatStopGoalBreakCount(breakCount)}</p>
                   </div>
+                  {onRecordStopGoalBreak ? (
+                    <button
+                      type="button"
+                      onClick={() => onRecordStopGoalBreak(index)}
+                      className="motus-home-stop-card__break-btn motus-pressable"
+                      aria-label={`Registrer brudd på ${goal.withoutLabel}`}
+                      title="Registrer brudd"
+                    >
+                      Brudd
+                    </button>
+                  ) : null}
                   <div className="motus-home-stop-card__spark" aria-hidden />
                 </article>
               );

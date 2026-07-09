@@ -6,6 +6,7 @@ export type MemberStopGoal = {
   target: string;
   customTarget: string;
   startedAt: string;
+  breakCount?: number;
 };
 
 export function toLocalDateKey(date: Date): string {
@@ -27,10 +28,12 @@ export function normalizeStopGoal(value: unknown): MemberStopGoal | null {
   const customTarget = String(raw.customTarget ?? "").trim();
   const startedAt = normalizeDateKey(raw.startedAt);
   if (!target && !customTarget) return null;
+  const breakCount = Math.max(0, Math.floor(Number(raw.breakCount ?? 0)));
   return {
     target,
     customTarget,
     startedAt,
+    breakCount,
   };
 }
 
@@ -93,4 +96,30 @@ export function computeStopGoalDays(startedAt: string, now = new Date()): number
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   const diffDays = Math.floor((today.getTime() - start.getTime()) / 86_400_000);
   return Math.max(0, diffDays);
+}
+
+function advanceDateKeyByOneDay(dateKey: string, now = new Date()): string {
+  const normalized = normalizeDateKey(dateKey);
+  if (!normalized) return toLocalDateKey(now);
+  const [year, month, day] = normalized.split("-").map(Number);
+  const next = new Date(year, month - 1, day + 1);
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  if (next.getTime() > today.getTime()) return toLocalDateKey(today);
+  return toLocalDateKey(next);
+}
+
+/** Register a slip: subtract one day from the streak and increment break count. */
+export function recordStopGoalBreak(stopGoal: MemberStopGoal, now = new Date()): MemberStopGoal {
+  const startedAt = normalizeDateKey(stopGoal.startedAt) || toLocalDateKey(now);
+  const days = computeStopGoalDays(startedAt, now);
+  return {
+    ...stopGoal,
+    startedAt: days > 0 ? advanceDateKeyByOneDay(startedAt, now) : startedAt,
+    breakCount: Math.max(0, Number(stopGoal.breakCount ?? 0)) + 1,
+  };
+}
+
+export function formatStopGoalBreakCount(count: number): string {
+  const safe = Math.max(0, Math.floor(count));
+  return `${safe} ${safe === 1 ? "brudd" : "brudd"}`;
 }

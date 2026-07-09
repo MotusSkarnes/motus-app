@@ -472,6 +472,33 @@ button {
   color: #0f172a;
 }
 
+.motus-home-stop-card__meta {
+  margin-top: 0.2rem;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: #94a3b8;
+}
+
+.motus-home-stop-card__break-btn {
+  position: relative;
+  z-index: 1;
+  flex-shrink: 0;
+  border-radius: 9999px;
+  border: 1px solid rgba(217, 18, 120, 0.28);
+  background: rgba(255, 255, 255, 0.92);
+  padding: 0.35rem 0.7rem;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  color: #be185d;
+  box-shadow: 0 6px 14px -10px rgba(217, 18, 120, 0.55);
+}
+
+.motus-home-stop-card__break-btn:hover {
+  background: rgba(255, 241, 246, 0.98);
+  border-color: rgba(217, 18, 120, 0.45);
+}
+
 .motus-home-stop-card__spark {
   position: absolute;
   right: -1.75rem;

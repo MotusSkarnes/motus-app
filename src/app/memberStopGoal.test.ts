@@ -5,6 +5,7 @@ import {
   formatStopGoalWithoutLabel,
   getStopGoalFromPersonalGoals,
   getStopGoalsFromPersonalGoals,
+  recordStopGoalBreak,
 } from "./memberStopGoal";
 
 describe("memberStopGoal", () => {
@@ -17,6 +18,7 @@ describe("memberStopGoal", () => {
       target: "Brus",
       customTarget: "",
       startedAt: "2026-07-01",
+      breakCount: 0,
     });
   });
 
@@ -47,5 +49,30 @@ describe("memberStopGoal", () => {
     expect(formatStopGoalWithoutLabel("Godteri")).toBe("godteri");
     expect(formatStopGoalWithoutLabel("Energidrikk")).toBe("energidrikk");
     expect(formatStopGoalWithoutLabel("Kaffestopp")).toBe("kaffe");
+  });
+
+  it("records a break by subtracting one day and incrementing break count", () => {
+    const now = new Date("2026-07-05T12:00:00");
+    const goal = { target: "Godteri", customTarget: "", startedAt: "2026-07-01", breakCount: 1 };
+
+    expect(recordStopGoalBreak(goal, now)).toEqual({
+      target: "Godteri",
+      customTarget: "",
+      startedAt: "2026-07-02",
+      breakCount: 2,
+    });
+    expect(computeStopGoalDays("2026-07-02", now)).toBe(3);
+  });
+
+  it("keeps startedAt on zero-day streak but still counts the break", () => {
+    const now = new Date("2026-07-05T12:00:00");
+    const goal = { target: "Godteri", customTarget: "", startedAt: "2026-07-05", breakCount: 0 };
+
+    expect(recordStopGoalBreak(goal, now)).toEqual({
+      target: "Godteri",
+      customTarget: "",
+      startedAt: "2026-07-05",
+      breakCount: 1,
+    });
   });
 });

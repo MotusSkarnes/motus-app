@@ -225,9 +225,11 @@ import { MemberBodyMetricsSection } from "./MemberBodyMetricsSection";
 import { createMemberBodyMetricEntry, mergeBodyMetricIntoPersonalGoals } from "../app/memberBodyMetrics";
 import {
   computeStopGoalDays,
+  formatStopGoalWithoutLabel,
   getStopGoalsFromPersonalGoals,
   normalizeStopGoals,
   getStopGoalFromPersonalGoals,
+  recordStopGoalBreak,
   resolveStopGoalLabel,
   type MemberStopGoal,
 } from "../app/memberStopGoal";
@@ -3052,7 +3054,7 @@ export function MemberPortal(props: MemberPortalProps) {
     setProfileSaveInfo(feedback);
   }
 
-  const saveProfile = useCallback(async (options?: { silent?: boolean }) => {
+  const saveProfile = useCallback(async (options?: { silent?: boolean; stopGoalsOverride?: MemberStopGoal[] }) => {
     const silent = options?.silent === true;
     if (!editableMember || typeof window === "undefined") return;
     const trimmedBirthDateDraft = memberBirthDateDraft.trim();
@@ -3080,7 +3082,7 @@ export function MemberPortal(props: MemberPortalProps) {
       },
       resolveMemberPersonalGoals(editableMember, members),
     );
-    const stopGoalsForSync = normalizeStopGoals(stopGoalsDraft);
+    const stopGoalsForSync = normalizeStopGoals(options?.stopGoalsOverride ?? stopGoalsDraft);
     if (stopGoalsForSync.length) {
       const parsed = parsePersonalGoalsJson(metricsForSync) ?? {};
       metricsForSync = `${PROFILE_METRICS_PREFIX}${JSON.stringify({
@@ -3211,6 +3213,37 @@ export function MemberPortal(props: MemberPortalProps) {
     normalizedCurrentUserEmail,
     syncProfileToPtBackend,
   ]);
+
+  const requestRecordStopGoalBreak = useCallback(
+    (index: number) => {
+      if (!editableMember) return;
+      const goal = effectiveStopGoals[index];
+      const label = resolveStopGoalLabel(goal);
+      if (!goal || !label) return;
+      const withoutLabel = formatStopGoalWithoutLabel(label);
+      const days = computeStopGoalDays(goal.startedAt, nowDate);
+
+      setConfirmDialog({
+        title: "Registrer brudd?",
+        message:
+          days > 0
+            ? `Dette trekker fra 1 døgn på streaken uten ${withoutLabel}, og legger til ett brudd i statistikken.`
+            : `Dette legger til ett brudd i statistikken for ${withoutLabel}.`,
+        confirmLabel: "Registrer brudd",
+        onConfirm: () => {
+          setConfirmDialog(null);
+          const updated = effectiveStopGoals.map((item, itemIndex) =>
+            itemIndex === index ? recordStopGoalBreak(item, nowDate) : item,
+          );
+          stopGoalDraftDirtyRef.current = true;
+          stopGoalDraftDirtyMemberIdRef.current = editableMember.id;
+          setStopGoalsDraft(updated);
+          void saveProfile({ silent: true, stopGoalsOverride: updated });
+        },
+      });
+    },
+    [editableMember, effectiveStopGoals, nowDate, saveProfile],
+  );
 
   function formatSeconds(seconds: number): string {
     const safe = Math.max(0, Math.floor(seconds));
@@ -6658,6 +6691,7 @@ export function MemberPortal(props: MemberPortalProps) {
                 onOpenProfile={() => setMemberTab("profile")}
                 streakWeeks={streakWeeks}
                 stopGoals={homeStopGoals}
+                onRecordStopGoalBreak={!isMemberLimited ? requestRecordStopGoalBreak : undefined}
                 dashboardHeadline={homeDashboardHeadline}
                 dashboardSubline={homeDashboardSubline}
                 momentumPct={homeMomentumPct}
