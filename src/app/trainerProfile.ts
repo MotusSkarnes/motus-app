@@ -5,6 +5,19 @@ export type TrainerProfile = {
   title: string;
   focus: string;
   bio: string;
+  vacation: TrainerVacation;
+};
+
+export type TrainerVacation = {
+  enabled: boolean;
+  startDate: string;
+  endDate: string;
+  message: string;
+};
+
+export type TrainerVacationNotice = {
+  title: string;
+  detail: string;
 };
 
 export function emptyTrainerProfile(): TrainerProfile {
@@ -13,6 +26,38 @@ export function emptyTrainerProfile(): TrainerProfile {
     title: "",
     focus: "",
     bio: "",
+    vacation: emptyTrainerVacation(),
+  };
+}
+
+export function emptyTrainerVacation(): TrainerVacation {
+  return {
+    enabled: false,
+    startDate: "",
+    endDate: "",
+    message: "",
+  };
+}
+
+function parseDateOnlyMs(value: string, endOfDay = false): number | null {
+  const match = value.trim().match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!match) return null;
+  const year = Number(match[1]);
+  const month = Number(match[2]) - 1;
+  const day = Number(match[3]);
+  const date = endOfDay ? new Date(year, month, day, 23, 59, 59, 999) : new Date(year, month, day);
+  const ms = date.getTime();
+  return Number.isNaN(ms) ? null : ms;
+}
+
+export function parseTrainerVacation(value: unknown): TrainerVacation {
+  if (!value || typeof value !== "object") return emptyTrainerVacation();
+  const row = value as Record<string, unknown>;
+  return {
+    enabled: row.enabled === true,
+    startDate: String(row.startDate ?? row.start_date ?? "").trim(),
+    endDate: String(row.endDate ?? row.end_date ?? "").trim(),
+    message: String(row.message ?? "").trim(),
   };
 }
 
@@ -24,6 +69,7 @@ export function parseTrainerProfile(value: unknown): TrainerProfile {
     title: String(row.title ?? "").trim(),
     focus: String(row.focus ?? "").trim(),
     bio: String(row.bio ?? "").trim(),
+    vacation: parseTrainerVacation(row.vacation ?? row.trainerVacation),
   };
 }
 
@@ -38,6 +84,37 @@ export function serializeTrainerProfile(profile: TrainerProfile): TrainerProfile
     title: profile.title.trim(),
     focus: profile.focus.trim(),
     bio: profile.bio.trim(),
+    vacation: {
+      enabled: profile.vacation.enabled === true,
+      startDate: profile.vacation.startDate.trim(),
+      endDate: profile.vacation.endDate.trim(),
+      message: profile.vacation.message.trim(),
+    },
+  };
+}
+
+export function buildTrainerVacationNotice(
+  vacation: TrainerVacation | undefined,
+  nowDate = new Date(),
+): TrainerVacationNotice | null {
+  if (!vacation?.enabled) return null;
+  const startMs = parseDateOnlyMs(vacation.startDate);
+  const endMs = parseDateOnlyMs(vacation.endDate, true);
+  if (startMs === null || endMs === null || endMs < startMs) return null;
+
+  const nowMs = nowDate.getTime();
+  if (nowMs < startMs || nowMs > endMs) return null;
+
+  const formatter = new Intl.DateTimeFormat("nb-NO", { day: "numeric", month: "long" });
+  const startLabel = formatter.format(new Date(startMs));
+  const endLabel = formatter.format(new Date(endMs));
+  const range = startLabel === endLabel ? startLabel : `${startLabel} til ${endLabel}`;
+  const message = vacation.message.trim();
+  return {
+    title: "Trener er ikke tilgjengelig.",
+    detail: message
+      ? `Treneren din er på ferie fra ${range}. ${message}`
+      : `Treneren din er på ferie fra ${range}. Du kan fortsatt sende melding, men svar kan ta litt lenger tid.`,
   };
 }
 

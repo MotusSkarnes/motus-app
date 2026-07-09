@@ -23,6 +23,7 @@ import { serializeConditioningProgramNotes } from "../app/conditioningProgramMod
 import { enrichTrainingProgram } from "../app/programEnrichment";
 import { formatDateDdMmYyyy, formatDateTimeDdMmYyyy, normalizeStoredLogDate } from "../app/dateFormat";
 import { normalizeMemberGender } from "../app/memberGender";
+import { parseTrainerVacation } from "../app/trainerProfile";
 import { dedupePeriodPlansById } from "../app/periodPlanMerge";
 import { programExerciseUsesBankExercise } from "../app/exerciseBankUsage";
 import { normalizeStoredExerciseCategory } from "../app/exerciseCategories";
@@ -154,6 +155,7 @@ function mapMemberRowFromSupabase(row: Record<string, unknown>): Member {
     injuries: String(row.injuries ?? ""),
     coachNotes: String(row.coach_notes ?? ""),
     avatarUrl: String(row.avatar_url ?? ""),
+    trainerVacation: parseTrainerVacation(row.trainer_vacation ?? row.trainerVacation),
   };
 }
 
@@ -3308,6 +3310,7 @@ function mapHydrateMemberPayload(payload: Record<string, unknown>): HydratedMemb
         coachNotes: String(member.coach_notes ?? ""),
         avatarUrl: String(member.avatar_url ?? ""),
         noPlanDayCoverImageUrl: memberNoPlanCover,
+        trainerVacation: parseTrainerVacation(member.trainer_vacation ?? member.trainerVacation),
       } as Member;
     }),
     messages: messagesRows.map((row) => chatMessageFromRow(row as Record<string, unknown>)),

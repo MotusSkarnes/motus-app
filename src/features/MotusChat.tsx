@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode, type RefObject } from "react";
 import {
+  AlertTriangle,
   ChevronLeft,
   Dumbbell,
   MoreHorizontal,
@@ -50,6 +51,10 @@ export type MotusChatProps = {
   messagesContainerRef?: RefObject<HTMLDivElement | null>;
   onBack?: () => void;
   headerExtra?: ReactNode;
+  notice?: {
+    title: string;
+    detail: string;
+  } | null;
   onToggleReaction?: (messageId: string, emoji: ChatReactionEmoji, actor: ChatReactionActor) => void;
   /** Kalles når chatten vises — markerer motpartens meldinger som lest. */
   onMarkConversationRead?: () => void;
@@ -304,6 +309,7 @@ export function MotusChat({
   messagesContainerRef,
   onBack,
   headerExtra,
+  notice,
   onToggleReaction,
   onMarkConversationRead,
 }: MotusChatProps) {
@@ -385,6 +391,18 @@ export function MotusChat({
               </button>
             );
           })}
+        </div>
+      ) : null}
+
+      {notice ? (
+        <div className="motus-chat-notice" role="status" aria-live="polite">
+          <div className="motus-chat-notice-icon" aria-hidden>
+            <AlertTriangle className="h-5 w-5" />
+          </div>
+          <div className="min-w-0">
+            <div className="motus-chat-notice-title">{notice.title}</div>
+            <div className="motus-chat-notice-detail">{notice.detail}</div>
+          </div>
         </div>
       ) : null}
 

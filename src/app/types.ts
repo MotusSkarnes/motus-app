@@ -1,5 +1,6 @@
 import type { ChatReactionState } from "./chatReactions";
 import type { MemberGender } from "./memberGender";
+import type { TrainerVacation } from "./trainerProfile";
 
 export type Role = "trainer" | "member";
 export type Level = "Nybegynner" | "Litt øvet" | "Øvet";
@@ -142,6 +143,8 @@ export type Member = {
   coachNotes: string;
   /** PT sitt «Ingen plan i dag»-forsidebilde (fra hydrate-member-data). */
   noPlanDayCoverImageUrl?: string;
+  /** PT sin ferieinfo (fra hydrate-member-data). */
+  trainerVacation?: TrainerVacation;
 };
 
 /** Variabler PT kan konfigurere per øvelse i øvelsesbanken. */

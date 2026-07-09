@@ -237,7 +237,7 @@ import { buildShareProgramChatMessage } from "../app/chatFormat";
 import { computeWeekProgressPct } from "../app/memberHomeWeekInsights";
 import type { ChatReactionActor, ChatReactionEmoji } from "../app/chatReactions";
 import { MotusChat, type MotusChatQuickAction } from "./MotusChat";
-import { resolveMemberTrainerDisplayName } from "../app/trainerProfile";
+import { buildTrainerVacationNotice, resolveMemberTrainerDisplayName } from "../app/trainerProfile";
 import { MemberPersonalRecordsSection } from "./MemberPersonalRecordsSection";
 import { WorkoutCelebrationModal } from "./WorkoutCelebrationModal";
 import { computeWorkoutCelebrationStats } from "../app/workoutCelebrationStats";
@@ -1876,6 +1876,10 @@ export function MemberPortal(props: MemberPortalProps) {
     if (!editableMember) return "Trener";
     return resolveMemberTrainerDisplayName(editableMember, programs) ?? "Trener";
   }, [editableMember, programs]);
+  const chatTrainerVacationNotice = useMemo(
+    () => buildTrainerVacationNotice(editableMember?.trainerVacation, nowDate),
+    [editableMember?.trainerVacation, nowDate],
+  );
   const activeWorkoutProgram = useMemo(() => {
     if (!workoutMode?.programId) return null;
     const programId = workoutMode.programId;
@@ -8058,6 +8062,7 @@ export function MemberPortal(props: MemberPortalProps) {
               sendDisabled={!messageText.trim()}
               composePlaceholder="Skriv melding..."
               sendStatus={memberChatSendStatus}
+              notice={chatTrainerVacationNotice}
               messagesContainerRef={memberMessagesContainerRef}
               quickActions={memberChatQuickActions}
               onToggleReaction={toggleChatMessageReaction}

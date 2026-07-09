@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  buildTrainerVacationNotice,
   parseTrainerProfile,
   resolveMemberTrainerDisplayName,
   trainerDisplayNameFromAuthMetadata,
@@ -14,13 +15,21 @@ describe("trainerProfile", () => {
         title: "PT",
         focus: "Styrke",
         bio: "Hei",
+        vacation: { enabled: true, startDate: "2026-07-01", endDate: "2026-07-14", message: "Tilbake snart" },
       }),
     ).toEqual({
       phone: "900 11 111",
       title: "PT",
       focus: "Styrke",
       bio: "Hei",
+      vacation: { enabled: true, startDate: "2026-07-01", endDate: "2026-07-14", message: "Tilbake snart" },
     });
+  });
+
+  it("builds vacation notice only inside the configured date range", () => {
+    const vacation = { enabled: true, startDate: "2026-07-01", endDate: "2026-07-14", message: "" };
+    expect(buildTrainerVacationNotice(vacation, new Date(2026, 6, 5))?.detail).toContain("1. juli til 14. juli");
+    expect(buildTrainerVacationNotice(vacation, new Date(2026, 6, 20))).toBeNull();
   });
 
   it("uses full name from auth metadata like PT settings card", () => {
@@ -48,6 +57,7 @@ describe("trainerProfile", () => {
       title: "Trener",
       focus: "",
       bio: "",
+      vacation: { enabled: false, startDate: "", endDate: "", message: "" },
     });
   });
 });

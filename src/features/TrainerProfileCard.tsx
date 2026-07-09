@@ -29,6 +29,10 @@ export function TrainerProfileCard({ loadProfile, saveProfile, onProfileSaved }:
   const [editTitle, setEditTitle] = useState("");
   const [editFocus, setEditFocus] = useState("");
   const [editBio, setEditBio] = useState("");
+  const [editVacationEnabled, setEditVacationEnabled] = useState(false);
+  const [editVacationStartDate, setEditVacationStartDate] = useState("");
+  const [editVacationEndDate, setEditVacationEndDate] = useState("");
+  const [editVacationMessage, setEditVacationMessage] = useState("");
 
   const resetDraftFromSaved = useCallback(() => {
     setEditName(savedName);
@@ -36,6 +40,10 @@ export function TrainerProfileCard({ loadProfile, saveProfile, onProfileSaved }:
     setEditTitle(savedProfile.title);
     setEditFocus(savedProfile.focus);
     setEditBio(savedProfile.bio);
+    setEditVacationEnabled(savedProfile.vacation.enabled);
+    setEditVacationStartDate(savedProfile.vacation.startDate);
+    setEditVacationEndDate(savedProfile.vacation.endDate);
+    setEditVacationMessage(savedProfile.vacation.message);
   }, [savedName, savedProfile]);
 
   const refreshProfile = useCallback(async () => {
@@ -50,6 +58,10 @@ export function TrainerProfileCard({ loadProfile, saveProfile, onProfileSaved }:
       setEditTitle(loaded.profile.title);
       setEditFocus(loaded.profile.focus);
       setEditBio(loaded.profile.bio);
+      setEditVacationEnabled(loaded.profile.vacation.enabled);
+      setEditVacationStartDate(loaded.profile.vacation.startDate);
+      setEditVacationEndDate(loaded.profile.vacation.endDate);
+      setEditVacationMessage(loaded.profile.vacation.message);
     } finally {
       setIsLoading(false);
     }
@@ -66,9 +78,26 @@ export function TrainerProfileCard({ loadProfile, saveProfile, onProfileSaved }:
       editPhone.trim() !== savedProfile.phone ||
       editTitle.trim() !== savedProfile.title ||
       editFocus.trim() !== savedProfile.focus ||
-      editBio.trim() !== savedProfile.bio
+      editBio.trim() !== savedProfile.bio ||
+      editVacationEnabled !== savedProfile.vacation.enabled ||
+      editVacationStartDate.trim() !== savedProfile.vacation.startDate ||
+      editVacationEndDate.trim() !== savedProfile.vacation.endDate ||
+      editVacationMessage.trim() !== savedProfile.vacation.message
     );
-  }, [editBio, editFocus, editName, editPhone, editTitle, isEditing, savedName, savedProfile]);
+  }, [
+    editBio,
+    editFocus,
+    editName,
+    editPhone,
+    editTitle,
+    editVacationEnabled,
+    editVacationEndDate,
+    editVacationMessage,
+    editVacationStartDate,
+    isEditing,
+    savedName,
+    savedProfile,
+  ]);
 
   async function handleSave() {
     setIsSaving(true);
@@ -80,6 +109,12 @@ export function TrainerProfileCard({ loadProfile, saveProfile, onProfileSaved }:
         title: editTitle,
         focus: editFocus,
         bio: editBio,
+        vacation: {
+          enabled: editVacationEnabled,
+          startDate: editVacationStartDate,
+          endDate: editVacationEndDate,
+          message: editVacationMessage,
+        },
       },
     });
     setIsSaving(false);
@@ -94,6 +129,12 @@ export function TrainerProfileCard({ loadProfile, saveProfile, onProfileSaved }:
       title: editTitle.trim(),
       focus: editFocus.trim(),
       bio: editBio.trim(),
+      vacation: {
+        enabled: editVacationEnabled,
+        startDate: editVacationStartDate.trim(),
+        endDate: editVacationEndDate.trim(),
+        message: editVacationMessage.trim(),
+      },
     };
     setSavedProfile(nextProfile);
     setIsEditing(false);
@@ -153,6 +194,36 @@ export function TrainerProfileCard({ loadProfile, saveProfile, onProfileSaved }:
               placeholder="Erfaring, tilnærming eller annet du vil ha oversikt over selv."
             />
           </label>
+          <div className="space-y-3 rounded-2xl border border-white/25 bg-white/10 p-3">
+            <label className="flex items-center gap-2 text-xs font-medium text-white">
+              <input
+                type="checkbox"
+                checked={editVacationEnabled}
+                onChange={(event) => setEditVacationEnabled(event.target.checked)}
+                className="h-4 w-4 rounded border-white/40 text-slate-900"
+              />
+              <span>Vis feriebeskjed i medlemmenes meldinger</span>
+            </label>
+            <div className="grid gap-3 md:grid-cols-2">
+              <label className="space-y-1 text-xs font-medium text-white">
+                <span>Ferie fra</span>
+                <TextInput type="date" value={editVacationStartDate} onChange={(event) => setEditVacationStartDate(event.target.value)} />
+              </label>
+              <label className="space-y-1 text-xs font-medium text-white">
+                <span>Ferie til</span>
+                <TextInput type="date" value={editVacationEndDate} onChange={(event) => setEditVacationEndDate(event.target.value)} />
+              </label>
+            </div>
+            <label className="space-y-1 text-xs font-medium text-white">
+              <span>Egen beskjed (valgfritt)</span>
+              <TextArea
+                value={editVacationMessage}
+                onChange={(event) => setEditVacationMessage(event.target.value)}
+                className="min-h-[76px]"
+                placeholder="f.eks. Jeg er på ferie og svarer litt tregere enn vanlig."
+              />
+            </label>
+          </div>
         </div>
       ) : (
         <>
@@ -177,6 +248,14 @@ export function TrainerProfileCard({ loadProfile, saveProfile, onProfileSaved }:
           <div className="mt-2 rounded-xl border border-white/25 bg-white/10 px-3 py-2 text-sm">
             <div className="text-[11px] text-white/70">Kort om deg</div>
             <div className="font-medium text-white/95">{savedProfile.bio || "Ikke fylt ut"}</div>
+          </div>
+          <div className="mt-2 rounded-xl border border-white/25 bg-white/10 px-3 py-2 text-sm">
+            <div className="text-[11px] text-white/70">Ferie</div>
+            <div className="font-medium text-white/95">
+              {savedProfile.vacation.enabled && savedProfile.vacation.startDate && savedProfile.vacation.endDate
+                ? `${savedProfile.vacation.startDate} til ${savedProfile.vacation.endDate}`
+                : "Ikke aktiv"}
+            </div>
           </div>
         </>
       )}

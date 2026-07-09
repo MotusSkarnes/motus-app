@@ -49,6 +49,24 @@ function nameFromEmail(email: string): string {
   return toFirstName(normalized);
 }
 
+function parseTrainerVacationFromMetadata(metadata: Record<string, unknown>): Record<string, unknown> {
+  const profile = metadata.motus_trainer_profile;
+  if (!profile || typeof profile !== "object") {
+    return { enabled: false, startDate: "", endDate: "", message: "" };
+  }
+  const vacation = (profile as Record<string, unknown>).vacation;
+  if (!vacation || typeof vacation !== "object") {
+    return { enabled: false, startDate: "", endDate: "", message: "" };
+  }
+  const row = vacation as Record<string, unknown>;
+  return {
+    enabled: row.enabled === true,
+    startDate: String(row.startDate ?? row.start_date ?? "").trim(),
+    endDate: String(row.endDate ?? row.end_date ?? "").trim(),
+    message: String(row.message ?? "").trim(),
+  };
+}
+
 const NO_PLAN_DAY_TEMPLATE_TITLE = "Ingen plan i dag";
 const TEMPLATE_KIND_PREFIX = /^__motusTemplateKind=(group|activity|no-plan)(?:\r?\n|$)/;
 
@@ -622,6 +640,7 @@ Deno.serve(async (req) => {
   const mergedPrograms = Array.from(mergedProgramsById.values());
 
   const trainerNameByOwnerId = new Map<string, string>();
+  const trainerVacationByOwnerId = new Map<string, Record<string, unknown>>();
   const ownerUserIds = Array.from(
     new Set(
       [
@@ -642,6 +661,7 @@ Deno.serve(async (req) => {
           ? fullName
           : nameFromEmail(email) || toFirstName(fullName);
       trainerNameByOwnerId.set(ownerUserId, trainerDisplayName);
+      trainerVacationByOwnerId.set(ownerUserId, parseTrainerVacationFromMetadata(metadata));
     } catch {
       // Ignore lookup failures; frontend will use fallback label.
     }
@@ -776,6 +796,7 @@ Deno.serve(async (req) => {
     return {
       ...row,
       assigned_trainer_name: trainerNameByOwnerId.get(ownerUserId) ?? "",
+      trainer_vacation: ownerUserId ? (trainerVacationByOwnerId.get(ownerUserId) ?? null) : null,
       no_plan_day_cover_url: noPlanDayCoverImageUrl ?? (ownerUserId ? (noPlanCoverByOwner.get(ownerUserId) ?? "") : ""),
     };
   });
