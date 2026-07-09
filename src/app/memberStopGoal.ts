@@ -37,21 +37,34 @@ export function normalizeStopGoal(value: unknown): MemberStopGoal | null {
   };
 }
 
+export function stopGoalIdentity(goal: MemberStopGoal): string {
+  return `${goal.target.trim().toLocaleLowerCase("nb-NO")}|${goal.customTarget.trim().toLocaleLowerCase("nb-NO")}`;
+}
+
 export function normalizeStopGoals(value: unknown): MemberStopGoal[] {
   if (!Array.isArray(value)) {
     const single = normalizeStopGoal(value);
     return single ? [single] : [];
   }
-  const seen = new Set<string>();
-  return value.reduce<MemberStopGoal[]>((items, item) => {
+  const order: string[] = [];
+  const byIdentity = new Map<string, MemberStopGoal>();
+  for (const item of value) {
     const normalized = normalizeStopGoal(item);
-    if (!normalized) return items;
-    const key = `${normalized.target.toLocaleLowerCase("nb-NO")}|${normalized.customTarget.toLocaleLowerCase("nb-NO")}|${normalized.startedAt}`;
-    if (seen.has(key)) return items;
-    seen.add(key);
-    items.push(normalized);
-    return items;
-  }, []);
+    if (!normalized) continue;
+    const key = stopGoalIdentity(normalized);
+    if (!byIdentity.has(key)) order.push(key);
+    const existing = byIdentity.get(key);
+    if (!existing) {
+      byIdentity.set(key, normalized);
+      continue;
+    }
+    const preferCurrent =
+      (normalized.breakCount ?? 0) > (existing.breakCount ?? 0) ||
+      ((normalized.breakCount ?? 0) === (existing.breakCount ?? 0) &&
+        normalized.startedAt.localeCompare(existing.startedAt) > 0);
+    byIdentity.set(key, preferCurrent ? normalized : existing);
+  }
+  return order.map((key) => byIdentity.get(key)!);
 }
 
 export function getStopGoalFromPersonalGoals(personalGoals: string | undefined): MemberStopGoal | null {

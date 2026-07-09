@@ -5,6 +5,7 @@ import {
   formatStopGoalWithoutLabel,
   getStopGoalFromPersonalGoals,
   getStopGoalsFromPersonalGoals,
+  normalizeStopGoals,
   recordStopGoalBreak,
 } from "./memberStopGoal";
 
@@ -74,5 +75,16 @@ describe("memberStopGoal", () => {
       startedAt: "2026-07-05",
       breakCount: 1,
     });
+  });
+
+  it("merges duplicate stop goals by target instead of start date", () => {
+    const merged = normalizeStopGoals([
+      { target: "Godteri", customTarget: "", startedAt: "2026-07-01", breakCount: 0 },
+      { target: "Godteri", customTarget: "", startedAt: "2026-07-02", breakCount: 2 },
+    ]);
+
+    expect(merged).toEqual([
+      { target: "Godteri", customTarget: "", startedAt: "2026-07-02", breakCount: 2 },
+    ]);
   });
 });
