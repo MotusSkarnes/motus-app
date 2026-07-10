@@ -503,10 +503,9 @@ function encodeMemberProfileMetrics(
     preferences?.favoritePersonalRecords ?? existing?.favoritePersonalRecords,
   );
   const profileExtensions = readProfileExtensions(existingPersonalGoals);
-  const payload: ProfileMetricsPayload = {
+  const payload: ProfileMetricsPayload & Record<string, unknown> = {
+    ...profileExtensions,
     ...metrics,
-    ...(normalizedHomeVisibility ? { homeVisibility: normalizedHomeVisibility } : {}),
-    ...(normalizedFavoritePersonalRecords ? { favoritePersonalRecords: normalizedFavoritePersonalRecords } : {}),
     ...(profileExtensions.onboarding
       ? {
           onboarding: profileExtensions.onboarding as ProfileMetricsPayload["onboarding"],
@@ -532,6 +531,18 @@ function encodeMemberProfileMetrics(
       ? { stopGoals: normalizeStopGoals(profileExtensions.stopGoals) }
       : {}),
   };
+  if (preferences?.homeVisibility !== undefined) {
+    if (normalizedHomeVisibility) payload.homeVisibility = normalizedHomeVisibility;
+    else delete payload.homeVisibility;
+  } else if (normalizedHomeVisibility) {
+    payload.homeVisibility = normalizedHomeVisibility;
+  }
+  if (preferences?.favoritePersonalRecords !== undefined) {
+    if (normalizedFavoritePersonalRecords) payload.favoritePersonalRecords = normalizedFavoritePersonalRecords;
+    else delete payload.favoritePersonalRecords;
+  } else if (normalizedFavoritePersonalRecords) {
+    payload.favoritePersonalRecords = normalizedFavoritePersonalRecords;
+  }
   return `${PROFILE_METRICS_PREFIX}${JSON.stringify(payload)}`;
 }
 

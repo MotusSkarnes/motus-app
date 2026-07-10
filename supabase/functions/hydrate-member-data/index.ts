@@ -137,6 +137,18 @@ function scorePersonalGoalsBlob(value: string): number {
   if (raw.includes('"onboarding"') && raw.includes("completedAt")) score += 160;
   else if (raw.includes('"onboarding"')) score += 80;
   if (raw.includes('"monthlyCheckIns"')) score += 50;
+  if (raw.includes('"notificationPreferences"')) score += 120;
+  if (raw.includes('"memberAppUi"')) score += 80;
+  if (raw.includes('"profileDisplayName"')) score += 60;
+  if (raw.includes('"foodAvoidances"')) score += 100;
+  if (raw.includes('"foodAvoidances"') && /"items"\s*:\s*\[\s*\{/.test(raw)) score += 250;
+  if (raw.includes('"periodPlanCompletion"')) score += 140;
+  if (raw.includes('"periodPlanSwaps"')) score += 140;
+  if (raw.includes('"stopGoals"')) score += 220;
+  else if (raw.includes('"stopGoal"')) score += 180;
+  if (/"breakCount"\s*:\s*[1-9]/.test(raw)) score += 80;
+  if (raw.includes('"openedMemberAlertIds"')) score += 40;
+  if (raw.includes('"seenHiddenBadgeIds"')) score += 40;
   score += Math.min(20, Math.floor(raw.length / 200));
   return score;
 }

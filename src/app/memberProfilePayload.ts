@@ -55,6 +55,9 @@ export function readProfileExtensions(personalGoals: string | undefined): Record
   if (payload.periodPlanSwaps && typeof payload.periodPlanSwaps === "object") {
     extensions.periodPlanSwaps = payload.periodPlanSwaps;
   }
+  if (payload.periodPlanCompletion && typeof payload.periodPlanCompletion === "object") {
+    extensions.periodPlanCompletion = payload.periodPlanCompletion;
+  }
   if (payload.foodAvoidances && typeof payload.foodAvoidances === "object") {
     extensions.foodAvoidances = payload.foodAvoidances;
   }
