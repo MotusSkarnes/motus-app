@@ -100,15 +100,19 @@ describe("memberStopGoal", () => {
       });
       events.push(`finish:${label}`);
     };
+    const flushQueue = async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+    };
 
     const first = enqueueStopGoalSave(queue, createSave("first"), () => events.push("drained"));
     const second = enqueueStopGoalSave(queue, createSave("second"), () => events.push("drained"));
-    await Promise.resolve();
+    await flushQueue();
 
     expect(events).toEqual(["start:first"]);
     deferred[0]();
     await first;
-    await Promise.resolve();
+    await flushQueue();
     expect(events).toEqual(["start:first", "finish:first", "start:second"]);
 
     deferred[1]();
