@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   computeStopGoalDays,
+  enqueueStopGoalSave,
   formatStopGoalTitle,
   formatStopGoalWithoutLabel,
   getStopGoalFromPersonalGoals,
@@ -86,5 +87,32 @@ describe("memberStopGoal", () => {
     expect(merged).toEqual([
       { target: "Godteri", customTarget: "", startedAt: "2026-07-02", breakCount: 2 },
     ]);
+  });
+
+  it("serializes stop goal saves and drains only after the latest save", async () => {
+    const queue = { tail: Promise.resolve() };
+    const events: string[] = [];
+    const deferred: Array<() => void> = [];
+    const createSave = (label: string) => async () => {
+      events.push(`start:${label}`);
+      await new Promise<void>((resolve) => {
+        deferred.push(resolve);
+      });
+      events.push(`finish:${label}`);
+    };
+
+    const first = enqueueStopGoalSave(queue, createSave("first"), () => events.push("drained"));
+    const second = enqueueStopGoalSave(queue, createSave("second"), () => events.push("drained"));
+    await Promise.resolve();
+
+    expect(events).toEqual(["start:first"]);
+    deferred[0]();
+    await first;
+    await Promise.resolve();
+    expect(events).toEqual(["start:first", "finish:first", "start:second"]);
+
+    deferred[1]();
+    await second;
+    expect(events).toEqual(["start:first", "finish:first", "start:second", "finish:second", "drained"]);
   });
 });
