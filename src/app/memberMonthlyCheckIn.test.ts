@@ -7,6 +7,7 @@ import {
   resolveCheckInWindow,
   shouldPromptMonthlyCheckIn,
 } from "./memberMonthlyCheckIn";
+import { parsePersonalGoalsJson } from "./memberProfilePayload";
 import type { Member } from "./types";
 
 function memberWithGoals(personalGoals: string): Member {
@@ -115,5 +116,64 @@ describe("mergeCheckInIntoPersonalGoals", () => {
     expect(merged.startsWith("MOTUS_PROFILE_V1:")).toBe(true);
     expect(hasCompletedCheckInForMonth(merged, "2026-05")).toBe(true);
     expect(merged).toContain('"onboarding"');
+  });
+
+  it("preserves stop goals when storing a monthly check-in", () => {
+    const existing = `MOTUS_PROFILE_V1:${JSON.stringify({
+      onboarding: {
+        version: 1,
+        completedAt: "2026-01-01T00:00:00.000Z",
+        skipped: false,
+      },
+      stopGoal: {
+        version: 1,
+        habitLabel: "snus",
+        targetDays: 30,
+        startedAt: "2026-07-01",
+        breakCount: 1,
+        breakDates: ["2026-07-03"],
+      },
+      stopGoals: [
+        {
+          version: 1,
+          habitLabel: "snus",
+          targetDays: 30,
+          startedAt: "2026-07-01",
+          breakCount: 1,
+          breakDates: ["2026-07-03"],
+        },
+      ],
+    })}`;
+    const merged = mergeCheckInIntoPersonalGoals(existing, {
+      version: 1,
+      monthKey: "2026-05",
+      trainingGoing: 5,
+      metExpectations: 4,
+      trainingNeeds: ["Tøffere økter"],
+      trainingNeedsNotes: "",
+      challengingNotes: "",
+      coachNotes: "",
+      completedAt: "2026-05-31T12:00:00.000Z",
+    });
+    const payload = parsePersonalGoalsJson(merged);
+
+    expect(payload?.stopGoal).toEqual({
+      version: 1,
+      habitLabel: "snus",
+      targetDays: 30,
+      startedAt: "2026-07-01",
+      breakCount: 1,
+      breakDates: ["2026-07-03"],
+    });
+    expect(payload?.stopGoals).toEqual([
+      {
+        version: 1,
+        habitLabel: "snus",
+        targetDays: 30,
+        startedAt: "2026-07-01",
+        breakCount: 1,
+        breakDates: ["2026-07-03"],
+      },
+    ]);
   });
 });

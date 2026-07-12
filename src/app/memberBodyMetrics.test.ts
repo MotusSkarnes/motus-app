@@ -7,6 +7,7 @@ import {
   mergeBodyMetricIntoPersonalGoals,
 } from "./memberBodyMetrics";
 import { mergeCheckInIntoPersonalGoals } from "./memberMonthlyCheckIn";
+import { parsePersonalGoalsJson } from "./memberProfilePayload";
 
 const onboardingDone = `MOTUS_PROFILE_V1:${JSON.stringify({
   onboarding: { version: 1, completedAt: "2026-01-01T00:00:00.000Z", skipped: false },
@@ -87,5 +88,67 @@ describe("memberBodyMetrics", () => {
     expect(getBodyMetricsFromPersonalGoals(merged)).toHaveLength(1);
     expect(timeline.weightSeries).toHaveLength(2);
     expect(timeline.entries.some((row) => row.source === "check-in")).toBe(true);
+  });
+
+  it("preserves stop goals when adding body metrics", () => {
+    const existing = `MOTUS_PROFILE_V1:${JSON.stringify({
+      sessionsPerWeekTarget: "3",
+      stopGoal: {
+        version: 1,
+        habitLabel: "snus",
+        targetDays: 30,
+        startedAt: "2026-07-01",
+        breakCount: 1,
+        breakDates: ["2026-07-03"],
+      },
+      stopGoals: [
+        {
+          version: 1,
+          habitLabel: "snus",
+          targetDays: 30,
+          startedAt: "2026-07-01",
+          breakCount: 1,
+          breakDates: ["2026-07-03"],
+        },
+        {
+          version: 1,
+          habitLabel: "brus",
+          targetDays: 14,
+          startedAt: "2026-07-02",
+          breakCount: 0,
+          breakDates: [],
+        },
+      ],
+    })}`;
+    const entry = createMemberBodyMetricEntry({ weightKg: 82 })!;
+    const merged = mergeBodyMetricIntoPersonalGoals(existing, entry);
+    const payload = parsePersonalGoalsJson(merged);
+
+    expect(payload?.stopGoal).toEqual({
+      version: 1,
+      habitLabel: "snus",
+      targetDays: 30,
+      startedAt: "2026-07-01",
+      breakCount: 1,
+      breakDates: ["2026-07-03"],
+    });
+    expect(payload?.stopGoals).toEqual([
+      {
+        version: 1,
+        habitLabel: "snus",
+        targetDays: 30,
+        startedAt: "2026-07-01",
+        breakCount: 1,
+        breakDates: ["2026-07-03"],
+      },
+      {
+        version: 1,
+        habitLabel: "brus",
+        targetDays: 14,
+        startedAt: "2026-07-02",
+        breakCount: 0,
+        breakDates: [],
+      },
+    ]);
   });
 });

@@ -1,4 +1,4 @@
-import { PROFILE_METRICS_PREFIX, parsePersonalGoalsJson } from "./memberProfilePayload";
+import { PROFILE_METRICS_PREFIX, parsePersonalGoalsJson, readProfileExtensions } from "./memberProfilePayload";
 import { isOnboardingCompleted } from "./memberOnboarding";
 import type { Member } from "./types";
 
@@ -191,6 +191,7 @@ export function mergeCheckInIntoPersonalGoals(
   checkIn: MemberMonthlyCheckInAnswers,
 ): string {
   const existing = parsePersonalGoalsJson(existingPersonalGoals) ?? {};
+  const extensions = readProfileExtensions(existingPersonalGoals);
   const previous = Array.isArray(existing.monthlyCheckIns)
     ? existing.monthlyCheckIns
         .map((entry) => normalizeCheckInEntry(entry))
@@ -202,26 +203,7 @@ export function mergeCheckInIntoPersonalGoals(
     dailyStepsTarget: String(existing.dailyStepsTarget ?? ""),
     targetWeight: String(existing.targetWeight ?? ""),
     currentDailySteps: String(existing.currentDailySteps ?? ""),
-    ...(existing.homeVisibility && typeof existing.homeVisibility === "object"
-      ? { homeVisibility: existing.homeVisibility }
-      : {}),
-    ...(Array.isArray(existing.favoritePersonalRecords)
-      ? { favoritePersonalRecords: existing.favoritePersonalRecords }
-      : {}),
-    ...(existing.notificationPreferences && typeof existing.notificationPreferences === "object"
-      ? { notificationPreferences: existing.notificationPreferences }
-      : {}),
-    ...(existing.foodAvoidances && typeof existing.foodAvoidances === "object"
-      ? { foodAvoidances: existing.foodAvoidances }
-      : {}),
-    ...(existing.memberAppUi && typeof existing.memberAppUi === "object"
-      ? { memberAppUi: existing.memberAppUi }
-      : {}),
-    ...(existing.onboarding && typeof existing.onboarding === "object" ? { onboarding: existing.onboarding } : {}),
-    ...(String(existing.onboardingCompletedAt ?? "").trim()
-      ? { onboardingCompletedAt: String(existing.onboardingCompletedAt) }
-      : {}),
-    ...(Array.isArray(existing.bodyMetrics) ? { bodyMetrics: existing.bodyMetrics } : {}),
+    ...extensions,
     monthlyCheckIns: [checkIn, ...withoutMonth].slice(0, 24),
   };
   return `${PROFILE_METRICS_PREFIX}${JSON.stringify(payload)}`;
