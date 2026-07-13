@@ -525,6 +525,37 @@ async function resolveCanonicalMemberIdForPeriodPlanStorage(
   return String((sorted[0] as { id?: string }).id ?? "").trim() || ids[0];
 }
 
+function parseUpsertMemberPeriodPlanEdgeResult(payload: unknown): UpsertMemberPeriodPlanResult {
+  if (payload && typeof payload === "object" && (payload as { ok?: unknown }).ok === true) {
+    return { ok: true, message: "Periodeplan lagret." };
+  }
+  const message =
+    payload && typeof payload === "object" && typeof (payload as { error?: unknown }).error === "string"
+      ? String((payload as { error: string }).error)
+      : "";
+  return { ok: false, message: message || "Edge-lagring feilet." };
+}
+
+async function upsertMemberPeriodPlanViaEdge(
+  memberIds: string[],
+  plan: PeriodSchedulePlan,
+  hints?: { targetEmail?: string },
+): Promise<UpsertMemberPeriodPlanResult> {
+  if (!supabaseClient) return { ok: false, message: "Tjenesten er ikke tilgjengelig akkurat nÃ¥." };
+  const { data, error } = await supabaseClient.functions.invoke("upsert-member-period-plan", {
+    body: {
+      memberIds,
+      targetEmail: hints?.targetEmail,
+      plan,
+    },
+  });
+  if (error) {
+    const detail = error.message?.trim() || "";
+    return { ok: false, message: detail || "Edge-lagring feilet." };
+  }
+  return parseUpsertMemberPeriodPlanEdgeResult(data);
+}
+
 export async function upsertMemberPeriodPlansForTrainer(
   memberIds: string[],
   plan: PeriodSchedulePlan,
@@ -552,6 +583,13 @@ export async function upsertMemberPeriodPlansForTrainer(
     ...plan,
     trainerSavedAtIso: plan.trainerSavedAtIso?.trim() || new Date().toISOString(),
   };
+  if (ownerUserId && ownerUserId !== sessionOwnerUserId) {
+    const edgeResult = await upsertMemberPeriodPlanViaEdge([canonicalMemberId, ...trimmedIds], planPayload, hints);
+    if (edgeResult.ok) {
+      void notifyMemberPeriodPlanPush([canonicalMemberId], planPayload);
+      return edgeResult;
+    }
+  }
 
   const { error } = await supabaseClient.from("member_period_plans").upsert(
     [
