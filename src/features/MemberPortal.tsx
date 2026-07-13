@@ -33,7 +33,14 @@ import {
 import { MOTUS } from "../app/data";
 import motusLogo from "../assets/motus-logo-transparent.svg";
 import motusSkrytekortLogo from "../assets/motus-skrytekort-logo.png";
-import { formatDateDdMmYyyy, parseStoredLogDate, resolveWorkoutLogDateTime, storedLogDatesMatch } from "../app/dateFormat";
+import {
+  formatDateDdMmYyyy,
+  getDefaultPeriodPlanStartMondayISO,
+  parseStoredLogDate,
+  periodPlanStartDateForDateInput,
+  resolveWorkoutLogDateTime,
+  storedLogDatesMatch,
+} from "../app/dateFormat";
 import { memberBadgeImageSrc } from "../app/badgeAssets";
 import { resolveExerciseImageSrc } from "../app/exerciseIllustrations";
 import {
@@ -44,6 +51,7 @@ import {
   parseActivityTemplateKind,
 } from "../app/activityTemplate";
 import { DEFAULT_MOTUS_GROUP_CLASS_NAMES } from "../app/motusGroupClassTemplates";
+import { buildPeriodPlanProgramSelectOptions } from "../app/periodPlanBuilder";
 import { imageObjectPositionFromSrc, programCustomCoverImageStyle } from "../app/imageFocalPoint";
 import {
   programCoverUsesPhotoStyle,
@@ -111,6 +119,7 @@ import {
 } from "../app/memberMonthlyCheckIn";
 import { isLikelyValidBirthDate, normalizeBirthDate, normalizePhone } from "../app/validators";
 import { supabaseClient } from "../services/supabaseClient";
+import { upsertMemberPeriodPlansForTrainer } from "../services/supabaseRepository";
 import { isWebPushConfigurable, registerWebPushWithSupabase } from "../services/webPush";
 import { Card, ConfirmDialog, DangerButton, EmptyState, GradientButton, MemberTabHero, MotusSectionIcon, OutlineButton, SelectBox, StatusMessage, TextArea, TextInput, TrainingStartButton } from "../app/ui";
 import { useToastStatus } from "../app/toast";
@@ -146,9 +155,11 @@ import {
   buildTrainerPeriodPlanIdSet,
   isMemberOwnedPeriodPlan,
   mergedPeriodPlanListForMember,
+  normalizePeriodSchedulePlan,
   periodPlanSelectableWeekCount,
   readHiddenPeriodPlanIdsForMembers,
   readPeriodPlansByMemberId,
+  writePeriodPlansByMemberId,
   removeMemberOwnedPeriodPlanFromStorage,
   findPeriodPlanAutoCompleteTargets,
   buildPeriodPlanEntryKey,
@@ -281,6 +292,7 @@ import type {
   WorkoutLog,
   WorkoutModeState,
   WorkoutReflection,
+  WeeklyDayPlan,
 } from "../app/types";
 
 function ClientAvatarFallback({ className = "", iconClassName = "h-6 w-6" }: { className?: string; iconClassName?: string }) {
@@ -1184,11 +1196,27 @@ export function MemberPortal(props: MemberPortalProps) {
     if (memberTab === "programs" && previous !== "programs") {
       const storedOpenPeriodPlan =
         typeof window !== "undefined" && window.sessionStorage.getItem("motus.member.openPeriodPlanOnPrograms") === "1";
+      const storedOpenWeekPlanBuilder =
+        typeof window !== "undefined" && window.sessionStorage.getItem("motus.member.openWeekPlanBuilder") === "1";
       setTrainingSection(pendingOpenPeriodPlanRef.current || storedOpenPeriodPlan ? "period" : "today");
+      if (storedOpenWeekPlanBuilder) {
+        setShowMemberWeekPlanBuilder(true);
+        window.sessionStorage.removeItem("motus.member.openWeekPlanBuilder");
+      }
       pendingOpenPeriodPlanRef.current = false;
     }
     previousMemberTabRef.current = memberTab;
   }, [memberTab]);
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    function openWeekPlanBuilder() {
+      setTrainingSection("period");
+      setShowPeriodPlanPanel(true);
+      setShowMemberWeekPlanBuilder(true);
+    }
+    window.addEventListener("motus.member.openWeekPlanBuilder", openWeekPlanBuilder);
+    return () => window.removeEventListener("motus.member.openWeekPlanBuilder", openWeekPlanBuilder);
+  }, []);
   useEffect(() => {
     if (trainingHomeResetKey <= 0 || memberTab !== "programs") return;
     if (pendingOpenPeriodPlanRef.current) return;
@@ -1291,6 +1319,18 @@ export function MemberPortal(props: MemberPortalProps) {
   const [activeMemberPeriodPlanId, setActiveMemberPeriodPlanId] = useState<string | null>(null);
   const [selectedPeriodPlanWeekNumber, setSelectedPeriodPlanWeekNumber] = useState<number | null>(null);
   const [periodPlanActionStatus, setPeriodPlanActionStatus] = useState<string | null>(null);
+  const [showMemberWeekPlanBuilder, setShowMemberWeekPlanBuilder] = useState(false);
+  const [memberWeekPlanTitle, setMemberWeekPlanTitle] = useState("Min ukeplan");
+  const [memberWeekPlanStartDate, setMemberWeekPlanStartDate] = useState(() => getDefaultPeriodPlanStartMondayISO());
+  const [memberWeekPlanDays, setMemberWeekPlanDays] = useState<WeeklyDayPlan>(() => ({
+    monday: "",
+    tuesday: "",
+    wednesday: "",
+    thursday: "",
+    friday: "",
+    saturday: "",
+    sunday: "",
+  }));
   const [showPeriodPlanHiddenSection, setShowPeriodPlanHiddenSection] = useState(false);
   const [showPeriodPlanManageSection, setShowPeriodPlanManageSection] = useState(false);
   const [periodPlanStorageRevision, setPeriodPlanStorageRevision] = useState(0);
@@ -1563,10 +1603,16 @@ export function MemberPortal(props: MemberPortalProps) {
     () => readHiddenPeriodPlanIdsForMembers(relatedMemberIds),
     [relatedMemberIds, periodPlanStorageRevision],
   );
-  const visiblePeriodPlans = useMemo(
-    () => periodPlans.filter((plan) => !hiddenPeriodPlanIds.includes(plan.id)),
-    [periodPlans, hiddenPeriodPlanIds],
-  );
+  const visiblePeriodPlans = useMemo(() => {
+    const todayMs = getStartOfDay(new Date(nowTimestamp)).getTime();
+    return periodPlans.filter((plan) => {
+      if (hiddenPeriodPlanIds.includes(plan.id)) return false;
+      if (!isMemberOwnedPeriodPlan(plan, trainerPeriodPlanIds)) return true;
+      const planEnd = resolvePeriodPlanPlannedDate(plan, Math.max(1, periodPlanSelectableWeekCount(plan)), "sunday");
+      if (!planEnd) return true;
+      return getStartOfDay(planEnd).getTime() >= todayMs;
+    });
+  }, [periodPlans, hiddenPeriodPlanIds, trainerPeriodPlanIds, nowTimestamp]);
   const storedActivePeriodPlanId = useMemo(
     () => readActivePeriodPlanIdForMembers(relatedMemberIds),
     [relatedMemberIds, periodPlanStorageRevision],
@@ -1776,6 +1822,16 @@ export function MemberPortal(props: MemberPortalProps) {
   );
   /** Alle tildelte program (inkl. arkiverte) — brukes til å koble periodeplan-tekst til Start økt. */
   const memberProgramsForPeriodPlan = memberAssignedPrograms;
+  const memberWeekPlanDayOptions = useMemo(
+    () =>
+      buildPeriodPlanProgramSelectOptions(
+        memberProgramsForPeriodPlan
+          .filter((program) => !program.ephemeral && program.memberLibraryStatus !== "archived" && program.memberLibraryStatus !== "hidden")
+          .map((program) => program.title),
+        activityTemplatesForPeriodPlan,
+      ),
+    [memberProgramsForPeriodPlan, activityTemplatesForPeriodPlan],
+  );
   const memberProgramsLibraryArchived = useMemo(
     () => memberAssignedPrograms.filter((program) => programIsInMemberArchive(program.memberLibraryStatus)),
     [memberAssignedPrograms],
@@ -4004,6 +4060,14 @@ export function MemberPortal(props: MemberPortalProps) {
     setMemberTab("programs");
   }
 
+  function openMemberWeekPlanBuilderFromHome() {
+    pendingOpenPeriodPlanRef.current = true;
+    setTrainingSection("period");
+    setShowPeriodPlanPanel(true);
+    setShowMemberWeekPlanBuilder(true);
+    setMemberTab("programs");
+  }
+
   useEffect(() => {
     if (!activeIntervalProgram || isIntervalTimerRunning) return;
     const firstStep = intervalProgramSteps[0] ?? null;
@@ -5353,6 +5417,37 @@ export function MemberPortal(props: MemberPortalProps) {
     const swaps = getSwapsForWeek(periodPlanSwapsByPlan, plan.id, week.weekNumber);
     return applyPeriodPlanSwaps(week.days, swaps);
   }, [todayPeriodPlanMatch, activePeriodPlan, activePeriodWeekIndex, periodPlanSwapsByPlan]);
+  const hasPlannedWorkoutInUpcomingWeek = useMemo(() => {
+    const plansForUpcomingWeek = homeWorkoutHydrationPending ? visiblePeriodPlansForHome : visiblePeriodPlans;
+    const today = getStartOfDay(new Date(nowTimestamp));
+    const weekEnd = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 7);
+    const windowStartMs = today.getTime();
+    const windowEndMs = weekEnd.getTime();
+    for (const plan of plansForUpcomingWeek) {
+      for (const week of plan.weeklyPlans ?? []) {
+        const swaps = getSwapsForWeek(periodPlanSwapsByPlan, plan.id, week.weekNumber);
+        const effectiveDays = applyPeriodPlanSwaps(week.days, swaps);
+        for (const day of WEEKDAY_PLAN_ORDER) {
+          const entry = effectiveDays[day]?.trim() ?? "";
+          if (!entry || isPassivePeriodPlanEntry(entry)) continue;
+          const plannedDate = resolvePeriodPlanPlannedDate(plan, week.weekNumber, day);
+          if (!plannedDate) continue;
+          const plannedMs = getStartOfDay(plannedDate).getTime();
+          if (plannedMs >= windowStartMs && plannedMs < windowEndMs) return true;
+        }
+      }
+    }
+    return false;
+  }, [
+    homeWorkoutHydrationPending,
+    visiblePeriodPlansForHome,
+    visiblePeriodPlans,
+    nowTimestamp,
+    periodPlanSwapsByPlan,
+  ]);
+  const shouldPromptForHomeWeekPlan = !homeWorkoutHydrationPending && !hasPlannedWorkoutInUpcomingWeek;
+  const shouldShowHomeWeekPlanPrompt =
+    !homeWorkoutHydrationPending && (shouldPromptForHomeWeekPlan || !homeHasPlannedWorkoutToday);
   let nextPlannedWorkout: { dayLabel: string; entry: string } | null = null;
   if (homePeriodPlanWeeklyDays && todayPlanDayKey) {
     const todayIndex = WEEKDAY_PLAN_ORDER.indexOf(todayPlanDayKey);
@@ -5684,6 +5779,81 @@ export function MemberPortal(props: MemberPortalProps) {
       }
     }
     setPeriodPlanActionStatus("Periodeplanen er slettet.");
+  }
+
+  function resetMemberWeekPlanDraft() {
+    setMemberWeekPlanTitle("Min ukeplan");
+    setMemberWeekPlanStartDate(getDefaultPeriodPlanStartMondayISO());
+    setMemberWeekPlanDays({
+      monday: "",
+      tuesday: "",
+      wednesday: "",
+      thursday: "",
+      friday: "",
+      saturday: "",
+      sunday: "",
+    });
+  }
+
+  function saveMemberWeekPlan() {
+    if (!activeMemberId || typeof window === "undefined") {
+      setPeriodPlanActionStatus("Kunne ikke finne medlemsprofilen din.");
+      return;
+    }
+    const trimmedTitle = memberWeekPlanTitle.trim() || "Min ukeplan";
+    const days: WeeklyDayPlan = {
+      monday: memberWeekPlanDays.monday.trim(),
+      tuesday: memberWeekPlanDays.tuesday.trim(),
+      wednesday: memberWeekPlanDays.wednesday.trim(),
+      thursday: memberWeekPlanDays.thursday.trim(),
+      friday: memberWeekPlanDays.friday.trim(),
+      saturday: memberWeekPlanDays.saturday.trim(),
+      sunday: memberWeekPlanDays.sunday.trim(),
+    };
+    if (!Object.values(days).some(Boolean)) {
+      setPeriodPlanActionStatus("Legg inn minst én økt, gruppetime eller aktivitet i ukeplanen.");
+      return;
+    }
+
+    const plan = normalizePeriodSchedulePlan({
+      id: uid("member-week-plan"),
+      title: trimmedTitle,
+      notes: "Egen ukeplan laget av medlem. Gjelder kun denne uken.",
+      startDate: periodPlanStartDateForDateInput(memberWeekPlanStartDate),
+      weeks: 1,
+      createdAt: new Date().toISOString(),
+      weeklyPlans: [
+        {
+          id: uid("member-week"),
+          weekNumber: 1,
+          days,
+        },
+      ],
+      periodPlanAddedBy: "member",
+    });
+
+    const byMember = readPeriodPlansByMemberId();
+    byMember[activeMemberId] = [plan, ...(byMember[activeMemberId] ?? [])];
+    const targetMemberIds = relatedMemberIds.length ? relatedMemberIds : [activeMemberId];
+    writePeriodPlansByMemberId(byMember);
+    writeActivePeriodPlanIdForMembers(targetMemberIds, plan.id);
+    setActiveMemberPeriodPlanId(plan.id);
+    setSelectedPeriodPlanWeekNumber(1);
+    setShowPeriodPlanPanel(true);
+    setShowMemberWeekPlanBuilder(false);
+    setPeriodPlanStorageRevision((value) => value + 1);
+    setPeriodPlanActionStatus("Ukeplanen er lagret for én uke.");
+    resetMemberWeekPlanDraft();
+
+    void upsertMemberPeriodPlansForTrainer(targetMemberIds, plan, {
+      targetEmail: currentUserEmail,
+    }).then((result) => {
+      if (result.ok) {
+        refreshRemoteHydration?.();
+      } else if (result.message) {
+        setPeriodPlanActionStatus(`Ukeplanen er lagret lokalt, men sky-synk feilet: ${result.message}`);
+      }
+    });
   }
 
   function isPeriodPlanEntryCompleted(planId: string, weekNumber: number, day: WeekdayPlanKey): boolean {
@@ -6652,6 +6822,50 @@ export function MemberPortal(props: MemberPortalProps) {
   );
 
 
+  const memberWeekPlanBuilderPanel = showMemberWeekPlanBuilder ? (
+    <div className="mt-4 rounded-xl border border-teal-100 bg-teal-50/40 p-4">
+      <div className="flex flex-col gap-3 sm:flex-row">
+        <label className="flex-1 space-y-1">
+          <span className="text-xs font-semibold text-slate-700">Tittel</span>
+          <TextInput
+            value={memberWeekPlanTitle}
+            onChange={(event) => setMemberWeekPlanTitle(event.target.value)}
+            placeholder="Min ukeplan"
+          />
+        </label>
+        <label className="space-y-1 sm:w-48">
+          <span className="text-xs font-semibold text-slate-700">Start mandag</span>
+          <input
+            type="date"
+            value={memberWeekPlanStartDate}
+            onChange={(event) => setMemberWeekPlanStartDate(event.target.value)}
+            className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none transition focus:border-teal-400 focus:ring-4 focus:ring-teal-100"
+          />
+        </label>
+      </div>
+      <div className="mt-3 grid gap-2 md:grid-cols-2">
+        {WEEKDAY_PLAN_ORDER.map((day) => (
+          <label key={day} className="space-y-1">
+            <span className="text-xs font-semibold text-slate-700">{WEEKDAY_PLAN_LABELS[day]}</span>
+            <SelectBox
+              value={memberWeekPlanDays[day]}
+              onChange={(value) => setMemberWeekPlanDays((prev) => ({ ...prev, [day]: value }))}
+              options={memberWeekPlanDayOptions}
+            />
+          </label>
+        ))}
+      </div>
+      <div className="mt-4 flex flex-col gap-2 sm:flex-row">
+        <GradientButton type="button" onClick={saveMemberWeekPlan} className="w-full sm:w-auto">
+          Lagre ukeplan
+        </GradientButton>
+        <OutlineButton type="button" onClick={resetMemberWeekPlanDraft} className="w-full sm:w-auto">
+          Tøm skjema
+        </OutlineButton>
+      </div>
+    </div>
+  ) : null;
+
   return (
     <>
     <div className="space-y-4 sm:space-y-6">
@@ -6722,7 +6936,14 @@ export function MemberPortal(props: MemberPortalProps) {
                 onWorkoutCardClick={openHomeWorkoutDestination}
                 belowWorkout={
                   <MemberHomeBelowWorkout>
-                    {memberHasVisiblePeriodPlan && nextPlannedWorkout ? (
+                    {shouldShowHomeWeekPlanPrompt ? (
+                      <MemberHomeCompactPrompt
+                        title="Vil du lage en plan for uken?"
+                        detail="Du har ingen planlagte økter denne uken."
+                        ctaLabel="Lag ukeplan"
+                        onCta={openMemberWeekPlanBuilderFromHome}
+                      />
+                    ) : memberHasVisiblePeriodPlan && nextPlannedWorkout ? (
                       <MemberHomeNextPlanCard
                         dayLabel={nextPlannedWorkout.dayLabel}
                         entry={nextPlannedWorkout.entry}
@@ -6770,7 +6991,15 @@ export function MemberPortal(props: MemberPortalProps) {
                   ) : null
                 }
                 primaryCta={
-                  todayPlanAction.kind === "start-program" ? (
+                  shouldShowHomeWeekPlanPrompt ? (
+                    <GradientButton
+                      type="button"
+                      onClick={openMemberWeekPlanBuilderFromHome}
+                      className="motus-pressable h-10 rounded-lg px-4 text-sm font-semibold"
+                    >
+                      Lag ukeplan
+                    </GradientButton>
+                  ) : todayPlanAction.kind === "start-program" ? (
                     todayPeriodPlanCompleted ? (
                       <GradientButton
                         type="button"
@@ -7011,7 +7240,12 @@ export function MemberPortal(props: MemberPortalProps) {
                       : null
                   }
                   primaryAction={
-                    todayPlanAction.kind === "start-program"
+                    shouldPromptForHomeWeekPlan || !homeHasPlannedWorkoutToday
+                      ? {
+                          label: "Lag ukeplan",
+                          onClick: openMemberWeekPlanBuilderFromHome,
+                        }
+                      : todayPlanAction.kind === "start-program"
                       ? {
                           label: todayPeriodPlanCompleted ? "Fullført" : "Start økt",
                           disabled: todayPeriodPlanCompleted,
@@ -7684,21 +7918,46 @@ export function MemberPortal(props: MemberPortalProps) {
                       <div className="mt-1 text-sm text-slate-600">Start økter, logg aktivitet og bytt dager når hverdagen krever det.</div>
                     </div>
                   </div>
-                  {memberHasVisiblePeriodPlan ? (
-                    <OutlineButton onClick={() => setShowPeriodPlanPanel((prev) => !prev)} className="w-full sm:w-auto">
-                      {showPeriodPlanPanel ? "Minimer ukeplan" : "Vis ukeplan"}
-                    </OutlineButton>
-                  ) : null}
+                  <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
+                    <GradientButton
+                      type="button"
+                      onClick={() => {
+                        setShowMemberWeekPlanBuilder(true);
+                        setShowPeriodPlanPanel(true);
+                      }}
+                      className="w-full sm:w-auto"
+                    >
+                      Lag ukeplan
+                    </GradientButton>
+                    {memberHasVisiblePeriodPlan ? (
+                      <OutlineButton onClick={() => setShowPeriodPlanPanel((prev) => !prev)} className="w-full sm:w-auto">
+                        {showPeriodPlanPanel ? "Minimer ukeplan" : "Vis ukeplan"}
+                      </OutlineButton>
+                    ) : null}
+                  </div>
                 </div>
+                {memberWeekPlanBuilderPanel}
                 {!memberHasVisiblePeriodPlan ? (
                   <div
                     className="mt-4 rounded-xl border border-amber-200/80 bg-amber-50/90 p-4 text-sm text-amber-950"
                     role="status"
                   >
-                    <p className="font-semibold">Alle periodeplaner er skjult fra oversikten</p>
+                    <p className="font-semibold">Ingen aktiv ukeplan akkurat nå</p>
                     <p className="mt-1 leading-relaxed text-amber-900/90">
-                      Planene er ikke slettet. Trykk <strong>Vis igjen</strong> for å ta dem tilbake, eller legg til en ny plan fra Utforsk.
+                      Lag en ny ukeplan for denne uken, eller hent tilbake skjulte planer nedenfor hvis du har skjult en PT-plan.
                     </p>
+                    <div className="mt-3">
+                      <GradientButton
+                        type="button"
+                        onClick={() => {
+                          setShowMemberWeekPlanBuilder(true);
+                          setShowPeriodPlanPanel(true);
+                        }}
+                        className="w-full sm:w-auto"
+                      >
+                        Lag ukeplan
+                      </GradientButton>
+                    </div>
                     <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:flex-wrap">
                       {hiddenPeriodPlans.length > 1 ? (
                         <GradientButton type="button" onClick={unhideAllTrainerPeriodPlans} className="w-full sm:w-auto">
@@ -7917,9 +8176,29 @@ export function MemberPortal(props: MemberPortalProps) {
                     <div className="min-w-0">
                       <div className="text-xs font-semibold uppercase tracking-wide text-teal-700">Periodeplan</div>
                       <div className="mt-1 text-lg font-bold text-slate-950">Ingen ukeplan ennå</div>
-                      <p className="mt-1 text-sm text-slate-600">Legg til en plan fra Inspo, eller be PT om en periodeplan.</p>
+                      <p className="mt-1 text-sm text-slate-600">Lag en plan for denne uken, legg til en plan fra Inspo, eller be PT om en periodeplan.</p>
                     </div>
                   </div>
+                  <div className="mt-4">
+                    <GradientButton
+                      type="button"
+                      onClick={() => {
+                        setShowMemberWeekPlanBuilder(true);
+                        setShowPeriodPlanPanel(true);
+                      }}
+                      className="w-full sm:w-auto"
+                    >
+                      Lag ukeplan
+                    </GradientButton>
+                  </div>
+                  {memberWeekPlanBuilderPanel}
+                  {periodPlanActionStatus ? (
+                    <StatusMessage
+                      message={periodPlanActionStatus}
+                      tone={inferStatusTone(periodPlanActionStatus)}
+                      className="mt-3 !rounded-lg !px-3 !py-2 !text-sm"
+                    />
+                  ) : null}
                 </div>
               )
               ) : null}
