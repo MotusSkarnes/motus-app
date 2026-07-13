@@ -15,7 +15,12 @@ import {
   WEEKDAY_PLAN_ORDER,
   type PeriodPlanSwapsByPlan,
 } from "../app/periodPlanSwaps";
-import { activityTemplateMatchesPeriodEntry, listActivityTemplates } from "../app/activityTemplate";
+import {
+  activityTemplateMatchesPeriodEntry,
+  listActivityTemplates,
+  periodPlanEntryForActivityTemplate,
+} from "../app/activityTemplate";
+import { DEFAULT_MOTUS_GROUP_CLASS_NAMES } from "../app/motusGroupClassTemplates";
 import { imageObjectPositionFromSrc, programCustomCoverImageStyle } from "../app/imageFocalPoint";
 import {
   isUploadedProgramCoverSrc,
@@ -65,7 +70,7 @@ type PeriodPlanWeekViewProps = {
   }) => void;
   onSwapDays: (planId: string, weekNumber: number, dayA: WeekdayPlanKey, dayB: WeekdayPlanKey) => void;
   onMoveDay: (planId: string, weekNumber: number, dayA: WeekdayPlanKey, dayB: WeekdayPlanKey) => void;
-  onChangeDayProgram: (planId: string, weekNumber: number, day: WeekdayPlanKey, programId: string) => void;
+  onChangeDayProgram: (planId: string, weekNumber: number, day: WeekdayPlanKey, entry: string) => void;
   onResetSwaps: (planId: string, weekNumber: number) => void;
   onStartProgram: (
     programId: string,
@@ -106,9 +111,9 @@ export function PeriodPlanWeekView({
     () => (activityTemplates.length > 0 ? activityTemplates : listActivityTemplates(memberPrograms)),
     [activityTemplates, memberPrograms],
   );
-  const memberProgramOptions = useMemo(
-    () =>
-      memberPrograms
+  const periodPlanChangeOptions = useMemo(() => {
+    const options = new Map<string, { value: string; label: string; meta: string }>();
+    memberPrograms
         .filter(
           (program) =>
             !program.ephemeral &&
@@ -117,9 +122,25 @@ export function PeriodPlanWeekView({
             program.memberLibraryStatus !== "hidden" &&
             program.exercises.length > 0,
         )
-        .sort((a, b) => a.title.localeCompare(b.title, "nb")),
-    [memberPrograms],
-  );
+        .sort((a, b) => a.title.localeCompare(b.title, "nb"))
+        .forEach((program) => {
+          const value = program.title.trim();
+          if (!value) return;
+          options.set(value, { value, label: value, meta: "Program" });
+        });
+    listActivityTemplates(resolvedActivityTemplates, "group")
+      .sort((a, b) => a.title.localeCompare(b.title, "nb"))
+      .forEach((template) => {
+        const value = periodPlanEntryForActivityTemplate(template);
+        if (!value.trim()) return;
+        options.set(value, { value, label: value, meta: "Gruppetime" });
+      });
+    DEFAULT_MOTUS_GROUP_CLASS_NAMES.forEach((className) => {
+      const value = `Gruppetime: ${className}`;
+      if (!options.has(value)) options.set(value, { value, label: value, meta: "Gruppetime" });
+    });
+    return Array.from(options.values());
+  }, [memberPrograms, resolvedActivityTemplates]);
   const weekSwaps = getSwapsForWeek(swapsByPlan, plan.id, week.weekNumber);
   const effectiveDays = applyPeriodPlanSwaps(week.days, weekSwaps);
   const [swapFromDay, setSwapFromDay] = useState<WeekdayPlanKey | null>(null);
@@ -390,7 +411,7 @@ export function PeriodPlanWeekView({
                       >
                         {isSwapSource ? "Avbryt bytte" : "Bytt dag"}
                       </button>
-                      {memberProgramOptions.length > 0 ? (
+                      {periodPlanChangeOptions.length > 0 ? (
                         <button
                           type="button"
                           onClick={() => handleProgramChangeButtonClick(dayKey)}
@@ -439,28 +460,29 @@ export function PeriodPlanWeekView({
                 {isProgramChangeOpen ? (
                   <div className="motus-period-plan-swap-panel">
                     <div className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">
-                      Velg program for {dayLabel.toLowerCase()}
+                      Velg program eller gruppetime for {dayLabel.toLowerCase()}
                     </div>
                     <div className="mt-2 grid gap-1.5">
-                      {memberProgramOptions.map((program) => {
-                        const isCurrentProgram = previewProgramForEntry?.id === program.id;
+                      {periodPlanChangeOptions.map((option) => {
+                        const isCurrentProgram = visibleEntry.trim().toLowerCase() === option.value.trim().toLowerCase();
                         return (
                           <button
-                            key={program.id}
+                            key={option.value}
                             type="button"
                             disabled={isCurrentProgram}
                             onClick={() => {
-                              onChangeDayProgram(plan.id, week.weekNumber, dayKey, program.id);
+                              onChangeDayProgram(plan.id, week.weekNumber, dayKey, option.value);
                               setProgramChangeDay(null);
                             }}
                             className={`motus-period-plan-swap-row text-left transition ${
                               isCurrentProgram ? "cursor-default opacity-60" : "hover:border-slate-300 hover:bg-white"
                             }`}
                           >
-                            <span className="min-w-0 text-[11px] font-semibold text-slate-800">{program.title}</span>
-                            <span className="shrink-0 text-[10px] font-semibold text-slate-500">
-                              {isCurrentProgram ? "Valgt" : "Velg"}
+                            <span className="min-w-0">
+                              <span className="block text-[11px] font-semibold text-slate-800">{option.label}</span>
+                              <span className="mt-0.5 block text-[10px] font-semibold text-slate-500">{option.meta}</span>
                             </span>
+                            <span className="shrink-0 text-[10px] font-semibold text-slate-500">{isCurrentProgram ? "Valgt" : "Velg"}</span>
                           </button>
                         );
                       })}

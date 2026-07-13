@@ -5964,10 +5964,10 @@ export function MemberPortal(props: MemberPortalProps) {
     });
   }
 
-  function changePeriodPlanDayProgram(planId: string, weekNumber: number, day: WeekdayPlanKey, programId: string) {
-    const program = memberProgramsForPeriodPlan.find((item) => item.id === programId);
-    if (!program) {
-      setPeriodPlanActionStatus("Fant ikke programmet du valgte.");
+  function changePeriodPlanDayProgram(planId: string, weekNumber: number, day: WeekdayPlanKey, entry: string) {
+    const nextEntry = entry.trim();
+    if (!nextEntry) {
+      setPeriodPlanActionStatus("Fant ikke programmet eller gruppetimen du valgte.");
       return;
     }
     periodPlanSwapsDirtyRef.current = true;
@@ -5978,13 +5978,13 @@ export function MemberPortal(props: MemberPortalProps) {
       if (!week) return prev;
       const current = getSwapsForWeek(prev, planId, weekNumber);
       const currentDays = applyPeriodPlanSwaps(week.days, current);
-      const nextDays = { ...currentDays, [day]: program.title.trim() || "Økt" };
+      const nextDays = { ...currentDays, [day]: nextEntry };
       const nextSwaps = buildPeriodPlanWeekOverride(week.days, nextDays, day, day);
       return setSwapsForWeek(prev, planId, weekNumber, nextSwaps);
     });
     unmarkPeriodPlanDayCompleted(planId, weekNumber, day);
     dismissPeriodPlanDay(planId, weekNumber, day);
-    setPeriodPlanActionStatus(`Programmet på ${WEEKDAY_PLAN_LABELS[day].toLowerCase()} er byttet til «${program.title}».`);
+    setPeriodPlanActionStatus(`Planen på ${WEEKDAY_PLAN_LABELS[day].toLowerCase()} er byttet til «${nextEntry}».`);
   }
 
   function resetPeriodPlanSwapsForWeek(planId: string, weekNumber: number) {

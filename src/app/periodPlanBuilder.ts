@@ -25,7 +25,7 @@ const BASE_PERIOD_PLAN_DAY_OPTIONS: Array<{ value: string; label: string }> = [
   { value: "Hvile / restitusjon", label: "Hvile / restitusjon" },
   { value: "Aktiv restitusjon", label: "Aktiv restitusjon" },
   { value: "Valgfri økt", label: "Valgfri økt" },
-  { value: "Gruppetime", label: "Gruppetime" },
+  ...GROUP_WORKOUT_PLAN_OPTIONS.map((value) => ({ value, label: value })),
 ];
 
 /** Dropdown-alternativer for dag i periodeplan (grunnvalg + programmaler). */

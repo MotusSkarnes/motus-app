@@ -33,7 +33,7 @@ type PeriodPlanActiveViewProps = {
   }) => void;
   onSwapDays: (planId: string, weekNumber: number, dayA: WeekdayPlanKey, dayB: WeekdayPlanKey) => void;
   onMoveDay: (planId: string, weekNumber: number, dayA: WeekdayPlanKey, dayB: WeekdayPlanKey) => void;
-  onChangeDayProgram: (planId: string, weekNumber: number, day: WeekdayPlanKey, programId: string) => void;
+  onChangeDayProgram: (planId: string, weekNumber: number, day: WeekdayPlanKey, entry: string) => void;
   onResetSwaps: (planId: string, weekNumber: number) => void;
   onStartProgram: (programId: string) => void;
   onLogGroup: (input: {
