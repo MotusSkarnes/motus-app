@@ -4,11 +4,30 @@ import {
   buildHomeWeekInsight,
   buildHomeWeekMotivation,
   computeWeekProgressPct,
+  shouldOfferCreateHomeWeekPlan,
 } from "./memberHomeWeekInsights";
 
 describe("memberHomeWeekInsights", () => {
   it("computes progress from planned sessions", () => {
     expect(computeWeekProgressPct(6, 7)).toBe(86);
+  });
+
+  it("does not offer a new week plan when an upcoming workout already exists", () => {
+    expect(
+      shouldOfferCreateHomeWeekPlan({
+        homeWorkoutHydrationPending: false,
+        hasPlannedWorkoutInUpcomingWeek: true,
+      }),
+    ).toBe(false);
+  });
+
+  it("waits for workout hydration before offering a new week plan", () => {
+    expect(
+      shouldOfferCreateHomeWeekPlan({
+        homeWorkoutHydrationPending: true,
+        hasPlannedWorkoutInUpcomingWeek: false,
+      }),
+    ).toBe(false);
   });
 
   it("builds strong week headline when ahead of plan", () => {

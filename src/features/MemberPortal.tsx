@@ -245,7 +245,7 @@ import {
   type MemberStopGoal,
 } from "../app/memberStopGoal";
 import { buildShareProgramChatMessage } from "../app/chatFormat";
-import { computeWeekProgressPct } from "../app/memberHomeWeekInsights";
+import { computeWeekProgressPct, shouldOfferCreateHomeWeekPlan } from "../app/memberHomeWeekInsights";
 import type { ChatReactionActor, ChatReactionEmoji } from "../app/chatReactions";
 import { MotusChat, type MotusChatQuickAction } from "./MotusChat";
 import { buildTrainerVacationNotice, resolveMemberTrainerDisplayName } from "../app/trainerProfile";
@@ -5445,9 +5445,10 @@ export function MemberPortal(props: MemberPortalProps) {
     nowTimestamp,
     periodPlanSwapsByPlan,
   ]);
-  const shouldPromptForHomeWeekPlan = !homeWorkoutHydrationPending && !hasPlannedWorkoutInUpcomingWeek;
-  const shouldShowHomeWeekPlanPrompt =
-    !homeWorkoutHydrationPending && (shouldPromptForHomeWeekPlan || !homeHasPlannedWorkoutToday);
+  const shouldShowHomeWeekPlanPrompt = shouldOfferCreateHomeWeekPlan({
+    homeWorkoutHydrationPending,
+    hasPlannedWorkoutInUpcomingWeek,
+  });
   let nextPlannedWorkout: { dayLabel: string; entry: string } | null = null;
   if (homePeriodPlanWeeklyDays && todayPlanDayKey) {
     const todayIndex = WEEKDAY_PLAN_ORDER.indexOf(todayPlanDayKey);
@@ -7240,7 +7241,7 @@ export function MemberPortal(props: MemberPortalProps) {
                       : null
                   }
                   primaryAction={
-                    shouldPromptForHomeWeekPlan || !homeHasPlannedWorkoutToday
+                    shouldShowHomeWeekPlanPrompt
                       ? {
                           label: "Lag ukeplan",
                           onClick: openMemberWeekPlanBuilderFromHome,
