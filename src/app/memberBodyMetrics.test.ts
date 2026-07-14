@@ -7,6 +7,7 @@ import {
   mergeBodyMetricIntoPersonalGoals,
 } from "./memberBodyMetrics";
 import { mergeCheckInIntoPersonalGoals } from "./memberMonthlyCheckIn";
+import { readProfileExtensions } from "./memberProfilePayload";
 
 const onboardingDone = `MOTUS_PROFILE_V1:${JSON.stringify({
   onboarding: { version: 1, completedAt: "2026-01-01T00:00:00.000Z", skipped: false },
@@ -87,5 +88,21 @@ describe("memberBodyMetrics", () => {
     expect(getBodyMetricsFromPersonalGoals(merged)).toHaveLength(1);
     expect(timeline.weightSeries).toHaveLength(2);
     expect(timeline.entries.some((row) => row.source === "check-in")).toBe(true);
+  });
+
+  it("preserves stop goals when adding body metrics", () => {
+    const stopGoal = { target: "Brus", customTarget: "", startedAt: "2026-07-01" };
+    const stopGoals = [
+      stopGoal,
+      { target: "Røyk", customTarget: "", startedAt: "2026-07-02", breakCount: 2 },
+    ];
+    const existing = `MOTUS_PROFILE_V1:${JSON.stringify({ stopGoal, stopGoals })}`;
+    const entry = createMemberBodyMetricEntry({ weightKg: 83 })!;
+
+    const merged = mergeBodyMetricIntoPersonalGoals(existing, entry);
+    const extensions = readProfileExtensions(merged);
+
+    expect(extensions.stopGoal).toEqual(stopGoal);
+    expect(extensions.stopGoals).toEqual(stopGoals);
   });
 });
