@@ -5446,8 +5446,7 @@ export function MemberPortal(props: MemberPortalProps) {
     periodPlanSwapsByPlan,
   ]);
   const shouldPromptForHomeWeekPlan = !homeWorkoutHydrationPending && !hasPlannedWorkoutInUpcomingWeek;
-  const shouldShowHomeWeekPlanPrompt =
-    !homeWorkoutHydrationPending && (shouldPromptForHomeWeekPlan || !homeHasPlannedWorkoutToday);
+  const shouldShowHomeWeekPlanPrompt = shouldPromptForHomeWeekPlan;
   let nextPlannedWorkout: { dayLabel: string; entry: string } | null = null;
   if (homePeriodPlanWeeklyDays && todayPlanDayKey) {
     const todayIndex = WEEKDAY_PLAN_ORDER.indexOf(todayPlanDayKey);
@@ -7240,7 +7239,7 @@ export function MemberPortal(props: MemberPortalProps) {
                       : null
                   }
                   primaryAction={
-                    shouldPromptForHomeWeekPlan || !homeHasPlannedWorkoutToday
+                    shouldPromptForHomeWeekPlan
                       ? {
                           label: "Lag ukeplan",
                           onClick: openMemberWeekPlanBuilderFromHome,
