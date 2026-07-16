@@ -1,4 +1,9 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import {
+  isActiveMemberPeriodPlanRow,
+  isMemberPeriodPlanRowAuthorized,
+  readTrustedMemberId,
+} from "../_shared/memberPeriodPlanAuthorization.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -28,16 +33,6 @@ function normalizeEmail(value: unknown): string {
   return normalizeString(value).toLowerCase();
 }
 
-function readAuthMemberId(user: {
-  app_metadata?: Record<string, unknown>;
-  user_metadata?: Record<string, unknown>;
-}): string {
-  return normalizeString(
-    (typeof user.app_metadata?.member_id === "string" ? user.app_metadata.member_id : "") ||
-      (typeof user.user_metadata?.member_id === "string" ? user.user_metadata.member_id : ""),
-  );
-}
-
 function resolveEndpointUserRole(user: {
   email?: string | null;
   app_metadata?: Record<string, unknown>;
@@ -47,18 +42,9 @@ function resolveEndpointUserRole(user: {
   const metaRole = normalizeString(user.user_metadata?.role).toLowerCase();
   if (appRole === "member" || metaRole === "member") return "member";
   if (appRole === "trainer" || metaRole === "trainer") return "trainer";
-  if (normalizeEmail(user.email).endsWith("@motus-skarnes.no") && readAuthMemberId(user)) return "member";
+  if (normalizeEmail(user.email).endsWith("@motus-skarnes.no") && readTrustedMemberId(user)) return "member";
   if (normalizeEmail(user.email).endsWith("@motus-skarnes.no")) return "trainer";
   return appRole || metaRole || "";
-}
-
-function isSameMember(user: { email?: string | null; id?: string }, row: Record<string, unknown>, jwtMemberId: string): boolean {
-  const rowId = normalizeString(row.id);
-  const userId = normalizeString(user.id);
-  const userEmail = normalizeEmail(user.email);
-  const rowEmail = normalizeEmail(row.email);
-  if (jwtMemberId && (jwtMemberId === rowId || jwtMemberId === `auth-${userId}`)) return true;
-  return Boolean(userEmail && rowEmail && userEmail === rowEmail);
 }
 
 Deno.serve(async (req) => {
@@ -122,19 +108,27 @@ Deno.serve(async (req) => {
   const user = userData.user;
   const requesterId = normalizeString(user.id);
   const requesterRole = resolveEndpointUserRole(user);
-  const jwtMemberId = readAuthMemberId(user as { app_metadata?: Record<string, unknown>; user_metadata?: Record<string, unknown> });
+  const trustedMemberId = readTrustedMemberId(user as { app_metadata?: Record<string, unknown> });
 
-  const authorizedRows = uniqueRows.filter((row) => {
-    const ownerUserId = normalizeString(row.owner_user_id);
-    if (requesterRole === "trainer" && ownerUserId === requesterId) return true;
-    return isSameMember({ id: requesterId, email: user.email }, row, jwtMemberId);
-  });
+  const authorizedRows = uniqueRows.filter((row) =>
+    isMemberPeriodPlanRowAuthorized(
+      { id: requesterId, email: user.email, role: requesterRole, memberId: trustedMemberId },
+      row,
+    ),
+  );
   if (!authorizedRows.length) return jsonResponse(403, { error: "Not authorized to save period plan for this member" });
+  const activeAuthorizedRows = authorizedRows.filter(isActiveMemberPeriodPlanRow);
+  if (!activeAuthorizedRows.length) {
+    return jsonResponse(403, {
+      error: "member_archived",
+      message: "Kundekontoen er arkivert. Kontakt din PT for å gjenåpne tilgang til appen.",
+    });
+  }
 
   const canonical =
-    authorizedRows.find((row) => normalizeString(row.owner_user_id)) ??
-    authorizedRows.find((row) => normalizeString(row.id) === jwtMemberId) ??
-    authorizedRows[0];
+    activeAuthorizedRows.find((row) => normalizeString(row.owner_user_id)) ??
+    activeAuthorizedRows.find((row) => normalizeString(row.id) === trustedMemberId) ??
+    activeAuthorizedRows[0];
   const canonicalMemberId = normalizeString(canonical.id);
   let ownerUserId = normalizeString(canonical.owner_user_id);
   if (!ownerUserId && requesterRole === "trainer") ownerUserId = requesterId;
@@ -157,7 +151,9 @@ Deno.serve(async (req) => {
   );
   if (upsertError) return jsonResponse(500, { error: upsertError.message });
 
-  const duplicateIds = authorizedRows.map((row) => normalizeString(row.id)).filter((id) => id && id !== canonicalMemberId);
+  const duplicateIds = activeAuthorizedRows
+    .map((row) => normalizeString(row.id))
+    .filter((id) => id && id !== canonicalMemberId);
   if (duplicateIds.length) {
     await adminClient.from("member_period_plans").delete().eq("plan_id", planId).in("member_id", duplicateIds);
   }
