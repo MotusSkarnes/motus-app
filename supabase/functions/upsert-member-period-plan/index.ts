@@ -130,12 +130,19 @@ Deno.serve(async (req) => {
     if (!isMemberOwnedPlanPayload(plan)) {
       return jsonResponse(403, { error: "Members may only save member-created period plans" });
     }
-    const authorizedMemberIds = authorizedRows.map((row) => normalizeString(row.id)).filter(Boolean);
+    const canonicalEmail = normalizeEmail(canonical.email);
+    const relatedMemberIds = uniqueRows
+      .filter((row) => {
+        const rowId = normalizeString(row.id);
+        return rowId === canonicalMemberId || (canonicalEmail && normalizeEmail(row.email) === canonicalEmail);
+      })
+      .map((row) => normalizeString(row.id))
+      .filter(Boolean);
     const { data: existingRows, error: existingError } = await adminClient
       .from("member_period_plans")
       .select("plan")
       .eq("plan_id", planId)
-      .in("member_id", authorizedMemberIds);
+      .in("member_id", relatedMemberIds);
     if (existingError) return jsonResponse(500, { error: existingError.message });
     if ((existingRows ?? []).some((row) => !isMemberOwnedPlanPayload(row.plan))) {
       return jsonResponse(409, { error: "Members cannot replace a trainer-created period plan" });
