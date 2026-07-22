@@ -119,7 +119,10 @@ import {
 } from "../app/memberMonthlyCheckIn";
 import { isLikelyValidBirthDate, normalizeBirthDate, normalizePhone } from "../app/validators";
 import { supabaseClient } from "../services/supabaseClient";
-import { upsertMemberPeriodPlansForTrainer } from "../services/supabaseRepository";
+import {
+  deleteMemberOwnedPeriodPlanByPlanId,
+  upsertMemberPeriodPlansForTrainer,
+} from "../services/supabaseRepository";
 import { isWebPushConfigurable, registerWebPushWithSupabase } from "../services/webPush";
 import { Card, ConfirmDialog, DangerButton, EmptyState, GradientButton, MemberTabHero, MotusSectionIcon, OutlineButton, SelectBox, StatusMessage, TextArea, TextInput, TrainingStartButton } from "../app/ui";
 import { useToastStatus } from "../app/toast";
@@ -5766,8 +5769,16 @@ export function MemberPortal(props: MemberPortalProps) {
     setPeriodPlanActionStatus("Alle periodeplaner er synlige igjen.");
   }
 
-  function deleteMemberOwnedPeriodPlan(plan: PeriodSchedulePlan) {
+  async function deleteMemberOwnedPeriodPlan(plan: PeriodSchedulePlan) {
     if (!isMemberOwnedPeriodPlan(plan, trainerPeriodPlanIds)) return;
+    if (isSupabaseConfigured && !isLocalDemoSession) {
+      setPeriodPlanActionStatus("Sletter periodeplan...");
+      const result = await deleteMemberOwnedPeriodPlanByPlanId(plan.id);
+      if (!result.ok) {
+        setPeriodPlanActionStatus(result.message?.trim() || "Kunne ikke slette periodeplan i sky. Prøv igjen.");
+        return;
+      }
+    }
     removeMemberOwnedPeriodPlanFromStorage(relatedMemberIds, plan.id);
     setPeriodPlanStorageRevision((value) => value + 1);
     if (activePeriodPlan?.id === plan.id) {
@@ -5779,6 +5790,7 @@ export function MemberPortal(props: MemberPortalProps) {
       }
     }
     setPeriodPlanActionStatus("Periodeplanen er slettet.");
+    refreshRemoteHydration?.();
   }
 
   function resetMemberWeekPlanDraft() {

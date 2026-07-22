@@ -662,6 +662,29 @@ export async function deleteMemberPeriodPlanByPlanId(
   return { ok: true };
 }
 
+export async function deleteMemberOwnedPeriodPlanByPlanId(
+  planId: string,
+): Promise<{ ok: boolean; message?: string }> {
+  if (!supabaseClient) return { ok: false, message: "Supabase er ikke konfigurert." };
+  const trimmed = planId.trim();
+  if (!trimmed) return { ok: false, message: "Mangler plan-id." };
+  const { data, error } = await supabaseClient.functions.invoke("delete-member-period-plan", {
+    body: { planId: trimmed },
+  });
+  if (error) {
+    const detail = error.message?.trim() || "";
+    return { ok: false, message: detail || "Kunne ikke slette periodeplan i sky." };
+  }
+  if (!data || typeof data !== "object" || (data as { ok?: unknown }).ok !== true) {
+    const detail =
+      data && typeof data === "object" && typeof (data as { error?: unknown }).error === "string"
+        ? String((data as { error: string }).error).trim()
+        : "";
+    return { ok: false, message: detail || "Kunne ikke slette periodeplan i sky." };
+  }
+  return { ok: true };
+}
+
 async function resolveRelatedMemberIds(
   memberId: string,
   hints?: { targetEmail?: string; targetName?: string },
