@@ -1,4 +1,10 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import {
+  canPersistWorkoutLogForMember,
+  readTrustedAuthMemberId,
+  resolvePersistWorkoutLogRole,
+  resolveWorkoutLogOwnerUserId,
+} from "../_shared/persistWorkoutLogSecurity.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -26,17 +32,6 @@ function jsonResponse(status: number, body: Record<string, unknown>) {
 
 function normalizeEmail(value: unknown): string {
   return String(value ?? "").trim().toLowerCase();
-}
-
-function readJwtMemberId(user: {
-  app_metadata?: Record<string, unknown>;
-  user_metadata?: Record<string, unknown>;
-}): string {
-  const raw =
-    (typeof user.app_metadata?.member_id === "string" && user.app_metadata.member_id) ||
-    (typeof user.user_metadata?.member_id === "string" && user.user_metadata.member_id) ||
-    "";
-  return raw.trim();
 }
 
 Deno.serve(async (req) => {
@@ -87,25 +82,23 @@ Deno.serve(async (req) => {
   const user = userData.user;
   const requesterEmail = normalizeEmail(user.email);
   const requesterId = String(user.id ?? "").trim();
-  const jwtMemberId = readJwtMemberId(user as { app_metadata?: Record<string, unknown>; user_metadata?: Record<string, unknown> });
-  const requesterRole = (() => {
-    const appRole = user.app_metadata?.role;
-    if (appRole === "member" || appRole === "trainer") return app;
-    const userRole = user.user_metadata?.role;
-    if (userRole === "member" || userRole === "trainer") return userRole;
-    return "";
-  })();
+  const jwtMemberId = readTrustedAuthMemberId(
+    user as { app_metadata?: Record<string, unknown>; user_metadata?: Record<string, unknown> },
+  );
+  const requesterRole = resolvePersistWorkoutLogRole(
+    user as { app_metadata?: Record<string, unknown>; user_metadata?: Record<string, unknown> },
+  );
 
   let { data: memberRow, error: memberError } = await adminClient
     .from("members")
-    .select("id, email, owner_user_id")
+    .select("id, email, owner_user_id, is_active")
     .eq("id", memberId)
     .maybeSingle();
 
   if ((memberError || !memberRow) && requesterEmail) {
     const { data: byEmail, error: emailLookupError } = await adminClient
       .from("members")
-      .select("id, email, owner_user_id")
+      .select("id, email, owner_user_id, is_active")
       .ilike("email", requesterEmail)
       .order("created_at", { ascending: false })
       .limit(1)
@@ -120,23 +113,34 @@ Deno.serve(async (req) => {
     return jsonResponse(404, { error: "Member not found" });
   }
 
-  const canonicalMemberId = String((memberRow as { id?: string }).id ?? "").trim();
-  const memberEmail = normalizeEmail((memberRow as { email?: string }).email);
-  const memberOwner = String((memberRow as { owner_user_id?: string }).owner_user_id ?? "").trim();
-  const isMemberOwner = requesterRole === "trainer" && memberOwner === requesterId;
-  const isSameMemberEmail = Boolean(requesterEmail && memberEmail && requesterEmail === memberEmail);
-  const isLinkedMemberProfile = Boolean(
-    jwtMemberId &&
-      (jwtMemberId === memberId || jwtMemberId === canonicalMemberId || jwtMemberId === `auth-${requesterId}`),
-  );
-  if (!isMemberOwner && !isSameMemberEmail && !isLinkedMemberProfile) {
+  const typedMemberRow = memberRow as {
+    id?: string;
+    email?: string;
+    owner_user_id?: string;
+    is_active?: boolean | null;
+  };
+  const canonicalMemberId = String(typedMemberRow.id ?? "").trim();
+  const memberOwner = String(typedMemberRow.owner_user_id ?? "").trim();
+
+  if (
+    !canPersistWorkoutLogForMember({
+      requesterId,
+      requesterEmail,
+      requesterRole,
+      trustedMemberId: jwtMemberId,
+      requestedMemberId: memberId,
+      memberRow: typedMemberRow,
+    })
+  ) {
     return jsonResponse(403, { error: "Not authorized to persist workout log for this member" });
   }
 
-  let ownerUserId = memberOwner;
-  if (ownerUserIdHint && ownerUserIdHint !== requesterId) {
-    ownerUserId = ownerUserIdHint;
-  }
+  let ownerUserId = resolveWorkoutLogOwnerUserId({
+    memberOwner,
+    ownerUserIdHint,
+    requesterId,
+    requesterRole,
+  });
   if (requesterRole === "member" && ownerUserId === requesterId) {
     ownerUserId = "";
   }
