@@ -1,4 +1,9 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import {
+  canIncludeMemberRowByTrustedId,
+  normalizeMemberAccessEmail,
+  readTrustedAuthMemberId,
+} from "../_shared/memberAccessSecurity.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -10,7 +15,7 @@ const MEMBER_ARCHIVED_MESSAGE =
   "Kundekontoen er arkivert. Kontakt din PT for å gjenåpne tilgang til appen.";
 
 function normalizeEmail(value: unknown): string {
-  return String(value ?? "").trim().toLowerCase();
+  return normalizeMemberAccessEmail(value);
 }
 
 function jsonResponse(status: number, body: Record<string, unknown>) {
@@ -75,9 +80,9 @@ Deno.serve(async (req) => {
 
   const matchingRows = (rows ?? []).filter((row) => normalizeEmail((row as { email?: string }).email) === requesterEmail);
 
-  const memberIdFromJwt = String(
-    userData.user.app_metadata?.member_id ?? userData.user.user_metadata?.member_id ?? "",
-  ).trim();
+  const memberIdFromJwt = readTrustedAuthMemberId(
+    userData.user as { app_metadata?: Record<string, unknown>; user_metadata?: Record<string, unknown> },
+  );
   const rosterRows: Array<{ id?: string; email?: string; is_active?: boolean | null }> = [...matchingRows];
   if (memberIdFromJwt) {
     const { data: byIdRow, error: byIdError } = await adminClient
@@ -88,8 +93,17 @@ Deno.serve(async (req) => {
     if (byIdError) {
       return jsonResponse(500, { error: byIdError.message });
     }
-    if (byIdRow && !rosterRows.some((row) => String(row.id ?? "") === memberIdFromJwt)) {
-      rosterRows.push(byIdRow as { id?: string; email?: string; is_active?: boolean | null });
+    const typedByIdRow = byIdRow as { id?: string; email?: string; is_active?: boolean | null } | null;
+    if (
+      typedByIdRow &&
+      !rosterRows.some((row) => String(row.id ?? "") === memberIdFromJwt) &&
+      canIncludeMemberRowByTrustedId({
+        requesterEmail,
+        trustedMemberId: memberIdFromJwt,
+        memberRow: typedByIdRow,
+      })
+    ) {
+      rosterRows.push(typedByIdRow);
     }
   }
 
