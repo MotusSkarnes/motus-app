@@ -60,7 +60,7 @@ export function MemberNotificationsPanel({
                 ? Sparkles
                 : alert.kind === "check-in"
                   ? ClipboardPenLine
-                  : alert.kind === "period-plan"
+                  : alert.kind === "period-plan" || alert.kind === "weekly-planning"
                     ? CalendarDays
                     : ClipboardList;
         const isUnread = alert.isUnread;

@@ -140,6 +140,16 @@ export function TrainerPtHomeScreen({
 }: TrainerPtHomeScreenProps) {
   const progressDeltaLabel =
     progressDeltaPct > 0 ? `+${progressDeltaPct}%` : progressDeltaPct < 0 ? `${progressDeltaPct}%` : "0%";
+  const followUpClients = attentionClients.filter((client) => client.statusTone !== "ready");
+  const followUpCount = followUpClients.length;
+  const followUpSummary =
+    followUpCount > 0
+      ? followUpClients
+          .slice(0, 2)
+          .map((client) => client.memberName.split(" ")[0])
+          .join(", ")
+      : "Ingen akutte oppfølginger";
+  const followUpButtonLabel = followUpCount > 0 ? "Se oppfølgingslisten" : "Se klientoversikten";
 
   return (
     <div className="motus-pt-home motus-fade-in-up">
@@ -315,20 +325,28 @@ export function TrainerPtHomeScreen({
 
       <section className="motus-pt-home-promo" aria-label="Automatiske innsikter">
         <div className="motus-pt-home-promo-copy">
-          <p className="motus-pt-home-promo-eyebrow">Automatiske innsikter</p>
-          <h3 className="motus-pt-home-promo-title">Få forslag til oppfølging basert på klientenes aktivitet</h3>
+          <p className="motus-pt-home-promo-eyebrow">Oppfølging nå</p>
+          <h3 className="motus-pt-home-promo-title">
+            {followUpCount > 0
+              ? `${followUpCount} klient${followUpCount === 1 ? "" : "er"} bør følges opp`
+              : "Klientene dine ser ut til å være i flyt"}
+          </h3>
           <p className="motus-pt-home-promo-text">
-            Motus samler signaler fra økter, meldinger og programmer — slik at du ser hvem som trenger deg først.
+            {followUpCount > 0
+              ? `Basert på aktivitet, meldinger og programmer: start med ${followUpSummary}.`
+              : "Bruk klientoversikten for status, meldinger og neste oppfølging."}
           </p>
           <button type="button" className="motus-pt-home-promo-btn motus-pressable" onClick={onOpenInsights}>
-            Utforsk innsikter
+            {followUpButtonLabel}
             <ChevronRight className="h-4 w-4" aria-hidden />
           </button>
         </div>
         <div className="motus-pt-home-promo-preview" aria-hidden>
           <div className="motus-pt-home-promo-preview-card">
-            <p className="text-[10px] font-bold uppercase tracking-wide text-slate-500">Innsikt for klient</p>
-            <p className="mt-1 text-sm font-bold text-slate-900">Styrke +12% · Konsistens 92%</p>
+            <p className="text-[10px] font-bold uppercase tracking-wide text-slate-500">Aktiv snarvei</p>
+            <p className="mt-1 text-sm font-bold text-slate-900">
+              {followUpCount > 0 ? `${followUpCount} i prioritet` : "Kundeliste"}
+            </p>
             <div className="mt-2 flex gap-1">
               <BarChart3 className="h-4 w-4" style={{ color: MOTUS.turquoise }} />
               <Video className="h-4 w-4 text-slate-400" />

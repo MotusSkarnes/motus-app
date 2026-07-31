@@ -101,10 +101,16 @@ Deno.serve(async (req) => {
   }
 
   const ids = Array.from(new Set(matchingRows.map((row) => String(row.id)).filter(Boolean)));
-  const { error } = await adminClient
+  let { error } = await adminClient
     .from("members")
-    .update({ is_active: false })
+    .update({ is_active: false, archive_scheduled_for: null })
     .in("id", ids);
+  if (error && error.message.includes("archive_scheduled_for")) {
+    ({ error } = await adminClient
+      .from("members")
+      .update({ is_active: false })
+      .in("id", ids));
+  }
 
   if (error) {
     return jsonResponse(500, { error: error.message });

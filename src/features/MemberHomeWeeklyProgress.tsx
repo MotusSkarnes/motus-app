@@ -111,8 +111,16 @@ export function MemberHomeWeeklyProgress({
   );
 
   const headline = useMemo(
-    () => buildHomeWeekHeadline(completedSessions, plannedSessions, progressPct, momentumTrend),
-    [completedSessions, plannedSessions, progressPct, momentumTrend],
+    () =>
+      buildHomeWeekHeadline(
+        completedSessions,
+        plannedSessions,
+        progressPct,
+        momentumTrend,
+        thisWeekSessions,
+        lastWeekSessions,
+      ),
+    [completedSessions, plannedSessions, progressPct, momentumTrend, thisWeekSessions, lastWeekSessions],
   );
 
   const motivation = useMemo(

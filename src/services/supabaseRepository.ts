@@ -62,6 +62,7 @@ import {
 import {
   buildTrainingProgramDisplayKey,
   normalizeLegacyIntervalCooldownExerciseNames,
+  normalizeProgramExercisesForRuntime,
   programIsInMemberArchive,
 } from "../app/programBlocks";
 import { isContaminatedDemoMemberProfile } from "../app/memberLocalCatalog";
@@ -114,11 +115,17 @@ function mapCustomerType(value: unknown): Member["customerType"] {
 }
 
 const MEMBERS_SELECT_BASE =
+  "id, owner_user_id, name, email, is_active, archive_scheduled_for, invited_at, first_login_at, phone, birth_date, gender, weight, height, level, membership_type, customer_type, nutrition_access, days_since_activity, goal, focus, personal_goals, injuries, coach_notes";
+const MEMBERS_SELECT_BASE_WITHOUT_ARCHIVE =
   "id, owner_user_id, name, email, is_active, invited_at, first_login_at, phone, birth_date, gender, weight, height, level, membership_type, customer_type, nutrition_access, days_since_activity, goal, focus, personal_goals, injuries, coach_notes";
 const MEMBERS_SELECT_WITH_AVATAR = `${MEMBERS_SELECT_BASE}, avatar_url`;
 const MEMBERS_SELECT_WITHOUT_NUTRITION =
-  "id, owner_user_id, name, email, is_active, invited_at, first_login_at, phone, birth_date, weight, height, level, membership_type, customer_type, days_since_activity, goal, focus, personal_goals, injuries, coach_notes";
+  "id, owner_user_id, name, email, is_active, archive_scheduled_for, invited_at, first_login_at, phone, birth_date, weight, height, level, membership_type, customer_type, days_since_activity, goal, focus, personal_goals, injuries, coach_notes";
 const MEMBERS_SELECT_WITH_AVATAR_WITHOUT_NUTRITION = `${MEMBERS_SELECT_WITHOUT_NUTRITION}, avatar_url`;
+const MEMBERS_SELECT_WITH_AVATAR_WITHOUT_ARCHIVE = `${MEMBERS_SELECT_BASE_WITHOUT_ARCHIVE}, avatar_url`;
+const MEMBERS_SELECT_WITHOUT_NUTRITION_WITHOUT_ARCHIVE =
+  "id, owner_user_id, name, email, is_active, invited_at, first_login_at, phone, birth_date, weight, height, level, membership_type, customer_type, days_since_activity, goal, focus, personal_goals, injuries, coach_notes";
+const MEMBERS_SELECT_WITH_AVATAR_WITHOUT_NUTRITION_WITHOUT_ARCHIVE = `${MEMBERS_SELECT_WITHOUT_NUTRITION_WITHOUT_ARCHIVE}, avatar_url`;
 
 function isMissingDbColumnError(message: string, column: string): boolean {
   const lower = message.toLowerCase();
@@ -137,6 +144,7 @@ function mapMemberRowFromSupabase(row: Record<string, unknown>): Member {
     name: String(row.name ?? ""),
     email: String(row.email ?? ""),
     isActive: row.is_active !== false,
+    archiveScheduledFor: String(row.archive_scheduled_for ?? ""),
     invitedAt: String(row.invited_at ?? ""),
     firstLoginAt: String(row.first_login_at ?? ""),
     phone: String(row.phone ?? ""),
@@ -1727,6 +1735,7 @@ async function persistMember(member: Member, previousPersonalGoals?: string) {
       membershipType: memberForPersist.membershipType,
       customerType: memberForPersist.customerType,
       nutritionAccess: memberForPersist.nutritionAccess === true,
+      archiveScheduledFor: memberForPersist.archiveScheduledFor ?? "",
       ...(memberForPersist.invitedAt?.trim() ? { invitedAt: memberForPersist.invitedAt.trim() } : {}),
     },
   };
@@ -1770,6 +1779,7 @@ async function persistMember(member: Member, previousPersonalGoals?: string) {
         injuries: memberForPersist.injuries,
         personal_goals: memberForPersist.personalGoals,
         avatar_url: memberForPersist.avatarUrl ?? "",
+        archive_scheduled_for: memberForPersist.archiveScheduledFor?.trim() || null,
       };
       let directUpdate = await supabaseClient
         .from("members")
@@ -1786,6 +1796,16 @@ async function persistMember(member: Member, previousPersonalGoals?: string) {
           .eq("id", memberForPersist.id.trim())
           .select("id");
       }
+      if (
+        directUpdate.error &&
+        isMissingDbColumnError(directUpdate.error.message, "archive_scheduled_for")
+      ) {
+        directUpdate = await supabaseClient
+          .from("members")
+          .update(stripArchiveScheduledForField(profileUpdateFields))
+          .eq("id", memberForPersist.id.trim())
+          .select("id");
+      }
       if ((directUpdate.data?.length ?? 0) === 0) {
         directUpdate = await supabaseClient
           .from("members")
@@ -1799,6 +1819,16 @@ async function persistMember(member: Member, previousPersonalGoals?: string) {
           directUpdate = await supabaseClient
             .from("members")
             .update(stripAvatarUrlField(profileUpdateFields))
+            .ilike("email", normalizedEmail)
+            .select("id");
+        }
+        if (
+          directUpdate.error &&
+          isMissingDbColumnError(directUpdate.error.message, "archive_scheduled_for")
+        ) {
+          directUpdate = await supabaseClient
+            .from("members")
+            .update(stripArchiveScheduledForField(profileUpdateFields))
             .ilike("email", normalizedEmail)
             .select("id");
         }
@@ -1865,6 +1895,7 @@ async function persistMember(member: Member, previousPersonalGoals?: string) {
     injuries: member.injuries,
     coach_notes: member.coachNotes,
     avatar_url: member.avatarUrl ?? "",
+    archive_scheduled_for: member.archiveScheduledFor?.trim() || null,
     created_at: new Date().toISOString(),
   };
   let { error } = await supabaseClient.from("members").upsert(memberUpsertPayload, { onConflict: "id" });
@@ -1877,6 +1908,11 @@ async function persistMember(member: Member, previousPersonalGoals?: string) {
     ({ error } = await supabaseClient
       .from("members")
       .upsert(stripNutritionAccessField(memberUpsertPayload), { onConflict: "id" }));
+  }
+  if (error && isMissingDbColumnError(error.message, "archive_scheduled_for")) {
+    ({ error } = await supabaseClient
+      .from("members")
+      .upsert(stripArchiveScheduledForField(memberUpsertPayload), { onConflict: "id" }));
   }
   if (error && isMissingDbColumnError(error.message, "first_login_at")) {
     const withoutFirstLogin = { ...memberUpsertPayload };
@@ -2336,6 +2372,11 @@ function buildMemberPersistenceHints(
     ...(ownerFromMember ? { ownerUserId: ownerFromMember } : {}),
     ...(programTitle ? { programTitle } : {}),
   };
+}
+
+function stripArchiveScheduledForField<T extends Record<string, unknown>>(fields: T): Omit<T, "archive_scheduled_for"> {
+  const { archive_scheduled_for: _removed, ...rest } = fields;
+  return rest;
 }
 
 function persistWorkoutLogWithResult(
@@ -3251,7 +3292,7 @@ function trainingProgramFromHydrateRow(program: Record<string, unknown>): Traini
     goal: String(program.goal ?? ""),
     notes: String(program.notes ?? ""),
     createdAt: mapIsoToProgramDate(String(program.created_at ?? "")),
-    exercises: Array.isArray(program.exercises) ? (program.exercises as ProgramExercise[]) : [],
+    exercises: normalizeProgramExercisesForRuntime(program.exercises),
     assignedTrainerName: String(program.assigned_trainer_name ?? "").trim(),
     ...(ownerUserId ? { ownerUserId } : {}),
     ...(programCreatedBy
@@ -3746,12 +3787,24 @@ async function queryMemberRowsWithColumnFallback(
   let selectFields = MEMBERS_SELECT_WITH_AVATAR;
   let orderByCreatedAt = filter.kind === "all";
   let result = await runQuery(selectFields, orderByCreatedAt);
+  if (result.error && isMissingDbColumnError(result.error.message, "archive_scheduled_for")) {
+    selectFields = MEMBERS_SELECT_WITH_AVATAR_WITHOUT_ARCHIVE;
+    result = await runQuery(selectFields, orderByCreatedAt);
+  }
   if (result.error && isMissingDbColumnError(result.error.message, "avatar_url")) {
-    selectFields = MEMBERS_SELECT_WITH_AVATAR_WITHOUT_NUTRITION;
+    selectFields = selectFields.includes("archive_scheduled_for")
+      ? MEMBERS_SELECT_WITH_AVATAR_WITHOUT_NUTRITION
+      : MEMBERS_SELECT_WITH_AVATAR_WITHOUT_NUTRITION_WITHOUT_ARCHIVE;
     result = await runQuery(selectFields, orderByCreatedAt);
   }
   if (result.error && isMissingDbColumnError(result.error.message, "nutrition_access")) {
-    selectFields = selectFields.includes("avatar_url") ? MEMBERS_SELECT_WITH_AVATAR_WITHOUT_NUTRITION : MEMBERS_SELECT_WITHOUT_NUTRITION;
+    selectFields = selectFields.includes("avatar_url")
+      ? selectFields.includes("archive_scheduled_for")
+        ? MEMBERS_SELECT_WITH_AVATAR_WITHOUT_NUTRITION
+        : MEMBERS_SELECT_WITH_AVATAR_WITHOUT_NUTRITION_WITHOUT_ARCHIVE
+      : selectFields.includes("archive_scheduled_for")
+        ? MEMBERS_SELECT_WITHOUT_NUTRITION
+        : MEMBERS_SELECT_WITHOUT_NUTRITION_WITHOUT_ARCHIVE;
     result = await runQuery(selectFields, orderByCreatedAt);
   }
   if (result.error && isMissingDbColumnError(result.error.message, "first_login_at")) {
@@ -3763,7 +3816,9 @@ async function queryMemberRowsWithColumnFallback(
     result = await runQuery(selectFields, orderByCreatedAt);
   }
   if (result.error && isMissingDbColumnError(result.error.message, "avatar_url")) {
-    selectFields = MEMBERS_SELECT_WITHOUT_NUTRITION;
+    selectFields = selectFields.includes("archive_scheduled_for")
+      ? MEMBERS_SELECT_WITHOUT_NUTRITION
+      : MEMBERS_SELECT_WITHOUT_NUTRITION_WITHOUT_ARCHIVE;
     result = await runQuery(selectFields, orderByCreatedAt);
   }
   if (result.error && isMissingDbColumnError(result.error.message, "created_at")) {
@@ -4186,6 +4241,7 @@ function mapEdgeMemberPayload(value: unknown): Member | null {
     injuries: String(row.injuries ?? ""),
     coachNotes: String(row.coachNotes ?? row.coach_notes ?? ""),
     avatarUrl: String(row.avatarUrl ?? row.avatar_url ?? ""),
+    archiveScheduledFor: String(row.archiveScheduledFor ?? row.archive_scheduled_for ?? ""),
   };
 }
 

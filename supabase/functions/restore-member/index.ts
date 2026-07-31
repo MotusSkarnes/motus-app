@@ -205,7 +205,7 @@ async function relinkAuthLoginToDedicatedMemberRow(
     const id = String(row.id ?? "").trim();
     if (id) {
       const patch = buildMemberRestorePatch(row, email, ownerUserId, claimForTrainer);
-      await adminClient.from("members").update(patch).eq("id", id);
+      await updateMemberRestorePatch(adminClient, id, patch);
       if (claimForTrainer && ownerUserId) {
         await migrateMemberDataToTrainer(adminClient, [id], ownerUserId);
       }
@@ -245,7 +245,7 @@ function buildMemberRestorePatch(
   ownerUserId: string,
   claimForTrainer: boolean,
 ): Record<string, unknown> {
-  const patch: Record<string, unknown> = { is_active: true };
+  const patch: Record<string, unknown> = { is_active: true, archive_scheduled_for: null };
   const rowEmail = normalizeEmail(row.email);
   // Never overwrite another customer's email (e.g. ruudlene@gmail.com → resepsjon@motus-skarnes.no).
   if (rowEmail !== loginEmail && !rowEmail) {
@@ -265,6 +265,20 @@ function buildMemberRestorePatch(
     patch.customer_type = "PT-kunde";
   }
   return patch;
+}
+
+async function updateMemberRestorePatch(
+  adminClient: ReturnType<typeof createClient>,
+  id: string,
+  patch: Record<string, unknown>,
+) {
+  let result = await adminClient.from("members").update(patch).eq("id", id);
+  if (result.error && result.error.message.includes("archive_scheduled_for")) {
+    const fallbackPatch = { ...patch };
+    delete fallbackPatch.archive_scheduled_for;
+    result = await adminClient.from("members").update(fallbackPatch).eq("id", id);
+  }
+  return result;
 }
 
 function mapMemberForResponse(row: MemberRow, loginEmail: string, emailMismatch: boolean) {
@@ -379,7 +393,7 @@ Deno.serve(async (req) => {
         continue;
       }
       const patch = buildMemberRestorePatch(row, email, ownerUserId, claimForTrainer);
-      const { error } = await adminClient.from("members").update(patch).eq("id", id);
+      const { error } = await updateMemberRestorePatch(adminClient, id, patch);
       if (error) {
         return jsonResponse(500, { error: error.message, memberId: id });
       }

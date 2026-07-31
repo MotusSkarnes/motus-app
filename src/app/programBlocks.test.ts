@@ -6,6 +6,7 @@ import {
   linkProgramExercisesAsBlock,
   mergeTrainingProgramDuplicates,
   normalizeLegacyIntervalCooldownExerciseNames,
+  normalizeProgramExercisesForRuntime,
   pickRestrictiveMemberLibraryStatus,
   splitProgramExercisesIntoSegments,
   workoutResultGroupId,
@@ -57,6 +58,35 @@ function line(id: string, name: string, sets: string, block?: Partial<ProgramExe
 }
 
 describe("programBlocks", () => {
+  it("normalizes nullable production program fields before workout startup", () => {
+    const malformedRows = [
+      {
+        id: "new-friday-row",
+        exercise_id: null,
+        exerciseName: null,
+        sets: null,
+        reps: null,
+        weight: null,
+        restSeconds: null,
+        notes: null,
+      },
+    ];
+
+    const normalized = normalizeProgramExercisesForRuntime(malformedRows);
+    expect(normalized[0]).toMatchObject({
+      id: "new-friday-row",
+      exerciseId: "",
+      exerciseName: "Øvelse",
+      sets: "1",
+      reps: "",
+      weight: "",
+      restSeconds: "",
+      notes: "",
+    });
+    expect(() => expandProgramExercisesToWorkoutResults(normalized, bank)).not.toThrow();
+    expect(expandProgramExercisesToWorkoutResults(normalized, bank)).toHaveLength(1);
+  });
+
   it("expands superset interleaved by round", () => {
     const exercises = linkProgramExercisesAsBlock(
       [line("a", "Knebøy", "2"), line("b", "Utfall", "2")],

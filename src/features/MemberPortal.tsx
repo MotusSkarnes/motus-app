@@ -109,6 +109,7 @@ import {
   buildWorkoutResultGroups,
   dedupeTrainingPrograms,
   isLegacyIntervalCooldownDrag,
+  normalizeProgramExercisesForRuntime,
   programIsInMemberArchive,
 } from "../app/programBlocks";
 import { memberMayDeleteProgram, memberMayEditProgram } from "../app/programAuthor";
@@ -252,6 +253,7 @@ import { buildTrainerVacationNotice, resolveMemberTrainerDisplayName } from "../
 import { MemberPersonalRecordsSection } from "./MemberPersonalRecordsSection";
 import { WorkoutCelebrationModal } from "./WorkoutCelebrationModal";
 import { computeWorkoutCelebrationStats } from "../app/workoutCelebrationStats";
+import { reportClientDiagnostic, reportClientError } from "../app/clientErrorReporter";
 import { MemberWeeklySummaryCard } from "./MemberWeeklySummaryCard";
 import { MemberProgressStatusBanner } from "./MemberProgressStatusBanner";
 import { MemberConsistencyWeekCard } from "./MemberConsistencyWeekCard";
@@ -269,6 +271,7 @@ import { MemberActivityLoggerCard } from "./MemberActivityLoggerCard";
 import { ReflectionLevelPicker } from "./ReflectionLevelPicker";
 import { MemberSimpleWorkoutLogDetails } from "./MemberSimpleWorkoutLogDetails";
 import { LiveWorkoutSessionModal } from "./LiveWorkoutSessionModal";
+import { WorkoutSessionErrorBoundary } from "./WorkoutSessionErrorBoundary";
 import { PersonalRecordProgressModal } from "./PersonalRecordProgressModal";
 import { PeriodPlanActiveView } from "./PeriodPlanActiveView";
 import {
@@ -1942,7 +1945,12 @@ export function MemberPortal(props: MemberPortalProps) {
     const fromState =
       programs.find((program) => program.id === programId) ??
       memberPrograms.find((program) => program.id === programId);
-    if (fromState) return fromState;
+    if (fromState) {
+      return {
+        ...fromState,
+        exercises: normalizeProgramExercisesForRuntime(fromState.exercises),
+      };
+    }
 
     const memberIdsToTry = [...new Set([activeMemberId, workoutMode.memberId, memberViewId].map((id) => id?.trim()).filter(Boolean))];
     for (const memberId of memberIdsToTry) {
@@ -2232,11 +2240,18 @@ export function MemberPortal(props: MemberPortalProps) {
     if (rescuedProgram) return { kind: "start-program" as const, program: rescuedProgram };
     return resolved;
   }, [todayPlanEntry, memberProgramsForPeriodPlan, memberPrograms]);
-  const profileMetricsFromDb = decodeMemberProfileMetrics(editableMember?.personalGoals);
-  const stopGoalFromDb = getStopGoalFromPersonalGoals(editableMember?.personalGoals);
+  const resolvedProfilePersonalGoals = useMemo(
+    () =>
+      editableMember
+        ? resolveBestPersonalGoalsForRelatedMembers(editableMember, members, relatedMemberIdSet)
+        : "",
+    [editableMember, members, relatedMemberIdSet, relatedProfileGoalsSignature],
+  );
+  const profileMetricsFromDb = decodeMemberProfileMetrics(resolvedProfilePersonalGoals);
+  const stopGoalFromDb = getStopGoalFromPersonalGoals(resolvedProfilePersonalGoals);
   const stopGoalsFromDb = useMemo(
-    () => getStopGoalsFromPersonalGoals(editableMember?.personalGoals),
-    [editableMember?.personalGoals],
+    () => getStopGoalsFromPersonalGoals(resolvedProfilePersonalGoals),
+    [resolvedProfilePersonalGoals],
   );
   const normalizedStopGoalsDraft = useMemo(() => normalizeStopGoals(stopGoalsDraft), [stopGoalsDraft]);
   const shouldUseStopGoalsDraft =
@@ -3357,8 +3372,8 @@ export function MemberPortal(props: MemberPortalProps) {
     }
     stopGoalDraftDirtyRef.current = false;
     stopGoalDraftDirtyMemberIdRef.current = null;
-    setStopGoalsDraft(getStopGoalsFromPersonalGoals(editableMember.personalGoals));
-  }, [editableMember?.id, editableMember?.personalGoals]);
+    setStopGoalsDraft(getStopGoalsFromPersonalGoals(resolvedProfilePersonalGoals));
+  }, [editableMember?.id, resolvedProfilePersonalGoals]);
   useEffect(() => {
     if (!editableMember) return;
     if (
@@ -6060,15 +6075,42 @@ export function MemberPortal(props: MemberPortalProps) {
   }
 
   function startMemberProgram(program: TrainingProgram, context?: PeriodPlanWorkoutStartContext | null) {
-    pendingPeriodPlanWorkoutStartRef.current = context ?? resolvePeriodPlanContextForProgram(program);
-    if (isMemberIntervalWorkoutProgram(program, exerciseCategoryById, exercises)) {
-      if (workoutMode?.programId === program.id) {
-        handleDismissWorkoutMode();
+    const runtimeProgram = {
+      ...program,
+      exercises: normalizeProgramExercisesForRuntime(program.exercises),
+    };
+    reportClientDiagnostic("member-workout-start", {
+      programId: String(runtimeProgram.id ?? ""),
+      programTitle: String(runtimeProgram.title ?? ""),
+      memberId: String(activeMemberId ?? ""),
+      rawExerciseCount: Array.isArray(program.exercises) ? program.exercises.length : -1,
+      normalizedExerciseCount: runtimeProgram.exercises.length,
+      exerciseShape: runtimeProgram.exercises.slice(0, 20).map((exercise) => ({
+        id: exercise.id,
+        exerciseId: exercise.exerciseId,
+        name: exercise.exerciseName,
+        sets: exercise.sets,
+        blockType: exercise.blockType ?? "",
+      })),
+    });
+    try {
+      pendingPeriodPlanWorkoutStartRef.current = context ?? resolvePeriodPlanContextForProgram(runtimeProgram);
+      if (isMemberIntervalWorkoutProgram(runtimeProgram, exerciseCategoryById, exercises)) {
+        if (workoutMode?.programId === runtimeProgram.id) {
+          handleDismissWorkoutMode();
+        }
+        openIntervalTimerModal(runtimeProgram);
+        return;
       }
-      openIntervalTimerModal(program);
-      return;
+      startWorkoutMode(runtimeProgram.id, buildStartWorkoutOptions(runtimeProgram));
+    } catch (error) {
+      reportClientError("member-workout-start-failed", error, {
+        programId: String(runtimeProgram.id ?? ""),
+        programTitle: String(runtimeProgram.title ?? ""),
+        memberId: String(activeMemberId ?? ""),
+      });
+      window.alert("Kunne ikke starte økten. Feilen er nå sendt inn automatisk.");
     }
-    startWorkoutMode(program.id, buildStartWorkoutOptions(program));
   }
 
   function unmarkPeriodPlanDayCompleted(planId: string, weekNumber: number, day: WeekdayPlanKey) {
@@ -8461,30 +8503,35 @@ export function MemberPortal(props: MemberPortalProps) {
       }}
       logIntervalWorkout={handleLogIntervalWorkout}
     />
-    <LiveWorkoutSessionModal
-      variant="member"
-      workoutMode={workoutMode}
-      activeProgram={activeWorkoutProgram}
-      exercises={exercises}
-      onBeforeNextExercise={maybeCelebrateCurrentWorkoutGroup}
-      onWorkoutExerciseIndexChange={setSyncedWorkoutExerciseIndex}
-      updateWorkoutExerciseResult={updateWorkoutExerciseResult}
-      replaceWorkoutExerciseGroup={replaceWorkoutExerciseGroup}
-      addWorkoutExerciseToWorkout={addWorkoutExerciseToWorkout}
-      appendWorkoutSetForProgramExercise={appendWorkoutSetForProgramExercise}
-      removeLastWorkoutSetForProgramExercise={removeLastWorkoutSetForProgramExercise}
-      deferWorkoutExerciseGroup={deferWorkoutExerciseGroup}
-      updateWorkoutModeNote={updateWorkoutModeNote}
-      updateWorkoutExerciseNote={updateWorkoutExerciseNote}
-      finishWorkoutMode={handleFinishWorkoutMode}
-      cancelWorkoutMode={handleCancelWorkoutMode}
-      restCountdownEnabled={restCountdownEnabled}
-      previousPersonalBests={previousPersonalBestsByExercise}
-      lastSessionByExercise={lastSessionResultsByExercise}
-      onDismissWorkout={() => {
-        handleDismissWorkoutMode();
-      }}
-    />
+    <WorkoutSessionErrorBoundary
+      sessionKey={workoutMode?.programId ?? ""}
+      onClose={handleCancelWorkoutMode}
+    >
+      <LiveWorkoutSessionModal
+        variant="member"
+        workoutMode={workoutMode}
+        activeProgram={activeWorkoutProgram}
+        exercises={exercises}
+        onBeforeNextExercise={maybeCelebrateCurrentWorkoutGroup}
+        onWorkoutExerciseIndexChange={setSyncedWorkoutExerciseIndex}
+        updateWorkoutExerciseResult={updateWorkoutExerciseResult}
+        replaceWorkoutExerciseGroup={replaceWorkoutExerciseGroup}
+        addWorkoutExerciseToWorkout={addWorkoutExerciseToWorkout}
+        appendWorkoutSetForProgramExercise={appendWorkoutSetForProgramExercise}
+        removeLastWorkoutSetForProgramExercise={removeLastWorkoutSetForProgramExercise}
+        deferWorkoutExerciseGroup={deferWorkoutExerciseGroup}
+        updateWorkoutModeNote={updateWorkoutModeNote}
+        updateWorkoutExerciseNote={updateWorkoutExerciseNote}
+        finishWorkoutMode={handleFinishWorkoutMode}
+        cancelWorkoutMode={handleCancelWorkoutMode}
+        restCountdownEnabled={restCountdownEnabled}
+        previousPersonalBests={previousPersonalBestsByExercise}
+        lastSessionByExercise={lastSessionResultsByExercise}
+        onDismissWorkout={() => {
+          handleDismissWorkoutMode();
+        }}
+      />
+    </WorkoutSessionErrorBoundary>
     {prProgressExerciseName ? (
       <PersonalRecordProgressModal
         exerciseName={prProgressExerciseName}

@@ -1,6 +1,14 @@
 ﻿import { useEffect, useMemo, useState } from "react";
 import { Award, Lock, Share2, Sparkles, Target, X } from "lucide-react";
 import { memberBadgeImageSrc } from "../app/badgeAssets";
+import {
+  BADGE_CUSTOMIZATIONS_CHANGED_EVENT,
+  badgeCustomImageStyle,
+  customizeBadgeText,
+  readBadgeCustomizations,
+  resolveCustomBadgeImage,
+  type BadgeCustomizations,
+} from "../app/badgeCustomization";
 import { BADGE_CAROUSEL_TRACK_SNAP_CLASS, BADGE_CAROUSEL_WRAPPER_CLASS, BADGE_CATEGORY_SCROLL_CLASS } from "../app/badgeImagePresentation";
 import { BadgeCarouselScroll } from "./BadgeCarouselScroll";
 import { BadgeImage } from "./BadgeImage";
@@ -78,17 +86,21 @@ function LevelStep({ level, badge, active }: { level: MemberBadgeLevel; badge: M
 
 function BadgeTile({
   badge,
+  customizations,
   onSelect,
   celebrate = false,
   homeSize = false,
 }: {
   badge: MemberBadge;
+  customizations: BadgeCustomizations;
   onSelect: () => void;
   celebrate?: boolean;
   homeSize?: boolean;
 }) {
   const level = LEVEL_STYLES[badge.level];
-  const badgeImage = memberBadgeImageSrc(badge);
+  const displayBadge = customizeBadgeText(badge, customizations);
+  const custom = customizations[badge.id];
+  const badgeImage = resolveCustomBadgeImage(badge.id, memberBadgeImageSrc(badge), customizations);
   const showCelebrate = celebrate && badge.unlocked;
 
   return (
@@ -97,7 +109,7 @@ function BadgeTile({
       onClick={onSelect}
       className={`motus-badge-tile shrink-0 snap-start ${homeSize ? "motus-badge-tile--home" : ""} ${badge.unlocked ? "motus-badge-tile--unlocked" : "motus-badge-tile--locked"} ${showCelebrate ? "motus-badge-tile--celebrate" : ""}`}
       style={badge.unlocked ? { boxShadow: `0 8px 20px ${level.fill}` } : undefined}
-      aria-label={`${badge.title}${badge.unlocked ? `, ${badge.levelLabel}` : ", låst"}`}
+      aria-label={`${displayBadge.title}${badge.unlocked ? `, ${badge.levelLabel}` : ", låst"}`}
     >
       <span className="motus-badge-tile-art">
         {showCelebrate ? (
@@ -106,34 +118,45 @@ function BadgeTile({
             <Sparkles className="motus-badge-sparkle motus-badge-sparkle--br" aria-hidden />
           </>
         ) : null}
-        <BadgeImage src={badgeImage} size={homeSize ? "home" : "tile"} dimmed={!badge.unlocked} alt="" />
+        <BadgeImage
+          src={badgeImage}
+          size={homeSize ? "home" : "tile"}
+          dimmed={!badge.unlocked}
+          alt=""
+          imageClassName={custom?.imageUrl ? "object-cover" : "object-contain"}
+          imageStyle={custom?.imageUrl ? badgeCustomImageStyle(custom.frame) : undefined}
+        />
         {!badge.unlocked ? (
           <span className="motus-badge-tile-lock" aria-hidden>
             <Lock className="h-3.5 w-3.5" strokeWidth={2.4} />
           </span>
         ) : null}
       </span>
-      <span className={`motus-badge-tile-label ${badge.unlocked ? "" : "motus-badge-tile-label--locked"}`}>{badge.title}</span>
+      <span className={`motus-badge-tile-label ${badge.unlocked ? "" : "motus-badge-tile-label--locked"}`}>{displayBadge.title}</span>
     </button>
   );
 }
 
 function BadgeDetailView({
   badge,
+  customizations,
   memberDisplayName,
   shareLogoSrc,
   onShareStatus,
 }: {
   badge: MemberBadge;
+  customizations: BadgeCustomizations;
   memberDisplayName: string;
   shareLogoSrc: string;
   onShareStatus: (message: string | null) => void;
 }) {
   const [isSharing, setIsSharing] = useState(false);
   const level = LEVEL_STYLES[badge.level];
+  const displayBadge = customizeBadgeText(badge, customizations);
+  const custom = customizations[badge.id];
   const nextLevel = getBadgeNextLevel(badge);
   const isMaxed = !nextLevel;
-  const badgeImage = memberBadgeImageSrc(badge);
+  const badgeImage = resolveCustomBadgeImage(badge.id, memberBadgeImageSrc(badge), customizations);
 
   async function shareBadge() {
     if (!badge.unlocked || isSharing) return;
@@ -144,8 +167,8 @@ function BadgeDetailView({
         logoSrc: shareLogoSrc,
         memberDisplayName,
         badgeImageSrc: badgeImage,
-        badgeTitle: badge.title,
-        badgeDescription: badge.description,
+        badgeTitle: displayBadge.title,
+        badgeDescription: displayBadge.description,
         levelName: badge.levelName,
         categoryTitle: badge.categoryTitle,
         accentColor: level.accent,
@@ -159,7 +182,15 @@ function BadgeDetailView({
   return (
     <div className="motus-badge-detail motus-badge-detail--modal">
       <div className="flex justify-center overflow-visible">
-        <BadgeImage src={badgeImage} size="detail" dimmed={!badge.unlocked} alt={badge.title} loading="eager" />
+        <BadgeImage
+          src={badgeImage}
+          size="detail"
+          dimmed={!badge.unlocked}
+          alt={displayBadge.title}
+          loading="eager"
+          imageClassName={custom?.imageUrl ? "object-cover" : "object-contain"}
+          imageStyle={custom?.imageUrl ? badgeCustomImageStyle(custom.frame) : undefined}
+        />
       </div>
 
       <div className="mt-2 flex flex-wrap items-center justify-center gap-1">
@@ -177,8 +208,8 @@ function BadgeDetailView({
         )}
       </div>
 
-      <h3 className="mt-2 text-center text-base font-black uppercase tracking-wide text-slate-900">{badge.title}</h3>
-      <p className="motus-badge-detail-description mt-1.5 text-center text-xs leading-relaxed text-slate-600">{badge.description}</p>
+      <h3 className="mt-2 text-center text-base font-black uppercase tracking-wide text-slate-900">{displayBadge.title}</h3>
+      <p className="motus-badge-detail-description mt-1.5 text-center text-xs leading-relaxed text-slate-600">{displayBadge.description}</p>
 
       <div className="mt-3 w-full rounded-xl border bg-slate-50/90 p-2.5" style={{ borderColor: "rgba(15,23,42,0.06)" }}>
         <div className="flex items-start gap-2">
@@ -233,12 +264,14 @@ function BadgeDetailView({
 
 function BadgeDetailModal({
   badge,
+  customizations,
   memberDisplayName,
   shareLogoSrc,
   onClose,
   onShareStatus,
 }: {
   badge: MemberBadge;
+  customizations: BadgeCustomizations;
   memberDisplayName: string;
   shareLogoSrc: string;
   onClose: () => void;
@@ -276,10 +309,11 @@ function BadgeDetailModal({
         </button>
         <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 pb-3 pt-10 sm:px-5">
           <h2 id="badge-detail-title" className="sr-only">
-            {badge.title}
+            {customizeBadgeText(badge, customizations).title}
           </h2>
           <BadgeDetailView
             badge={badge}
+            customizations={customizations}
             memberDisplayName={memberDisplayName}
             shareLogoSrc={shareLogoSrc}
             onShareStatus={onShareStatus}
@@ -297,10 +331,12 @@ function BadgeDetailModal({
 
 function BadgeCatalogModal({
   collection,
+  customizations,
   onClose,
   onSelectBadge,
 }: {
   collection: MemberBadgeCollection;
+  customizations: BadgeCustomizations;
   onClose: () => void;
   onSelectBadge: (badge: MemberBadge) => void;
 }) {
@@ -379,7 +415,7 @@ function BadgeCatalogModal({
         <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-1 pb-4 pt-2 sm:px-2">
           <BadgeCarouselScroll className={BADGE_CAROUSEL_WRAPPER_CLASS} trackClassName={BADGE_CAROUSEL_TRACK_SNAP_CLASS}>
             {visibleBadges.map((badge) => (
-              <BadgeTile key={badge.id} badge={badge} onSelect={() => onSelectBadge(badge)} />
+              <BadgeTile key={badge.id} badge={badge} customizations={customizations} onSelect={() => onSelectBadge(badge)} />
             ))}
           </BadgeCarouselScroll>
           <p className="mx-4 mt-1 text-[11px] leading-relaxed text-slate-400 sm:mx-5">
@@ -395,6 +431,17 @@ export function MemberBadgesCarousel({ collection, memberDisplayName, shareLogoS
   const [catalogOpen, setCatalogOpen] = useState(false);
   const [badgeShareStatus, setBadgeShareStatus] = useState<string | null>(null);
   const [selectedBadge, setSelectedBadge] = useState<MemberBadge | null>(null);
+  const [badgeCustomizations, setBadgeCustomizations] = useState<BadgeCustomizations>(() => readBadgeCustomizations());
+
+  useEffect(() => {
+    const sync = () => setBadgeCustomizations(readBadgeCustomizations());
+    window.addEventListener(BADGE_CUSTOMIZATIONS_CHANGED_EVENT, sync);
+    window.addEventListener("storage", sync);
+    return () => {
+      window.removeEventListener(BADGE_CUSTOMIZATIONS_CHANGED_EVENT, sync);
+      window.removeEventListener("storage", sync);
+    };
+  }, []);
 
   const recentBadges = useMemo(
     () =>
@@ -462,7 +509,14 @@ export function MemberBadgesCarousel({ collection, memberDisplayName, shareLogoS
               trackClassName={BADGE_CAROUSEL_TRACK_SNAP_CLASS}
             >
               {recentBadges.map((badge) => (
-                <BadgeTile key={badge.id} badge={badge} celebrate homeSize onSelect={() => setSelectedBadge(badge)} />
+                <BadgeTile
+                  key={badge.id}
+                  badge={badge}
+                  customizations={badgeCustomizations}
+                  celebrate
+                  homeSize
+                  onSelect={() => setSelectedBadge(badge)}
+                />
               ))}
             </BadgeCarouselScroll>
           </div>
@@ -475,7 +529,7 @@ export function MemberBadgesCarousel({ collection, memberDisplayName, shareLogoS
                 onClick={() => setSelectedBadge(nextGoalBadge)}
                 className="motus-pressable mt-2 text-sm font-semibold text-[#0d9488] hover:text-teal-800"
               >
-                Se neste mål: {nextGoalBadge.title}
+                Se neste mål: {customizeBadgeText(nextGoalBadge, badgeCustomizations).title}
               </button>
             ) : null}
           </div>
@@ -487,12 +541,18 @@ export function MemberBadgesCarousel({ collection, memberDisplayName, shareLogoS
       </section>
 
       {catalogOpen ? (
-        <BadgeCatalogModal collection={collection} onClose={() => setCatalogOpen(false)} onSelectBadge={openBadgeDetail} />
+        <BadgeCatalogModal
+          collection={collection}
+          customizations={badgeCustomizations}
+          onClose={() => setCatalogOpen(false)}
+          onSelectBadge={openBadgeDetail}
+        />
       ) : null}
 
       {selectedBadge ? (
         <BadgeDetailModal
           badge={selectedBadge}
+          customizations={badgeCustomizations}
           memberDisplayName={memberDisplayName}
           shareLogoSrc={shareLogoSrc}
           onClose={() => setSelectedBadge(null)}

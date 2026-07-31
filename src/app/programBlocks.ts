@@ -143,6 +143,56 @@ export function parseProgramSetCount(value: string | undefined): number {
   return Math.min(18, Math.round(parsed));
 }
 
+/**
+ * Supabase JSON and older local caches can contain null/missing prescription
+ * fields even though ProgramExercise uses strings in TypeScript. Keep workout
+ * startup safe by normalizing those runtime values before any `.trim()` calls.
+ */
+export function normalizeProgramExercisesForRuntime(value: unknown): ProgramExercise[] {
+  if (!Array.isArray(value)) return [];
+  return value
+    .filter((item): item is Record<string, unknown> => Boolean(item && typeof item === "object"))
+    .map((item, index) => {
+      const blockType =
+        item.blockType === "superset" ||
+        item.blockType === "triset" ||
+        item.blockType === "circuit"
+          ? item.blockType
+          : undefined;
+      const repsUnit = item.repsUnit === "minutes" ? "minutes" : item.repsUnit === "reps" ? "reps" : undefined;
+      const weightUnit =
+        item.weightUnit === "seconds" ? "seconds" : item.weightUnit === "kg" ? "kg" : undefined;
+
+      return {
+        ...item,
+        id:
+          String(item.id ?? item.exerciseId ?? item.exercise_id ?? `program-exercise-${index + 1}`).trim() ||
+          `program-exercise-${index + 1}`,
+        exerciseId: String(item.exerciseId ?? item.exercise_id ?? "").trim(),
+        exerciseName: String(item.exerciseName ?? item.exercise_name ?? item.name ?? "").trim() || "Øvelse",
+        sets: String(item.sets ?? "1").trim() || "1",
+        reps: String(item.reps ?? "").trim(),
+        weight: String(item.weight ?? "").trim(),
+        restSeconds: String(item.restSeconds ?? "").trim(),
+        notes: String(item.notes ?? ""),
+        durationMinutes: String(item.durationMinutes ?? "").trim(),
+        distanceKm: String(item.distanceKm ?? "").trim(),
+        speed: String(item.speed ?? "").trim(),
+        incline: String(item.incline ?? "").trim(),
+        targetHrPercent: String(item.targetHrPercent ?? "").trim(),
+        holdSeconds: String(item.holdSeconds ?? "").trim(),
+        seatSetting: String(item.seatSetting ?? "").trim(),
+        customField1: String(item.customField1 ?? "").trim(),
+        customField2: String(item.customField2 ?? "").trim(),
+        blockId: String(item.blockId ?? "").trim() || undefined,
+        blockRounds: String(item.blockRounds ?? "").trim() || undefined,
+        blockType,
+        repsUnit,
+        weightUnit,
+      } satisfies ProgramExercise;
+    });
+}
+
 function isIntervalTimedProgram(exercises: ProgramExercise[]): boolean {
   if (exercises.length < 2) return false;
   return exercises.every((row) => {
@@ -419,7 +469,9 @@ export function expandProgramExercisesToWorkoutResults(
     suggestedWeightByProgramExerciseId: options?.suggestedWeightByProgramExerciseId,
     conditioningLogAfter: options?.program ? isConditioningLogAfterProgram(options.program) : false,
   };
-  const normalizedProgramExercises = normalizeLegacyIntervalCooldownExerciseNames(programExercises);
+  const normalizedProgramExercises = normalizeLegacyIntervalCooldownExerciseNames(
+    normalizeProgramExercisesForRuntime(programExercises),
+  );
   return splitProgramExercisesIntoSegments(normalizedProgramExercises).flatMap((segment) => {
     if (segment.length === 1 && !isBlockExercise(segment[0])) {
       return expandSingleProgramExercise(segment[0], exerciseBank, opts);

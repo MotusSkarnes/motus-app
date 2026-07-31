@@ -121,6 +121,7 @@ export type Member = {
   email: string;
   avatarUrl?: string;
   isActive: boolean;
+  archiveScheduledFor?: string;
   invitedAt: string;
   /** Første gang medlem logget inn i appen (link-member-auth). */
   firstLoginAt: string;

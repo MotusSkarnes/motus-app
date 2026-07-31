@@ -31,6 +31,7 @@ type UpdatePayload = {
     invitedAt?: string;
     /** Trener aktiverer kosthold/ernæring for medlem */
     nutritionAccess?: boolean;
+    archiveScheduledFor?: string | null;
   };
 };
 
@@ -96,6 +97,17 @@ function normalizeBirthDate(value: unknown): string | null {
   return null;
 }
 
+function normalizeArchiveScheduledFor(value: unknown): string | null {
+  const trimmed = normalizeString(value);
+  if (!trimmed) return "";
+  const match = trimmed.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!match) return null;
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  return isValidCalendarDate(day, month, year) ? trimmed : null;
+}
+
 function isSharedMedlem(customerType: unknown): boolean {
   return normalizeString(customerType).toLowerCase() === "medlem";
 }
@@ -132,9 +144,15 @@ function resolveEndpointUserRole(user: {
   return appRole || metaRole || "";
 }
 
-function withoutAvatarUrl(fields: Record<string, string>): Record<string, string> {
+function withoutAvatarUrl<T extends Record<string, unknown>>(fields: T): Omit<T, "avatar_url"> {
   const next = { ...fields };
   delete next.avatar_url;
+  return next;
+}
+
+function withoutArchiveScheduledFor<T extends Record<string, unknown>>(fields: T): Omit<T, "archive_scheduled_for"> {
+  const next = { ...fields };
+  delete next.archive_scheduled_for;
   return next;
 }
 
@@ -145,13 +163,16 @@ function isMissingAvatarColumnError(message: string): boolean {
 
 async function updateMembersById(
   adminClient: ReturnType<typeof createClient>,
-  fields: Record<string, string | boolean>,
+  fields: Record<string, string | boolean | null>,
   ids: string[],
 ) {
   if (!ids.length) return { data: [] as { id?: string }[], error: null as null };
   let result = await adminClient.from("members").update(fields).in("id", ids).select("id");
   if (result.error && isMissingAvatarColumnError(result.error.message) && "avatar_url" in fields) {
     result = await adminClient.from("members").update(withoutAvatarUrl(fields)).in("id", ids).select("id");
+  }
+  if (result.error && result.error.message.includes("archive_scheduled_for") && "archive_scheduled_for" in fields) {
+    result = await adminClient.from("members").update(withoutArchiveScheduledFor(fields)).in("id", ids).select("id");
   }
   return result;
 }
@@ -234,10 +255,15 @@ Deno.serve(async (req) => {
   if (normalizedBirthDate === null) {
     return jsonResponse(400, { error: "Fødselsdato må være en gyldig dato på formatet dd.mm.yyyy." });
   }
+  const normalizedArchiveScheduledFor =
+    changes.archiveScheduledFor !== undefined ? normalizeArchiveScheduledFor(changes.archiveScheduledFor) : undefined;
+  if (normalizedArchiveScheduledFor === null) {
+    return jsonResponse(400, { error: "Planlagt arkivdato maa vaere en gyldig dato paa formatet yyyy-mm-dd." });
+  }
   // Email is an identity/routing key here, not a profile field. Never rewrite an
   // existing member row's email from this endpoint; stale auth member_id metadata
   // can otherwise overwrite an unrelated member with the logged-in user's email.
-  const updateFields: Record<string, string | boolean> = {};
+  const updateFields: Record<string, string | boolean | null> = {};
   if (changes.name !== undefined) updateFields.name = normalizeString(changes.name);
   if (changes.phone !== undefined) updateFields.phone = normalizeString(changes.phone);
   if (normalizedBirthDate !== undefined) updateFields.birth_date = normalizedBirthDate;
@@ -269,10 +295,13 @@ Deno.serve(async (req) => {
     if (changes.nutritionAccess !== undefined) {
       updateFields.nutrition_access = changes.nutritionAccess === true;
     }
+    if (normalizedArchiveScheduledFor !== undefined) {
+      updateFields.archive_scheduled_for = normalizedArchiveScheduledFor || null;
+    }
   }
 
-  const profileUpdateFields: Record<string, string | boolean> = { ...updateFields };
-  const rosterUpdateFields: Record<string, string | boolean> = {};
+  const profileUpdateFields: Record<string, string | boolean | null> = { ...updateFields };
+  const rosterUpdateFields: Record<string, string | boolean | null> = {};
   if (profileUpdateFields.membership_type !== undefined) {
     rosterUpdateFields.membership_type = profileUpdateFields.membership_type;
     delete profileUpdateFields.membership_type;

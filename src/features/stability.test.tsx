@@ -226,4 +226,65 @@ describe("Stability regressions", () => {
     await user.click(screen.getByRole("button", { name: /^Lagre økt$/i }));
     expect(finishWorkoutMode).toHaveBeenCalledWith(expect.objectContaining({ note: "Fin flyt i dag" }));
   });
+
+  it("renders workout mode when a hydrated program contains nullable fields", () => {
+    const workoutMode: WorkoutModeState = {
+      programId: "p-nullable",
+      memberId: "m1",
+      programTitle: "Nytt fredagsprogram",
+      note: "",
+      results: [
+        {
+          exerciseId: "pe-nullable-set-1",
+          programExerciseId: "pe-nullable",
+          setNumber: 1,
+          exerciseName: "Øvelse",
+          plannedSets: "1",
+          plannedReps: "",
+          plannedWeight: "",
+          performedWeight: "",
+          performedReps: "",
+          completed: false,
+        },
+      ],
+    };
+    const malformedProgram = {
+      ...createProgram({ id: "p-nullable", title: "Nytt fredagsprogram" }),
+      exercises: [
+        {
+          id: "pe-nullable",
+          exerciseId: null,
+          exerciseName: null,
+          sets: null,
+          reps: null,
+          weight: null,
+          restSeconds: null,
+          notes: null,
+        },
+      ],
+    } as unknown as TrainingProgram;
+
+    render(
+      <LiveWorkoutSessionModal
+        variant="member"
+        workoutMode={workoutMode}
+        activeProgram={malformedProgram}
+        exercises={[baseExercise]}
+        updateWorkoutExerciseResult={vi.fn()}
+        replaceWorkoutExerciseGroup={vi.fn()}
+        addWorkoutExerciseToWorkout={vi.fn()}
+        appendWorkoutSetForProgramExercise={vi.fn()}
+        removeLastWorkoutSetForProgramExercise={vi.fn()}
+        deferWorkoutExerciseGroup={vi.fn()}
+        updateWorkoutModeNote={vi.fn()}
+        updateWorkoutExerciseNote={vi.fn()}
+        finishWorkoutMode={vi.fn()}
+        cancelWorkoutMode={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByText("Nytt fredagsprogram")).toBeInTheDocument();
+    expect(screen.getByText("Øktmodus")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Avbryt" })).toBeInTheDocument();
+  });
 });

@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { buildActivityTemplateNotes } from "../app/activityTemplate";
 import type { AppState } from "../app/types";
 import {
   addWorkoutExerciseToWorkoutInState,
@@ -12,6 +13,7 @@ import {
   logCompletedPlanEntryInState,
   removeCompletedPlanEntryLogInState,
   deleteWorkoutLogInState,
+  saveProgramInState,
   removeWorkoutLogResultInState,
   replaceWorkoutExerciseGroupInState,
   setWorkoutLogResultsInState,
@@ -49,6 +51,64 @@ function createBaseState(): AppState {
 }
 
 describe("appRepository workout log guards", () => {
+  it("converts an existing training program to a group class template", () => {
+    const state = createBaseState();
+
+    const next = saveProgramInState(state, {
+      id: "program-1",
+      title: "Yoga flyt",
+      goal: "",
+      notes: buildActivityTemplateNotes("group", "Rolig gruppetime"),
+      memberId: "__template__",
+      exercises: [],
+    });
+
+    expect(next.programs[0]).toMatchObject({
+      id: "program-1",
+      memberId: "__template__",
+      title: "Yoga flyt",
+      notes: "Rolig gruppetime",
+      activityTemplateKind: "group",
+      exercises: [],
+    });
+  });
+
+  it("clears group class metadata when converting a template back to a training program", () => {
+    const state = createBaseState();
+    state.programs[0] = {
+      ...state.programs[0],
+      memberId: "__template__",
+      notes: "Rolig gruppetime",
+      activityTemplateKind: "group",
+      exercises: [],
+    };
+
+    const next = saveProgramInState(state, {
+      id: "program-1",
+      title: "Styrke A",
+      goal: "Sterkere",
+      notes: "Vanlig program",
+      memberId: "member-1",
+      exercises: [
+        {
+          id: "pex-1",
+          exerciseId: "ex-1",
+          exerciseName: "Knebøy",
+          sets: "3",
+          reps: "8",
+          weight: "60",
+          restSeconds: "90",
+          notes: "",
+        },
+      ],
+    });
+
+    expect(next.programs[0]?.memberId).toBe("member-1");
+    expect(next.programs[0]?.activityTemplateKind).toBeUndefined();
+    expect(next.programs[0]?.notes).toBe("Vanlig program");
+    expect(next.programs[0]?.exercises).toHaveLength(1);
+  });
+
   it("appends an extra set with incremented setNumber for a program exercise", () => {
     const state = createBaseState();
     state.programs = [

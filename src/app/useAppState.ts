@@ -2906,7 +2906,7 @@ export function useAppState() {
       const members = prev.members.map((member) => {
         const sameEmail = member.email.trim().toLowerCase() === normalizedEmail;
         if (!sameEmail) return member;
-        return { ...member, isActive: true };
+        return { ...member, isActive: true, archiveScheduledFor: "" };
       });
       const restored =
         members.find(

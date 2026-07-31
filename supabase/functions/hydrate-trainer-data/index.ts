@@ -21,6 +21,27 @@ function normalizeEmail(value: unknown): string {
   return String(value ?? "").trim().toLowerCase();
 }
 
+function currentOsloDate(): string {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Europe/Oslo",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date());
+}
+
+async function archiveDueMembers(adminClient: ReturnType<typeof createClient>): Promise<void> {
+  const today = currentOsloDate();
+  const { error } = await adminClient
+    .from("members")
+    .update({ is_active: false })
+    .lte("archive_scheduled_for", today)
+    .or("is_active.is.null,is_active.eq.true");
+  if (error && !error.message.includes("archive_scheduled_for")) {
+    console.warn("hydrate-trainer-data: scheduled archive failed:", error.message);
+  }
+}
+
 function uniqueById<T extends RowWithId>(rows: T[]): T[] {
   const byId = new Map<string, T>();
   rows.forEach((row) => {
@@ -317,9 +338,15 @@ Deno.serve(async (req) => {
     ]);
   }
 
+  await archiveDueMembers(adminClient);
+
   const membersSelectWithAvatar =
-    "id, owner_user_id, name, email, is_active, invited_at, first_login_at, phone, birth_date, gender, weight, height, level, membership_type, customer_type, nutrition_access, days_since_activity, goal, focus, personal_goals, injuries, coach_notes, avatar_url, created_at";
+    "id, owner_user_id, name, email, is_active, archive_scheduled_for, invited_at, first_login_at, phone, birth_date, gender, weight, height, level, membership_type, customer_type, nutrition_access, days_since_activity, goal, focus, personal_goals, injuries, coach_notes, avatar_url, created_at";
   const membersSelectWithoutAvatar =
+    "id, owner_user_id, name, email, is_active, archive_scheduled_for, invited_at, first_login_at, phone, birth_date, gender, weight, height, level, membership_type, customer_type, nutrition_access, days_since_activity, goal, focus, personal_goals, injuries, coach_notes, created_at";
+  const membersSelectWithAvatarWithoutArchive =
+    "id, owner_user_id, name, email, is_active, invited_at, first_login_at, phone, birth_date, gender, weight, height, level, membership_type, customer_type, nutrition_access, days_since_activity, goal, focus, personal_goals, injuries, coach_notes, avatar_url, created_at";
+  const membersSelectWithoutAvatarWithoutArchive =
     "id, owner_user_id, name, email, is_active, invited_at, first_login_at, phone, birth_date, gender, weight, height, level, membership_type, customer_type, nutrition_access, days_since_activity, goal, focus, personal_goals, injuries, coach_notes, created_at";
   let members: Array<Record<string, unknown>> | null = null;
   let membersError: { message: string } | null = null;
@@ -353,6 +380,44 @@ Deno.serve(async (req) => {
       Record<string, unknown>
     >;
     membersError = ownedMembersWithoutAvatar.error ?? sharedMembersWithoutAvatar.error;
+  } else if (
+    (ownedMembersWithAvatar.error && ownedMembersWithAvatar.error.message.includes("archive_scheduled_for")) ||
+    (sharedMembersWithAvatar.error && sharedMembersWithAvatar.error.message.includes("archive_scheduled_for"))
+  ) {
+    const ownedMembersWithoutArchive = await adminClient
+      .from("members")
+      .select(membersSelectWithAvatarWithoutArchive)
+      .eq("owner_user_id", ownerUserId)
+      .order("created_at", { ascending: true });
+    const sharedMembersWithoutArchive = await adminClient
+      .from("members")
+      .select(membersSelectWithAvatarWithoutArchive)
+      .ilike("customer_type", "medlem")
+      .neq("owner_user_id", ownerUserId)
+      .order("created_at", { ascending: true });
+    if (
+      (ownedMembersWithoutArchive.error && ownedMembersWithoutArchive.error.message.includes("avatar_url")) ||
+      (sharedMembersWithoutArchive.error && sharedMembersWithoutArchive.error.message.includes("avatar_url"))
+    ) {
+      const ownedLegacy = await adminClient
+        .from("members")
+        .select(membersSelectWithoutAvatarWithoutArchive)
+        .eq("owner_user_id", ownerUserId)
+        .order("created_at", { ascending: true });
+      const sharedLegacy = await adminClient
+        .from("members")
+        .select(membersSelectWithoutAvatarWithoutArchive)
+        .ilike("customer_type", "medlem")
+        .neq("owner_user_id", ownerUserId)
+        .order("created_at", { ascending: true });
+      members = uniqueById([...(ownedLegacy.data ?? []), ...(sharedLegacy.data ?? [])]) as Array<Record<string, unknown>>;
+      membersError = ownedLegacy.error ?? sharedLegacy.error;
+    } else {
+      members = uniqueById([...(ownedMembersWithoutArchive.data ?? []), ...(sharedMembersWithoutArchive.data ?? [])]) as Array<
+        Record<string, unknown>
+      >;
+      membersError = ownedMembersWithoutArchive.error ?? sharedMembersWithoutArchive.error;
+    }
   } else {
     members = uniqueById([...(ownedMembersWithAvatar.data ?? []), ...(sharedMembersWithAvatar.data ?? [])]) as Array<
       Record<string, unknown>
@@ -386,6 +451,22 @@ Deno.serve(async (req) => {
         .in("id", Array.from(linkedMemberIds));
       linkedRows = (linkedFallback.data ?? []) as Array<Record<string, unknown>>;
       membersError = membersError ?? linkedFallback.error;
+    } else if (linkedMembersQuery.error && linkedMembersQuery.error.message.includes("archive_scheduled_for")) {
+      const linkedFallback = await adminClient
+        .from("members")
+        .select(membersSelectWithAvatarWithoutArchive)
+        .in("id", Array.from(linkedMemberIds));
+      if (linkedFallback.error && linkedFallback.error.message.includes("avatar_url")) {
+        const linkedLegacyFallback = await adminClient
+          .from("members")
+          .select(membersSelectWithoutAvatarWithoutArchive)
+          .in("id", Array.from(linkedMemberIds));
+        linkedRows = (linkedLegacyFallback.data ?? []) as Array<Record<string, unknown>>;
+        membersError = membersError ?? linkedLegacyFallback.error;
+      } else {
+        linkedRows = (linkedFallback.data ?? []) as Array<Record<string, unknown>>;
+        membersError = membersError ?? linkedFallback.error;
+      }
     } else if (linkedMembersQuery.error) {
       membersError = membersError ?? linkedMembersQuery.error;
     }
@@ -414,6 +495,22 @@ Deno.serve(async (req) => {
           .or(emailOrFilter)
           .order("created_at", { ascending: true });
         widenedRows = (widenedWithoutAvatar.data ?? []) as Array<Record<string, unknown>>;
+      } else if (widenedWithAvatar.error && widenedWithAvatar.error.message.includes("archive_scheduled_for")) {
+        const widenedWithoutArchive = await adminClient
+          .from("members")
+          .select(membersSelectWithAvatarWithoutArchive)
+          .or(emailOrFilter)
+          .order("created_at", { ascending: true });
+        if (widenedWithoutArchive.error && widenedWithoutArchive.error.message.includes("avatar_url")) {
+          const widenedLegacy = await adminClient
+            .from("members")
+            .select(membersSelectWithoutAvatarWithoutArchive)
+            .or(emailOrFilter)
+            .order("created_at", { ascending: true });
+          widenedRows = (widenedLegacy.data ?? []) as Array<Record<string, unknown>>;
+        } else {
+          widenedRows = (widenedWithoutArchive.data ?? []) as Array<Record<string, unknown>>;
+        }
       } else if (!widenedWithAvatar.error) {
         widenedRows = (widenedWithAvatar.data ?? []) as Array<Record<string, unknown>>;
       } else {

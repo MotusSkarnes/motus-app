@@ -1,3 +1,4 @@
+import type React from "react";
 import { badgeAssetUrl } from "../app/badgeAssets";
 
 type BadgeImageSize = "card" | "cardCompact" | "catalog" | "detail" | "hero" | "home" | "popup" | "tile";
@@ -23,14 +24,26 @@ type BadgeImageProps = {
   size?: BadgeImageSize;
   dimmed?: boolean;
   className?: string;
+  imageClassName?: string;
+  imageStyle?: React.CSSProperties;
   loading?: "lazy" | "eager";
 };
 
-export function BadgeImage({ src, alt = "", size = "card", dimmed = false, className = "", loading = "lazy" }: BadgeImageProps) {
+export function BadgeImage({
+  src,
+  alt = "",
+  size = "card",
+  dimmed = false,
+  className = "",
+  imageClassName = "object-contain",
+  imageStyle,
+  loading = "lazy",
+}: BadgeImageProps) {
   const px = SIZE_PX[size];
   const pad = Math.round(px * FRAME_INSET_RATIO);
   const inner = px - pad * 2;
-  const resolvedSrc = src.includes("?v=") ? src : badgeAssetUrl(src);
+  const isDirectSrc = src.startsWith("data:") || src.startsWith("blob:") || /^https?:\/\//i.test(src);
+  const resolvedSrc = isDirectSrc || src.includes("?v=") ? src : badgeAssetUrl(src);
 
   return (
     <span
@@ -44,8 +57,8 @@ export function BadgeImage({ src, alt = "", size = "card", dimmed = false, class
         height={inner}
         loading={loading}
         decoding="async"
-        className={`motus-badge-img block object-contain ${dimmed ? "opacity-45 grayscale" : ""}`}
-        style={{ width: inner, height: inner, maxWidth: inner, maxHeight: inner }}
+        className={`motus-badge-img block ${imageClassName} ${dimmed ? "opacity-45 grayscale" : ""}`}
+        style={{ width: inner, height: inner, maxWidth: inner, maxHeight: inner, ...imageStyle }}
       />
     </span>
   );

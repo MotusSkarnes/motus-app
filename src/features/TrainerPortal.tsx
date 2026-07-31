@@ -15,6 +15,7 @@ import { buildUnreadMessagesByIdentityKey, unreadCountForMember } from "../app/t
 import { MOTUS } from "../app/data";
 import { formatDateDdMmYyyy, getDefaultPeriodPlanStartMondayISO, periodPlanStartDateForDateInput } from "../app/dateFormat";
 import { buildLastSessionByExerciseFromLogs } from "../app/lastSessionSetDisplay";
+import { computeWorkoutRecordSetIndices } from "../app/workoutCelebrationStats";
 import {
   getArchiveTombstones,
   hasArchiveTombstone,
@@ -743,6 +744,13 @@ function pickFirstName(value: unknown): string {
   return firstToken.trim();
 }
 
+function formatArchiveScheduledFor(value: string | undefined): string {
+  const raw = String(value ?? "").trim();
+  const match = raw.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!match) return raw;
+  return `${match[3]}.${match[2]}.${match[1]}`;
+}
+
   const ALLOWED_EXERCISE_IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
   const {
     members,
@@ -938,6 +946,7 @@ function pickFirstName(value: unknown): string {
   const [memberEditName, setMemberEditName] = useState("");
   const [memberEditPhone, setMemberEditPhone] = useState("");
   const [memberEditBirthDate, setMemberEditBirthDate] = useState("");
+  const [memberEditArchiveScheduledFor, setMemberEditArchiveScheduledFor] = useState("");
   const [memberEditGender, setMemberEditGender] = useState<MemberGender>("");
   const [memberEditGoal, setMemberEditGoal] = useState("");
   const [memberEditInjuries, setMemberEditInjuries] = useState("");
@@ -1524,6 +1533,7 @@ function pickFirstName(value: unknown): string {
       email: selectedMemberProfile.email.trim().toLowerCase(),
       phone: normalizePhone(selectedMemberProfile.phone),
       birthDate: selectedMemberProfile.birthDate.trim() ? normalizeBirthDate(selectedMemberProfile.birthDate) : "",
+      archiveScheduledFor: selectedMemberProfile.archiveScheduledFor ?? "",
       gender: normalizeMemberGender(selectedMemberProfile.gender),
       goal: selectedMemberProfile.goal,
       injuries: selectedMemberProfile.injuries,
@@ -1538,6 +1548,7 @@ function pickFirstName(value: unknown): string {
       email: memberEditEmail.trim().toLowerCase(),
       phone: normalizePhone(memberEditPhone),
       birthDate: memberEditBirthDate.trim() ? normalizeBirthDate(memberEditBirthDate) : "",
+      archiveScheduledFor: memberEditArchiveScheduledFor,
       gender: normalizeMemberGender(memberEditGender),
       goal: memberEditGoal,
       injuries: memberEditInjuries,
@@ -1550,6 +1561,7 @@ function pickFirstName(value: unknown): string {
       memberEditEmail,
       memberEditPhone,
       memberEditBirthDate,
+      memberEditArchiveScheduledFor,
       memberEditGender,
       memberEditGoal,
       memberEditInjuries,
@@ -1836,6 +1848,10 @@ function pickFirstName(value: unknown): string {
     if (!selectedWorkoutLogId) return filteredWorkoutLogs[0];
     return filteredWorkoutLogs.find((log) => log.id === selectedWorkoutLogId) ?? filteredWorkoutLogs[0];
   }, [filteredWorkoutLogs, selectedWorkoutLogId]);
+  const selectedWorkoutRecordSetIndices = useMemo(
+    () => (filteredSelectedWorkoutLog ? computeWorkoutRecordSetIndices(filteredSelectedWorkoutLog, selectedLogs) : new Set<number>()),
+    [filteredSelectedWorkoutLog, selectedLogs],
+  );
 
   useEffect(() => {
     setTrainerWorkoutCommentDraft(filteredSelectedWorkoutLog?.trainerComment ?? "");
@@ -2234,6 +2250,7 @@ function pickFirstName(value: unknown): string {
       setMemberEditEmail("");
       setMemberEditPhone("");
       setMemberEditBirthDate("");
+      setMemberEditArchiveScheduledFor("");
       setMemberEditGender("");
       setMemberEditGoal("");
       setMemberEditInjuries("");
@@ -2247,6 +2264,7 @@ function pickFirstName(value: unknown): string {
     setMemberEditEmail(member.email);
     setMemberEditPhone(member.phone);
     setMemberEditBirthDate(member.birthDate);
+    setMemberEditArchiveScheduledFor(member.archiveScheduledFor ?? "");
     setMemberEditGender(normalizeMemberGender(member.gender));
     setMemberEditGoal(member.goal);
     setMemberEditInjuries(member.injuries);
@@ -3549,6 +3567,7 @@ function pickFirstName(value: unknown): string {
     const assignOwnerToSession =
       isPrivatePtRosterCustomerType(nextCustomerType) && Boolean(currentTrainerOwnerUserId);
     const normalizedBirthDate = trimmedBirthDateDraft ? normalizeBirthDate(trimmedBirthDateDraft) : "";
+    const nextArchiveScheduledFor = memberEditArchiveScheduledFor.trim();
     uniqueTargetIds.forEach((memberId) => {
       const targetRow = members.find((member) => member.id === memberId);
       const personalGoals = patchMemberAppUiStateInPersonalGoals(targetRow?.personalGoals, {
@@ -3561,6 +3580,7 @@ function pickFirstName(value: unknown): string {
           email: nextEmail,
           phone: normalizePhone(memberEditPhone),
           birthDate: normalizedBirthDate,
+          archiveScheduledFor: nextArchiveScheduledFor,
           gender: normalizeMemberGender(memberEditGender),
           goal: memberEditGoal,
           injuries: memberEditInjuries,
@@ -3593,6 +3613,7 @@ function pickFirstName(value: unknown): string {
             name: nextName,
             phone: normalizePhone(memberEditPhone),
             birthDate: normalizedBirthDate,
+            archiveScheduledFor: nextArchiveScheduledFor,
             gender: normalizeMemberGender(memberEditGender),
             goal: memberEditGoal,
             injuries: memberEditInjuries,
@@ -3613,6 +3634,7 @@ function pickFirstName(value: unknown): string {
           email: nextEmail,
           phone: normalizePhone(memberEditPhone),
           birth_date: normalizedBirthDate,
+          archive_scheduled_for: nextArchiveScheduledFor || null,
           gender: normalizeMemberGender(memberEditGender),
           goal: memberEditGoal,
           injuries: memberEditInjuries,
@@ -5243,7 +5265,12 @@ function pickFirstName(value: unknown): string {
             setTrainerTab("customers");
             selectMemberWithUnsavedChangesGuard(memberId, () => setCustomerSubTab("overview"));
           }}
-          onOpenInsights={() => openCustomersWithListFilters({ priorityFilter: "red" })}
+          onOpenInsights={() =>
+            openCustomersWithListFilters({
+              memberFilter: "all",
+              priorityFilter: ptHomeAttentionClients.some((client) => client.statusTone !== "ready") ? "red" : "all",
+            })
+          }
           onSwitchToMemberView={onSwitchToMemberView}
             quickActions={{
             onCreateProgram: () => setTrainerTab("programs"),
@@ -5867,6 +5894,15 @@ function pickFirstName(value: unknown): string {
                           <TextInput value={memberEditBirthDate} onChange={(event) => setMemberEditBirthDate(event.target.value)} placeholder="dd.mm.yyyy" />
                         </label>
                         <label className="space-y-1 text-xs font-medium text-slate-700">
+                          <span>Arkiver automatisk</span>
+                          <input
+                            type="date"
+                            value={memberEditArchiveScheduledFor}
+                            onChange={(event) => setMemberEditArchiveScheduledFor(event.target.value)}
+                            className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none transition focus:border-teal-400 focus:ring-4 focus:ring-teal-100"
+                          />
+                        </label>
+                        <label className="space-y-1 text-xs font-medium text-slate-700">
                           <span>Kjønn</span>
                           <SelectBox
                             value={memberEditGender}
@@ -6019,6 +6055,14 @@ function pickFirstName(value: unknown): string {
                         <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm">
                           <div className="text-[11px] text-slate-500">Fødselsdato</div>
                           <div className="font-medium text-slate-900">{selectedMemberProfile?.birthDate || selectedMember.birthDate || "Ikke satt"}</div>
+                        </div>
+                        <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm">
+                          <div className="text-[11px] text-slate-500">Planlagt arkivering</div>
+                          <div className="font-medium text-slate-900">
+                            {formatArchiveScheduledFor(
+                              selectedMemberProfile?.archiveScheduledFor || selectedMember.archiveScheduledFor,
+                            ) || "Ikke satt"}
+                          </div>
                         </div>
                         <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm">
                           <div className="text-[11px] text-slate-500">Kjønn</div>
@@ -7203,12 +7247,25 @@ function pickFirstName(value: unknown): string {
                           </div>
                           {filteredSelectedWorkoutLog.results?.length ? (
                             <div className="space-y-2">
-                              {filteredSelectedWorkoutLog.results.map((result, index) => (
-                                <div key={`${filteredSelectedWorkoutLog.id}-${result.exerciseId}-${index}`} className="rounded-2xl border bg-white p-3 text-sm" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
+                              {filteredSelectedWorkoutLog.results.map((result, index) => {
+                                const isRecordSet = selectedWorkoutRecordSetIndices.has(index);
+                                return (
+                                <div
+                                  key={`${filteredSelectedWorkoutLog.id}-${result.exerciseId}-${index}`}
+                                  className={`rounded-2xl border bg-white p-3 text-sm ${isRecordSet ? "ring-2 ring-pink-200" : ""}`}
+                                  style={{ borderColor: isRecordSet ? "rgba(217,18,120,0.35)" : "rgba(15,23,42,0.08)" }}
+                                >
                                   <div className="flex items-center justify-between gap-3">
                                     <div className="font-medium text-slate-800">{result.exerciseName}</div>
-                                    <div className={`text-xs font-semibold ${result.completed ? "text-emerald-600" : "text-slate-500"}`}>
-                                      {result.completed ? "Fullført" : "Ikke fullført"}
+                                    <div className="flex shrink-0 items-center gap-1.5">
+                                      {isRecordSet ? (
+                                        <span className="rounded-full bg-pink-50 px-2 py-1 text-[11px] font-black uppercase tracking-wide text-pink-700">
+                                          Ny rekord
+                                        </span>
+                                      ) : null}
+                                      <span className={`text-xs font-semibold ${result.completed ? "text-emerald-600" : "text-slate-500"}`}>
+                                        {result.completed ? "Fullført" : "Ikke fullført"}
+                                      </span>
                                     </div>
                                   </div>
                                   <div className="mt-2 grid gap-1.5 text-xs text-slate-600 md:grid-cols-2">
@@ -7218,7 +7275,8 @@ function pickFirstName(value: unknown): string {
                                     <div>Utført: {formatWorkoutResultPerformedLabel(result, exercises)}</div>
                                   </div>
                                 </div>
-                              ))}
+                              );
+                              })}
                             </div>
                           ) : (
                             <div className="text-sm text-slate-500">Ingen detaljerte sett registrert på denne økten.</div>

@@ -652,7 +652,7 @@ export function CustomWorkoutBuilder({
                 <PillButton active={muscleFilter === "all"} onClick={() => setMuscleFilter("all")}>
                   Alle muskler
                 </PillButton>
-                {muscleGroups.slice(0, 8).map((group) => (
+                {muscleGroups.map((group) => (
                   <PillButton key={group} active={muscleFilter === group} onClick={() => setMuscleFilter(group)}>
                     {group}
                   </PillButton>

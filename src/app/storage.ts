@@ -58,5 +58,35 @@ export function loadState(): AppState {
 
 export function saveState(state: AppState) {
   if (typeof window === "undefined") return;
-  window.localStorage.setItem(STORAGE_KEY, JSON.stringify({ ...state, workoutCelebration: null }));
+  const fullState = JSON.stringify({ ...state, workoutCelebration: null });
+  try {
+    window.localStorage.setItem(STORAGE_KEY, fullState);
+    return;
+  } catch {
+    // Remote catalogs can exceed the browser's localStorage quota. They are
+    // hydrated again from Supabase, so retain only session-critical state.
+  }
+
+  const currentMemberId = state.currentUser?.memberId?.trim() || state.memberViewId?.trim() || "";
+  const compactState: Partial<AppState> = {
+    workoutMode: state.workoutMode,
+    workoutCelebration: null,
+    members: currentMemberId ? state.members.filter((member) => member.id === currentMemberId) : [],
+    exercises: [],
+    programs: [],
+    logs: [],
+    messages: [],
+    currentUser: state.currentUser,
+    role: state.role,
+    selectedMemberId: state.selectedMemberId,
+    memberViewId: state.memberViewId,
+  };
+
+  try {
+    window.localStorage.removeItem(STORAGE_KEY);
+    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(compactState));
+  } catch {
+    // Storage may be disabled or completely full. Runtime state remains valid;
+    // never crash an active workout because offline caching failed.
+  }
 }

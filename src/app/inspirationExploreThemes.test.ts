@@ -57,6 +57,20 @@ describe("resolvePrimaryTopNavTheme", () => {
     expect(filterItemsForInspoTheme([sub60], "strength")).toHaveLength(0);
   });
 
+  it("plasserer SUB45 under lÃ¸ping selv om planen nevner restitusjon", () => {
+    const sub45 = programItem({
+      id: "sub45",
+      kind: "periodPlan",
+      title: "SUB45 Â· 10 km pÃ¥ under 45 min",
+      description: "12 uker for erfarne lÃ¸pere med intervaller, styrke og taper.",
+      body: "Planen har rolige lÃ¸p, tempo, aktiv restitusjon og SUB45 Â· Mobilitet lÃ¸per mellom harde dager.",
+    });
+
+    expect(resolvePrimaryTopNavTheme(sub45)).toBe("running");
+    expect(filterItemsForInspoTheme([sub45], "running").map((item) => item.id)).toEqual(["sub45"]);
+    expect(filterItemsForInspoTheme([sub45], "recovery")).toHaveLength(0);
+  });
+
   it("plasserer generelle styrkeprogram under styrke", () => {
     const fullkropp = programItem({
       id: "fullkropp",
@@ -66,6 +80,22 @@ describe("resolvePrimaryTopNavTheme", () => {
 
     expect(resolvePrimaryTopNavTheme(fullkropp)).toBe("strength");
     expect(filterItemsForInspoTheme([fullkropp], "strength").map((item) => item.id)).toEqual(["fullkropp"]);
+  });
+
+  it("lar PT velge tema manuelt for artikler", () => {
+    const article = {
+      id: "article-running",
+      category: "tips" as const,
+      kind: "article",
+      title: "Slik bygger du en god løpevane",
+      description: "Kort råd til nye løpere.",
+      tag: "tips",
+      topNavTheme: "running" as const,
+    };
+
+    expect(resolvePrimaryTopNavTheme(article)).toBe("running");
+    expect(filterItemsForInspoTheme([article], "running").map((item) => item.id)).toEqual(["article-running"]);
+    expect(filterItemsForInspoTheme([article], "motivation")).toHaveLength(0);
   });
 
   it("plasserer ikke alle tips under restitusjon", () => {

@@ -16,6 +16,12 @@ describe("memberHomeWeekInsights", () => {
     expect(headline.headline).toContain("Sterk uke");
   });
 
+  it("does not say more than last week when calendar week sessions are equal", () => {
+    const headline = buildHomeWeekHeadline(2, 4, 50, "up", 2, 2);
+    expect(headline.subline).not.toContain("mer enn forrige uke");
+    expect(headline.subline).toContain("like jevnt");
+  });
+
   it("suggests one session away from full week", () => {
     const now = new Date(2026, 4, 24);
     const weekDays = Array.from({ length: 7 }, (_, index) => {

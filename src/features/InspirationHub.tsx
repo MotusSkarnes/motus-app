@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import {
   Apple,
+  Archive,
   ArrowDown,
   ArrowLeft,
   ArrowRight,
@@ -8,6 +9,7 @@ import {
   Bold,
   CalendarHeart,
   ClipboardList,
+  Copy,
   Dumbbell,
   Flame,
   Heading2,
@@ -22,6 +24,8 @@ import {
   Pencil,
   Plus,
   Quote,
+  RotateCcw,
+  Search,
   Smartphone,
   Soup,
   Sparkles,
@@ -29,7 +33,8 @@ import {
   Trash2,
   Users,
 } from "lucide-react";
-import type { BentoTileSize, InspoThemeId } from "../app/inspirationExploreThemes";
+import type { BentoTileSize, InspoThemeId, InspoTopNavThemeId } from "../app/inspirationExploreThemes";
+import { getInspoThemeById, resolvePrimaryTopNavTheme } from "../app/inspirationExploreThemes";
 import {
   InspirationExploreBentoOverview,
   InspirationExploreThemePage,
@@ -63,7 +68,6 @@ import {
   persistInspirationItems,
   pullInspirationFeedFromRemote,
   pullInspirationHeroFromRemote,
-  suppressInspirationItemId,
   syncLocalInspirationToSupabaseIfNeeded,
   type InspirationHeroConfig,
 } from "../app/inspirationStorage";
@@ -84,6 +88,20 @@ type InspoSubView = "overview" | "appGuide";
 type InspirationKind = "article" | "program" | "periodPlan";
 type InspirationBodyStyle = "normal" | "bold" | "italic";
 type ProgramTemplateInput = Omit<SaveProgramInput, "memberId">;
+type ArticleThemeDraft = "auto" | InspoTopNavThemeId;
+type ManageInspirationFilter =
+  | "all"
+  | "scheduled"
+  | "archived"
+  | "running"
+  | "strength"
+  | "motivation"
+  | "nutrition"
+  | "recovery"
+  | "programs"
+  | "news"
+  | "tips"
+  | "appGuide";
 
 type InspirationItem = {
   id: string;
@@ -93,6 +111,10 @@ type InspirationItem = {
   description: string;
   body: string;
   bodyStyle?: InspirationBodyStyle;
+  topNavTheme?: InspoTopNavThemeId | null;
+  visibleFrom?: string;
+  visibleUntil?: string;
+  archivedAt?: string;
   tag: string;
   author: string;
   createdAt: string;
@@ -146,6 +168,30 @@ const CATEGORY_META: Record<InspirationCategory, { label: string; plural: string
   nutrition: { label: "Kosthold", plural: "Kosthold", icon: Apple },
 };
 
+const MANAGE_FILTER_OPTIONS: Array<{ value: ManageInspirationFilter; label: string }> = [
+  { value: "all", label: "Alt innhold" },
+  { value: "scheduled", label: "Planlagt" },
+  { value: "archived", label: "Arkivert" },
+  { value: "running", label: "Løping" },
+  { value: "strength", label: "Styrke" },
+  { value: "recovery", label: "Restitusjon" },
+  { value: "motivation", label: "Motivasjon" },
+  { value: "nutrition", label: "Kosthold" },
+  { value: "programs", label: "Trening" },
+  { value: "news", label: "Info" },
+  { value: "tips", label: "Råd og tips" },
+  { value: "appGuide", label: "App-guide" },
+];
+
+const ARTICLE_THEME_OPTIONS: Array<{ value: ArticleThemeDraft; label: string }> = [
+  { value: "auto", label: "Automatisk plassering" },
+  { value: "running", label: "Løping" },
+  { value: "strength", label: "Styrke" },
+  { value: "motivation", label: "Motivasjon" },
+  { value: "nutrition", label: "Kosthold" },
+  { value: "recovery", label: "Restitusjon" },
+];
+
 const APP_GUIDE_TAG = "app-guide";
 
 const NEWS_TONES: Array<{
@@ -182,6 +228,84 @@ function normalizeInspirationItem(item: InspirationItem): InspirationItem {
 
 function normalizeInspirationItems(items: InspirationItem[]): InspirationItem[] {
   return items.map(normalizeInspirationItem);
+}
+
+function inspirationItemSearchText(item: Pick<InspirationItem, "title" | "tag" | "description" | "body">): string {
+  return `${item.title} ${item.tag} ${item.description} ${item.body ?? ""}`.toLowerCase();
+}
+
+function cloneProgramTemplateForDuplicate(template?: ProgramTemplateInput): ProgramTemplateInput | undefined {
+  if (!template) return undefined;
+  return {
+    ...structuredClone(template),
+    id: undefined,
+    exercises: template.exercises.map((exercise) => ({ ...structuredClone(exercise), id: uid("inspo-prog-ex") })),
+  };
+}
+
+function clonePeriodPlanForDuplicate(plan?: PeriodSchedulePlan): PeriodSchedulePlan | undefined {
+  if (!plan) return undefined;
+  const cloned = normalizePeriodSchedulePlan(structuredClone(plan));
+  return {
+    ...cloned,
+    id: uid("inspo-period"),
+    weeklyPlans: cloned.weeklyPlans.map((week) => ({ ...week, id: uid("inspo-week") })),
+  };
+}
+
+function isIsoDateActive(value: string | undefined, direction: "from" | "until", nowMs = Date.now()): boolean {
+  const trimmed = value?.trim() ?? "";
+  if (!trimmed) return true;
+  const ms = Date.parse(trimmed);
+  if (!Number.isFinite(ms)) return true;
+  return direction === "from" ? ms <= nowMs : ms >= nowMs;
+}
+
+function isInspirationItemVisibleNow(item: InspirationItem, nowMs = Date.now()): boolean {
+  if (item.archivedAt?.trim()) return false;
+  return isIsoDateActive(item.visibleFrom, "from", nowMs) && isIsoDateActive(item.visibleUntil, "until", nowMs);
+}
+
+function isInspirationItemScheduled(item: InspirationItem, nowMs = Date.now()): boolean {
+  const visibleFromMs = Date.parse(item.visibleFrom ?? "");
+  return Number.isFinite(visibleFromMs) && visibleFromMs > nowMs && !item.archivedAt?.trim();
+}
+
+function dateTimeLocalToIso(value: string): string | undefined {
+  const trimmed = value.trim();
+  if (!trimmed) return undefined;
+  const date = new Date(trimmed);
+  return Number.isFinite(date.getTime()) ? date.toISOString() : undefined;
+}
+
+function isoToDateTimeLocal(value?: string): string {
+  const trimmed = value?.trim() ?? "";
+  if (!trimmed) return "";
+  const date = new Date(trimmed);
+  if (!Number.isFinite(date.getTime())) return "";
+  const offsetMs = date.getTimezoneOffset() * 60_000;
+  return new Date(date.getTime() - offsetMs).toISOString().slice(0, 16);
+}
+
+function formatVisibilityDate(value?: string): string {
+  const trimmed = value?.trim() ?? "";
+  if (!trimmed) return "";
+  const date = new Date(trimmed);
+  if (!Number.isFinite(date.getTime())) return "";
+  return date.toLocaleString("no-NO", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+function visibilityStatusLabel(item: InspirationItem, nowMs = Date.now()): string {
+  if (item.archivedAt?.trim()) return "Arkivert";
+  if (isInspirationItemScheduled(item, nowMs)) return `Planlagt ${formatVisibilityDate(item.visibleFrom)}`;
+  if (!isIsoDateActive(item.visibleUntil, "until", nowMs)) return "Utløpt";
+  return "Synlig nå";
 }
 
 /** Vertikal rekkefølge på inspo-feed (øverst → nederst). */
@@ -441,6 +565,27 @@ function createDefaultProgram(title: string, description: string, body: string):
   };
 }
 
+function createRunnerStrengthProgram(): ProgramTemplateInput {
+  return {
+    title: "Styrke for løpere – 35 min",
+    goal: "Hofte, sete, legger og core for bedre løpssteg",
+    notes:
+      "Kjør 1–2 ganger i uken på rolige løpedager eller etter kort rolig økt. Hold 1–2 reps i reserve, og stopp hvis teknikken faller.",
+    exercises: [
+      makeExercise("Bulgarian split squat", "3", "8", "Per side. Rolig ned, kraftfull opp."),
+      makeExercise("Hip thrust", "3", "10", "Press gjennom hæl, klem sete i topp."),
+      makeExercise("Rumensk markløft", "3", "8", "Myk knevinkel, lang rygg, kontrollert hamstring-strekk."),
+      makeExercise("Step-up med manualer", "2", "10", "Per side. Stabilt kne over fot."),
+      makeExercise("Stående tåhev", "3", "15", "Full strekk i ankelen, rolig ned."),
+      makeExercise("Tibialis raise", "2", "15", "Len deg mot vegg og løft tærne kontrollert."),
+      makeExercise("Sideplanke med hoftehev", "2", "10", "Per side. Hold hoften høy og stabil."),
+    ],
+    programCreatedBy: "member",
+    programCreatedByName: "Motus inspirasjon",
+    imageUrl: "/program-covers/styrke-loper.png",
+  };
+}
+
 function emptyWeek(): WeeklyDayPlan {
   return {
     monday: "",
@@ -489,6 +634,21 @@ const DEFAULT_ITEMS: InspirationItem[] = [
     author: "Motus",
     createdAt: "2026-05-01",
     programTemplate: createDefaultProgram("Fullkropp 30 minutter", "Kort økt for travle dager", "Kjør 3 runder med rolig oppvarming først."),
+  },
+  {
+    id: "default-program-runner-strength-35",
+    category: "programs",
+    kind: "program",
+    title: "Styrke for løpere – 35 min",
+    description: "Skadeforebyggende styrke for hofter, sete, legger og core.",
+    body:
+      "Dette programmet passer for løpere som vil tåle mer mengde, få bedre stabilitet og holde steget effektivt når kroppen blir sliten.\n\n**Når bør du gjøre det?**\n- 1–2 ganger i uken.\n- På rolige løpedager, eller etter en kort rolig økt.\n- Ikke dagen før den hardeste intervalløkten hvis du lett blir støl.\n\n**Intensitet**\nVelg belastning som gir god kontroll. Du skal ha 1–2 repetisjoner i reserve på de fleste sett.",
+    tag: "Løperstyrke",
+    topNavTheme: "running",
+    author: "Motus",
+    createdAt: "2026-06-18",
+    imageUrl: "/program-covers/styrke-loper.png",
+    programTemplate: createRunnerStrengthProgram(),
   },
   {
     id: "default-period-1",
@@ -761,8 +921,14 @@ export function InspirationHub({
   const [imageUrl, setImageUrl] = useState("");
   const [categoryDraft, setCategoryDraft] = useState<InspirationCategory>("tips");
   const [kindDraft, setKindDraft] = useState<InspirationKind>("article");
+  const [articleThemeDraft, setArticleThemeDraft] = useState<ArticleThemeDraft>("auto");
+  const [visibleFromDraft, setVisibleFromDraft] = useState("");
+  const [visibleUntilDraft, setVisibleUntilDraft] = useState("");
   const [editingItemId, setEditingItemId] = useState<string | null>(null);
   const [composerOpen, setComposerOpen] = useState(false);
+  const [manageOpen, setManageOpen] = useState(false);
+  const [manageSearch, setManageSearch] = useState("");
+  const [manageFilter, setManageFilter] = useState<ManageInspirationFilter>("all");
   const [programTemplateDraft, setProgramTemplateDraft] = useState<ProgramTemplateInput | null>(null);
   const [periodPlanTemplateDraft, setPeriodPlanTemplateDraft] = useState<PeriodSchedulePlan | null>(null);
   const [activePeriodWeekId, setActivePeriodWeekId] = useState("");
@@ -893,6 +1059,7 @@ export function InspirationHub({
   /** Artikler som kan brukes som «Dagens utvalgte» — tips og news (ikke app-guide eller program/ukesplan). */
   const featuredArticlePool = useMemo(() => {
     return items.filter((item) => {
+      if (!isInspirationItemVisibleNow(item)) return false;
       if (item.kind !== "article") return false;
       if (item.category === "appGuide" || item.category === "recipes") return false;
       return Boolean(item.title.trim());
@@ -1153,10 +1320,28 @@ export function InspirationHub({
   }
 
   const sortedItems = useMemo(() => [...items].sort((a, b) => b.createdAt.localeCompare(a.createdAt)), [items]);
+  const visibleSortedItems = useMemo(() => sortedItems.filter((item) => isInspirationItemVisibleNow(item)), [sortedItems]);
+
+  const manageableItems = useMemo(() => sortedItems.filter((item) => item.category !== "recipes"), [sortedItems]);
+  const filteredManageItems = useMemo(() => {
+    const query = manageSearch.trim().toLowerCase();
+    return manageableItems.filter((item) => {
+      const primaryTheme = resolvePrimaryTopNavTheme(item);
+      const matchesFilter =
+        manageFilter === "all" ||
+        (manageFilter === "scheduled" && isInspirationItemScheduled(item)) ||
+        (manageFilter === "archived" && Boolean(item.archivedAt?.trim())) ||
+        item.category === manageFilter ||
+        primaryTheme === manageFilter;
+      if (!matchesFilter) return false;
+      if (!query) return true;
+      return inspirationItemSearchText(item).includes(query);
+    });
+  }, [manageableItems, manageSearch, manageFilter]);
 
   const hubExploreItems = useMemo(
-    () => sortedItems.filter((item) => item.category !== "recipes" && item.category !== "appGuide"),
-    [sortedItems],
+    () => visibleSortedItems.filter((item) => item.category !== "recipes" && item.category !== "appGuide"),
+    [visibleSortedItems],
   );
 
   const itemsByCategory = useMemo(() => {
@@ -1168,12 +1353,12 @@ export function InspirationHub({
       appGuide: [],
       nutrition: [],
     };
-    for (const item of sortedItems) {
+    for (const item of visibleSortedItems) {
       const normalized = normalizeInspirationItem(item);
       grouped[normalized.category].push(normalized);
     }
     return grouped;
-  }, [sortedItems]);
+  }, [visibleSortedItems]);
 
   const activeFeedSections = inspoSubView === "appGuide" ? INSPIRATION_APP_GUIDE_SECTION : INSPIRATION_OVERVIEW_SECTIONS;
   const appGuideCount = itemsByCategory.appGuide.length;
@@ -1281,8 +1466,8 @@ export function InspirationHub({
               type="button"
               onClick={() => confirmDeleteItem(item.id)}
               className="motus-inspo-card-edit-btn motus-inspo-card-edit-btn--danger"
-              aria-label={`Slett ${item.title}`}
-              title="Slett"
+              aria-label={`Arkiver ${item.title}`}
+              title="Arkiver"
             >
               <Trash2 className="h-3.5 w-3.5" />
             </button>
@@ -1346,8 +1531,8 @@ export function InspirationHub({
           type="button"
           onClick={() => confirmDeleteItem(item.id)}
           className="motus-inspo-card-edit-btn motus-inspo-card-edit-btn--danger"
-          aria-label={`Slett ${item.title}`}
-          title="Slett"
+          aria-label={`Arkiver ${item.title}`}
+          title="Arkiver"
         >
           <Trash2 className="h-3.5 w-3.5" />
         </button>
@@ -1453,8 +1638,8 @@ export function InspirationHub({
               type="button"
               onClick={() => confirmDeleteItem(item.id)}
               className="rounded-lg border border-white/80 bg-white/95 p-1.5 text-rose-700 shadow-sm hover:bg-rose-50"
-              aria-label={`Slett ${item.title}`}
-              title="Slett"
+              aria-label={`Arkiver ${item.title}`}
+              title="Arkiver"
             >
               <Trash2 className="h-3.5 w-3.5" />
             </button>
@@ -1583,6 +1768,9 @@ export function InspirationHub({
     setBody("");
     setBodyStyle("normal");
     setTag("");
+    setArticleThemeDraft("auto");
+    setVisibleFromDraft("");
+    setVisibleUntilDraft("");
     setImageUrl("");
     setCategoryDraft("tips");
     setKindDraft("article");
@@ -1599,6 +1787,7 @@ export function InspirationHub({
 
   function openCreateComposer() {
     resetComposerFields();
+    setManageOpen(false);
     if (inspoSubView === "appGuide") {
       setCategoryDraft("appGuide");
       setTag("App-guide");
@@ -1608,12 +1797,16 @@ export function InspirationHub({
   }
 
   function beginEdit(item: InspirationItem) {
+    setManageOpen(false);
     setEditingItemId(item.id);
     setTitle(item.title);
     setDescription(item.description);
     setBody(item.body);
     setBodyStyle(item.bodyStyle ?? "normal");
     setTag(item.tag);
+    setArticleThemeDraft(item.topNavTheme ?? "auto");
+    setVisibleFromDraft(isoToDateTimeLocal(item.visibleFrom));
+    setVisibleUntilDraft(isoToDateTimeLocal(item.visibleUntil));
     setImageUrl(item.imageUrl ?? "");
     setCategoryDraft(item.category);
     setKindDraft(item.kind);
@@ -1631,6 +1824,27 @@ export function InspirationHub({
     setActivePeriodWeekId(clonedPlan?.weeklyPlans[0]?.id ?? "");
     setComposerOpen(true);
     setActionStatus(null);
+  }
+
+  async function duplicateItem(item: InspirationItem) {
+    const now = new Date();
+    const nextItem: InspirationItem = {
+      ...structuredClone(item),
+      id: `inspiration-${now.getTime()}`,
+      title: `${item.title} (kopi)`.slice(0, INSPO_CARD_TITLE_MAX),
+      createdAt: now.toISOString(),
+      author: authorName.trim() || item.author || "Motus",
+      archivedAt: undefined,
+      programTemplate: cloneProgramTemplateForDuplicate(item.programTemplate),
+      periodPlanTemplate: clonePeriodPlanForDuplicate(item.periodPlanTemplate),
+      bundledProgramTemplates: item.bundledProgramTemplates
+        ?.map(cloneProgramTemplateForDuplicate)
+        .filter((template): template is ProgramTemplateInput => Boolean(template)),
+    };
+    const saved = await commitItems([nextItem, ...items]);
+    if (!saved.ok) return;
+    setActionStatus("Kopi opprettet. Du kan redigere den fra Administrer Utforsk.");
+    setManageOpen(true);
   }
 
   function ensureProgramTemplateDraft(nextTitle: string, nextDescription: string, nextBody: string) {
@@ -1812,6 +2026,13 @@ export function InspirationHub({
     }
 
     const kind = composerKind;
+    const topNavTheme = categoryDraft !== "appGuide" && articleThemeDraft !== "auto" ? articleThemeDraft : undefined;
+    const visibleFrom = kind === "article" ? dateTimeLocalToIso(visibleFromDraft) : undefined;
+    const visibleUntil = kind === "article" ? dateTimeLocalToIso(visibleUntilDraft) : undefined;
+    if (visibleFrom && visibleUntil && Date.parse(visibleFrom) > Date.parse(visibleUntil)) {
+      setActionStatus("Vises til må være etter Vises fra.");
+      return;
+    }
     let programTemplate: ProgramTemplateInput | undefined;
     let periodPlanTemplate: PeriodSchedulePlan | undefined;
 
@@ -1869,6 +2090,9 @@ export function InspirationHub({
               description: nextDescription,
               body: nextBody,
               bodyStyle: categoryDraft === "news" ? bodyStyle : undefined,
+              topNavTheme,
+              visibleFrom,
+              visibleUntil,
               tag: tag.trim() || CATEGORY_META[categoryDraft].label,
               imageUrl: storedImageUrl,
               programTemplate: kind === "program" ? programTemplate : undefined,
@@ -1887,8 +2111,11 @@ export function InspirationHub({
         kind,
       title: nextTitle,
       description: nextDescription,
-      body: nextBody,
+        body: nextBody,
         bodyStyle: categoryDraft === "news" ? bodyStyle : undefined,
+        topNavTheme,
+        visibleFrom,
+        visibleUntil,
       tag: tag.trim() || CATEGORY_META[categoryDraft].label,
       author: authorName.trim() || "Motus",
         createdAt: now.toISOString(),
@@ -1906,16 +2133,21 @@ export function InspirationHub({
   function confirmDeleteItem(id: string) {
     const item = items.find((entry) => entry.id === id);
     if (!item) return;
-    if (!window.confirm(`Slette «${item.title}» fra Utforsk?`)) return;
-    suppressInspirationItemId(id);
-    const next = items.filter((entry) => entry.id !== id);
+    if (!window.confirm(`Arkivere "${item.title}"? Artikkelen skjules fra Utforsk, men kan gjenopprettes fra Administrer.`)) return;
+    const next = items.map((entry) => (entry.id === id ? { ...entry, archivedAt: new Date().toISOString() } : entry));
     void (async () => {
-      const deleted = await commitItems(next);
-      if (!deleted.ok) return;
+      const archived = await commitItems(next);
+      if (!archived.ok) return;
       if (editingItemId === id) resetComposer();
       if (expandedItemId === id) setExpandedItemId(null);
-      setActionStatus("Innlegget er slettet.");
+      setActionStatus("Innlegget er arkivert.");
     })();
+  }
+
+  async function restoreArchivedItem(id: string) {
+    const next = items.map((entry) => (entry.id === id ? { ...entry, archivedAt: undefined } : entry));
+    const restored = await commitItems(next);
+    if (restored.ok) setActionStatus("Innlegget er gjenopprettet.");
   }
 
   function handleAddProgram(item: InspirationItem) {
@@ -2153,7 +2385,7 @@ export function InspirationHub({
                     onClick={() => confirmDeleteItem(expandedItem.id)}
                     className="w-full !border-rose-200 !text-rose-700 hover:!bg-rose-50 sm:w-auto"
                   >
-                    Slett
+                    Arkiver
                   </OutlineButton>
                 </>
               ) : null}
@@ -2169,6 +2401,29 @@ export function InspirationHub({
   const showExploreTopicNav = inspoSubView === "overview";
   const showExploreThemePage = inspoSubView === "overview" && Boolean(activeThemeId);
   const featuredExcludeIds = featuredItem ? new Set([featuredItem.id]) : undefined;
+  const manageResultLabel =
+    filteredManageItems.length === 1
+      ? "1 innlegg"
+      : `${filteredManageItems.length} innlegg`;
+
+  function itemKindLabel(item: InspirationItem): string {
+    if (item.kind === "periodPlan") return "Ukesplan";
+    if (item.kind === "program") return "Program";
+    return "Artikkel";
+  }
+
+  function itemThemeLabel(item: InspirationItem): string {
+    if (item.category === "appGuide") return "App-guide";
+    const themeId = resolvePrimaryTopNavTheme(item);
+    if (!themeId) return "Kun i Alt innhold";
+    return getInspoThemeById(themeId)?.label ?? themeId;
+  }
+
+  function itemUpdatedLabel(item: InspirationItem): string {
+    const date = new Date(item.createdAt);
+    if (!Number.isFinite(date.getTime())) return item.createdAt;
+    return date.toLocaleDateString("no-NO", { day: "2-digit", month: "2-digit", year: "2-digit" });
+  }
 
   return (
     <div className="motus-inspo-page min-w-0 max-w-full space-y-4 overflow-x-hidden">
@@ -2254,6 +2509,18 @@ export function InspirationHub({
               >
                 <Pencil className="h-4 w-4" aria-hidden />
                 <span>Rediger tekst</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setManageOpen(true);
+                  setActionStatus(null);
+                }}
+                className="motus-inspo-hero-pt-btn"
+                title="Administrer Utforsk"
+              >
+                <ClipboardList className="h-4 w-4" aria-hidden />
+                <span>Administrer</span>
               </button>
               <button
                 type="button"
@@ -2478,6 +2745,180 @@ export function InspirationHub({
       </div>
 
 
+      {canManage && manageOpen ? (
+        <div className="fixed inset-0 z-[10020] overflow-y-auto bg-slate-950/45 p-3 backdrop-blur-sm sm:p-6">
+          <div
+            className="mx-auto min-w-0 max-w-[min(72rem,96vw)] rounded-2xl border bg-white p-4 shadow-xl sm:p-5"
+            style={{ borderColor: "rgba(15,23,42,0.08)" }}
+          >
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+              <div className="min-w-0">
+                <div className="flex items-center gap-2">
+                  <MotusSectionIcon className="!p-2">
+                    <ClipboardList className="h-4 w-4" />
+                  </MotusSectionIcon>
+                  <div>
+                    <div className="font-semibold text-slate-900">Administrer Utforsk</div>
+                    <div className="text-xs text-slate-500">Finn, rediger, dupliser og arkiver innhold fra ett sted.</div>
+                  </div>
+                </div>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <GradientButton type="button" onClick={openCreateComposer} className="px-4 py-2 text-xs">
+                  <Plus className="h-3.5 w-3.5" aria-hidden />
+                  Nytt innhold
+                </GradientButton>
+                <OutlineButton type="button" onClick={() => setManageOpen(false)} className="px-4 py-2 text-xs">
+                  Lukk
+                </OutlineButton>
+              </div>
+            </div>
+
+            <div className="mt-4 grid gap-2 md:grid-cols-[minmax(0,1fr)_16rem]">
+              <label className="relative block">
+                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" aria-hidden />
+                <TextInput
+                  value={manageSearch}
+                  onChange={(event) => setManageSearch(event.target.value)}
+                  placeholder="Søk etter tittel, tagg eller tekst"
+                  className="pl-9"
+                />
+              </label>
+              <SelectBox
+                value={manageFilter}
+                onChange={(value) => setManageFilter(value as ManageInspirationFilter)}
+                options={MANAGE_FILTER_OPTIONS}
+              />
+            </div>
+
+            <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-xs text-slate-500">
+              <span>{manageResultLabel}</span>
+              <span>Tema viser hvor innlegget dukker opp i Utforsk-fanene.</span>
+            </div>
+
+            <div className="mt-3 overflow-hidden rounded-xl border border-slate-200">
+              {filteredManageItems.length === 0 ? (
+                <div className="bg-slate-50 px-4 py-8 text-center text-sm text-slate-600">
+                  Ingen innlegg matcher søket.
+                </div>
+              ) : (
+                <div className="max-h-[min(68vh,42rem)] overflow-auto">
+                  <div className="hidden grid-cols-[minmax(18rem,1fr)_7rem_7rem_8rem_9rem_10rem] gap-3 border-b border-slate-200 bg-slate-50 px-3 py-2 text-[11px] font-bold uppercase tracking-wide text-slate-500 md:grid">
+                    <span>Innhold</span>
+                    <span>Type</span>
+                    <span>Kategori</span>
+                    <span>Tema</span>
+                    <span>Status</span>
+                    <span className="text-right">Handlinger</span>
+                  </div>
+                  <div className="divide-y divide-slate-100">
+                    {filteredManageItems.map((item) => {
+                      const categoryLabel = CATEGORY_META[item.category]?.label ?? item.category;
+                      return (
+                        <div
+                          key={item.id}
+                          className="grid gap-3 bg-white px-3 py-3 text-sm md:grid-cols-[minmax(18rem,1fr)_7rem_7rem_8rem_9rem_10rem] md:items-center"
+                        >
+                          <div className="min-w-0">
+                            <div className="truncate font-semibold text-slate-900">{item.title}</div>
+                            <div className="mt-0.5 flex flex-wrap gap-2 text-xs text-slate-500">
+                              <span>{item.tag || "Ingen tagg"}</span>
+                              <span aria-hidden>|</span>
+                              <span>{itemUpdatedLabel(item)}</span>
+                            </div>
+                          </div>
+                          <div className="text-xs font-medium text-slate-700 md:text-sm">{itemKindLabel(item)}</div>
+                          <div className="text-xs text-slate-600 md:text-sm">{categoryLabel}</div>
+                          <div>
+                            <span className="inline-flex rounded-full bg-slate-100 px-2 py-1 text-xs font-semibold text-slate-700">
+                              {itemThemeLabel(item)}
+                            </span>
+                          </div>
+                          <div>
+                            <span
+                              className={`inline-flex rounded-full px-2 py-1 text-xs font-semibold ${
+                                item.archivedAt?.trim()
+                                  ? "bg-slate-200 text-slate-700"
+                                  : isInspirationItemScheduled(item)
+                                    ? "bg-sky-50 text-sky-700"
+                                    : !isIsoDateActive(item.visibleUntil, "until")
+                                      ? "bg-amber-50 text-amber-700"
+                                      : "bg-emerald-50 text-emerald-700"
+                              }`}
+                            >
+                              {visibilityStatusLabel(item)}
+                            </span>
+                          </div>
+                          <div className="flex flex-wrap justify-start gap-1.5 md:justify-end">
+                            <button
+                              type="button"
+                              onClick={() => void moveItemWithinCategory(item.id, "up")}
+                              className="rounded-lg border border-slate-200 p-1.5 text-slate-600 transition hover:bg-slate-50 disabled:opacity-40"
+                              aria-label={`Flytt ${item.title} opp`}
+                              title="Flytt opp"
+                            >
+                              <ArrowUp className="h-3.5 w-3.5" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => void moveItemWithinCategory(item.id, "down")}
+                              className="rounded-lg border border-slate-200 p-1.5 text-slate-600 transition hover:bg-slate-50 disabled:opacity-40"
+                              aria-label={`Flytt ${item.title} ned`}
+                              title="Flytt ned"
+                            >
+                              <ArrowDown className="h-3.5 w-3.5" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => beginEdit(item)}
+                              className="rounded-lg border border-slate-200 p-1.5 text-slate-700 transition hover:bg-slate-50"
+                              aria-label={`Rediger ${item.title}`}
+                              title="Rediger"
+                            >
+                              <Pencil className="h-3.5 w-3.5" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => void duplicateItem(item)}
+                              className="rounded-lg border border-slate-200 p-1.5 text-slate-700 transition hover:bg-slate-50"
+                              aria-label={`Dupliser ${item.title}`}
+                              title="Dupliser"
+                            >
+                              <Copy className="h-3.5 w-3.5" />
+                            </button>
+                            {item.archivedAt?.trim() ? (
+                              <button
+                                type="button"
+                                onClick={() => void restoreArchivedItem(item.id)}
+                                className="rounded-lg border border-emerald-200 p-1.5 text-emerald-700 transition hover:bg-emerald-50"
+                                aria-label={`Gjenopprett ${item.title}`}
+                                title="Gjenopprett"
+                              >
+                                <RotateCcw className="h-3.5 w-3.5" />
+                              </button>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() => confirmDeleteItem(item.id)}
+                                className="rounded-lg border border-rose-200 p-1.5 text-rose-700 transition hover:bg-rose-50"
+                                aria-label={`Arkiver ${item.title}`}
+                                title="Arkiver"
+                              >
+                                <Archive className="h-3.5 w-3.5" />
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      ) : null}
+
       {canManage && composerOpen ? (
         <div className="fixed inset-0 z-[10020] overflow-y-auto bg-slate-950/45 p-3 backdrop-blur-sm sm:p-6">
           <div
@@ -2510,6 +2951,7 @@ export function InspirationHub({
               onChange={(value) => {
                 const next = value as InspirationCategory;
                 setCategoryDraft(next);
+                if (next === "appGuide" || next === "programs") setArticleThemeDraft("auto");
                 if (next !== "programs") {
                   setKindDraft("article");
                   setProgramTemplateDraft(null);
@@ -2563,6 +3005,38 @@ export function InspirationHub({
             ) : (
               <TextInput value={tag} onChange={(event) => setTag(event.target.value)} placeholder="Tagg, f.eks. 20 min eller mobilitet" />
             )}
+            {categoryDraft !== "appGuide" ? (
+              <label className="grid gap-1">
+                <span className="text-xs font-semibold text-slate-700">Plassering i Utforsk</span>
+                <SelectBox
+                  value={articleThemeDraft}
+                  onChange={(value) => setArticleThemeDraft(value as ArticleThemeDraft)}
+                  options={ARTICLE_THEME_OPTIONS}
+                />
+              </label>
+            ) : null}
+            {composerKind === "article" && categoryDraft !== "appGuide" ? (
+              <div className="grid gap-2 sm:grid-cols-2 md:col-span-2">
+                <label className="grid gap-1">
+                  <span className="text-xs font-semibold text-slate-700">Vises fra</span>
+                  <TextInput
+                    type="datetime-local"
+                    value={visibleFromDraft}
+                    onChange={(event) => setVisibleFromDraft(event.target.value)}
+                  />
+                  <span className="text-[11px] text-slate-500">Tomt = vises med en gang.</span>
+                </label>
+                <label className="grid gap-1">
+                  <span className="text-xs font-semibold text-slate-700">Vises til</span>
+                  <TextInput
+                    type="datetime-local"
+                    value={visibleUntilDraft}
+                    onChange={(event) => setVisibleUntilDraft(event.target.value)}
+                  />
+                  <span className="text-[11px] text-slate-500">Tomt = ingen sluttdato.</span>
+                </label>
+              </div>
+            ) : null}
             <label className="grid gap-1">
               <TextInput
                 value={title}

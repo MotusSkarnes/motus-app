@@ -212,6 +212,18 @@ export function useRoleViewModel(state: AppStateHookResult): RoleViewModel {
     [markTrainerMessagesReadForMember, state.sendTrainerMessage],
   );
 
+  const markChatConversationRead = useCallback(
+    (memberId: string, reader: "trainer" | "member") => {
+      state.markChatConversationRead(memberId, reader);
+      if (reader === "trainer") {
+        markTrainerMessagesReadForMember(memberId);
+      } else {
+        markMemberMessagesAsRead();
+      }
+    },
+    [markMemberMessagesAsRead, markTrainerMessagesReadForMember, state.markChatConversationRead],
+  );
+
   const trainerUnreadMessagesByMemberId = useMemo(() => {
     const counts: Record<string, number> = {};
     trainerVisibleAlerts.forEach((alert) => {
@@ -246,7 +258,7 @@ export function useRoleViewModel(state: AppStateHookResult): RoleViewModel {
     deleteProgramById: state.deleteProgramById,
     sendTrainerMessage,
     toggleChatMessageReaction: state.toggleChatMessageReaction,
-    markChatConversationRead: state.markChatConversationRead,
+    markChatConversationRead,
     updateWorkoutLogTrainerComment: state.updateWorkoutLogTrainerComment,
     updateWorkoutLogDate: state.updateWorkoutLogDate,
     deleteWorkoutLog: state.deleteWorkoutLog,
@@ -288,7 +300,7 @@ export function useRoleViewModel(state: AppStateHookResult): RoleViewModel {
     setCurrentMemberAvatarUrl,
     sendMemberMessage: state.sendMemberMessage,
     toggleChatMessageReaction: state.toggleChatMessageReaction,
-    markChatConversationRead: state.markChatConversationRead,
+    markChatConversationRead,
     startWorkoutMode: state.startWorkoutMode,
     startCustomWorkout: state.startCustomWorkout,
     saveProgramForMember: state.saveProgramForMember,

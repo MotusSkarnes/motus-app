@@ -48,7 +48,14 @@ export function buildHomeWeekHeadline(
   planned: number,
   progressPct: number,
   momentumTrend: ScoreTrend,
+  thisWeekSessions?: number,
+  lastWeekSessions?: number,
 ): HomeWeekHeadline {
+  const hasWeekComparison = thisWeekSessions !== undefined && lastWeekSessions !== undefined;
+  const trainsMoreThanLastWeek = hasWeekComparison ? thisWeekSessions > lastWeekSessions : momentumTrend === "up";
+  const trainsSameAsLastWeek =
+    hasWeekComparison && completed > 0 && lastWeekSessions > 0 && thisWeekSessions === lastWeekSessions;
+
   if (completed === 0 && planned === 0) {
     return { headline: "Ny uke", subline: "Start når det passer — hver økt teller." };
   }
@@ -61,8 +68,11 @@ export function buildHomeWeekHeadline(
   if (planned > 0 && progressPct >= 70) {
     return { headline: "Sterk uke! 💪", subline: "Du er foran planen denne uka." };
   }
-  if (momentumTrend === "up" && completed > 0) {
+  if (trainsMoreThanLastWeek && completed > 0) {
     return { headline: "Bygger rutiner 🔥", subline: "Du trener mer enn forrige uke." };
+  }
+  if (trainsSameAsLastWeek) {
+    return { headline: "Stabil uke", subline: "Du trener like jevnt som forrige uke." };
   }
   if (completed > 0) {
     return { headline: "God start", subline: "Fortsett jevnt — du er på vei." };

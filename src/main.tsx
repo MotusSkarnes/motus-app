@@ -1,7 +1,21 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
 import App from "./App";
+import { AppErrorBoundary } from "./app/AppErrorBoundary";
+import { reportClientError } from "./app/clientErrorReporter";
 import "./index.css";
+
+window.addEventListener("error", (event) => {
+  reportClientError("window-error", event.error ?? event.message, {
+    source: event.filename,
+    line: event.lineno,
+    column: event.colno,
+  });
+});
+
+window.addEventListener("unhandledrejection", (event) => {
+  reportClientError("unhandled-rejection", event.reason);
+});
 
 if (import.meta.env.PROD && "serviceWorker" in navigator) {
   window.addEventListener("load", () => {
@@ -44,6 +58,8 @@ if (import.meta.env.PROD && "serviceWorker" in navigator) {
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
-    <App />
+    <AppErrorBoundary>
+      <App />
+    </AppErrorBoundary>
   </React.StrictMode>
 );

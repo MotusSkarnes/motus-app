@@ -17,6 +17,7 @@ import {
   expandProgramExercisesToWorkoutResults,
   normalizeLegacyIntervalCooldownExerciseNames,
   normalizeMemberLibraryStatus,
+  normalizeProgramExercisesForRuntime,
   parseProgramSetCount,
   workoutResultGroupId,
 } from "../app/programBlocks";
@@ -274,6 +275,7 @@ export type UpdateMemberInput = {
       | "nutritionAccess"
       | "ownerUserId"
       | "avatarUrl"
+      | "archiveScheduledFor"
     >
   >;
 };
@@ -326,6 +328,7 @@ export function createMember(state: AppState, input: CreateMemberInput): Member 
     name: input.name.trim(),
     email: input.email.trim().toLowerCase(),
     isActive: true,
+    archiveScheduledFor: "",
     invitedAt: "",
     firstLoginAt: "",
     phone: input.phone?.trim() || "900 00 000",
@@ -360,7 +363,7 @@ export function deactivateMemberInState(state: AppState, memberId: string): AppS
   const emailKey = target?.email.trim().toLowerCase() ?? "";
   const members = state.members.map((member) => {
     const samePerson = member.id === memberId || (emailKey && member.email.trim().toLowerCase() === emailKey);
-    return samePerson ? { ...member, isActive: false } : member;
+    return samePerson ? { ...member, isActive: false, archiveScheduledFor: "" } : member;
   });
   const activeMembers = members.filter((member) => member.isActive !== false);
   const pickNextId = (currentId: string) => (currentId === memberId ? activeMembers[0]?.id ?? "" : currentId);
@@ -441,22 +444,27 @@ export function saveProgramInState(
       ...state,
       programs: state.programs.map((program) =>
         program.id === input.id
-          ? enrichTrainingProgram({
-              ...program,
-              memberId: input.memberId,
-              title: input.title.trim(),
-              goal: input.goal.trim(),
-              notes: input.notes.trim(),
-              exercises,
-              imageUrl:
-                input.imageUrl !== undefined ? input.imageUrl.trim() || undefined : program.imageUrl,
-              ...(input.programCreatedBy
-                ? {
-                    programCreatedBy: input.programCreatedBy,
-                    programCreatedByName: input.programCreatedByName?.trim() ?? "",
-                  }
-                : {}),
-            })
+          ? (() => {
+              const { activityTemplateKind, conditioningDeliveryMode, ...storedProgram } = program;
+              void activityTemplateKind;
+              void conditioningDeliveryMode;
+              return enrichTrainingProgram({
+                ...storedProgram,
+                memberId: input.memberId,
+                title: input.title.trim(),
+                goal: input.goal.trim(),
+                notes: input.notes.trim(),
+                exercises,
+                imageUrl:
+                  input.imageUrl !== undefined ? input.imageUrl.trim() || undefined : program.imageUrl,
+                ...(input.programCreatedBy
+                  ? {
+                      programCreatedBy: input.programCreatedBy,
+                      programCreatedByName: input.programCreatedByName?.trim() ?? "",
+                    }
+                  : {}),
+              });
+            })()
           : program
       ),
     };
@@ -747,8 +755,12 @@ export function ensureWorkoutModeBaseline(
 }
 
 export function startWorkoutModeInState(state: AppState, programId: string, options?: StartWorkoutModeOptions): AppState {
-  const program = state.programs.find((p) => p.id === programId);
-  if (!program) return state;
+  const storedProgram = state.programs.find((p) => p.id === programId);
+  if (!storedProgram) return state;
+  const program = {
+    ...storedProgram,
+    exercises: normalizeProgramExercisesForRuntime(storedProgram.exercises),
+  };
 
   const expandedResults = expandProgramExercisesToWorkoutResults(program.exercises, state.exercises, {
     suggestedWeightByProgramExerciseId: options?.suggestedWeightByProgramExerciseId,
@@ -1660,6 +1672,10 @@ export function updateMemberInState(state: AppState, input: UpdateMemberInput): 
             ...input.changes,
             name: input.changes.name !== undefined ? input.changes.name.trim() : member.name,
             email: normalizedEmail ?? member.email,
+            archiveScheduledFor:
+              input.changes.archiveScheduledFor !== undefined
+                ? input.changes.archiveScheduledFor.trim()
+                : member.archiveScheduledFor,
             phone: input.changes.phone !== undefined ? input.changes.phone.trim() : member.phone,
             birthDate: input.changes.birthDate !== undefined ? input.changes.birthDate.trim() : member.birthDate,
             gender: input.changes.gender !== undefined ? input.changes.gender : member.gender,

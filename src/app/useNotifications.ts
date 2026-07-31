@@ -51,7 +51,7 @@ const TRAINER_OPERATIONAL_ALERT_IDS = {
 
 export type MemberAlert = {
   id: string;
-  kind: "message" | "program" | "workout-comment" | "inspiration" | "check-in" | "period-plan";
+  kind: "message" | "program" | "workout-comment" | "inspiration" | "check-in" | "period-plan" | "weekly-planning";
   title: string;
   text: string;
   detail: string;
@@ -143,6 +143,19 @@ function periodPlanAlertTimestamp(plan: PeriodSchedulePlan, fallbackOrder: numbe
     if (Number.isFinite(parsed) && parsed > 0) return Math.min(parsed, Date.now());
   }
   return alertTimestamp(plan.createdAt, fallbackOrder);
+}
+
+function sundayPlanningReminder(now = new Date()): { id: string; timestamp: number } | null {
+  if (now.getDay() !== 0) return null;
+  const year = now.getFullYear();
+  const month = now.getMonth();
+  const day = now.getDate();
+  const dateKey = `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+  const reminderAt = new Date(year, month, day, 9, 0, 0, 0).getTime();
+  return {
+    id: `member-weekly-planning-${dateKey}`,
+    timestamp: Math.min(reminderAt, now.getTime()),
+  };
 }
 
 function readMemberTabFromLocation(): MemberTab | null {
@@ -765,6 +778,31 @@ export function useNotifications({
     [memberAlertsSeenAt, remoteMemberPeriodPlanRows, memberViewId, seenMemberPeriodPlanKeys],
   );
 
+  const memberWeeklyPlanningAlert = useMemo(() => {
+    if (!activeMember || currentUserRole !== "member") return null;
+    const hasTrainerPeriodPlan = remoteMemberPeriodPlanRows
+      .filter((row) => row.memberId === memberViewId)
+      .some(
+        (row) =>
+          row.plan.periodPlanAddedBy !== "member" &&
+          row.plan.memberPeriodPlanStatus !== "hidden" &&
+          row.plan.weeklyPlans.length > 0,
+      );
+    if (hasTrainerPeriodPlan) return null;
+    const reminder = sundayPlanningReminder();
+    if (!reminder) return null;
+    return {
+      id: reminder.id,
+      kind: "weekly-planning" as const,
+      title: "Planlegg uken din",
+      text: "Bruk noen minutter på å gjøre neste uke enklere.",
+      detail: "Legg inn økter, gruppetimer eller egne planer for uken som kommer.",
+      timestamp: reminder.timestamp,
+      targetTab: "programs" as const,
+      unread: reminder.timestamp > memberAlertsSeenAt && !openedMemberAlertIds.includes(reminder.id),
+    };
+  }, [activeMember, currentUserRole, memberAlertsSeenAt, memberViewId, openedMemberAlertIds, remoteMemberPeriodPlanRows]);
+
   const memberInspirationBaselineAt = readMemberInspirationBaselineAt();
   const memberInspirationAlerts = useMemo(
     () =>
@@ -816,6 +854,21 @@ export function useNotifications({
               targetTab: memberCheckInAlert.targetTab,
               isUnread: memberCheckInAlert.unread,
               isOpened: openedMemberAlertIds.includes(memberCheckInAlert.id),
+            },
+          ]
+        : []),
+      ...(memberWeeklyPlanningAlert
+        ? [
+            {
+              id: memberWeeklyPlanningAlert.id,
+              kind: memberWeeklyPlanningAlert.kind,
+              title: memberWeeklyPlanningAlert.title,
+              text: memberWeeklyPlanningAlert.text,
+              detail: memberWeeklyPlanningAlert.detail,
+              timestamp: memberWeeklyPlanningAlert.timestamp,
+              targetTab: memberWeeklyPlanningAlert.targetTab,
+              isUnread: memberWeeklyPlanningAlert.unread,
+              isOpened: openedMemberAlertIds.includes(memberWeeklyPlanningAlert.id),
             },
           ]
         : []),
@@ -887,6 +940,7 @@ export function useNotifications({
     memberInspirationAlerts,
     memberPeriodPlanAlerts,
     memberCheckInAlert,
+    memberWeeklyPlanningAlert,
     openedMemberAlertIds,
   ]);
 
@@ -1029,6 +1083,8 @@ export function useNotifications({
       } else if (alert.kind === "period-plan") {
         const periodAlert = memberPeriodPlanAlerts.find((item) => item.id === alert.id);
         if (periodAlert?.seenKey) nextPeriodPlanKeys.add(periodAlert.seenKey);
+      } else if (alert.kind === "weekly-planning") {
+        nextOpenedIds.add(alert.id);
       }
     }
 
@@ -1093,6 +1149,13 @@ export function useNotifications({
         setSeenMemberPeriodPlanKeys((prev) => Array.from(new Set([...prev, periodAlert.seenKey])));
       }
       setOpenedMemberAlertIds((prev) => Array.from(new Set([...prev, alert.id])));
+    } else if (alert.kind === "weekly-planning") {
+      setOpenedMemberAlertIds((prev) => Array.from(new Set([...prev, alert.id])));
+      if (typeof window !== "undefined") {
+        window.sessionStorage.setItem("motus.member.openPeriodPlanOnPrograms", "1");
+        window.sessionStorage.setItem("motus.member.openWeekPlanBuilder", "1");
+        window.dispatchEvent(new Event("motus.member.openWeekPlanBuilder"));
+      }
     }
 
     setMemberTab(alert.targetTab);

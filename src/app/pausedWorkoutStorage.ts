@@ -31,7 +31,17 @@ function readStore(): PausedWorkoutStore {
 
 function writeStore(store: PausedWorkoutStore): void {
   if (typeof window === "undefined") return;
-  window.localStorage.setItem(PAUSED_WORKOUTS_STORAGE_KEY, JSON.stringify(store));
+  try {
+    window.localStorage.setItem(PAUSED_WORKOUTS_STORAGE_KEY, JSON.stringify(store));
+  } catch {
+    // A paused draft is a convenience cache. If storage is full, remove stale
+    // drafts and let the live workout continue instead of crashing the app.
+    try {
+      window.localStorage.removeItem(PAUSED_WORKOUTS_STORAGE_KEY);
+    } catch {
+      // Storage can also be unavailable entirely.
+    }
+  }
 }
 
 export function isPausedWorkoutDraftActive(draft: PausedWorkoutDraft, nowMs = Date.now()): boolean {

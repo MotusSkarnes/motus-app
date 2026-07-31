@@ -1002,3 +1002,80 @@ describe("useNotifications period plan alerts", () => {
     expect(result.current.memberUnreadCount).toBe(0);
   });
 });
+
+describe("useNotifications weekly planning reminder", () => {
+  afterEach(() => {
+    vi.useRealTimers();
+    window.localStorage.clear();
+  });
+
+  it("shows a Sunday planning reminder when the member has no trainer period plan", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-06-28T10:00:00.000Z"));
+
+    const { result } = renderHook(() =>
+      useNotifications({
+        messages: [],
+        programs: [],
+        logs: [],
+        members: [{ id: "member-1", name: "Test", email: "test@example.com" } as never],
+        memberViewId: "member-1",
+        remoteMemberPeriodPlanRows: [],
+        currentUserRole: "member",
+        setMemberTab: () => {},
+      }),
+    );
+
+    const alert = result.current.memberVisibleAlerts.find((item) => item.kind === "weekly-planning");
+    expect(alert).toBeDefined();
+    expect(alert?.title).toBe("Planlegg uken din");
+  });
+
+  it("does not show the Sunday planning reminder when the trainer has made a period plan", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-06-28T10:00:00.000Z"));
+
+    const { result } = renderHook(() =>
+      useNotifications({
+        messages: [],
+        programs: [],
+        logs: [],
+        members: [{ id: "member-1", name: "Test", email: "test@example.com" } as never],
+        memberViewId: "member-1",
+        remoteMemberPeriodPlanRows: [
+          {
+            memberId: "member-1",
+            plan: {
+              id: "trainer-plan-1",
+              title: "PT-plan",
+              notes: "",
+              startDate: "29.06.2026",
+              weeks: 1,
+              createdAt: "2026-06-27T10:00:00.000Z",
+              periodPlanAddedBy: "trainer",
+              weeklyPlans: [
+                {
+                  id: "trainer-plan-1-week-1",
+                  weekNumber: 1,
+                  days: {
+                    monday: "Styrke",
+                    tuesday: "",
+                    wednesday: "",
+                    thursday: "",
+                    friday: "",
+                    saturday: "",
+                    sunday: "",
+                  },
+                },
+              ],
+            },
+          },
+        ],
+        currentUserRole: "member",
+        setMemberTab: () => {},
+      }),
+    );
+
+    expect(result.current.memberVisibleAlerts.some((item) => item.kind === "weekly-planning")).toBe(false);
+  });
+});

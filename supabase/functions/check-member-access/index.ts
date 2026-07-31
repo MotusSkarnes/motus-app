@@ -13,6 +13,20 @@ function normalizeEmail(value: unknown): string {
   return String(value ?? "").trim().toLowerCase();
 }
 
+function currentOsloDate(): string {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Europe/Oslo",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date());
+}
+
+function isArchiveDue(row: { archive_scheduled_for?: string | null }): boolean {
+  const date = String(row.archive_scheduled_for ?? "").trim();
+  return Boolean(date && date <= currentOsloDate());
+}
+
 function jsonResponse(status: number, body: Record<string, unknown>) {
   return new Response(JSON.stringify(body), {
     status,
@@ -64,10 +78,19 @@ Deno.serve(async (req) => {
     return jsonResponse(400, { error: "Valid email is required" });
   }
 
-  const { data: rows, error: fetchError } = await adminClient
+  let { data: rows, error: fetchError } = await adminClient
     .from("members")
-    .select("id, email, is_active")
+    .select("id, email, is_active, archive_scheduled_for")
     .ilike("email", requesterEmail);
+
+  if (fetchError && fetchError.message.includes("archive_scheduled_for")) {
+    const fallback = await adminClient
+      .from("members")
+      .select("id, email, is_active")
+      .ilike("email", requesterEmail);
+    rows = fallback.data;
+    fetchError = fallback.error;
+  }
 
   if (fetchError) {
     return jsonResponse(500, { error: fetchError.message });
@@ -78,18 +101,36 @@ Deno.serve(async (req) => {
   const memberIdFromJwt = String(
     userData.user.app_metadata?.member_id ?? userData.user.user_metadata?.member_id ?? "",
   ).trim();
-  const rosterRows: Array<{ id?: string; email?: string; is_active?: boolean | null }> = [...matchingRows];
+  const rosterRows: Array<{ id?: string; email?: string; is_active?: boolean | null; archive_scheduled_for?: string | null }> = [...matchingRows];
   if (memberIdFromJwt) {
-    const { data: byIdRow, error: byIdError } = await adminClient
+    let { data: byIdRow, error: byIdError } = await adminClient
       .from("members")
-      .select("id, email, is_active")
+      .select("id, email, is_active, archive_scheduled_for")
       .eq("id", memberIdFromJwt)
       .maybeSingle();
+    if (byIdError && byIdError.message.includes("archive_scheduled_for")) {
+      const fallback = await adminClient.from("members").select("id, email, is_active").eq("id", memberIdFromJwt).maybeSingle();
+      byIdRow = fallback.data;
+      byIdError = fallback.error;
+    }
     if (byIdError) {
       return jsonResponse(500, { error: byIdError.message });
     }
     if (byIdRow && !rosterRows.some((row) => String(row.id ?? "") === memberIdFromJwt)) {
-      rosterRows.push(byIdRow as { id?: string; email?: string; is_active?: boolean | null });
+      rosterRows.push(byIdRow as { id?: string; email?: string; is_active?: boolean | null; archive_scheduled_for?: string | null });
+    }
+  }
+
+  const dueIds = rosterRows
+    .filter((row) => row.is_active !== false && isArchiveDue(row))
+    .map((row) => String(row.id ?? "").trim())
+    .filter(Boolean);
+  if (dueIds.length > 0) {
+    const { error: archiveError } = await adminClient.from("members").update({ is_active: false }).in("id", dueIds);
+    if (!archiveError) {
+      rosterRows.forEach((row) => {
+        if (dueIds.includes(String(row.id ?? "").trim())) row.is_active = false;
+      });
     }
   }
 

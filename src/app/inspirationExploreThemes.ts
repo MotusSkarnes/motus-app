@@ -24,6 +24,8 @@ export type InspoThemeId =
   | "tips"
   | "all";
 
+export type InspoTopNavThemeId = Extract<InspoThemeId, "running" | "strength" | "motivation" | "nutrition" | "recovery">;
+
 export type InspoHubItem = {
   id: string;
   category: InspirationHubCategory;
@@ -32,6 +34,7 @@ export type InspoHubItem = {
   description: string;
   tag: string;
   body?: string;
+  topNavTheme?: InspoTopNavThemeId | null;
 };
 
 export type InspoThemeConfig = {
@@ -66,11 +69,11 @@ function isRunnerMobilityProgramText(text: string): boolean {
 function isRunningProgramItem(item: InspoHubItem): boolean {
   if (item.category !== "programs") return false;
   const text = itemSearchText(item);
-  if (isRunnerStrengthProgramText(text) || isRunnerMobilityProgramText(text)) return false;
-
   if (item.kind === "periodPlan") {
     return textIncludesAny(text, ["sub60", "sub45", "10 km", "løpeplan", "løp", "løping", "maraton"]);
   }
+
+  if (isRunnerStrengthProgramText(text) || isRunnerMobilityProgramText(text)) return false;
 
   if (textIncludesAny(text, ["rolig løp", "tempo", "intervall", "langtur", "testløp", "målfart", "oppvarming", "nedjogg"])) {
     return true;
@@ -141,12 +144,14 @@ function isRecoveryArticleItem(item: InspoHubItem): boolean {
 
 /** Eksklusiv plassering i toppmeny-tema — hvert innlegg havner maks ett sted. */
 export function resolvePrimaryTopNavTheme(item: InspoHubItem): InspoThemeId | null {
+  if (item.topNavTheme && TOP_NAV_THEME_IDS.has(item.topNavTheme)) return item.topNavTheme;
+
   if (item.category === "nutrition") return "nutrition";
   if (item.category === "tips") return "motivation";
 
   if (item.category === "programs") {
-    if (isRecoveryProgramItem(item)) return "recovery";
     if (isRunningProgramItem(item)) return "running";
+    if (isRecoveryProgramItem(item)) return "recovery";
     if (isStrengthProgramItem(item)) return "strength";
     return null;
   }
@@ -253,7 +258,7 @@ export function filterItemsForInspoTheme(items: InspoHubItem[], themeId: InspoTh
       return hubItems.filter(
         (item) =>
           resolvePrimaryTopNavTheme(item) === "recovery" ||
-          (item.category === "nutrition" && isRecoveryArticleItem(item)),
+          (item.category === "nutrition" && !item.topNavTheme && isRecoveryArticleItem(item)),
       );
     }
     return hubItems.filter((item) => resolvePrimaryTopNavTheme(item) === themeId);

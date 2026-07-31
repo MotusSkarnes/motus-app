@@ -47,6 +47,7 @@ export type RunningInspirationItem = {
   kind: "periodPlan";
   title: string;
   description: string;
+  topNavTheme?: "running";
   body: string;
   tag: string;
   author: string;
@@ -629,6 +630,7 @@ export const RUNNING_INSPIRATION_ITEMS: RunningInspirationItem[] = [
     kind: "periodPlan",
     title: "SUB60 · 10 km på under 60 min",
     description: "12-ukers periodeplan med løp, intervaller, styrke og mobilitet mot mil på 1 time.",
+    topNavTheme: "running",
     body: SUB60_BODY,
     tag: "12 uker · 10 km",
     author: AUTHOR,
@@ -642,6 +644,7 @@ export const RUNNING_INSPIRATION_ITEMS: RunningInspirationItem[] = [
     kind: "periodPlan",
     title: "SUB45 · 10 km på under 45 min",
     description: "12 uker for erfarne løpere – høyere intensitet og styrke mot sub 45 på 10 km.",
+    topNavTheme: "running",
     body: SUB45_BODY,
     tag: "12 uker · 10 km",
     author: AUTHOR,

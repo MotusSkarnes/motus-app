@@ -329,10 +329,52 @@ export function WorkoutCompactSetTable({
     onUpdate(row.exerciseId, field, value);
   }
 
+  function fallbackRepsFor(row: WorkoutSetRow): string {
+    return lastRepsFor(row) || row.plannedReps || "";
+  }
+
+  function fallbackWeightFor(row: WorkoutSetRow): string {
+    return lastWeightFor(row) || row.plannedWeight || "";
+  }
+
+  function fallbackDurationFor(row: WorkoutSetRow): string {
+    return lastDurationFor(row) || row.plannedDurationMinutes || "";
+  }
+
+  function fallbackSpeedFor(row: WorkoutSetRow): string {
+    return lastSpeedFor(row) || row.plannedSpeed || "";
+  }
+
+  function updateEmptyField(row: WorkoutSetRow, field: Exclude<UpdateField, "completed">, fallback: string | undefined) {
+    const value = String(fallback ?? "").trim();
+    if (!value) return;
+    if (String(row[field] ?? "").trim()) return;
+    onUpdate(row.exerciseId, field, value);
+  }
+
+  function fillMissingPerformedValues(row: WorkoutSetRow) {
+    const { isCardio: cardio, isStretch: stretch, isTreadmill: treadmill, isStrengthSeconds } = resolveRowKind(row, exerciseByName);
+    if (cardio) {
+      updateEmptyField(row, "performedDurationMinutes", fallbackDurationFor(row));
+      if (treadmill) updateEmptyField(row, "performedSpeed", fallbackSpeedFor(row));
+      return;
+    }
+    if (!stretch && !isStrengthSeconds) {
+      updateEmptyField(row, "performedReps", fallbackRepsFor(row));
+    }
+    updateEmptyField(row, "performedWeight", fallbackWeightFor(row));
+  }
+
+  function completeSet(row: WorkoutSetRow) {
+    if (row.completed) return;
+    fillMissingPerformedValues(row);
+    motusHaptic("success");
+    onUpdate(row.exerciseId, "completed", true);
+  }
+
   function tryCompleteSet(row: WorkoutSetRow) {
     if (!row.completed && rowIsLoggable(row)) {
-      motusHaptic("success");
-      onUpdate(row.exerciseId, "completed", true);
+      completeSet(row);
     }
   }
 
@@ -360,13 +402,16 @@ export function WorkoutCompactSetTable({
     }
     const { isCardio: cardio, isStretch: stretch, isTreadmill: treadmill, isStrengthSeconds } = resolveRowKind(row, exerciseByName);
     if (cardio) {
-      const duration = (row.performedDurationMinutes ?? "").trim();
-      const speed = (row.performedSpeed ?? "").trim();
+      const duration = (row.performedDurationMinutes ?? "").trim() || fallbackDurationFor(row);
+      const speed = (row.performedSpeed ?? "").trim() || fallbackSpeedFor(row);
       return Number(duration) > 0 && (!treadmill || Number(speed) > 0);
     }
-    if (isStrengthSeconds) return Number(row.performedWeight.trim()) > 0;
-    if (stretch) return Number(row.performedWeight.trim()) > 0;
-    return Number(row.performedWeight.trim()) > 0 && Number(row.performedReps.trim()) > 0;
+    if (isStrengthSeconds) return Number(row.performedWeight.trim() || fallbackWeightFor(row)) > 0;
+    if (stretch) return Number(row.performedWeight.trim() || fallbackWeightFor(row)) > 0;
+    return (
+      Number(row.performedWeight.trim() || fallbackWeightFor(row)) > 0 &&
+      Number(row.performedReps.trim() || fallbackRepsFor(row)) > 0
+    );
   }
 
   function renderLogAfterFieldInputs(row: WorkoutSetRow) {
@@ -432,14 +477,14 @@ export function WorkoutCompactSetTable({
             type="button"
             className="flex-1"
             onClick={() => {
-              if (rowIsLoggable(row) && !row.completed) onUpdate(row.exerciseId, "completed", true);
+              if (rowIsLoggable(row) && !row.completed) completeSet(row);
             }}
           >
             Lagre
           </GradientButton>
           <SetCheckToggle
             completed={row.completed}
-            onToggle={() => onUpdate(row.exerciseId, "completed", !row.completed)}
+            onToggle={() => (row.completed ? onUpdate(row.exerciseId, "completed", false) : completeSet(row))}
           />
         </div>
       </div>
@@ -493,14 +538,14 @@ export function WorkoutCompactSetTable({
               type="button"
               className="flex-1"
               onClick={() => {
-                if (rowIsLoggable(row) && !row.completed) onUpdate(row.exerciseId, "completed", true);
+                if (rowIsLoggable(row) && !row.completed) completeSet(row);
               }}
             >
               Lagre sett
             </GradientButton>
             <SetCheckToggle
               completed={row.completed}
-              onToggle={() => onUpdate(row.exerciseId, "completed", !row.completed)}
+              onToggle={() => (row.completed ? onUpdate(row.exerciseId, "completed", false) : completeSet(row))}
             />
           </div>
         </div>
@@ -563,14 +608,14 @@ export function WorkoutCompactSetTable({
             type="button"
             className="flex-1"
             onClick={() => {
-              if (rowIsLoggable(row) && !row.completed) onUpdate(row.exerciseId, "completed", true);
+              if (rowIsLoggable(row) && !row.completed) completeSet(row);
             }}
           >
             Lagre sett
           </GradientButton>
           <SetCheckToggle
             completed={row.completed}
-            onToggle={() => onUpdate(row.exerciseId, "completed", !row.completed)}
+            onToggle={() => (row.completed ? onUpdate(row.exerciseId, "completed", false) : completeSet(row))}
           />
         </div>
       </div>
@@ -748,9 +793,11 @@ export function WorkoutCompactSetTable({
                 size="sm"
                 completed={row.completed}
                 onToggle={() => {
-                  const nextCompleted = !row.completed;
-                  if (nextCompleted) motusHaptic("success");
-                  onUpdate(row.exerciseId, "completed", nextCompleted);
+                  if (row.completed) {
+                    onUpdate(row.exerciseId, "completed", false);
+                    return;
+                  }
+                  completeSet(row);
                 }}
               />
               {showRowRemove ? (

@@ -8,7 +8,11 @@ import { WorkoutCompactSetTable } from "./LiveWorkoutCompactSets";
 import { MOTUS } from "../app/data";
 import { EXERCISE_IMAGE_INSET_CLASS, EXERCISE_IMAGE_SMALL_CLASS } from "../app/exerciseIllustrations/constants";
 import { resolveExerciseImageSrc } from "../app/exerciseIllustrations";
-import { buildWorkoutResultGroups, EXERCISE_BLOCK_LABELS } from "../app/programBlocks";
+import {
+  buildWorkoutResultGroups,
+  EXERCISE_BLOCK_LABELS,
+  normalizeProgramExercisesForRuntime,
+} from "../app/programBlocks";
 import {
   formatWorkoutGroupPlanLabel,
   formatWorkoutSegmentPlanLabel,
@@ -160,10 +164,15 @@ export function LiveWorkoutSessionModal({
     void primeWorkoutRestAudio();
   }, [workoutMode, restCountdownEnabled]);
 
-  const resolvedProgram = useMemo(
-    () => activeProgram ?? (workoutMode ? buildTrainingProgramFromWorkoutMode(workoutMode) : null),
-    [activeProgram, workoutMode],
-  );
+  const resolvedProgram = useMemo(() => {
+    const source = activeProgram ?? (workoutMode ? buildTrainingProgramFromWorkoutMode(workoutMode) : null);
+    if (!source) return null;
+    return {
+      ...source,
+      title: String(source.title ?? "").trim() || workoutMode?.programTitle?.trim() || "Økt",
+      exercises: normalizeProgramExercisesForRuntime(source.exercises),
+    };
+  }, [activeProgram, workoutMode]);
 
   const workoutResultGroups = useMemo(
     () => (workoutMode ? buildWorkoutResultGroups(workoutMode.results, resolvedProgram) : []),
