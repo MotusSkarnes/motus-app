@@ -243,6 +243,7 @@ import { ensureDefaultMotusGroupClassTemplates } from "../app/motusGroupClassTem
 import { buildPeriodPlanProgramSelectOptions } from "../app/periodPlanBuilder";
 import {
   dedupePeriodPlansById,
+  filterTrainerManagedPeriodPlans,
   mergeTrainerPeriodPlansFromRemote,
   removePeriodPlanFromLocalStorage,
   MAX_PERIOD_PLAN_WEEKS,
@@ -1648,7 +1649,8 @@ function pickFirstName(value: unknown): string {
   const selectedPeriodPlans = useMemo(() => {
     if (!periodPlanMemberIdsForMerge.length) return [] as PeriodSchedulePlan[];
     const merged = periodPlanMemberIdsForMerge.flatMap((memberId) => periodPlansByMemberId[memberId] ?? []);
-    return sortPeriodPlansByRecency(dedupePeriodPlansById(merged));
+    // Member-created "Min ukeplan" rows sync into the same table; never auto-load/edit/delete them here.
+    return sortPeriodPlansByRecency(filterTrainerManagedPeriodPlans(dedupePeriodPlansById(merged)));
   }, [periodPlansByMemberId, periodPlanMemberIdsForMerge]);
   const templatePrograms = useMemo(
     () =>
@@ -2690,6 +2692,15 @@ function pickFirstName(value: unknown): string {
       setPeriodPlanStatus("Legg inn navn på periodeplanen.");
       return;
     }
+    if (periodPlanDraftId) {
+      const draftSource = periodPlanMemberIdsForMerge
+        .flatMap((memberId) => periodPlansByMemberId[memberId] ?? [])
+        .find((plan) => plan.id === periodPlanDraftId);
+      if (draftSource?.periodPlanAddedBy === "member") {
+        setPeriodPlanStatus("Kan ikke endre medlemsopprettet ukeplan. Lag en ny periodeplan i stedet.");
+        return;
+      }
+    }
     const weeks = Math.max(1, Math.min(MAX_PERIOD_PLAN_WEEKS, Number(periodPlanWeeksDraft) || 1));
     const weeklyPlans = syncGradientMarkedWeekDays(
       periodWeeklyPlansDraft.slice(0, weeks).map((week, index) => ({
@@ -2767,6 +2778,13 @@ function pickFirstName(value: unknown): string {
   }
   async function removePeriodPlan(planId: string) {
     if (!selectedMemberId || selectedMemberId === "__template__" || selectedMemberRelatedIds.length === 0) return;
+    const targetPlan = periodPlanMemberIdsForMerge
+      .flatMap((memberId) => periodPlansByMemberId[memberId] ?? [])
+      .find((plan) => plan.id === planId);
+    if (targetPlan?.periodPlanAddedBy === "member") {
+      setPeriodPlanStatus("Kan ikke slette medlemsopprettet ukeplan fra trenerportalen.");
+      return;
+    }
     if (isSupabaseConfigured && !isLocalDemoSession) {
       const result = await deleteMemberPeriodPlanByPlanId(planId);
       if (!result.ok) {

@@ -10,9 +10,11 @@ import {
   findTodayPeriodPlanEntryInPlans,
   resolveTodayPeriodPlanEntryForHome,
   isMemberOwnedPeriodPlan,
+  filterTrainerManagedPeriodPlans,
   normalizePeriodSchedulePlan,
   dedupePeriodPlansById,
   preferNewerPeriodPlan,
+  sortPeriodPlansByRecency,
   periodPlanEntryMatchesCompletedProgram,
   computePeriodPlanSessionProgress,
   readActivePeriodPlanIdForMembers,
@@ -364,6 +366,38 @@ describe("isMemberOwnedPeriodPlan", () => {
 
   it("detects inspiration suffix ids as member-owned", () => {
     expect(isMemberOwnedPeriodPlan({ ...makePlan([]), id: "inspo-period-abc-1715789012345" }, trainerIds)).toBe(true);
+  });
+});
+
+describe("filterTrainerManagedPeriodPlans", () => {
+  it("excludes member-created week plans from trainer-managed lists", () => {
+    const trainerPlan = { ...makePlan([]), id: "trainer-plan", periodPlanAddedBy: "trainer" as const };
+    const memberPlan = { ...makePlan([]), id: "member-week", periodPlanAddedBy: "member" as const };
+    const legacyPlan = { ...makePlan([]), id: "legacy-plan" };
+
+    expect(filterTrainerManagedPeriodPlans([memberPlan, trainerPlan, legacyPlan]).map((plan) => plan.id)).toEqual([
+      "trainer-plan",
+      "legacy-plan",
+    ]);
+  });
+
+  it("keeps newest trainer plan first after filtering member plans", () => {
+    const olderTrainer = {
+      ...makePlan([]),
+      id: "trainer-old",
+      periodPlanAddedBy: "trainer" as const,
+      trainerSavedAtIso: "2026-07-01T10:00:00.000Z",
+    };
+    const newerMember = {
+      ...makePlan([]),
+      id: "member-new",
+      periodPlanAddedBy: "member" as const,
+      trainerSavedAtIso: "2026-07-30T10:00:00.000Z",
+    };
+    const filtered = sortPeriodPlansByRecency(
+      filterTrainerManagedPeriodPlans([newerMember, olderTrainer]),
+    );
+    expect(filtered.map((plan) => plan.id)).toEqual(["trainer-old"]);
   });
 });
 

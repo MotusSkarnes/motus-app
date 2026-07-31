@@ -480,6 +480,11 @@ export function sortPeriodPlansByRecency(plans: PeriodSchedulePlan[]): PeriodSch
   });
 }
 
+/** Trainer editor/list must not manage member-created week plans (auto-load/save/delete would corrupt them). */
+export function filterTrainerManagedPeriodPlans(plans: PeriodSchedulePlan[]): PeriodSchedulePlan[] {
+  return plans.filter((plan) => plan.periodPlanAddedBy !== "member");
+}
+
 function scoreMemberRowForCanonical(member: { id: string; nutritionAccess?: boolean; customerType?: string; membershipType?: string; personalGoals?: string; isActive?: boolean }): number {
   let score = 0;
   const id = member.id.trim();
