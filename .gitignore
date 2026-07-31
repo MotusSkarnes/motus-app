@@ -4,8 +4,13 @@ dist/
 *.log
 .env.local
 .env.*.local
+.env.vercel.check
 supabase/.temp/cli-latest
 .vercel
+
+# Local Codex dump folders / archives (not part of the app)
+.codex-release-*/
+.codex-release-*.zip
 
 # Windows / OneDrive conflict copies from DESKTOP-* machine names.
 # Keep this scoped to source/config/docs so legitimate assets are still visible.
