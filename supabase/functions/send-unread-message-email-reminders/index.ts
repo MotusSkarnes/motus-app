@@ -32,6 +32,15 @@ function previewText(text: string, max = 160): string {
   return trimmed.length <= max ? trimmed : `${trimmed.slice(0, max - 1)}…`;
 }
 
+function escapeHtml(value: string): string {
+  return value
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#39;");
+}
+
 function buildAppUrl(baseUrl: string): string {
   return baseUrl.replace(/\/+$/, "") || "https://motus-pt-app.vercel.app";
 }
@@ -79,7 +88,8 @@ Deno.serve(async (req) => {
   if (!supabaseUrl || !serviceRoleKey) {
     return jsonResponse(500, { error: "Missing Supabase environment variables" });
   }
-  if (reminderSecret && requestSecret !== reminderSecret) {
+  // Fail closed: cron is documented without a JWT, so the shared secret is the only gate.
+  if (!reminderSecret || requestSecret !== reminderSecret) {
     return jsonResponse(401, { error: "Unauthorized reminder request" });
   }
 
@@ -116,10 +126,10 @@ Deno.serve(async (req) => {
 
   for (const row of candidates) {
     const email = normalizeEmail(row.member_email);
-    const safeName = String(row.member_name ?? "").trim() || "der";
-    const messagePreview = previewText(row.message_text);
+    const safeName = escapeHtml(String(row.member_name ?? "").trim() || "der");
+    const messagePreview = escapeHtml(previewText(row.message_text));
     const subject = "Du har en ulest melding i Motus";
-    const appUrl = buildAppUrl(appBaseUrl);
+    const appUrl = escapeHtml(buildAppUrl(appBaseUrl));
     const html = `
       <div style="font-family: Arial, sans-serif; line-height:1.5; color:#111827; max-width:560px;">
         <h2 style="margin:0 0 12px;">Hei ${safeName}</h2>
