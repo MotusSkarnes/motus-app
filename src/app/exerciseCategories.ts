@@ -121,7 +121,7 @@ export function normalizeProgramExerciseForCategory(
   const holdSeconds = programExerciseHoldSeconds(exercise, category) || "30";
   return {
     ...exercise,
-    reps: exercise.reps.trim() || "1",
+    reps: String(exercise.reps ?? "").trim() || "1",
     holdSeconds,
     weight: isMobilityExerciseCategory(category) ? "" : exercise.weight,
   };

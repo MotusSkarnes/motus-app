@@ -565,7 +565,7 @@ function hasCardioCooldownRow(draft: ProgramExercise[]): boolean {
 }
 
 function countCardioDragRows(draft: ProgramExercise[]): number {
-  return draft.filter((row) => /^drag\b/i.test(row.exerciseName.trim())).length;
+  return draft.filter((row) => /^drag\b/i.test(String(row.exerciseName ?? "").trim())).length;
 }
 
 function firstCardioCooldownIndex(draft: ProgramExercise[]): number {
@@ -588,7 +588,7 @@ function isCardioDraftRow(
 ): boolean {
   if (options?.conditioningBuilder) return true;
   if (linkedExercise?.category === "Kondisjon") return true;
-  const name = item.exerciseName.trim();
+  const name = String(item.exerciseName ?? "").trim();
   if (/^oppvarming$/i.test(name) || isCardioCooldownStepName(name) || /^drag\b/i.test(name)) return true;
   return Boolean(String(item.durationMinutes ?? "").trim());
 }

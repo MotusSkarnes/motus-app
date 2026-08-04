@@ -78,8 +78,8 @@ export function defaultCardioEquipmentId(): CardioEquipmentId {
 /** Avsluttende rolig fase i kondisjons-/intervallprogram (ikke bare løp). */
 export const CARDIO_COOLDOWN_STEP_NAME = "Nedtrapping";
 
-export function isCardioCooldownStepName(name: string): boolean {
-  const lower = name.trim().toLowerCase();
+export function isCardioCooldownStepName(name: unknown): boolean {
+  const lower = String(name ?? "").trim().toLowerCase();
   return lower.startsWith("nedjogg") || lower.startsWith("nedtrapp") || lower.includes("cooldown");
 }
 

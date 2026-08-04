@@ -13,7 +13,7 @@ const INTERVAL_EXERCISE_NAME_PATTERN = /\bdrag\b|intervall|oppvarm|nedjogg|nedtr
 function hasIntervalStepStructure(program: Pick<TrainingProgram, "exercises">): boolean {
   return program.exercises.some((exercise) => {
     if (exercise.logFieldKeys?.length) return false;
-    const name = exercise.exerciseName.trim();
+    const name = String(exercise.exerciseName ?? "").trim();
     if (INTERVAL_EXERCISE_NAME_PATTERN.test(name)) return true;
     if (Number(exercise.durationMinutes) > 0) return true;
     const holdSeconds = Number(exercise.holdSeconds) || 0;
@@ -38,7 +38,9 @@ export function isMemberIntervalWorkoutProgram(
       subTab === "conditioning" ||
       isConditioningTrainingProgram(program, exerciseCategoryById, exerciseBank) ||
       INTERVAL_TITLE_PATTERN.test(title) ||
-      program.exercises.some((exercise) => INTERVAL_EXERCISE_NAME_PATTERN.test(exercise.exerciseName.trim()))
+      program.exercises.some((exercise) =>
+        INTERVAL_EXERCISE_NAME_PATTERN.test(String(exercise.exerciseName ?? "").trim()),
+      )
     );
   }
 
@@ -52,7 +54,7 @@ export function isMemberIntervalWorkoutProgram(
     return true;
   }
   return program.exercises.some((exercise) => {
-    const name = exercise.exerciseName.trim();
+    const name = String(exercise.exerciseName ?? "").trim();
     if (INTERVAL_EXERCISE_NAME_PATTERN.test(name)) return true;
     return false;
   });

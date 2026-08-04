@@ -25,13 +25,13 @@ export function persistPausedWorkoutFromState(state: AppState, memberIdHint?: st
   if (!memberId) return;
   const hasProgress =
     workoutMode.results.some((result) => result.completed) ||
-    workoutMode.note.trim().length > 0 ||
+    String(workoutMode.note ?? "").trim().length > 0 ||
     workoutMode.results.some(
       (result) =>
-        result.performedWeight.trim() ||
-        result.performedReps.trim() ||
-        (result.performedDurationMinutes ?? "").trim() ||
-        (result.exerciseNote ?? "").trim(),
+        String(result.performedWeight ?? "").trim() ||
+        String(result.performedReps ?? "").trim() ||
+        String(result.performedDurationMinutes ?? "").trim() ||
+        String(result.exerciseNote ?? "").trim(),
     );
   if (!hasProgress) {
     removePausedWorkoutByProgramId(memberId, workoutMode.programId);

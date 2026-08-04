@@ -364,9 +364,11 @@ export function WorkoutCompactSetTable({
       const speed = (row.performedSpeed ?? "").trim();
       return Number(duration) > 0 && (!treadmill || Number(speed) > 0);
     }
-    if (isStrengthSeconds) return Number(row.performedWeight.trim()) > 0;
-    if (stretch) return Number(row.performedWeight.trim()) > 0;
-    return Number(row.performedWeight.trim()) > 0 && Number(row.performedReps.trim()) > 0;
+    if (isStrengthSeconds) return Number(String(row.performedWeight ?? "").trim()) > 0;
+    if (stretch) return Number(String(row.performedWeight ?? "").trim()) > 0;
+    return (
+      Number(String(row.performedWeight ?? "").trim()) > 0 && Number(String(row.performedReps ?? "").trim()) > 0
+    );
   }
 
   function renderLogAfterFieldInputs(row: WorkoutSetRow) {
@@ -628,7 +630,7 @@ export function WorkoutCompactSetTable({
             !isFuture && rowRepsUnit === "min" && displayRepsRaw && displayRepsRaw !== "—"
               ? `${displayRepsRaw} min`
               : displayRepsRaw;
-          const performedLoadRaw = row.performedWeight.trim();
+          const performedLoadRaw = String(row.performedWeight ?? "").trim();
           const performedLoadDisplay =
             performedLoadRaw && rowLoadUnit === "sec"
               ? `${performedLoadRaw} sek`
