@@ -203,7 +203,16 @@ create policy "chat_messages_select_trainer_or_member"
 create policy "chat_messages_insert_own"
   on public.chat_messages
   for insert to authenticated
-  with check (owner_user_id = auth.uid());
+  with check (
+    owner_user_id = auth.uid()
+    and exists (
+      select 1
+      from public.members m
+      where m.id = chat_messages.member_id
+        and m.owner_user_id = auth.uid()
+        and coalesce(m.is_active, true) is not false
+    )
+  );
 
 create policy "training_programs_select_trainer_or_member"
   on public.training_programs
