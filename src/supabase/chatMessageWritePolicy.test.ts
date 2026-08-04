@@ -8,15 +8,22 @@ function readSql(relativePath: string): string {
   return readFileSync(resolve(ROOT, relativePath), "utf8");
 }
 
+function extractChatInsertPolicy(sql: string): string {
+  const match = sql.match(
+    /create policy "chat_messages_insert_own"[\s\S]*?with check \([\s\S]*?\);/,
+  );
+  expect(match?.[0]).toBeTruthy();
+  return match![0];
+}
+
 /** Guard that chat insert requires roster ownership, not only message owner_user_id. */
 function assertInsertPolicyRequiresMemberOwner(sql: string) {
-  expect(sql).toContain("chat_messages_insert_own");
-  expect(sql).toMatch(/m\.owner_user_id\s*=\s*auth\.uid\(\)/);
-  expect(sql).toMatch(/m\.id\s*=\s*chat_messages\.member_id/);
-  // Must not ship the old owner-only insert check as the sole with-check clause.
-  expect(sql).not.toMatch(
-    /create policy "chat_messages_insert_own"[\s\S]*?with check \(\s*owner_user_id = auth\.uid\(\)\s*\);/,
-  );
+  const policy = extractChatInsertPolicy(sql);
+  expect(policy).toContain("chat_messages_insert_own");
+  expect(policy).toMatch(/m\.owner_user_id\s*=\s*auth\.uid\(\)/);
+  expect(policy).toMatch(/m\.id\s*=\s*chat_messages\.member_id/);
+  // Reject the old single-clause owner-only check.
+  expect(policy).not.toMatch(/with check \(\s*owner_user_id = auth\.uid\(\)\s*\);/);
 }
 
 describe("chat_messages write RLS", () => {
