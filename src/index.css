@@ -6461,6 +6461,7 @@ html:has(.motus-trainer-app) {
 }
 
 .motus-workout-focus {
+  opacity: 1;
   animation: motusFocusIn 320ms ease-out;
 }
 
@@ -6754,12 +6755,10 @@ html:has(.motus-trainer-app) {
 
 @keyframes motusFocusIn {
   from {
-    opacity: 0;
-    transform: scale(1.02);
+    opacity: 0.01;
   }
   to {
     opacity: 1;
-    transform: scale(1);
   }
 }
 

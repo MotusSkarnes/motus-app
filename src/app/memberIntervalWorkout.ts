@@ -13,12 +13,31 @@ const INTERVAL_EXERCISE_NAME_PATTERN = /\bdrag\b|intervall|oppvarm|nedjogg|nedtr
 function hasIntervalStepStructure(program: Pick<TrainingProgram, "exercises">): boolean {
   return program.exercises.some((exercise) => {
     if (exercise.logFieldKeys?.length) return false;
-    const name = exercise.exerciseName.trim();
+    const name = String(exercise.exerciseName ?? "").trim();
     if (INTERVAL_EXERCISE_NAME_PATTERN.test(name)) return true;
     if (Number(exercise.durationMinutes) > 0) return true;
     const holdSeconds = Number(exercise.holdSeconds) || 0;
     return holdSeconds > 0;
   });
+}
+
+function looksLikeDedicatedIntervalProgram(
+  program: Pick<TrainingProgram, "title" | "exercises" | "notes" | "conditioningDeliveryMode">,
+  exerciseCategoryById: Map<string, Exercise["category"]>,
+  exerciseBank: Exercise[],
+): boolean {
+  const title = program.title?.trim() ?? "";
+  if (INTERVAL_TITLE_PATTERN.test(title)) return true;
+  if (
+    program.exercises.some((exercise) =>
+      INTERVAL_EXERCISE_NAME_PATTERN.test(String(exercise.exerciseName ?? "").trim()),
+    )
+  ) {
+    return true;
+  }
+  const subTab = getTrainingProgramSubTab(program, exerciseCategoryById, exerciseBank);
+  if (subTab === "conditioning") return true;
+  return isConditioningTrainingProgram(program, exerciseCategoryById, exerciseBank);
 }
 
 /** Medlem skal bruke intervalltimer (ikke styrke-øktmodus) for dette programmet. */
@@ -30,30 +49,15 @@ export function isMemberIntervalWorkoutProgram(
   if (isConditioningLogAfterProgram(program) || programHasConfiguredLogAfterFields(program)) {
     return false;
   }
-  const subTab = getTrainingProgramSubTab(program, exerciseCategoryById, exerciseBank);
-  const title = program.title?.trim() ?? "";
 
+  // Feilaktig lagret interval-markør på styrke/core skal ikke åpne intervalltimer.
   if (isConditioningIntervalProgram(program)) {
-    return (
-      subTab === "conditioning" ||
-      isConditioningTrainingProgram(program, exerciseCategoryById, exerciseBank) ||
-      INTERVAL_TITLE_PATTERN.test(title) ||
-      program.exercises.some((exercise) => INTERVAL_EXERCISE_NAME_PATTERN.test(exercise.exerciseName.trim()))
-    );
+    return looksLikeDedicatedIntervalProgram(program, exerciseCategoryById, exerciseBank);
   }
 
-  if (subTab === "conditioning") {
-    return hasIntervalStepStructure(program);
-  }
-  if (isConditioningTrainingProgram(program, exerciseCategoryById, exerciseBank)) {
-    return hasIntervalStepStructure(program);
-  }
-  if (INTERVAL_TITLE_PATTERN.test(title) && hasIntervalStepStructure(program)) {
-    return true;
-  }
-  return program.exercises.some((exercise) => {
-    const name = exercise.exerciseName.trim();
-    if (INTERVAL_EXERCISE_NAME_PATTERN.test(name)) return true;
+  if (!hasIntervalStepStructure(program)) {
     return false;
-  });
+  }
+
+  return looksLikeDedicatedIntervalProgram(program, exerciseCategoryById, exerciseBank);
 }

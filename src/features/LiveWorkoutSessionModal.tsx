@@ -691,8 +691,11 @@ export function LiveWorkoutSessionModal({
   const headerTitle = variant === "trainer" ? "Live PT-økt" : "Øktmodus";
 
   return (
-    <div className="motus-workout-focus fixed inset-0 z-[10010] overscroll-contain bg-black">
-      <div className="motus-workout-focus-panel mx-auto flex h-full w-full max-w-3xl flex-col overflow-hidden bg-slate-950 text-white shadow-2xl sm:rounded-3xl">
+    <div className="motus-workout-focus fixed inset-0 z-[10010] overscroll-contain bg-black" style={{ backgroundColor: "#000", opacity: 1 }}>
+      <div
+        className="motus-workout-focus-panel mx-auto flex h-full w-full max-w-3xl flex-col overflow-hidden bg-slate-950 text-white shadow-2xl sm:rounded-3xl"
+        style={{ backgroundColor: "#020617", color: "#fff" }}
+      >
         <div className="relative overflow-hidden border-b border-white/10 bg-slate-900 px-3 pb-2 pt-[max(0.5rem,env(safe-area-inset-top))] sm:px-5 sm:pb-4 sm:pt-5">
           <div className="flex items-center justify-between gap-2 sm:gap-3">
             <button

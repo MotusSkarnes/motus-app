@@ -361,11 +361,13 @@ export function IntervalWorkoutSessionModal({
       className={`motus-workout-focus motus-interval-session motus-modal-insets fixed inset-0 z-[10030] overscroll-contain bg-black${
         timerFocusActive ? " motus-interval-session--timer-focus" : ""
       }`}
+      style={{ backgroundColor: "#000", opacity: 1 }}
     >
       <div
         className={`motus-workout-focus-panel motus-interval-session-panel mx-auto flex h-full w-full max-w-3xl flex-col overflow-hidden bg-slate-950 text-white shadow-2xl sm:rounded-3xl${
           timerFinished ? " motus-interval-session--complete" : ""
         }`}
+        style={{ backgroundColor: "#020617", color: "#fff" }}
       >
         <div className="motus-interval-header-compact">
           <button
