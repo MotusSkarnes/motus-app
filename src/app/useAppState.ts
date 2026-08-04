@@ -667,8 +667,8 @@ function appendExercisesFromProgramRows(
 ): Exercise[] {
   const appendedExercises: Exercise[] = [];
   rows.forEach((programExercise) => {
-    const exerciseId = programExercise.exerciseId.trim();
-    const exerciseName = programExercise.exerciseName.trim();
+    const exerciseId = String(programExercise.exerciseId ?? "").trim();
+    const exerciseName = String(programExercise.exerciseName ?? "").trim();
     if (!exerciseId && !exerciseName) return;
     if (exerciseId && exercisesById.has(exerciseId)) return;
     if (exerciseName && exercisesByName.has(exerciseName.toLowerCase())) return;
@@ -700,11 +700,11 @@ function normalizeProgramExerciseNames(
       isCardioCooldownStepName(programExercise.exerciseName) ||
       isLegacyIntervalCooldownDrag(legacyNormalizedExercises, index)
     ) {
-      if (programExercise.exerciseName.trim() === CARDIO_COOLDOWN_STEP_NAME) return programExercise;
+      if (String(programExercise.exerciseName ?? "").trim() === CARDIO_COOLDOWN_STEP_NAME) return programExercise;
       programChanged = true;
       return { ...programExercise, exerciseName: CARDIO_COOLDOWN_STEP_NAME };
     }
-    const source = exercisesById.get(programExercise.exerciseId.trim());
+    const source = exercisesById.get(String(programExercise.exerciseId ?? "").trim());
     if (!source || source.name === programExercise.exerciseName) return programExercise;
     programChanged = true;
     return { ...programExercise, exerciseName: source.name };

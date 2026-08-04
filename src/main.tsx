@@ -1,7 +1,10 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
 import App from "./App";
+import { installStaleAppShellRecoveryListeners } from "./app/recoverStaleAppShell";
 import "./index.css";
+
+installStaleAppShellRecoveryListeners();
 
 if (import.meta.env.PROD && "serviceWorker" in navigator) {
   window.addEventListener("load", () => {

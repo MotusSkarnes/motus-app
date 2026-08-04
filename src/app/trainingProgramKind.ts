@@ -37,7 +37,7 @@ const MOBILITY_EXERCISE_NAME_PATTERN =
 
 function inferMobilityCategoryFromProgramExercise(exercise: ProgramExercise): Exercise["category"] | null {
   const nameLower = exercise.exerciseName.trim().toLowerCase();
-  const notesLower = exercise.notes.trim().toLowerCase();
+  const notesLower = String(exercise.notes ?? "").trim().toLowerCase();
   const combined = `${nameLower} ${notesLower}`;
 
   if (MOBILITY_EXERCISE_NAME_PATTERN.test(nameLower)) {
@@ -49,7 +49,7 @@ function inferMobilityCategoryFromProgramExercise(exercise: ProgramExercise): Ex
     return "Mobilitet";
   }
 
-  const reps = exercise.reps.trim();
+  const reps = String(exercise.reps ?? "").trim();
   const repsNum = Number(reps);
   if (
     reps &&

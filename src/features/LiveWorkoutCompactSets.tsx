@@ -131,7 +131,7 @@ function stepWeightValue(current: string, delta: number): string {
 }
 
 function resolveRowKind(row: WorkoutSetRow, exerciseByName: Map<string, Exercise>) {
-  const resolvedExercise = exerciseByName.get(row.exerciseName.trim().toLowerCase());
+  const resolvedExercise = exerciseByName.get(String(row.exerciseName ?? "").trim().toLowerCase());
   const isCardio = (row.exerciseCategory ?? resolvedExercise?.category) === "Kondisjon";
   const holdCategory = row.exerciseCategory ?? resolvedExercise?.category;
   const isStretch = Boolean(holdCategory && isHoldBasedExerciseCategory(holdCategory));

@@ -269,6 +269,7 @@ import { MemberActivityLoggerCard } from "./MemberActivityLoggerCard";
 import { ReflectionLevelPicker } from "./ReflectionLevelPicker";
 import { MemberSimpleWorkoutLogDetails } from "./MemberSimpleWorkoutLogDetails";
 import { LiveWorkoutSessionModal } from "./LiveWorkoutSessionModal";
+import { WorkoutSessionErrorBoundary } from "./WorkoutSessionErrorBoundary";
 import { PersonalRecordProgressModal } from "./PersonalRecordProgressModal";
 import { PeriodPlanActiveView } from "./PeriodPlanActiveView";
 import {
@@ -2302,7 +2303,7 @@ export function MemberPortal(props: MemberPortalProps) {
     if (meta?.category && isHoldBasedExerciseCategory(meta.category)) {
       return programExerciseHoldSeconds(programExercise, meta.category) || "30";
     }
-    return programExercise.weight;
+    return String(programExercise.weight ?? "");
   }
 
   function buildStartWorkoutOptions(program: TrainingProgram): StartWorkoutModeOptions {
@@ -8441,50 +8442,67 @@ export function MemberPortal(props: MemberPortalProps) {
         </div>
       </div>
     </div>
-    <IntervalWorkoutSessionModal
-      open={showIntervalTimerModal}
-      program={intervalWorkoutProgram}
-      exercises={exercises}
-      memberId={activeMemberId}
-      memberEmail={editableMember?.email ?? currentUserEmail}
+    <WorkoutSessionErrorBoundary
+      title="Kunne ikke åpne kondisjonsøkten"
       onClose={() => {
         pendingPeriodPlanWorkoutStartRef.current = null;
         setIntervalWorkoutProgramId("");
         setIntervalWorkoutProgramSnapshot(null);
         setShowIntervalTimerModal(false);
       }}
-      onSaved={() => {
-        setIntervalTimerStatus("Kondisjonsøkten er lagret. PT kan se den i loggen.");
-        setIntervalWorkoutProgramId("");
-        setIntervalWorkoutProgramSnapshot(null);
-        setShowIntervalTimerModal(false);
-      }}
-      logIntervalWorkout={handleLogIntervalWorkout}
-    />
-    <LiveWorkoutSessionModal
-      variant="member"
-      workoutMode={workoutMode}
-      activeProgram={activeWorkoutProgram}
-      exercises={exercises}
-      onBeforeNextExercise={maybeCelebrateCurrentWorkoutGroup}
-      onWorkoutExerciseIndexChange={setSyncedWorkoutExerciseIndex}
-      updateWorkoutExerciseResult={updateWorkoutExerciseResult}
-      replaceWorkoutExerciseGroup={replaceWorkoutExerciseGroup}
-      addWorkoutExerciseToWorkout={addWorkoutExerciseToWorkout}
-      appendWorkoutSetForProgramExercise={appendWorkoutSetForProgramExercise}
-      removeLastWorkoutSetForProgramExercise={removeLastWorkoutSetForProgramExercise}
-      deferWorkoutExerciseGroup={deferWorkoutExerciseGroup}
-      updateWorkoutModeNote={updateWorkoutModeNote}
-      updateWorkoutExerciseNote={updateWorkoutExerciseNote}
-      finishWorkoutMode={handleFinishWorkoutMode}
-      cancelWorkoutMode={handleCancelWorkoutMode}
-      restCountdownEnabled={restCountdownEnabled}
-      previousPersonalBests={previousPersonalBestsByExercise}
-      lastSessionByExercise={lastSessionResultsByExercise}
-      onDismissWorkout={() => {
+    >
+      <IntervalWorkoutSessionModal
+        open={showIntervalTimerModal}
+        program={intervalWorkoutProgram}
+        exercises={exercises}
+        memberId={activeMemberId}
+        memberEmail={editableMember?.email ?? currentUserEmail}
+        onClose={() => {
+          pendingPeriodPlanWorkoutStartRef.current = null;
+          setIntervalWorkoutProgramId("");
+          setIntervalWorkoutProgramSnapshot(null);
+          setShowIntervalTimerModal(false);
+        }}
+        onSaved={() => {
+          setIntervalTimerStatus("Kondisjonsøkten er lagret. PT kan se den i loggen.");
+          setIntervalWorkoutProgramId("");
+          setIntervalWorkoutProgramSnapshot(null);
+          setShowIntervalTimerModal(false);
+        }}
+        logIntervalWorkout={handleLogIntervalWorkout}
+      />
+    </WorkoutSessionErrorBoundary>
+    <WorkoutSessionErrorBoundary
+      title="Kunne ikke åpne økten"
+      onClose={() => {
         handleDismissWorkoutMode();
       }}
-    />
+    >
+      <LiveWorkoutSessionModal
+        variant="member"
+        workoutMode={workoutMode}
+        activeProgram={activeWorkoutProgram}
+        exercises={exercises}
+        onBeforeNextExercise={maybeCelebrateCurrentWorkoutGroup}
+        onWorkoutExerciseIndexChange={setSyncedWorkoutExerciseIndex}
+        updateWorkoutExerciseResult={updateWorkoutExerciseResult}
+        replaceWorkoutExerciseGroup={replaceWorkoutExerciseGroup}
+        addWorkoutExerciseToWorkout={addWorkoutExerciseToWorkout}
+        appendWorkoutSetForProgramExercise={appendWorkoutSetForProgramExercise}
+        removeLastWorkoutSetForProgramExercise={removeLastWorkoutSetForProgramExercise}
+        deferWorkoutExerciseGroup={deferWorkoutExerciseGroup}
+        updateWorkoutModeNote={updateWorkoutModeNote}
+        updateWorkoutExerciseNote={updateWorkoutExerciseNote}
+        finishWorkoutMode={handleFinishWorkoutMode}
+        cancelWorkoutMode={handleCancelWorkoutMode}
+        restCountdownEnabled={restCountdownEnabled}
+        previousPersonalBests={previousPersonalBestsByExercise}
+        lastSessionByExercise={lastSessionResultsByExercise}
+        onDismissWorkout={() => {
+          handleDismissWorkoutMode();
+        }}
+      />
+    </WorkoutSessionErrorBoundary>
     {prProgressExerciseName ? (
       <PersonalRecordProgressModal
         exerciseName={prProgressExerciseName}

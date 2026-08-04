@@ -280,7 +280,7 @@ function buildWorkoutRow(
   const suggestedWeight = suggestedWeightRaw !== undefined ? suggestedWeightRaw.trim() : "";
   const holdPlan = programExerciseHoldSeconds(ex, meta?.category);
   const initialWeight = isStretch ? suggestedWeight || holdPlan || "30" : suggestedWeight || ex.weight;
-  const plannedRepsForRow = isStretch ? (ex.reps.trim() || "1") : ex.reps;
+  const plannedRepsForRow = isStretch ? (String(ex.reps ?? "").trim() || "1") : String(ex.reps ?? "");
 
   const logAfter = options.conditioningLogAfter && meta?.category === "Kondisjon";
   const logFieldKeys = logAfter ? resolveProgramExerciseLogFields(ex, meta) : undefined;

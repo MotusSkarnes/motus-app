@@ -11,7 +11,9 @@ export function buildDefaultStartWorkoutOptions(program: TrainingProgram, exerci
     if (Number(exercise.durationMinutes) > 0) return;
     const meta = exerciseBank.find((e) => e.id === exercise.exerciseId);
     const isStretch = meta ? isHoldBasedExerciseCategory(meta.category) : false;
-    const suggested = isStretch ? programExerciseHoldSeconds(exercise, meta?.category) || "30" : exercise.weight.trim();
+    const suggested = isStretch
+      ? programExerciseHoldSeconds(exercise, meta?.category) || "30"
+      : String(exercise.weight ?? "").trim();
     if (!suggested) return;
     suggestedWeightByProgramExerciseId[exercise.id] = suggested;
   });

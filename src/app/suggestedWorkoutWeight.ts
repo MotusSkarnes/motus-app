@@ -35,7 +35,7 @@ export function findMaxPerformedLoadFromLastExerciseSession(
 
     for (const result of log.results ?? []) {
       if (!result.completed) continue;
-      if (result.exerciseName.trim().toLowerCase() !== normalized) continue;
+      if (String(result.exerciseName ?? "").trim().toLowerCase() !== normalized) continue;
 
       if (isKgBasedWorkoutResult(result)) {
         const weight = parsePerformedLoad(result.performedWeight);

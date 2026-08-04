@@ -21,6 +21,7 @@ import {
 } from "../app/activityTemplate";
 import { serializeConditioningProgramNotes } from "../app/conditioningProgramMode";
 import { enrichTrainingProgram } from "../app/programEnrichment";
+import { normalizeProgramExercises } from "../app/normalizeProgramExercise";
 import { formatDateDdMmYyyy, formatDateTimeDdMmYyyy, normalizeStoredLogDate } from "../app/dateFormat";
 import { normalizeMemberGender } from "../app/memberGender";
 import { parseTrainerVacation } from "../app/trainerProfile";
@@ -3251,7 +3252,7 @@ function trainingProgramFromHydrateRow(program: Record<string, unknown>): Traini
     goal: String(program.goal ?? ""),
     notes: String(program.notes ?? ""),
     createdAt: mapIsoToProgramDate(String(program.created_at ?? "")),
-    exercises: Array.isArray(program.exercises) ? (program.exercises as ProgramExercise[]) : [],
+    exercises: normalizeProgramExercises(program.exercises),
     assignedTrainerName: String(program.assigned_trainer_name ?? "").trim(),
     ...(ownerUserId ? { ownerUserId } : {}),
     ...(programCreatedBy
