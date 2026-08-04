@@ -20,7 +20,7 @@ export function buildExerciseCategoryById(exercises: Exercise[]): Map<string, Ex
 }
 
 function isIntervalAuxiliaryStep(exercise: ProgramExercise, exercises: ProgramExercise[], index: number): boolean {
-  const lower = exercise.exerciseName.trim().toLowerCase();
+  const lower = String(exercise.exerciseName ?? "").trim().toLowerCase();
   if (lower.includes("oppvarm")) return true;
   if (lower.includes("nedjogg")) return true;
   if (isLegacyIntervalCooldownDrag(exercises, index)) return true;
@@ -36,7 +36,7 @@ const MOBILITY_EXERCISE_NAME_PATTERN =
   /stretch|strekk|mobilitet|uttøy|foam|pigeon|couch|frog|ankel|rotasjon|world's greatest|90\/90|leggstrekk|setestrekk/i;
 
 function inferMobilityCategoryFromProgramExercise(exercise: ProgramExercise): Exercise["category"] | null {
-  const nameLower = exercise.exerciseName.trim().toLowerCase();
+  const nameLower = String(exercise.exerciseName ?? "").trim().toLowerCase();
   const notesLower = String(exercise.notes ?? "").trim().toLowerCase();
   const combined = `${nameLower} ${notesLower}`;
 
@@ -75,7 +75,7 @@ export function resolveProgramExerciseCategory(
 ): Exercise["category"] {
   const holdSeconds = String(exercise.holdSeconds ?? "").trim();
   if (holdSeconds && Number(holdSeconds) > 0) {
-    const nameLower = exercise.exerciseName.trim().toLowerCase();
+    const nameLower = String(exercise.exerciseName ?? "").trim().toLowerCase();
     if (
       /\bdrag\b|intervall|oppvarm|nedjogg|nedtrapp|tempo|tabata|mølle|moelle|tredemølle|cooldown/.test(nameLower) ||
       Number(exercise.durationMinutes) > 0
@@ -88,7 +88,7 @@ export function resolveProgramExerciseCategory(
   const inferredMobility = inferMobilityCategoryFromProgramExercise(exercise);
   if (inferredMobility) return inferredMobility;
 
-  const normalizedName = exercise.exerciseName.trim().toLowerCase();
+  const normalizedName = String(exercise.exerciseName ?? "").trim().toLowerCase();
   const byName = exerciseBank.find((item) => item.name.trim().toLowerCase() === normalizedName);
   if (byName) return byName.category;
 

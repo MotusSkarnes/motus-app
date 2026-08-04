@@ -1,7 +1,8 @@
 import { STORAGE_KEY, getDefaultState, getSupabaseBootstrapState } from "./data";
 import { migrateCatalogSchemaVersion } from "./memberLocalCatalog";
+import { normalizeProgramExercises } from "./normalizeProgramExercise";
 import { isSupabaseConfigured } from "../services/supabaseClient";
-import type { AppState } from "./types";
+import type { AppState, TrainingProgram } from "./types";
 
 export function uid(prefix: string) {
   return `${prefix}-${Math.random().toString(36).slice(2, 9)}`;
@@ -38,12 +39,21 @@ export function loadState(): AppState {
           };
         })
       : defaults.exercises;
+    const programs = Array.isArray(parsed.programs)
+      ? parsed.programs.map((programLike) => {
+          const program = programLike as TrainingProgram;
+          return {
+            ...program,
+            exercises: normalizeProgramExercises(program.exercises),
+          };
+        })
+      : defaults.programs;
     return {
       workoutMode: parsed.workoutMode ?? defaults.workoutMode,
       workoutCelebration: defaults.workoutCelebration,
       members: Array.isArray(parsed.members) ? parsed.members : defaults.members,
       exercises: normalizedExercises,
-      programs: Array.isArray(parsed.programs) ? parsed.programs : defaults.programs,
+      programs,
       logs: Array.isArray(parsed.logs) ? parsed.logs : defaults.logs,
       messages: Array.isArray(parsed.messages) ? parsed.messages : defaults.messages,
       currentUser: parsed.currentUser ?? defaults.currentUser,

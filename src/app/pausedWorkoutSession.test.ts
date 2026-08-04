@@ -60,6 +60,31 @@ describe("pausedWorkoutSession", () => {
     expect(listPausedWorkouts("m1")[0]?.programTitle).toBe("Styrke A");
   });
 
+  it("dismiss tolerates missing performedWeight/reps without throwing", () => {
+    window.localStorage.removeItem(PAUSED_WORKOUTS_STORAGE_KEY);
+    const sparseWorkoutMode: WorkoutModeState = {
+      ...workoutMode,
+      results: [
+        {
+          exerciseId: "e1-set-1",
+          programExerciseId: "pe1",
+          exerciseName: "Diagonal hev",
+          setNumber: 1,
+          plannedSets: "3",
+          plannedReps: "10",
+          plannedWeight: "",
+          // Simulate legacy expansion from unnormalized program rows
+          performedWeight: undefined as unknown as string,
+          performedReps: undefined as unknown as string,
+          completed: false,
+        },
+      ],
+    };
+    const next = dismissWorkoutModeInState({ ...baseState(), workoutMode: sparseWorkoutMode });
+    expect(next.workoutMode).toBeNull();
+    expect(listPausedWorkouts("m1")).toHaveLength(0);
+  });
+
   it("resume restores workout mode from draft", () => {
     window.localStorage.removeItem(PAUSED_WORKOUTS_STORAGE_KEY);
     const draft = upsertPausedWorkout({

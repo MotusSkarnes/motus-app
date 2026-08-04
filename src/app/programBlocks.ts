@@ -146,7 +146,7 @@ export function parseProgramSetCount(value: string | undefined): number {
 function isIntervalTimedProgram(exercises: ProgramExercise[]): boolean {
   if (exercises.length < 2) return false;
   return exercises.every((row) => {
-    const name = row.exerciseName.trim().toLowerCase();
+    const name = String(row.exerciseName ?? "").trim().toLowerCase();
     return (
       Number(row.durationMinutes) > 0 ||
       /^oppvarming$/i.test(name) ||
@@ -163,7 +163,7 @@ export function isLegacyIntervalCooldownDrag(exercises: ProgramExercise[], index
   const previousExercise = exercises[index - 1];
   if (!exercise || index !== exercises.length - 1 || !isIntervalTimedProgram(exercises)) return false;
 
-  const name = exercise.exerciseName.trim();
+  const name = String(exercise.exerciseName ?? "").trim();
   if (isCardioCooldownStepName(name)) return false;
   if (!/^drag\b/i.test(name)) return false;
 
@@ -174,13 +174,15 @@ export function isLegacyIntervalCooldownDrag(exercises: ProgramExercise[], index
   const hasNoRestAfter = !Number.isFinite(restSeconds) || restSeconds <= 0;
   if (!hasNoRestAfter) return false;
 
-  const previousName = previousExercise?.exerciseName.trim() ?? "";
+  const previousName = String(previousExercise?.exerciseName ?? "").trim();
   const prevIsDrag = /^drag\b/i.test(previousName);
   const prevIsWarmup = /^oppvarming$/i.test(previousName);
 
   // Siste rad etter flere drag: bare nedtrapping hvis den er vesentlig lengre (mismerket «Drag 4»).
   if (prevIsDrag) {
-    const namedDragCount = exercises.filter((row) => /^drag\b/i.test(row.exerciseName.trim())).length;
+    const namedDragCount = exercises.filter((row) =>
+      /^drag\b/i.test(String(row.exerciseName ?? "").trim()),
+    ).length;
     if (namedDragCount >= 2) {
       const prevDuration = Number(previousExercise?.durationMinutes ?? 0);
       const duration = Number(exercise.durationMinutes ?? 0);
@@ -216,7 +218,10 @@ export function normalizeProgramsLegacyCooldownNames(programs: TrainingProgram[]
 export function normalizeLegacyIntervalCooldownExerciseNames(exercises: ProgramExercise[]): ProgramExercise[] {
   let changed = false;
   const normalized = exercises.map((exercise, index) => {
-    if (!isLegacyIntervalCooldownDrag(exercises, index) || exercise.exerciseName.trim() === CARDIO_COOLDOWN_STEP_NAME)
+    if (
+      !isLegacyIntervalCooldownDrag(exercises, index) ||
+      String(exercise.exerciseName ?? "").trim() === CARDIO_COOLDOWN_STEP_NAME
+    )
       return exercise;
     changed = true;
     return { ...exercise, exerciseName: CARDIO_COOLDOWN_STEP_NAME };
@@ -279,7 +284,9 @@ function buildWorkoutRow(
   const suggestedWeightRaw = options.suggestedWeightByProgramExerciseId?.[ex.id];
   const suggestedWeight = suggestedWeightRaw !== undefined ? suggestedWeightRaw.trim() : "";
   const holdPlan = programExerciseHoldSeconds(ex, meta?.category);
-  const initialWeight = isStretch ? suggestedWeight || holdPlan || "30" : suggestedWeight || ex.weight;
+  const initialWeight = isStretch
+    ? suggestedWeight || holdPlan || "30"
+    : suggestedWeight || String(ex.weight ?? "");
   const plannedRepsForRow = isStretch ? (String(ex.reps ?? "").trim() || "1") : String(ex.reps ?? "");
 
   const logAfter = options.conditioningLogAfter && meta?.category === "Kondisjon";
