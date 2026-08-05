@@ -1,5 +1,15 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { buildMemberEmailIlikeOrFilter } from "../_shared/memberEmailQueries.ts";
+import {
+  canMemberUseProfileAnchor,
+  canTrainerEditProfileAnchor,
+  isSharedMedlemRow,
+  normalizeProfileEmail,
+  readTrustedAuthMemberId,
+  resolveMemberProfileBootstrapId,
+  resolveTrainerRosterUpdateIds,
+  resolveUpdateMemberProfileRole,
+} from "../_shared/updateMemberProfileSecurity.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -42,7 +52,7 @@ function jsonResponse(status: number, body: Record<string, unknown>) {
 }
 
 function normalizeEmail(value: unknown): string {
-  return String(value ?? "").trim().toLowerCase();
+  return normalizeProfileEmail(value);
 }
 
 async function fetchMembersByNormalizedEmails(
@@ -96,40 +106,8 @@ function normalizeBirthDate(value: unknown): string | null {
   return null;
 }
 
-function isSharedMedlem(customerType: unknown): boolean {
-  return normalizeString(customerType).toLowerCase() === "medlem";
-}
-
 function isTrainerStaffEmail(email: string): boolean {
   return normalizeEmail(email).endsWith("@motus-skarnes.no");
-}
-
-function readAuthMemberId(user: {
-  app_metadata?: Record<string, unknown>;
-  user_metadata?: Record<string, unknown>;
-}): string {
-  return normalizeString(
-    (user.app_metadata?.member_id as string | undefined) ??
-      (user.user_metadata?.member_id as string | undefined) ??
-      "",
-  );
-}
-
-/** Staff som PT-kunde (member_id i JWT) skal lagre som medlem, ikke trener. */
-function resolveEndpointUserRole(user: {
-  email?: string | null;
-  app_metadata?: Record<string, unknown>;
-  user_metadata?: Record<string, unknown>;
-}): string {
-  const currentEmail = normalizeEmail(user.email);
-  const appRole = normalizeString(user.app_metadata?.role).toLowerCase();
-  const metaRole = normalizeString(user.user_metadata?.role).toLowerCase();
-  if (appRole === "member" || metaRole === "member") return "member";
-  const linkedMemberId = readAuthMemberId(user);
-  if (isTrainerStaffEmail(currentEmail) && linkedMemberId) return "member";
-  if (appRole === "trainer" || metaRole === "trainer") return "trainer";
-  if (isTrainerStaffEmail(currentEmail)) return "trainer";
-  return appRole || metaRole || "";
 }
 
 function withoutAvatarUrl(fields: Record<string, string>): Record<string, string> {
@@ -154,14 +132,6 @@ async function updateMembersById(
     result = await adminClient.from("members").update(withoutAvatarUrl(fields)).in("id", ids).select("id");
   }
   return result;
-}
-
-function canTrainerEditAnchor(row: { owner_user_id?: string | null; customer_type?: string | null }, trainerUserId: string): boolean {
-  const ownerUserId = normalizeString(row.owner_user_id);
-  if (isSharedMedlem(row.customer_type)) return true;
-  // Eldre PT-rader kan mangle owner_user_id til auth-id er satt — da skal eier-PT fortsatt kunne oppdatere typen.
-  if (!ownerUserId) return true;
-  return ownerUserId === trainerUserId;
 }
 
 Deno.serve(async (req) => {
@@ -202,10 +172,10 @@ Deno.serve(async (req) => {
   }
 
   const currentEmail = normalizeEmail(user.email);
-  const userRole = resolveEndpointUserRole(user);
+  const userRole = resolveUpdateMemberProfileRole(user);
   // Some existing auth users may be missing explicit role metadata.
   // Authorization is still enforced by validating authenticated email below.
-  if (userRole && userRole !== "member" && userRole !== "trainer") {
+  if (userRole !== "member" && userRole !== "trainer") {
     return jsonResponse(403, { error: "Only members/trainers can update profile through this endpoint" });
   }
 
@@ -217,7 +187,7 @@ Deno.serve(async (req) => {
   const requestedMemberIds = Array.isArray(payload.memberIds)
     ? payload.memberIds.map((value) => normalizeString(value)).filter(Boolean)
     : [];
-  const authMemberId = readAuthMemberId(user);
+  const authMemberId = readTrustedAuthMemberId(user);
   if (!currentEmail || !currentEmail.includes("@")) {
     return jsonResponse(400, { error: "Logged-in user is missing a valid email" });
   }
@@ -228,7 +198,7 @@ Deno.serve(async (req) => {
   }
 
   const changes = payload.changes ?? {};
-  const targetEmailForUpdate = requestedEmail || currentEmail;
+  const targetEmailForUpdate = userRole === "member" ? currentEmail : requestedEmail || currentEmail;
   const normalizedBirthDate =
     changes.birthDate !== undefined ? normalizeBirthDate(changes.birthDate) : undefined;
   if (normalizedBirthDate === null) {
@@ -249,8 +219,8 @@ Deno.serve(async (req) => {
   const avatarUrl = normalizeString(changes.avatarUrl);
   if (avatarUrl) updateFields.avatar_url = avatarUrl;
 
-  // Membership / customer type: ikke for medlem-session; trener eller JWT uten role (eldre trener-kontoer).
-  const canEditMembershipFields = userRole === "trainer" || userRole === "";
+  // Membership / customer type: kun ekte trener-session (app_metadata / staff-domene).
+  const canEditMembershipFields = userRole === "trainer";
   if (canEditMembershipFields) {
     if (changes.membershipType !== undefined) {
       const mt = normalizeString(changes.membershipType).toLowerCase();
@@ -305,19 +275,23 @@ Deno.serve(async (req) => {
 
   const visibleAnchors = (anchorRows ?? []).filter((row) => {
     if (userRole !== "trainer") {
-      const rowEmail = normalizeEmail(row.email);
-      const rowId = normalizeString(row.id);
-      if (rowId && (rowId === authMemberId || rowId === user.id)) return true;
-      return rowEmail === currentEmail || requestedEmails.includes(rowEmail);
+      return canMemberUseProfileAnchor({
+        requesterUserId: user.id,
+        requesterEmail: currentEmail,
+        trustedMemberId: authMemberId,
+        memberRow: row,
+      });
     }
-    return canTrainerEditAnchor(
-      row as { owner_user_id?: string | null; customer_type?: string | null },
-      user.id,
-    );
+    return canTrainerEditProfileAnchor({
+      trainerUserId: user.id,
+      memberRow: row,
+    });
   });
 
   const normalizedTargetEmails = new Set<string>(
-    [targetEmailForUpdate, currentEmail, ...requestedEmails].map((value) => normalizeEmail(value)).filter(Boolean),
+    (userRole === "member" ? [currentEmail] : [targetEmailForUpdate, currentEmail, ...requestedEmails])
+      .map((value) => normalizeEmail(value))
+      .filter(Boolean),
   );
   let expandedRows: Array<{ id: string; email: string; owner_user_id: string | null; customer_type: string | null }> = [];
   if (normalizedTargetEmails.size) {
@@ -335,12 +309,19 @@ Deno.serve(async (req) => {
     }) as Array<{ id: string; email: string; owner_user_id: string | null; customer_type: string | null }>;
   }
   const visibleExpandedRows = expandedRows.filter((row) => {
-    if (userRole !== "trainer") return true;
+    if (userRole !== "trainer") {
+      return canMemberUseProfileAnchor({
+        requesterUserId: user.id,
+        requesterEmail: currentEmail,
+        trustedMemberId: authMemberId,
+        memberRow: row,
+      });
+    }
     if (!visibleAnchors.length) return false;
-    return canTrainerEditAnchor(
-      row as { owner_user_id?: string | null; customer_type?: string | null },
-      user.id,
-    );
+    return canTrainerEditProfileAnchor({
+      trainerUserId: user.id,
+      memberRow: row,
+    });
   });
 
   const targetIds = Array.from(
@@ -352,9 +333,13 @@ Deno.serve(async (req) => {
   );
   const targetEmails = Array.from(
     new Set(
-      [targetEmailForUpdate, ...requestedEmails, ...visibleAnchors.map((row) => normalizeEmail(row.email)), ...visibleExpandedRows.map((row) => normalizeEmail(row.email))]
-        .filter((value) => value && value.includes("@"))
-    )
+      [
+        targetEmailForUpdate,
+        ...(userRole === "member" ? [] : requestedEmails),
+        ...visibleAnchors.map((row) => normalizeEmail(row.email)),
+        ...visibleExpandedRows.map((row) => normalizeEmail(row.email)),
+      ].filter((value) => value && value.includes("@")),
+    ),
   );
   if (!targetIds.length && !targetEmails.length) {
     if (isTrainerStaffEmail(currentEmail) && userRole === "trainer" && !authMemberId) {
@@ -363,7 +348,11 @@ Deno.serve(async (req) => {
       });
     }
     // Last-resort bootstrap for missing member row: create one tied to auth user.
-    const fallbackMemberId = authMemberId || requestedMemberId || `member-${crypto.randomUUID().slice(0, 8)}`;
+    // Never upsert onto an arbitrary client-supplied member id.
+    const fallbackMemberId = resolveMemberProfileBootstrapId({
+      trustedMemberId: authMemberId,
+      requesterUserId: user.id,
+    });
     const insertPayload: Record<string, unknown> = {
       id: fallbackMemberId,
       owner_user_id: user.id,
@@ -426,7 +415,7 @@ Deno.serve(async (req) => {
           .filter((row) => {
             const rowEmail = normalizeEmail((row as { email?: string }).email);
             if (!rowEmail || !emailSet.has(rowEmail)) return false;
-            if (isSharedMedlem((row as { customer_type?: string | null }).customer_type)) return true;
+            if (isSharedMedlemRow(row as { customer_type?: string | null })) return true;
             return normalizeString((row as { owner_user_id?: string | null }).owner_user_id) === trainerId;
           })
           .map((row) => normalizeString((row as { id?: string }).id))
@@ -445,7 +434,7 @@ Deno.serve(async (req) => {
   if (hasProfileUpdates && normalizedTargetEmails.size > 0 && userRole !== "trainer") {
     const emailMatchedIds = Array.from(
       new Set(
-        expandedRows
+        visibleExpandedRows
           .map((row) => normalizeString(row.id))
           .filter(Boolean),
       ),
@@ -527,22 +516,17 @@ Deno.serve(async (req) => {
       const rosterEditableIds = new Set(
         [...visibleAnchors, ...visibleExpandedRows]
           .filter((row) => {
-            if (isSharedMedlem(row.customer_type)) return true;
+            if (isSharedMedlemRow(row)) return true;
             const ownerUserId = normalizeString(row.owner_user_id);
             return ownerUserId === trainerId || !ownerUserId;
           })
           .map((row) => normalizeString(row.id))
           .filter(Boolean),
       );
-      let rosterIds = requestedMemberIds.length
-        ? requestedMemberIds.map((value) => normalizeString(value)).filter((id) => rosterEditableIds.has(id))
-        : Array.from(rosterEditableIds);
-      rosterIds = Array.from(new Set(rosterIds));
-      if (!rosterIds.length && requestedMemberIds.length) {
-        rosterIds = Array.from(
-          new Set(requestedMemberIds.map((value) => normalizeString(value)).filter(Boolean)),
-        );
-      }
+      const rosterIds = resolveTrainerRosterUpdateIds({
+        requestedMemberIds,
+        editableMemberIds: rosterEditableIds,
+      });
       if (rosterIds.length) {
         const privateRosterPayload = {
           ...rosterUpdateFields,
