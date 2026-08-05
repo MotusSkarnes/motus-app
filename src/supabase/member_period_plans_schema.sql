@@ -38,13 +38,31 @@ create policy "member_period_plans_select_trainer_or_member"
 create policy "member_period_plans_insert_trainer"
   on public.member_period_plans
   for insert to authenticated
-  with check (owner_user_id = auth.uid());
+  with check (
+    owner_user_id = auth.uid()
+    and exists (
+      select 1
+      from public.members m
+      where m.id = member_period_plans.member_id
+        and m.owner_user_id = auth.uid()
+        and coalesce(m.is_active, true) is not false
+    )
+  );
 
 create policy "member_period_plans_update_trainer"
   on public.member_period_plans
   for update to authenticated
   using (owner_user_id = auth.uid())
-  with check (owner_user_id = auth.uid());
+  with check (
+    owner_user_id = auth.uid()
+    and exists (
+      select 1
+      from public.members m
+      where m.id = member_period_plans.member_id
+        and m.owner_user_id = auth.uid()
+        and coalesce(m.is_active, true) is not false
+    )
+  );
 
 create policy "member_period_plans_delete_trainer"
   on public.member_period_plans
