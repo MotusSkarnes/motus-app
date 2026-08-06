@@ -2537,9 +2537,13 @@ function pickFirstName(value: unknown): string {
     setProgramNotes(stripConditioningModeMarker(program.notes));
     setProgramFormImageUrl(program.imageUrl ?? "");
     setProgramCoverCleared(false);
-    const draft = program.exercises.map((exercise) => ({ ...exercise }));
+    const mode = parseConditioningDeliveryMode(program) ?? "interval";
+    const draft =
+      mode === "logAfter"
+        ? sanitizeProgramExercisesForLogAfter(program.exercises.map((exercise) => ({ ...exercise })))
+        : stripLogFieldKeysFromExercises(program.exercises.map((exercise) => ({ ...exercise })));
     setProgramExercisesDraft(draft);
-    setConditioningDeliveryMode(parseConditioningDeliveryMode(program) ?? "interval");
+    setConditioningDeliveryMode(mode);
     setCardioIntervalIntensity(inferCardioIntensityFromDraft(draft));
     setCustomerProgramBuilderFocus("training");
     setCustomerSubTab("programs");
