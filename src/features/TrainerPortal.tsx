@@ -71,6 +71,7 @@ import {
   sanitizeProgramExercisesForLogAfter,
   serializeConditioningProgramNotes,
   stripConditioningModeMarker,
+  stripLogFieldKeysFromExercises,
   type ConditioningDeliveryMode,
 } from "../app/conditioningProgramMode";
 import {
@@ -2440,12 +2441,17 @@ function pickFirstName(value: unknown): string {
     setConditioningDeliveryMode(mode);
     if (mode === "logAfter") {
       setProgramExercisesDraft((prev) => sanitizeProgramExercisesForLogAfter(prev));
+      return;
     }
+    // Drop stale log-after fields when switching back to the interval timer.
+    setProgramExercisesDraft((prev) => stripLogFieldKeysFromExercises(prev));
   }
 
   function programExercisesForConditioningSave(draft: ProgramExercise[]): ProgramExercise[] {
-    if (conditioningDeliveryMode !== "logAfter") return draft;
-    return sanitizeProgramExercisesForLogAfter(draft);
+    if (conditioningDeliveryMode === "logAfter") {
+      return sanitizeProgramExercisesForLogAfter(draft);
+    }
+    return stripLogFieldKeysFromExercises(draft);
   }
 
   function buildCustomerProgramNotesForSave(userNotes: string): string {

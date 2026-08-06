@@ -83,6 +83,26 @@ describe("isMemberIntervalWorkoutProgram", () => {
     expect(isMemberIntervalWorkoutProgram(program, categories, exercises)).toBe(true);
   });
 
+  it("prefers explicit interval mode over stale logFieldKeys from a prior log-after draft", () => {
+    const program = program4x4([
+      {
+        ...row("Oppvarming", { durationMinutes: "10" }),
+        logFieldKeys: ["minutes", "distance"],
+      },
+      {
+        ...row("Drag 1", { durationMinutes: "4" }),
+        logFieldKeys: ["minutes", "distance", "heartRate"],
+      },
+      {
+        ...row("Nedjogg", { durationMinutes: "5" }),
+        logFieldKeys: ["minutes"],
+      },
+    ]);
+    program.notes = buildConditioningProgramNotes("interval", "");
+    program.conditioningDeliveryMode = "interval";
+    expect(isMemberIntervalWorkoutProgram(program, categories, exercises)).toBe(true);
+  });
+
   it("does not treat conditioning title alone as interval without timed steps", () => {
     const program: TrainingProgram = {
       id: "p-title",

@@ -46,13 +46,15 @@ export function isMemberIntervalWorkoutProgram(
   exerciseCategoryById: Map<string, Exercise["category"]>,
   exerciseBank: Exercise[] = [],
 ): boolean {
-  if (isConditioningLogAfterProgram(program) || programHasConfiguredLogAfterFields(program)) {
-    return false;
-  }
-
-  // Feilaktig lagret interval-markør på styrke/core skal ikke åpne intervalltimer.
+  // Explicit interval mode wins over stale log-after fields left after a delivery-mode switch.
+  // Still require a dedicated conditioning/interval shape so strength programs with a wrong
+  // marker do not open the interval timer.
   if (isConditioningIntervalProgram(program)) {
     return looksLikeDedicatedIntervalProgram(program, exerciseCategoryById, exerciseBank);
+  }
+
+  if (isConditioningLogAfterProgram(program) || programHasConfiguredLogAfterFields(program)) {
+    return false;
   }
 
   if (!hasIntervalStepStructure(program)) {
