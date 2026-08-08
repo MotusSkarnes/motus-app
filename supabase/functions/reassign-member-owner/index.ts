@@ -1,4 +1,9 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import {
+  isTrustedTrainerUser,
+  normalizeReassignEmail,
+  type ReassignAuthUser,
+} from "../_shared/reassignMemberOwnerSecurity.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -23,12 +28,7 @@ type MemberRow = {
   is_active?: boolean | null;
 };
 
-type AuthUser = {
-  id: string;
-  email?: string;
-  app_metadata?: Record<string, unknown>;
-  user_metadata?: Record<string, unknown>;
-};
+type AuthUser = ReassignAuthUser & { id: string };
 
 function jsonResponse(status: number, body: Record<string, unknown>) {
   return new Response(JSON.stringify(body), {
@@ -38,7 +38,7 @@ function jsonResponse(status: number, body: Record<string, unknown>) {
 }
 
 function normalizeEmail(value: string | null | undefined): string {
-  return String(value ?? "").trim().toLowerCase();
+  return normalizeReassignEmail(value);
 }
 
 function isSharedMedlem(customerType: string | null | undefined): boolean {
@@ -46,11 +46,7 @@ function isSharedMedlem(customerType: string | null | undefined): boolean {
 }
 
 function isTrainerUser(user: AuthUser): boolean {
-  const appRole = String(user.app_metadata?.role ?? "").trim().toLowerCase();
-  const metaRole = String(user.user_metadata?.role ?? "").trim().toLowerCase();
-  if (appRole === "trainer" || metaRole === "trainer") return true;
-  const email = normalizeEmail(user.email);
-  return email.endsWith("@motus-skarnes.no");
+  return isTrustedTrainerUser(user);
 }
 
 function trainerDisplayName(user: AuthUser): string {
