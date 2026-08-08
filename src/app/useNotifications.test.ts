@@ -7,6 +7,7 @@ vi.mock("../services/supabaseClient", () => ({
 }));
 import { formatNotificationTimestamp } from "./dateFormat";
 import { INSPIRATION_CHANGED_EVENT, INSPIRATION_STORAGE_KEY } from "./inspirationStorage";
+import { mergeMemberNotificationPreferencesIntoPersonalGoals } from "./notificationPreferences";
 import { useNotifications } from "./useNotifications";
 import type { MemberTab, PeriodSchedulePlan, TrainingProgram, WorkoutLog } from "./types";
 
@@ -936,6 +937,67 @@ describe("useNotifications workout comment alerts", () => {
 
     expect(result.current.trainerUnreadCount).toBe(0);
     expect(result.current.trainerVisibleAlerts[0]?.isUnread).toBe(false);
+  });
+
+  it("keeps badge preference fields in persisted member notification snapshots", async () => {
+    const memberPersonalGoals = mergeMemberNotificationPreferencesIntoPersonalGoals("", {
+      version: 1,
+      memberAlertsSeenAt: 0,
+      seenMemberProgramIds: [],
+      seenMemberWorkoutCommentKeys: [],
+      openedMemberAlertIds: [],
+      seenMemberInspirationIds: [],
+      seenMemberPeriodPlanKeys: [],
+      dismissedMemberCheckInMonths: [],
+      memberInspirationBaselineAt: 0,
+      seenHiddenBadgeIds: ["secret-a"],
+      lastCelebratedAchievedLevel: 4,
+      updatedAt: 200,
+    });
+    const onPersistMemberNotificationPreferences = vi.fn();
+    const { result } = renderHook(() =>
+      useNotifications({
+        messages: [
+          {
+            id: "msg-1",
+            memberId: "member-1",
+            sender: "trainer",
+            text: "Hei medlem",
+            createdAt: "2026-05-15T12:00:00.000Z",
+          },
+        ],
+        programs: [],
+        logs: [],
+        members: [{ id: "member-1", name: "Test", email: "test@example.com" } as never],
+        memberViewId: "member-1",
+        memberPersonalGoals,
+        memberNotificationProfileReady: true,
+        currentUserRole: "member",
+        setMemberTab: () => {},
+        onPersistMemberNotificationPreferences,
+      }),
+    );
+
+    await act(async () => {
+      await new Promise((resolve) => window.setTimeout(resolve, 0));
+    });
+    const alert = result.current.memberVisibleAlerts.find((item) => item.kind === "message");
+    expect(alert).toBeDefined();
+
+    act(() => {
+      result.current.openAlert(alert!);
+    });
+
+    await waitFor(() => {
+      expect(onPersistMemberNotificationPreferences).toHaveBeenCalled();
+      expect(onPersistMemberNotificationPreferences).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          openedMemberAlertIds: ["member-msg-msg-1"],
+          seenHiddenBadgeIds: ["secret-a"],
+          lastCelebratedAchievedLevel: 4,
+        }),
+      );
+    });
   });
 });
 
