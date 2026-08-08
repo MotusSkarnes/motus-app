@@ -15,6 +15,30 @@ type SendPayload = {
   clientMessageId?: string;
 };
 
+type AuthenticatedUser = {
+  id?: string | null;
+  email?: string | null;
+  app_metadata?: Record<string, unknown> | null;
+  user_metadata?: Record<string, unknown> | null;
+};
+
+function normalizeString(value: unknown): string {
+  return String(value ?? "").trim();
+}
+
+function normalizeEmail(value: unknown): string {
+  const email = normalizeString(value).toLowerCase();
+  return email.includes("@") ? email : "";
+}
+
+function readAuthMemberId(user: AuthenticatedUser | null): string {
+  return normalizeString(user?.app_metadata?.member_id ?? user?.user_metadata?.member_id ?? "");
+}
+
+function readAuthRole(user: AuthenticatedUser | null): string {
+  return normalizeString(user?.app_metadata?.role ?? user?.user_metadata?.role ?? "").toLowerCase();
+}
+
 async function resolveAuthUserByEmail(
   adminClient: ReturnType<typeof createClient>,
   email: string,
@@ -160,17 +184,22 @@ Deno.serve(async (req) => {
     if (!text) return jsonResponse(200, { ok: false, inserted: 0, message: "text is required" });
 
     const adminClient = createClient(supabaseUrl, serviceRoleKey);
+    let authenticatedUser: AuthenticatedUser | null = null;
     let authenticatedUserId = "";
     if (token) {
       const { data: userData, error: userError } = await adminClient.auth.getUser(token);
-      if (!userError) {
-        authenticatedUserId = String(userData?.user?.id ?? "").trim();
+      if (!userError && userData?.user) {
+        authenticatedUser = userData.user as AuthenticatedUser;
+        authenticatedUserId = normalizeString(authenticatedUser.id);
       }
+    }
+    if (!authenticatedUserId) {
+      return jsonResponse(200, { ok: false, inserted: 0, message: "Invalid user session" });
     }
 
     const { data: memberRow, error: memberError } = await adminClient
       .from("members")
-      .select("id, owner_user_id, email")
+      .select("id, owner_user_id, email, is_active")
       .eq("id", memberId)
       .maybeSingle();
     if (memberError || !memberRow) {
@@ -188,7 +217,7 @@ Deno.serve(async (req) => {
       canonicalMemberId && canonicalMemberId !== memberId
         ? await adminClient
             .from("members")
-            .select("id, owner_user_id, email")
+            .select("id, owner_user_id, email, is_active")
             .eq("id", canonicalMemberId)
             .maybeSingle()
         : { data: memberRow as Record<string, unknown>, error: null };
@@ -201,11 +230,35 @@ Deno.serve(async (req) => {
       canonicalEmail =
         String((canonicalMemberRow.data as { email?: string }).email ?? "").trim().toLowerCase() || canonicalEmail;
     }
+    const recipientOwnerUserId = canonicalMemberOwnerUserId;
+    const canonicalMemberIsActive =
+      (canonicalMemberRow.data as { is_active?: boolean | null } | null)?.is_active !== false;
+    const authenticatedEmail = normalizeEmail(authenticatedUser?.email);
+    const authenticatedMemberId = readAuthMemberId(authenticatedUser);
+    const authenticatedRole = readAuthRole(authenticatedUser);
+    const memberIdMatches = [memberId, canonicalMemberId, recipientAuthMemberId]
+      .map((id) => normalizeString(id))
+      .filter(Boolean)
+      .includes(authenticatedMemberId);
+    const memberEmailMatches =
+      Boolean(authenticatedEmail) &&
+      Boolean(canonicalEmail) &&
+      authenticatedEmail === canonicalEmail &&
+      canonicalMemberIsActive;
+    const memberAuthMatches =
+      (Boolean(recipientAuthUserId) && authenticatedUserId === recipientAuthUserId) || memberIdMatches || memberEmailMatches;
+    const trainerAuthMatches =
+      Boolean(recipientOwnerUserId) && authenticatedUserId === recipientOwnerUserId && authenticatedRole !== "member";
+    if (sender === "trainer" && !trainerAuthMatches) {
+      return jsonResponse(200, { ok: false, inserted: 0, message: "Not authorized to send as trainer for this member" });
+    }
+    if (sender === "member" && !memberAuthMatches) {
+      return jsonResponse(200, { ok: false, inserted: 0, message: "Not authorized to send as member for this thread" });
+    }
     if (sender === "trainer" && recipientAuthUserId) {
       // Always align recipient auth link with canonical member row.
       await ensureAuthMemberLink(adminClient, recipientAuthUserId, canonicalMemberId);
     }
-    const recipientOwnerUserId = canonicalMemberOwnerUserId;
     const nowIso = new Date().toISOString();
     const rows: Array<{
       id: string;
@@ -215,16 +268,7 @@ Deno.serve(async (req) => {
       text: string;
       created_at: string;
     }> = [];
-    const hintedOwner = "";
-    const trainerResolvedRecipientUserId = recipientAuthUserId;
-    if (sender === "trainer" && trainerResolvedRecipientUserId) {
-      // Best effort link repair. Do not block message persistence if this fails.
-      await ensureAuthMemberLink(adminClient, trainerResolvedRecipientUserId, canonicalMemberId);
-    }
-    const chosenOwnerUserId =
-      sender === "trainer"
-        ? authenticatedUserId || recipientOwnerUserId
-        : recipientOwnerUserId || authenticatedUserId || hintedOwner;
+    const chosenOwnerUserId = recipientOwnerUserId;
     if (!chosenOwnerUserId) {
       return jsonResponse(200, {
         ok: false,
