@@ -104,13 +104,23 @@ export function MemberQuickFoodLogPanel({ memberId, readOnly = false, onRefreshF
 
   const addRecipe = useCallback(
     (source: "recipe" | "ai") => {
-      const pool = recipes.filter((recipe) => Boolean(computeRecipeMacros(recipe.body, foodItems, { servings: recipe.servings })));
+      const pool = recipes.filter((recipe) =>
+        Boolean(
+          computeRecipeMacros(recipe.body, foodItems, {
+            servings: recipe.servings,
+            ingredientFoodOverrides: recipe.ingredientFoodOverrides,
+          }),
+        ),
+      );
       if (!pool.length) {
         setStatus("Fant ingen oppskrifter med beregnede makroer.");
         return;
       }
       const picked = source === "ai" ? pool[Math.floor(Math.random() * pool.length)] : pool[0];
-      const macros = computeRecipeMacros(picked.body, foodItems, { servings: picked.servings });
+      const macros = computeRecipeMacros(picked.body, foodItems, {
+        servings: picked.servings,
+        ingredientFoodOverrides: picked.ingredientFoodOverrides,
+      });
       if (!macros) return;
       const entry: MemberQuickFoodLogEntry = {
         id: `log-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`,
