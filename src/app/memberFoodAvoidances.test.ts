@@ -9,6 +9,7 @@ import {
   readMemberFoodAvoidancesFromPersonalGoals,
 } from "./memberFoodAvoidances";
 import { mergePersonalGoalsFromCandidates } from "./memberOnboarding";
+import { computeRecipeIngredients } from "./recipeMacros";
 
 describe("memberFoodAvoidances", () => {
   it("lagrer og leser mat unngås fra personalGoals", () => {
@@ -46,6 +47,34 @@ describe("memberFoodAvoidances", () => {
 
     expect(conflicts.length).toBeGreaterThan(0);
     expect(conflicts[0]?.avoidanceLabel).toBe("Laks");
+  });
+
+  it("bruker manuelle ingrediens-koblinger når oppskriftskonflikter sjekkes", () => {
+    const foods = buildDefaultFoodBankItems();
+    const body = `**Til 1 porsjon**
+
+**Ingredienser**
+- 200 g kjøttdeig`;
+    const auto = computeRecipeIngredients(body, foods)[0];
+    const soyafarse = foods.find((f) => f.name === "Soyafarse");
+    expect(auto?.foodName).toBe("Karbonadedeig mager");
+    expect(soyafarse).toBeDefined();
+    const personalGoals = mergeMemberFoodAvoidancesIntoPersonalGoals("", {
+      items: [{ foodId: soyafarse!.id, label: "Soyafarse", key: "soyafarse" }],
+      notes: "",
+      updatedAt: Date.now(),
+    });
+
+    const conflicts = findRecipeFoodAvoidanceConflicts(
+      body,
+      foods,
+      [{ id: "m1", name: "Test Medlem", personalGoals, isActive: true }],
+      { [auto!.key]: soyafarse!.id },
+    );
+
+    expect(conflicts).toHaveLength(1);
+    expect(conflicts[0]?.avoidanceLabel).toBe("Soyafarse");
+    expect(conflicts[0]?.ingredientLabel).toBe("Soyafarse");
   });
 
   it("mergeFoodAvoidancesAcrossCandidates unioner rader", () => {

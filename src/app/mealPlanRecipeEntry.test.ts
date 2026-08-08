@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
+import { buildDefaultFoodBankItems } from "./foodBankSeed";
 import type { InspirationRecipeItem } from "./inspirationRecipeItems";
 import { recipeToMealPlanEntry } from "./mealPlanRecipeEntry";
+import { computeRecipeIngredients, computeRecipeMacros } from "./recipeMacros";
 
 const EGG_RECIPE: InspirationRecipeItem = {
   id: "r-egg",
@@ -29,5 +31,33 @@ describe("recipeToMealPlanEntry", () => {
     );
     expect(entry.nutritionPer100g.kcal).toBe(0);
     expect(entry.note).toContain("Ingredienser");
+  });
+
+  it("bruker lagrede ingrediens-koblinger når oppskrift legges i matplan", () => {
+    const foods = buildDefaultFoodBankItems();
+    const body = "**Til 1 porsjon**\n\n**Ingredienser**\n- 200 g kjøttdeig\n\n**Slik gjør du**\n1. Stek.";
+    const auto = computeRecipeIngredients(body, foods)[0];
+    const soyafarse = foods.find((item) => item.name === "Soyafarse");
+    expect(auto?.foodName).toBe("Karbonadedeig mager");
+    expect(soyafarse).toBeTruthy();
+
+    const recipe: InspirationRecipeItem = {
+      id: "r-override",
+      title: "Override gryte",
+      description: "Middag",
+      tag: "Middag",
+      body,
+      servings: 1,
+      ingredientFoodOverrides: { [auto!.key]: soyafarse!.id },
+    };
+    const expected = computeRecipeMacros(body, foods, {
+      servings: recipe.servings,
+      ingredientFoodOverrides: recipe.ingredientFoodOverrides,
+    });
+    const entry = recipeToMealPlanEntry(recipe, foods);
+
+    expect(expected).not.toBeNull();
+    expect(entry.nutritionPer100g.kcal).toBe(Math.round(expected!.perServing.kcal));
+    expect(entry.nutritionPer100g.protein).toBe(Math.round(expected!.perServing.protein * 10) / 10);
   });
 });

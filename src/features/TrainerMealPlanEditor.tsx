@@ -602,11 +602,14 @@ export function TrainerMealPlanEditor({
       body: previewRecipe.body,
       title: previewRecipe.title,
       tag: previewRecipe.tag,
+      servings: previewRecipe.servings,
     });
     return buildScaledRecipeView(previewRecipe.body, foodItemsForMacros, {
       scalingMode,
       dailyTargets: plan?.targets,
       mealSlot,
+      servings: previewRecipe.servings,
+      ingredientFoodOverrides: previewRecipe.ingredientFoodOverrides,
     });
   }, [previewRecipe, foodItemsForMacros, plan?.targets]);
 
@@ -616,7 +619,7 @@ export function TrainerMealPlanEditor({
     if (!previewRecipe) return [];
     return findRecipeFoodAvoidanceConflicts(previewRecipe.body, foodItemsForMacros, [
       { id: memberId, name: memberName, personalGoals: memberPersonalGoals, isActive: true },
-    ]);
+    ], previewRecipe.ingredientFoodOverrides);
   }, [foodItemsForMacros, memberId, memberName, memberPersonalGoals, previewRecipe]);
 
   const gramPreview = useMemo(() => {
@@ -684,13 +687,22 @@ export function TrainerMealPlanEditor({
               body: recipe.body,
               title: recipe.title,
               tag: recipe.tag,
+              servings: recipe.servings,
             });
             const scaled = buildScaledRecipeView(recipe.body, foodItemsForMacros, {
               scalingMode,
               dailyTargets: sourcePlan.targets,
               mealSlot,
+              servings: recipe.servings,
+              ingredientFoodOverrides: recipe.ingredientFoodOverrides,
             });
-            const kcal = scaled?.macros?.perServing.kcal ?? computeRecipeMacros(recipe.body, foodItemsForMacros)?.perServing.kcal ?? 0;
+            const kcal =
+              scaled?.macros?.perServing.kcal ??
+              computeRecipeMacros(recipe.body, foodItemsForMacros, {
+                servings: recipe.servings,
+                ingredientFoodOverrides: recipe.ingredientFoodOverrides,
+              })?.perServing.kcal ??
+              0;
             const distance = mealTargetKcal > 0 ? Math.abs(kcal - mealTargetKcal) : 0;
             const repeatPenalty = usedRecipeIds.has(recipe.id) ? 180 : 0;
             const sameDayPenalty = pickedForCurrentDay.has(recipe.id) ? 260 : 0;
@@ -1948,8 +1960,10 @@ export function TrainerMealPlanEditor({
                           body: previewRecipe.body,
                           title: previewRecipe.title,
                           tag: previewRecipe.tag,
+                          servings: previewRecipe.servings,
                         })}
                         recipeId={previewRecipe.id}
+                        servings={previewRecipe.servings}
                         foodOverrides={previewRecipe.ingredientFoodOverrides}
                       />
                       {previewRecipeAvoidanceConflicts.length > 0 ? (
