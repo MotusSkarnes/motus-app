@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
+import { buildDefaultFoodBankItems } from "./foodBankSeed";
 import type { InspirationRecipeItem } from "./inspirationRecipeItems";
+import { computeMacrosForGrams } from "./mealPlanMacros";
 import { recipeToMealPlanEntry } from "./mealPlanRecipeEntry";
 
 const EGG_RECIPE: InspirationRecipeItem = {
@@ -29,5 +31,26 @@ describe("recipeToMealPlanEntry", () => {
     );
     expect(entry.nutritionPer100g.kcal).toBe(0);
     expect(entry.note).toContain("Ingredienser");
+  });
+
+  it("bruker manuell ingredienskobling når oppskrift lagres i matplan", () => {
+    const foods = buildDefaultFoodBankItems();
+    const soyafarse = foods.find((item) => item.name === "Soyafarse");
+    expect(soyafarse).toBeTruthy();
+    const recipe: InspirationRecipeItem = {
+      id: "r-soya",
+      title: "Soya bolognese",
+      description: "Middag",
+      tag: "Middag",
+      servings: 1,
+      body: "**Til 1 porsjon**\n\n**Ingredienser**\n- 200 g kjøttdeig",
+      ingredientFoodOverrides: { "ing-0": soyafarse!.id },
+    };
+
+    const entry = recipeToMealPlanEntry(recipe, foods);
+    const expected = computeMacrosForGrams(soyafarse!.nutritionPer100g, 200);
+
+    expect(entry.nutritionPer100g.kcal).toBe(Math.round(expected.kcal));
+    expect(entry.nutritionPer100g.protein).toBe(Math.round(expected.protein * 10) / 10);
   });
 });

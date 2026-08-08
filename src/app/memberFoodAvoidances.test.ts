@@ -48,6 +48,28 @@ describe("memberFoodAvoidances", () => {
     expect(conflicts[0]?.avoidanceLabel).toBe("Laks");
   });
 
+  it("sjekker unngåelser mot manuelle ingredienskoblinger", () => {
+    const foods = buildDefaultFoodBankItems();
+    const soyafarse = foods.find((f) => f.name === "Soyafarse");
+    expect(soyafarse).toBeDefined();
+    const personalGoals = mergeMemberFoodAvoidancesIntoPersonalGoals("", {
+      items: [{ foodId: soyafarse!.id, label: "Soyafarse", key: "soyafarse" }],
+      notes: "",
+      updatedAt: Date.now(),
+    });
+    const body = "**Til 1 porsjon**\n\n**Ingredienser**\n- 200 g kjøttdeig";
+
+    const conflicts = findRecipeFoodAvoidanceConflicts(
+      body,
+      foods,
+      [{ id: "m1", name: "Test Medlem", personalGoals, isActive: true }],
+      { "ing-0": soyafarse!.id },
+    );
+
+    expect(conflicts).toHaveLength(1);
+    expect(conflicts[0]?.ingredientLabel).toBe("Soyafarse");
+  });
+
   it("mergeFoodAvoidancesAcrossCandidates unioner rader", () => {
     const rowA = mergeMemberFoodAvoidancesIntoPersonalGoals("", {
       items: [foodAvoidanceFromLabel("Laks")!],
