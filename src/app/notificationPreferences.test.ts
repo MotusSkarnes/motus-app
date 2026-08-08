@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   mergeMemberNotificationPreferences,
   mergeMemberNotificationPreferencesIntoPersonalGoals,
+  patchMemberNotificationPreferencesInPersonalGoals,
   readMemberNotificationPreferencesFromPersonalGoals,
 } from "./notificationPreferences";
 
@@ -130,5 +131,33 @@ describe("notificationPreferences", () => {
     expect(merged.openedMemberAlertIds).toEqual(["member-msg-1"]);
     expect(merged.seenHiddenBadgeIds).toEqual(expect.arrayContaining(["secret-a", "secret-b"]));
     expect(merged.lastCelebratedAchievedLevel).toBe(5);
+  });
+
+  it("preserves badge UI state when patching notification-only fields", () => {
+    const existing = mergeMemberNotificationPreferencesIntoPersonalGoals("", {
+      version: 1,
+      memberAlertsSeenAt: 0,
+      seenMemberProgramIds: [],
+      seenMemberWorkoutCommentKeys: [],
+      openedMemberAlertIds: [],
+      seenMemberInspirationIds: [],
+      seenMemberPeriodPlanKeys: [],
+      dismissedMemberCheckInMonths: [],
+      memberInspirationBaselineAt: 0,
+      seenHiddenBadgeIds: ["pinse-trener"],
+      lastCelebratedAchievedLevel: 4,
+      updatedAt: 100,
+    });
+
+    const patched = patchMemberNotificationPreferencesInPersonalGoals(existing, {
+      memberAlertsSeenAt: 500,
+      openedMemberAlertIds: ["member-msg-1"],
+    });
+
+    const parsed = readMemberNotificationPreferencesFromPersonalGoals(patched);
+    expect(parsed?.memberAlertsSeenAt).toBe(500);
+    expect(parsed?.openedMemberAlertIds).toEqual(["member-msg-1"]);
+    expect(parsed?.seenHiddenBadgeIds).toEqual(["pinse-trener"]);
+    expect(parsed?.lastCelebratedAchievedLevel).toBe(4);
   });
 });
