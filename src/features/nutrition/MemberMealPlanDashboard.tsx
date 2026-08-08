@@ -244,7 +244,10 @@ export function MemberMealPlanDashboard({ plan, memberId, onOpenAvoidances, onRe
   const recipeNutritionById = useMemo(() => {
     const byId = new Map<string, FoodItem["nutritionPer100g"]>();
     for (const recipe of inspirationRecipes) {
-      const macros = computeRecipeMacros(recipe.body, foodItems, { servings: recipe.servings });
+      const macros = computeRecipeMacros(recipe.body, foodItems, {
+        servings: recipe.servings,
+        ingredientFoodOverrides: recipe.ingredientFoodOverrides,
+      });
       if (!macros) continue;
       byId.set(recipe.id, {
         kcal: Math.round(macros.perServing.kcal),
@@ -1433,8 +1436,18 @@ export function MemberMealPlanDashboard({ plan, memberId, onOpenAvoidances, onRe
                   </ol>
                 </section>
               ) : null}
-              {computeRecipeMacros(activeRecipe.body, foodItems, { servings: activeRecipe.servings }) ? (
-                <RecipeMacroBlocks result={computeRecipeMacros(activeRecipe.body, foodItems, { servings: activeRecipe.servings })!} />
+              {computeRecipeMacros(activeRecipe.body, foodItems, {
+                servings: activeRecipe.servings,
+                ingredientFoodOverrides: activeRecipe.ingredientFoodOverrides,
+              }) ? (
+                <RecipeMacroBlocks
+                  result={
+                    computeRecipeMacros(activeRecipe.body, foodItems, {
+                      servings: activeRecipe.servings,
+                      ingredientFoodOverrides: activeRecipe.ingredientFoodOverrides,
+                    })!
+                  }
+                />
               ) : null}
             </div>
           </div>

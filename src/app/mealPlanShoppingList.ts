@@ -118,11 +118,14 @@ function expandRecipeEntryToTotals(
     body,
     title: recipe.title,
     tag: recipe.tag,
+    servings: recipe.servings,
   });
   const scaled = buildScaledRecipeView(body, foodItems, {
     scalingMode,
     dailyTargets: planTargets,
     mealSlot,
+    servings: recipe.servings,
+    ingredientFoodOverrides: recipe.ingredientFoodOverrides,
   });
 
   if (!scaled?.ingredients.length) {
