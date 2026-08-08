@@ -18,6 +18,7 @@ export type RecipeMacroOptions = {
 
 export type RecipeIngredient = {
   key: string;
+  legacyKey?: string;
   sourceLine: string;
   searchText: string;
   displayAmount: string;
@@ -490,7 +491,7 @@ export function applyRecipeIngredientFoodOverrides(
 ): RecipeIngredient[] {
   if (!overrides || !Object.keys(overrides).length) return ingredients;
   return ingredients.map((ingredient) => {
-    const overrideId = overrides[ingredient.key]?.trim();
+    const overrideId = (overrides[ingredient.key] ?? (ingredient.legacyKey ? overrides[ingredient.legacyKey] : undefined))?.trim();
     if (!overrideId) return ingredient;
     const food = foodItems.find((item) => item.id === overrideId);
     if (!food) return ingredient;
@@ -553,6 +554,12 @@ export function formatIngredientDisplay(
   return `${Math.round(grams)} g ${foodName}`;
 }
 
+function recipeIngredientBaseKey(parsed: ParsedIngredient, grams: number): string {
+  const searchKey = normalizeFoodKey(parsed.searchText) || "ingredient";
+  const gramsKey = Math.round(grams * 10) / 10;
+  return `ingredient-${searchKey}-${String(gramsKey).replace(".", "_")}`;
+}
+
 export function computeRecipeIngredients(
   body: string,
   foodItems: FoodItem[],
@@ -560,6 +567,7 @@ export function computeRecipeIngredients(
 ): RecipeIngredient[] {
   const lines = extractRecipeIngredientLines(body);
   const rows: RecipeIngredient[] = [];
+  const keyCounts = new Map<string, number>();
 
   lines.forEach((line, index) => {
     const parsed = parseIngredientLine(line);
@@ -576,8 +584,13 @@ export function computeRecipeIngredients(
     if (grams <= 0) return;
 
     const name = food.name;
+    const baseKey = recipeIngredientBaseKey(parsed, grams);
+    const count = keyCounts.get(baseKey) ?? 0;
+    keyCounts.set(baseKey, count + 1);
+    const key = count === 0 ? baseKey : `${baseKey}-${count + 1}`;
     rows.push({
-      key: `ing-${index}`,
+      key,
+      legacyKey: `ing-${index}`,
       sourceLine: line,
       searchText: parsed.searchText,
       displayAmount: formatIngredientDisplay(parsed, grams, name),

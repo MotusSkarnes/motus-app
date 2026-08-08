@@ -5,6 +5,7 @@ import type { MealPlan, MealPlanFoodEntry, MealPlanTargets } from "./mealPlanTyp
 import { buildScaledRecipeView, resolveRecipeScalingMode } from "./recipeMealScaling";
 import type { RecipeMealSlot } from "./recipeMealCategory";
 import { resolveRecipeMealSlot } from "./recipeMealCategory";
+import { parseRecipeServings } from "./recipeMacros";
 
 export type ShoppingListItem = {
   key: string;
@@ -118,11 +119,14 @@ function expandRecipeEntryToTotals(
     body,
     title: recipe.title,
     tag: recipe.tag,
+    servings: recipe.servings,
   });
   const scaled = buildScaledRecipeView(body, foodItems, {
     scalingMode,
     dailyTargets: planTargets,
     mealSlot,
+    servings: recipe.servings,
+    ingredientFoodOverrides: recipe.ingredientFoodOverrides,
   });
 
   if (!scaled?.ingredients.length) {
@@ -130,8 +134,9 @@ function expandRecipeEntryToTotals(
     return;
   }
 
+  const recipeServings = scaled.macros.servings || parseRecipeServings(body, recipe.servings);
   for (const ing of scaled.ingredients) {
-    const grams = ing.grams * portionMultiplier;
+    const grams = (ing.grams / recipeServings) * portionMultiplier;
     if (grams <= 0) continue;
     const key = ing.foodId || ing.foodName;
     mergeTotals(totals, key, {

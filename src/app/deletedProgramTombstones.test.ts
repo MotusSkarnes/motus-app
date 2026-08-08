@@ -54,4 +54,22 @@ describe("deleted program tombstones", () => {
 
     expect(filterDeletedPrograms([deleted])).toEqual([deleted]);
   });
+
+  it("does not clear a member-scoped fingerprint tombstone from another member copy", () => {
+    const deleted = program({ id: "local-deleted-program", memberId: "member-deleted" });
+    const otherMemberCopy = program({
+      ...deleted,
+      id: "other-member-copy",
+      memberId: "member-other",
+    });
+    const rehydratedDeletedCopy = program({
+      ...deleted,
+      id: "remote-deleted-copy",
+    });
+
+    registerDeletedProgram(deleted);
+    reconcileProgramTombstonesWithRemote([otherMemberCopy]);
+
+    expect(filterDeletedPrograms([rehydratedDeletedCopy])).toEqual([]);
+  });
 });

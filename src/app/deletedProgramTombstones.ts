@@ -99,10 +99,11 @@ export function filterDeletedPrograms(programs: TrainingProgram[]): TrainingProg
 
 function programMatchesScopedTombstone(
   program: TrainingProgram,
-  _scope: string,
+  scope: string,
   payload: string,
   kind: "id" | "fingerprint",
 ): boolean {
+  if (tombstoneScope(program) !== scope) return false;
   if (kind === "id") return program.id.trim() === payload;
   return buildTrainingProgramDisplayKey(program) === payload;
 }
