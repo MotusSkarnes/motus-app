@@ -1,5 +1,6 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { buildMemberEmailIlikeOrFilter } from "../_shared/memberEmailQueries.ts";
+import { memberIdsEligibleForNullOwnerBackfill } from "../_shared/trainerOwnershipClaimScope.ts";
 
 const EXERCISE_BANK_SELECT =
   "id, name, category, muscle_group, equipment, level, description, image_url, personal_record_image_url, is_active, created_at, updated_at";
@@ -306,8 +307,13 @@ Deno.serve(async (req) => {
       .in("member_id", memberIds);
   }
 
-  const { data: ownedMembers } = await adminClient.from("members").select("id").eq("owner_user_id", ownerUserId);
-  const ownedMemberIds = (ownedMembers ?? []).map((row) => String((row as { id?: string }).id ?? "")).filter(Boolean);
+  const { data: ownedMembers } = await adminClient
+    .from("members")
+    .select("id, owner_user_id")
+    .eq("owner_user_id", ownerUserId);
+  // Only backfill null-owner child rows for members this trainer owns.
+  // Shared Medlem rows are visible to every PT — never claim their orphans here.
+  const ownedMemberIds = memberIdsEligibleForNullOwnerBackfill(ownedMembers ?? [], ownerUserId);
 
   if (ownedMemberIds.length > 0) {
     await Promise.all([
@@ -437,14 +443,9 @@ Deno.serve(async (req) => {
     const ptOwner = String((row as { owner_user_id?: string }).owner_user_id ?? "").trim();
     if (memberId && ptOwner) memberOwnerById.set(memberId, ptOwner);
   }
-  // Backfill only NULL owner_user_id — never reassign another PT's programs/logs to member.owner_user_id.
-  if (visibleMemberIds.length > 0) {
-    await Promise.all([
-      backfillNullOwnerUserId("training_programs", visibleMemberIds),
-      backfillNullOwnerUserId("workout_logs", visibleMemberIds),
-      backfillNullOwnerUserId("chat_messages", visibleMemberIds),
-    ]);
-  }
+  // Intentionally no second null-owner backfill over visibleMemberIds: that set
+  // includes shared Medlem rows owned by other trainers. Claiming those orphans
+  // would permanently steal programs/logs/chat on every PT hydrate.
   const visibleMemberEmails = Array.from(
     new Set(
       (members ?? [])
