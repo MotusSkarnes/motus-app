@@ -1,6 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { DEFAULT_INSPIRATION_RECIPES, DEFAULT_RECIPE_SCALING_BY_ID } from "./defaultInspirationRecipes";
-import { applyCanonicalRecipeBodies, type RecipeIngredientFoodOverrides } from "./recipeMacros";
+import {
+  applyCanonicalRecipeBodies,
+  normalizeRecipeIngredientFoodOverrides,
+  type RecipeIngredientFoodOverrides,
+} from "./recipeMacros";
 import { isRecipeProteinCategory, type RecipeProteinCategory } from "./recipeProteinCategory";
 import {
   fetchInspirationItemsForHub,
@@ -58,7 +62,7 @@ function normalizeRecipeItem(raw: unknown): InspirationRecipeItem | null {
     DEFAULT_RECIPE_SCALING_BY_ID.get(id);
   const servings = Number(row.servings);
   const rawOverrides = row.ingredientFoodOverrides;
-  const ingredientFoodOverrides =
+  const ingredientFoodOverridesRaw =
     rawOverrides && typeof rawOverrides === "object" && !Array.isArray(rawOverrides)
       ? Object.fromEntries(
           Object.entries(rawOverrides as Record<string, unknown>).filter(
@@ -66,6 +70,7 @@ function normalizeRecipeItem(raw: unknown): InspirationRecipeItem | null {
           ),
         )
       : undefined;
+  const ingredientFoodOverrides = normalizeRecipeIngredientFoodOverrides(body || description, ingredientFoodOverridesRaw);
   return {
     id,
     title: String(row.title ?? "").trim() || "Oppskrift",
@@ -75,7 +80,7 @@ function normalizeRecipeItem(raw: unknown): InspirationRecipeItem | null {
     ...(scalingMode ? { scalingMode } : {}),
     ...(isRecipeProteinCategory(row.proteinCategory) ? { proteinCategory: row.proteinCategory } : {}),
     ...(Number.isFinite(servings) && servings > 0 ? { servings: Math.round(servings) } : {}),
-    ...(ingredientFoodOverrides && Object.keys(ingredientFoodOverrides).length
+    ...(Object.keys(ingredientFoodOverrides).length
       ? { ingredientFoodOverrides }
       : {}),
     ...(imageUrl ? { imageUrl } : {}),

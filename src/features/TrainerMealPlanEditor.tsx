@@ -528,6 +528,16 @@ export function TrainerMealPlanEditor({
     () => (recipeReadOnlyId ? recipeItems.find((row) => row.id === recipeReadOnlyId) ?? null : null),
     [recipeReadOnlyId, recipeItems],
   );
+  const recipeReadOnlyMacros = useMemo(
+    () =>
+      recipeReadOnly
+        ? computeRecipeMacros(recipeReadOnly.body, foodItemsForMacros, {
+            servings: recipeReadOnly.servings,
+            ingredientFoodOverrides: recipeReadOnly.ingredientFoodOverrides,
+          })
+        : null,
+    [foodItemsForMacros, recipeReadOnly],
+  );
 
   const dayUsed = useMemo(
     () => (activeDay ? sumDayMacros(activeDay, foodById) : { kcal: 0, protein: 0, carbs: 0, fat: 0 }),
@@ -602,11 +612,14 @@ export function TrainerMealPlanEditor({
       body: previewRecipe.body,
       title: previewRecipe.title,
       tag: previewRecipe.tag,
+      servings: previewRecipe.servings,
     });
     return buildScaledRecipeView(previewRecipe.body, foodItemsForMacros, {
       scalingMode,
       dailyTargets: plan?.targets,
       mealSlot,
+      servings: previewRecipe.servings,
+      ingredientFoodOverrides: previewRecipe.ingredientFoodOverrides,
     });
   }, [previewRecipe, foodItemsForMacros, plan?.targets]);
 
@@ -684,13 +697,22 @@ export function TrainerMealPlanEditor({
               body: recipe.body,
               title: recipe.title,
               tag: recipe.tag,
+              servings: recipe.servings,
             });
             const scaled = buildScaledRecipeView(recipe.body, foodItemsForMacros, {
               scalingMode,
               dailyTargets: sourcePlan.targets,
               mealSlot,
+              servings: recipe.servings,
+              ingredientFoodOverrides: recipe.ingredientFoodOverrides,
             });
-            const kcal = scaled?.macros?.perServing.kcal ?? computeRecipeMacros(recipe.body, foodItemsForMacros)?.perServing.kcal ?? 0;
+            const kcal =
+              scaled?.macros?.perServing.kcal ??
+              computeRecipeMacros(recipe.body, foodItemsForMacros, {
+                servings: recipe.servings,
+                ingredientFoodOverrides: recipe.ingredientFoodOverrides,
+              })?.perServing.kcal ??
+              0;
             const distance = mealTargetKcal > 0 ? Math.abs(kcal - mealTargetKcal) : 0;
             const repeatPenalty = usedRecipeIds.has(recipe.id) ? 180 : 0;
             const sameDayPenalty = pickedForCurrentDay.has(recipe.id) ? 260 : 0;
@@ -1948,8 +1970,10 @@ export function TrainerMealPlanEditor({
                           body: previewRecipe.body,
                           title: previewRecipe.title,
                           tag: previewRecipe.tag,
+                          servings: previewRecipe.servings,
                         })}
                         recipeId={previewRecipe.id}
+                        servings={previewRecipe.servings}
                         foodOverrides={previewRecipe.ingredientFoodOverrides}
                       />
                       {previewRecipeAvoidanceConflicts.length > 0 ? (
@@ -2133,9 +2157,15 @@ export function TrainerMealPlanEditor({
             </div>
             <div className="motus-foodbank-modal-body space-y-3">
               {recipeReadOnly.description ? <p className="text-sm text-slate-600">{recipeReadOnly.description}</p> : null}
-              <RecipeIngredientList body={recipeReadOnly.body} foodItems={foodItemsForMacros} recipeId={recipeReadOnly.id} />
-              {computeRecipeMacros(recipeReadOnly.body, foodItemsForMacros) ? (
-                <RecipeMacroBlocks result={computeRecipeMacros(recipeReadOnly.body, foodItemsForMacros)!} />
+              <RecipeIngredientList
+                body={recipeReadOnly.body}
+                foodItems={foodItemsForMacros}
+                recipeId={recipeReadOnly.id}
+                servings={recipeReadOnly.servings}
+                foodOverrides={recipeReadOnly.ingredientFoodOverrides}
+              />
+              {recipeReadOnlyMacros ? (
+                <RecipeMacroBlocks result={recipeReadOnlyMacros} />
               ) : null}
             </div>
           </div>

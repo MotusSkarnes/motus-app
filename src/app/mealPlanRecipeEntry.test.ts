@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
+import { buildDefaultFoodBankItems } from "./foodBankSeed";
 import type { InspirationRecipeItem } from "./inspirationRecipeItems";
-import { recipeToMealPlanEntry } from "./mealPlanRecipeEntry";
+import { computeRecipeIngredients } from "./recipeMacros";
+import { buildInspirationRecipeNutritionById, recipeToMealPlanEntry } from "./mealPlanRecipeEntry";
 
 const EGG_RECIPE: InspirationRecipeItem = {
   id: "r-egg",
@@ -29,5 +31,37 @@ describe("recipeToMealPlanEntry", () => {
     );
     expect(entry.nutritionPer100g.kcal).toBe(0);
     expect(entry.note).toContain("Ingredienser");
+  });
+
+  it("bruker manuelle ingredienskoblinger i matplan-snapshot", () => {
+    const foods = buildDefaultFoodBankItems();
+    const soyafarse = foods.find((item) => item.name === "Soyafarse");
+    expect(soyafarse).toBeTruthy();
+    const body = "**Til 1 porsjon**\n\n**Ingredienser**\n- 200 g kjøttdeig";
+    const key = computeRecipeIngredients(body, foods)[0]?.key;
+    expect(key).toBeTruthy();
+
+    const entry = recipeToMealPlanEntry(
+      { ...EGG_RECIPE, body, ingredientFoodOverrides: { [key!]: soyafarse!.id } },
+      foods,
+    );
+
+    expect(entry.nutritionPer100g.kcal).toBe(Math.round(soyafarse!.nutritionPer100g.kcal * 2));
+  });
+
+  it("bruker manuelle ingredienskoblinger i oppskriftsnæring per id", () => {
+    const foods = buildDefaultFoodBankItems();
+    const soyafarse = foods.find((item) => item.name === "Soyafarse");
+    expect(soyafarse).toBeTruthy();
+    const body = "**Til 1 porsjon**\n\n**Ingredienser**\n- 200 g kjøttdeig";
+    const key = computeRecipeIngredients(body, foods)[0]?.key;
+    expect(key).toBeTruthy();
+
+    const byId = buildInspirationRecipeNutritionById(
+      [{ ...EGG_RECIPE, id: "r-meat", body, ingredientFoodOverrides: { [key!]: soyafarse!.id } }],
+      foods,
+    );
+
+    expect(byId.get("r-meat")?.kcal).toBe(Math.round(soyafarse!.nutritionPer100g.kcal * 2));
   });
 });
