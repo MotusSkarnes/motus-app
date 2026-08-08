@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { buildDefaultFoodBankItems } from "./foodBankSeed";
 import type { InspirationRecipeItem } from "./inspirationRecipeItems";
 import { recipeToMealPlanEntry } from "./mealPlanRecipeEntry";
 
@@ -29,5 +30,20 @@ describe("recipeToMealPlanEntry", () => {
     );
     expect(entry.nutritionPer100g.kcal).toBe(0);
     expect(entry.note).toContain("Ingredienser");
+  });
+
+  it("bruker manuelt valgt matvare når oppskriften lagres i matplan", () => {
+    const foods = buildDefaultFoodBankItems();
+    const soyafarse = foods.find((food) => food.name === "Soyafarse")!;
+    const recipe: InspirationRecipeItem = {
+      ...EGG_RECIPE,
+      body: "**Til 1 porsjon**\n\n**Ingredienser**\n- 100 g kylling\n\n**Slik gjør du**\n1. Stek.",
+      ingredientFoodOverrides: { "ing-0": soyafarse.id },
+    };
+
+    const entry = recipeToMealPlanEntry(recipe, foods);
+
+    expect(entry.nutritionPer100g.kcal).toBe(soyafarse.nutritionPer100g.kcal);
+    expect(entry.nutritionPer100g.protein).toBe(soyafarse.nutritionPer100g.protein);
   });
 });

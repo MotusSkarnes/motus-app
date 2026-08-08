@@ -200,7 +200,7 @@ import type {
   WorkoutLog,
 } from "../app/types";
 import {
-  computeRelatedMemberIdSet,
+  computeRelatedMemberEmailIdSet,
   daysSinceLastCompletedWorkout,
   formatTrainerMemberActivitySubtitle,
   logsAttributedToMember,
@@ -710,13 +710,13 @@ function parseChatCreatedAtMs(value: string): number {
   return Number.isNaN(parsed.getTime()) ? 0 : parsed.getTime();
 }
 
-/** Relaterte medlems-ID-er (e-post/navn) for valgt rad – brukes når listen oppdateres uten at det logisk er en annen kunde. */
+/** Relaterte medlems-ID-er (e-post) for valgt rad – brukes når listen oppdateres uten at det logisk er en annen kunde. */
 function computeSelectedMemberRelatedIds(members: Member[], selectedMemberId: string | null): string[] {
   if (selectedMemberId === "__template__") return [];
   if (!selectedMemberId) return [];
   const selected = members.find((member) => member.id === selectedMemberId);
   if (!selected) return [selectedMemberId];
-  const related = computeRelatedMemberIdSet(selected, members);
+  const related = computeRelatedMemberEmailIdSet(selected, members);
   const email = selected.email.trim().toLowerCase();
   if (email) related.add(email);
   return Array.from(related);

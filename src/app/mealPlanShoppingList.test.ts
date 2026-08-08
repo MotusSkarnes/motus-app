@@ -77,4 +77,24 @@ describe("buildWeeklyShoppingList", () => {
     const doubledGrams = doubled.groups.reduce((sum, g) => sum + g.items.reduce((s, i) => s + i.grams, 0), 0);
     expect(doubledGrams).toBeGreaterThan(baseGrams * 1.8);
   });
+
+  it("bruker manuelt valgt oppskriftsmatvare i handlelisten", () => {
+    const foods = buildDefaultFoodBankItems();
+    const foodById = new Map(foods.map((f) => [f.id, f]));
+    const soyafarse = foods.find((food) => food.name === "Soyafarse")!;
+    const recipe = { ...BOLOGNESE, ingredientFoodOverrides: { "ing-0": soyafarse.id } };
+    const recipesById = new Map([[BOLOGNESE.id, recipe]]);
+    const plan = makePlanWithRecipe();
+
+    const result = buildWeeklyShoppingList({
+      plan,
+      foodById,
+      foodItems: foods,
+      recipesById,
+    });
+
+    const allNames = result.groups.flatMap((g) => g.items.map((i) => i.name));
+    expect(allNames).toContain("Soyafarse");
+    expect(allNames).not.toContain("Karbonadedeig mager");
+  });
 });

@@ -9,6 +9,14 @@ export function computeRelatedMemberIdSet(member: Member, allMembers: Member[]):
   return new Set([...byEmailIds, ...byNameIds, member.id]);
 }
 
+export function computeRelatedMemberEmailIdSet(member: Member, allMembers: Member[]): Set<string> {
+  const normalizedEmail = member.email.trim().toLowerCase();
+  const byEmailIds = normalizedEmail
+    ? allMembers.filter((m) => m.email.trim().toLowerCase() === normalizedEmail).map((m) => m.id)
+    : [];
+  return new Set([...byEmailIds, member.id]);
+}
+
 /** Relaterte ID-er + e-post/navn når program er lagret på en annen medlemsrad enn valgt kunde. */
 export function programBelongsToMember(member: Member, allMembers: Member[], program: TrainingProgram): boolean {
   if (program.memberId === "__template__") return false;
@@ -47,11 +55,10 @@ export function programsAttributedToMember(
   return programs.filter((program) => programBelongsToMember(member, allMembers, program));
 }
 
-/** Samme attributtering som valgt kunde sin øktliste (relaterte ID-er + delt «Medlem» med e-post/navn-matching). */
+/** Samme attributtering som valgt kunde sin øktliste (relaterte ID-er + delt «Medlem» med e-post-matching). */
 export function logsAttributedToMember(member: Member, allMembers: Member[], workoutLogs: WorkoutLog[]): WorkoutLog[] {
-  const relatedIdSet = computeRelatedMemberIdSet(member, allMembers);
+  const relatedIdSet = computeRelatedMemberEmailIdSet(member, allMembers);
   const selectedEmail = member.email.trim().toLowerCase();
-  const selectedName = member.name.trim().toLowerCase();
   const memberById = new Map(allMembers.map((m) => [m.id, m]));
   return workoutLogs.filter((log) => {
     if (relatedIdSet.has(log.memberId)) return true;
@@ -63,9 +70,7 @@ export function logsAttributedToMember(member: Member, allMembers: Member[], wor
     const ownerMember = memberById.get(log.memberId);
     if (!ownerMember) return false;
     const ownerEmail = ownerMember.email.trim().toLowerCase();
-    const ownerName = ownerMember.name.trim().toLowerCase();
     if (selectedEmail && ownerEmail && ownerEmail === selectedEmail) return true;
-    if (selectedName && ownerName && ownerName === selectedName) return true;
     return false;
   });
 }
