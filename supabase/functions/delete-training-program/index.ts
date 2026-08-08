@@ -1,16 +1,17 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import {
+  canTrainerDeleteProgram,
+  isAuthorizedMemberProgramTarget,
+  readTrustedAuthMemberId,
+  resolveAuthorizedDeletionMemberIds,
+  resolveDeleteTrainingProgramRole,
+  type DeleteProgramAuthUser,
+} from "../_shared/deleteTrainingProgramSecurity.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
-};
-
-type JwtUser = {
-  id: string;
-  email?: string;
-  app_metadata?: Record<string, unknown>;
-  user_metadata?: Record<string, unknown>;
 };
 
 type ProgramRow = {
@@ -48,14 +49,6 @@ function normalizeId(value: unknown): string {
   return String(value ?? "").trim();
 }
 
-function roleFromUser(user: JwtUser): "member" | "trainer" {
-  const app = user.app_metadata?.role;
-  if (app === "member" || app === "trainer") return app;
-  const meta = user.user_metadata?.role;
-  if (meta === "member" || meta === "trainer") return meta;
-  return "trainer";
-}
-
 function buildProgramFingerprint(input: {
   title?: unknown;
   goal?: unknown;
@@ -91,65 +84,93 @@ function buildProgramFingerprint(input: {
   ].join("::");
 }
 
-async function resolveRelatedMemberIds(
+async function resolveServerAuthorizedMemberIds(
   adminClient: ReturnType<typeof createClient>,
   input: {
-    memberId?: string;
-    requesterEmail?: string;
-    authMemberId?: string;
-    requesterUserId?: string;
-    contextMemberIds?: string[];
-    targetEmail?: string;
+    role: "member" | "trainer";
+    requesterUserId: string;
+    requesterEmail: string;
+    trustedMemberId: string;
+    programMemberId: string;
+    programOwnerUserId: string;
   },
 ): Promise<string[]> {
   const ids = new Set<string>();
-  for (const raw of input.contextMemberIds ?? []) {
-    const id = normalizeId(raw);
-    if (id && id !== "__template__") ids.add(id);
-  }
+  const programMemberId = normalizeId(input.programMemberId);
 
-  const memberId = normalizeId(input.memberId);
-  if (memberId && memberId !== "__template__") ids.add(memberId);
-
-  const authMemberId = normalizeId(input.authMemberId);
-  if (authMemberId && authMemberId !== "__template__") ids.add(authMemberId);
-
-  const requesterUserId = normalizeId(input.requesterUserId);
-  if (requesterUserId) {
-    ids.add(requesterUserId);
-    ids.add(`auth-${requesterUserId}`);
-  }
-
-  let email = normalizeEmail(input.targetEmail) || normalizeEmail(input.requesterEmail);
-  if (!email && memberId.includes("@")) email = normalizeEmail(memberId);
-
-  if (email) {
-    ids.add(email);
-    const { data: rows, error } = await adminClient.from("members").select("id").ilike("email", email);
+  if (input.role === "member") {
+    const email = normalizeEmail(input.requesterEmail);
+    if (!email.includes("@")) return [];
+    const { data: rows, error } = await adminClient
+      .from("members")
+      .select("id, email")
+      .ilike("email", email);
     if (error) throw new Error(error.message);
     for (const row of rows ?? []) {
       const id = normalizeId((row as { id?: string }).id);
-      if (id && id !== "__template__") ids.add(id);
+      const rowEmail = normalizeEmail((row as { email?: string }).email);
+      if (!id || id === "__template__" || rowEmail !== email) continue;
+      ids.add(id);
     }
+    // Trusted app_metadata.member_id may only expand scope when it resolves to the same email.
+    const trustedMemberId = normalizeId(input.trustedMemberId);
+    if (trustedMemberId && trustedMemberId !== "__template__" && !ids.has(trustedMemberId)) {
+      const { data: trustedRow, error: trustedError } = await adminClient
+        .from("members")
+        .select("id, email")
+        .eq("id", trustedMemberId)
+        .maybeSingle();
+      if (trustedError) throw new Error(trustedError.message);
+      if (trustedRow && normalizeEmail((trustedRow as { email?: string }).email) === email) {
+        ids.add(trustedMemberId);
+      }
+    }
+    return Array.from(ids);
   }
 
-  return Array.from(ids);
-}
+  // Trainer: only fan out across members they own (or shared Medlem), starting from the program row email.
+  if (!programMemberId || programMemberId === "__template__") return [];
+  const { data: programMember, error: programMemberError } = await adminClient
+    .from("members")
+    .select("id, email, owner_user_id, customer_type")
+    .eq("id", programMemberId)
+    .maybeSingle();
+  if (programMemberError) throw new Error(programMemberError.message);
+  if (!programMember) return [];
 
-async function deleteLogsForProgram(
-  adminClient: ReturnType<typeof createClient>,
-  memberId: string,
-  title: string,
-) {
-  const normalizedMemberId = normalizeId(memberId);
-  const normalizedTitle = String(title ?? "").trim();
-  if (!normalizedMemberId || !normalizedTitle) return;
-  const { error } = await adminClient
-    .from("workout_logs")
-    .delete()
-    .eq("member_id", normalizedMemberId)
-    .eq("program_title", normalizedTitle);
-  if (error) console.warn("delete-training-program: workout log cleanup failed:", error.message);
+  if (
+    canTrainerDeleteProgram({
+      requesterUserId: input.requesterUserId,
+      programOwnerUserId: input.programOwnerUserId,
+      memberRow: programMember as { id?: string; owner_user_id?: string; customer_type?: string },
+    })
+  ) {
+    ids.add(programMemberId);
+  }
+
+  const programEmail = normalizeEmail((programMember as { email?: string }).email);
+  if (!programEmail.includes("@")) return Array.from(ids);
+
+  const { data: emailRows, error: emailError } = await adminClient
+    .from("members")
+    .select("id, owner_user_id, customer_type")
+    .ilike("email", programEmail);
+  if (emailError) throw new Error(emailError.message);
+
+  for (const row of emailRows ?? []) {
+    const id = normalizeId((row as { id?: string }).id);
+    if (!id || id === "__template__") continue;
+    if (
+      canTrainerDeleteProgram({
+        requesterUserId: input.requesterUserId,
+        programOwnerUserId: "",
+        memberRow: row as { id?: string; owner_user_id?: string; customer_type?: string },
+      })
+    ) {
+      ids.add(id);
+    }
+  }
+  return Array.from(ids);
 }
 
 Deno.serve(async (req) => {
@@ -188,13 +209,12 @@ Deno.serve(async (req) => {
   const programId = normalizeId(payload.programId);
   if (!programId) return jsonResponse(400, { error: "programId is required" });
 
-  const requester = userData.user as JwtUser;
+  const requester = userData.user as DeleteProgramAuthUser;
   const requesterUserId = normalizeId(requester.id);
   const requesterEmail = normalizeEmail(requester.email);
-  const role = payload.requestedBy ?? roleFromUser(requester);
-  const authMemberId = normalizeId(
-    requester.app_metadata?.member_id ?? requester.user_metadata?.member_id,
-  );
+  // Ignore client-supplied requestedBy — role comes from JWT only.
+  const role = resolveDeleteTrainingProgramRole(requester);
+  const trustedMemberId = readTrustedAuthMemberId(requester);
 
   const { data: programRowRaw, error: lookupError } = await adminClient
     .from("training_programs")
@@ -206,35 +226,60 @@ Deno.serve(async (req) => {
 
   const programRow = programRowRaw as ProgramRow;
   const memberId = normalizeId(programRow.member_id);
-  const relatedMemberIds = await resolveRelatedMemberIds(adminClient, {
-    memberId,
-    requesterEmail,
-    authMemberId,
-    requesterUserId,
-    contextMemberIds: payload.memberIds,
-    targetEmail: payload.targetEmail,
-  });
-  const relatedMemberIdSet = new Set(relatedMemberIds);
   const ownerUserId = normalizeId(programRow.owner_user_id);
+
+  const { data: memberOwner, error: memberOwnerError } = memberId
+    ? await adminClient
+        .from("members")
+        .select("id, email, owner_user_id, customer_type")
+        .eq("id", memberId)
+        .maybeSingle()
+    : { data: null, error: null };
+  if (memberOwnerError) return jsonResponse(500, { error: memberOwnerError.message });
+
+  let authorizedMemberIds: string[];
+  try {
+    authorizedMemberIds = await resolveServerAuthorizedMemberIds(adminClient, {
+      role,
+      requesterUserId,
+      requesterEmail,
+      trustedMemberId,
+      programMemberId: memberId,
+      programOwnerUserId: ownerUserId,
+    });
+  } catch (error) {
+    return jsonResponse(500, { error: error instanceof Error ? error.message : "Failed to resolve member scope" });
+  }
 
   if (role === "member") {
     if (String(programRow.program_created_by ?? "").trim() !== "member") {
       return jsonResponse(403, { error: "Members can only delete member-created programs" });
     }
-    if (!relatedMemberIdSet.has(memberId)) {
+    if (
+      !isAuthorizedMemberProgramTarget({
+        programMemberId: memberId,
+        authorizedMemberIds,
+      })
+    ) {
       return jsonResponse(403, { error: "Members can only delete programs on their own profile" });
     }
-  } else if (ownerUserId && ownerUserId !== requesterUserId) {
-    const { data: memberOwner } = await adminClient
-      .from("members")
-      .select("owner_user_id")
-      .eq("id", memberId)
-      .maybeSingle();
-    const rowOwner = normalizeId((memberOwner as { owner_user_id?: string } | null)?.owner_user_id);
-    if (rowOwner !== requesterUserId) {
-      return jsonResponse(403, { error: "Trainer cannot delete this program" });
-    }
+  } else if (
+    !canTrainerDeleteProgram({
+      requesterUserId,
+      programOwnerUserId: ownerUserId,
+      memberRow: (memberOwner as { id?: string; owner_user_id?: string; customer_type?: string } | null) ?? null,
+    })
+  ) {
+    return jsonResponse(403, { error: "Trainer cannot delete this program" });
   }
+
+  const relatedMemberIds = resolveAuthorizedDeletionMemberIds({
+    programMemberId: memberId,
+    authorizedMemberIds,
+    // Client memberIds may narrow fanout, but never expand beyond server-authorized scope.
+    clientMemberIds: payload.memberIds,
+  });
+  const relatedMemberIdSet = new Set(relatedMemberIds);
 
   const title = String(programRow.title ?? "");
   const targetFingerprint = buildProgramFingerprint(programRow);
@@ -273,8 +318,7 @@ Deno.serve(async (req) => {
   const { error: deleteError } = await adminClient.from("training_programs").delete().in("id", idsToDelete);
   if (deleteError) return jsonResponse(500, { error: deleteError.message });
 
-  await Promise.all(relatedMemberIds.map((id) => deleteLogsForProgram(adminClient, id, title)));
-
+  // Do not cascade-delete workout logs by title: duplicate titles would erase unrelated history.
   return jsonResponse(200, {
     ok: true,
     deletedIds: idsToDelete,
