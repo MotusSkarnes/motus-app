@@ -1,4 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { filterTrainerAccessibleMemberIds } from "../_shared/trainerMealPlanAccess.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -90,43 +91,54 @@ async function resolveMemberIds(
   return [...ids];
 }
 
-async function trainerCanAccessMembers(
+async function trainerCanAccessMember(
+  adminClient: ReturnType<typeof createClient>,
+  trainerUserId: string,
+  memberId: string,
+): Promise<boolean> {
+  const { data: memberRow } = await adminClient
+    .from("members")
+    .select("owner_user_id")
+    .eq("id", memberId)
+    .maybeSingle();
+  if (String((memberRow as { owner_user_id?: string } | null)?.owner_user_id ?? "").trim() === trainerUserId) {
+    return true;
+  }
+
+  const { count: mealPlanCount } = await adminClient
+    .from("member_meal_plans")
+    .select("member_id", { count: "exact", head: true })
+    .eq("member_id", memberId)
+    .eq("owner_user_id", trainerUserId);
+  if ((mealPlanCount ?? 0) > 0) return true;
+
+  const { count: programCount } = await adminClient
+    .from("training_programs")
+    .select("id", { count: "exact", head: true })
+    .eq("member_id", memberId)
+    .eq("owner_user_id", trainerUserId);
+  if ((programCount ?? 0) > 0) return true;
+
+  const { count: logCount } = await adminClient
+    .from("workout_logs")
+    .select("id", { count: "exact", head: true })
+    .eq("member_id", memberId)
+    .eq("owner_user_id", trainerUserId);
+  return (logCount ?? 0) > 0;
+}
+
+async function listTrainerAccessibleMemberIds(
   adminClient: ReturnType<typeof createClient>,
   trainerUserId: string,
   memberIds: string[],
-): Promise<boolean> {
+): Promise<string[]> {
+  const accessible: string[] = [];
   for (const memberId of memberIds) {
-    const { data: memberRow } = await adminClient
-      .from("members")
-      .select("owner_user_id")
-      .eq("id", memberId)
-      .maybeSingle();
-    if (String((memberRow as { owner_user_id?: string } | null)?.owner_user_id ?? "").trim() === trainerUserId) {
-      return true;
+    if (await trainerCanAccessMember(adminClient, trainerUserId, memberId)) {
+      accessible.push(memberId);
     }
-
-    const { count: mealPlanCount } = await adminClient
-      .from("member_meal_plans")
-      .select("member_id", { count: "exact", head: true })
-      .eq("member_id", memberId)
-      .eq("owner_user_id", trainerUserId);
-    if ((mealPlanCount ?? 0) > 0) return true;
-
-    const { count: programCount } = await adminClient
-      .from("training_programs")
-      .select("id", { count: "exact", head: true })
-      .eq("member_id", memberId)
-      .eq("owner_user_id", trainerUserId);
-    if ((programCount ?? 0) > 0) return true;
-
-    const { count: logCount } = await adminClient
-      .from("workout_logs")
-      .select("id", { count: "exact", head: true })
-      .eq("member_id", memberId)
-      .eq("owner_user_id", trainerUserId);
-    if ((logCount ?? 0) > 0) return true;
   }
-  return false;
+  return accessible;
 }
 
 Deno.serve(async (req) => {
@@ -173,13 +185,14 @@ Deno.serve(async (req) => {
     return jsonResponse(403, { error: "Only trainers can fetch member meal plans" });
   }
 
-  const memberIds = await resolveMemberIds(adminClient, memberId, memberEmail);
-  if (!memberIds.length) {
+  const candidateMemberIds = await resolveMemberIds(adminClient, memberId, memberEmail);
+  if (!candidateMemberIds.length) {
     return jsonResponse(404, { error: "No member rows found", plan: null });
   }
 
-  const allowed = await trainerCanAccessMembers(adminClient, user.id, memberIds);
-  if (!allowed) {
+  const accessibleMemberIds = await listTrainerAccessibleMemberIds(adminClient, user.id, candidateMemberIds);
+  const memberIds = filterTrainerAccessibleMemberIds(candidateMemberIds, accessibleMemberIds);
+  if (!memberIds.length) {
     return jsonResponse(403, { error: "Not allowed to access this member meal plan" });
   }
 
