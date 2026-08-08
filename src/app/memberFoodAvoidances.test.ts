@@ -9,6 +9,7 @@ import {
   readMemberFoodAvoidancesFromPersonalGoals,
 } from "./memberFoodAvoidances";
 import { mergePersonalGoalsFromCandidates } from "./memberOnboarding";
+import { computeRecipeIngredients } from "./recipeMacros";
 
 describe("memberFoodAvoidances", () => {
   it("lagrer og leser mat unngås fra personalGoals", () => {
@@ -46,6 +47,37 @@ describe("memberFoodAvoidances", () => {
 
     expect(conflicts.length).toBeGreaterThan(0);
     expect(conflicts[0]?.avoidanceLabel).toBe("Laks");
+  });
+
+  it("bruker manuelle ingrediensmatvarer i oppskriftsvarsler for mat unngås", () => {
+    const foods = buildDefaultFoodBankItems();
+    const body = `**Ingredienser**\n- 200 g kjøttdeig`;
+    const autoIngredient = computeRecipeIngredients(body, foods)[0];
+    const soyafarse = foods.find((f) => f.name === "Soyafarse");
+    expect(autoIngredient?.foodName).toBe("Karbonadedeig mager");
+    expect(soyafarse).toBeDefined();
+
+    const personalGoals = mergeMemberFoodAvoidancesIntoPersonalGoals("", {
+      items: [
+        { foodId: autoIngredient!.foodId, label: autoIngredient!.foodName, key: "karbonadedeigmager" },
+        foodAvoidanceFromLabel("kjøttdeig")!,
+      ],
+      notes: "",
+      updatedAt: Date.now(),
+    });
+
+    const withoutOverride = findRecipeFoodAvoidanceConflicts(body, foods, [
+      { id: "m1", name: "Test Medlem", personalGoals, isActive: true },
+    ]);
+    const withOverride = findRecipeFoodAvoidanceConflicts(
+      body,
+      foods,
+      [{ id: "m1", name: "Test Medlem", personalGoals, isActive: true }],
+      { ingredientFoodOverrides: { [autoIngredient!.key]: soyafarse!.id } },
+    );
+
+    expect(withoutOverride.length).toBeGreaterThanOrEqual(1);
+    expect(withOverride).toHaveLength(0);
   });
 
   it("mergeFoodAvoidancesAcrossCandidates unioner rader", () => {

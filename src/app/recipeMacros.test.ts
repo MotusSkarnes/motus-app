@@ -6,6 +6,7 @@ import {
   computeRecipeIngredients,
   computeRecipeMacros,
   extractRecipeIngredientLines,
+  normalizeRecipeIngredientFoodOverrides,
   parseIngredientLine,
   parseRecipeServings,
 } from "./recipeMacros";
@@ -201,5 +202,21 @@ Slik gjør du
     const overridden = computeRecipeIngredients(body, foods, { [auto!.key]: soyafarse!.id });
     expect(overridden[0]?.foodName).toBe("Soyafarse");
     expect(overridden[0]?.grams).toBe(200);
+  });
+
+  it("beholder manuelle matvarekoblinger når en ingrediens settes inn før raden", () => {
+    const originalBody = `**Ingredienser**\n- 200 g kjøttdeig`;
+    const editedBody = `**Ingredienser**\n- 1 løk\n- 200 g kjøttdeig`;
+    const originalIngredient = computeRecipeIngredients(originalBody, foods)[0];
+    const soyafarse = foods.find((item) => item.name === "Soyafarse");
+    expect(originalIngredient).toBeTruthy();
+    expect(soyafarse).toBeTruthy();
+
+    const overrides = { [originalIngredient!.key]: soyafarse!.id };
+    const normalized = normalizeRecipeIngredientFoodOverrides(editedBody, foods, overrides);
+    const ingredients = computeRecipeIngredients(editedBody, foods, normalized);
+
+    expect(ingredients.find((row) => row.searchText === "løk")?.foodName).not.toBe("Soyafarse");
+    expect(ingredients.find((row) => row.searchText === "kjøttdeig")?.foodName).toBe("Soyafarse");
   });
 });
