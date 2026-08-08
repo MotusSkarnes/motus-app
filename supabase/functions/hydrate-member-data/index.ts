@@ -1,5 +1,10 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { buildMemberEmailIlikeOrFilter } from "../_shared/memberEmailQueries.ts";
+import {
+  buildUnauthedMemberBootstrapIds,
+  canIncludeMemberRowByTrustedId,
+  readTrustedAuthMemberId,
+} from "../_shared/memberAccessSecurity.ts";
 
 const PROGRAMS_SELECT =
   "id, member_id, title, goal, notes, exercises, created_at, owner_user_id, program_created_by, program_created_by_name, image_url, member_library_status";
@@ -220,11 +225,9 @@ Deno.serve(async (req) => {
 
   const requesterEmail = normalizeEmail(userData.user.email);
   const requesterUserId = String(userData.user.id ?? "").trim();
-  const authMemberId = String(
-    (userData.user.app_metadata?.member_id as string | undefined) ??
-      (userData.user.user_metadata?.member_id as string | undefined) ??
-      ""
-  ).trim();
+  const authMemberId = readTrustedAuthMemberId(
+    userData.user as { app_metadata?: Record<string, unknown>; user_metadata?: Record<string, unknown> },
+  );
   if (!requesterEmail || !requesterEmail.includes("@")) {
     return jsonResponse(400, { error: "Authenticated user email is missing" });
   }
@@ -335,7 +338,14 @@ Deno.serve(async (req) => {
       .select(membersSelectWithAvatar)
       .eq("id", authMemberId)
       .maybeSingle();
-    if (authMemberRow) {
+    if (
+      authMemberRow &&
+      canIncludeMemberRowByTrustedId({
+        requesterEmail,
+        trustedMemberId: authMemberId,
+        memberRow: authMemberRow as { id?: string; email?: string },
+      })
+    ) {
       dedupedMembersById.set(authMemberId, authMemberRow as Record<string, unknown>);
     }
   }
@@ -384,13 +394,10 @@ Deno.serve(async (req) => {
     if (hasEmailRoster || emailRowsForAccess.length > 0) {
       return memberArchivedResponse();
     }
-    const authFallbackIds = Array.from(
-      new Set(
-        [authMemberId, requesterUserId, requesterUserId ? `auth-${requesterUserId}` : ""]
-          .map((value) => String(value ?? "").trim())
-          .filter((value) => value && value !== "__template__"),
-      ),
-    );
+    const authFallbackIds = buildUnauthedMemberBootstrapIds({
+      requesterUserId,
+      trustedMemberId: authMemberId,
+    });
     if (authFallbackIds.length > 0) {
       memberIds = authFallbackIds;
       const fallbackName =
@@ -451,9 +458,14 @@ Deno.serve(async (req) => {
   if (requesterEmail) {
     memberDataLookupIds.add(requesterEmail);
   }
-  for (const raw of [authMemberId, requesterUserId, requesterUserId ? `auth-${requesterUserId}` : ""]) {
+  // Include synthetic auth-* / auth.uid keys for legacy rows. Never widen with an
+  // unverified JWT member_id — that enabled cross-member hydrate via user_metadata.
+  for (const raw of buildUnauthedMemberBootstrapIds({ requesterUserId })) {
     const id = String(raw ?? "").trim();
     if (id && id !== "__template__") memberDataLookupIds.add(id);
+  }
+  if (authMemberId && (memberIds.includes(authMemberId) || dedupedMembersById.has(authMemberId))) {
+    memberDataLookupIds.add(authMemberId);
   }
   let memberDataLookupList = Array.from(memberDataLookupIds);
   if (!memberDataLookupList.length) {
