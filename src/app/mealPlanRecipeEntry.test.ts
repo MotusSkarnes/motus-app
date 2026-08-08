@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { buildDefaultFoodBankItems } from "./foodBankSeed";
 import type { InspirationRecipeItem } from "./inspirationRecipeItems";
 import { recipeToMealPlanEntry } from "./mealPlanRecipeEntry";
 
@@ -29,5 +30,25 @@ describe("recipeToMealPlanEntry", () => {
     );
     expect(entry.nutritionPer100g.kcal).toBe(0);
     expect(entry.note).toContain("Ingredienser");
+  });
+
+  it("bruker manuelle ingrediensmatvarer i lagret makrosnapshot", () => {
+    const foods = buildDefaultFoodBankItems();
+    const soyafarse = foods.find((item) => item.name === "Soyafarse");
+    expect(soyafarse).toBeTruthy();
+    const recipe: InspirationRecipeItem = {
+      id: "r-override",
+      title: "Manuell bolognese",
+      description: "Middag",
+      tag: "Middag",
+      body: "**Til 1 porsjon**\n\n**Ingredienser**\n- 200 g kjøttdeig",
+      ingredientFoodOverrides: { "ing-kjottdeig": soyafarse!.id },
+    };
+
+    const autoEntry = recipeToMealPlanEntry({ ...recipe, ingredientFoodOverrides: undefined }, foods);
+    const overrideEntry = recipeToMealPlanEntry(recipe, foods);
+
+    expect(overrideEntry.nutritionPer100g.kcal).not.toBe(autoEntry.nutritionPer100g.kcal);
+    expect(overrideEntry.nutritionPer100g.kcal).toBe(Math.round(soyafarse!.nutritionPer100g.kcal * 2));
   });
 });

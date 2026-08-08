@@ -1,6 +1,6 @@
 import { parsePersonalGoalsJson, readProfileExtensions } from "./memberProfilePayload";
 import type { FoodItem } from "./foodBankTypes";
-import { computeRecipeIngredients, type RecipeIngredient } from "./recipeMacros";
+import { computeRecipeIngredients, type RecipeIngredient, type RecipeIngredientFoodOverrides } from "./recipeMacros";
 
 const PROFILE_METRICS_PREFIX = "MOTUS_PROFILE_V1:";
 
@@ -198,8 +198,9 @@ export function findRecipeFoodAvoidanceConflicts(
   recipeBody: string,
   foodItems: FoodItem[],
   members: MemberAvoidanceSource[],
+  options?: { ingredientFoodOverrides?: RecipeIngredientFoodOverrides },
 ): RecipeFoodAvoidanceConflict[] {
-  const ingredients = computeRecipeIngredients(recipeBody, foodItems);
+  const ingredients = computeRecipeIngredients(recipeBody, foodItems, options?.ingredientFoodOverrides);
   if (!ingredients.length) return [];
 
   const conflicts: RecipeFoodAvoidanceConflict[] = [];
