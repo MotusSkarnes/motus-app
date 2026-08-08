@@ -43,6 +43,13 @@ export function computeWeekProgressPct(completed: number, planned: number, weekl
   return 0;
 }
 
+export function shouldOfferCreateHomeWeekPlan(input: {
+  homeWorkoutHydrationPending: boolean;
+  hasPlannedWorkoutInUpcomingWeek: boolean;
+}): boolean {
+  return !input.homeWorkoutHydrationPending && !input.hasPlannedWorkoutInUpcomingWeek;
+}
+
 export function buildHomeWeekHeadline(
   completed: number,
   planned: number,
