@@ -221,8 +221,10 @@ Deno.serve(async (req) => {
   if (!currentEmail || !currentEmail.includes("@")) {
     return jsonResponse(400, { error: "Logged-in user is missing a valid email" });
   }
-  if (userRole === "member" && requestedEmail && requestedEmail !== currentEmail) {
-    if (!requestedEmails.includes(currentEmail)) {
+  if (userRole !== "trainer") {
+    const targetsAnotherEmail = Boolean(requestedEmail && requestedEmail !== currentEmail);
+    const includesAnotherEmail = requestedEmails.some((email) => email !== currentEmail);
+    if (targetsAnotherEmail || includesAnotherEmail) {
       return jsonResponse(403, { error: "Email mismatch for member profile update" });
     }
   }
@@ -249,8 +251,8 @@ Deno.serve(async (req) => {
   const avatarUrl = normalizeString(changes.avatarUrl);
   if (avatarUrl) updateFields.avatar_url = avatarUrl;
 
-  // Membership / customer type: ikke for medlem-session; trener eller JWT uten role (eldre trener-kontoer).
-  const canEditMembershipFields = userRole === "trainer" || userRole === "";
+  // Membership / customer type: ikke for medlem-session.
+  const canEditMembershipFields = userRole === "trainer";
   if (canEditMembershipFields) {
     if (changes.membershipType !== undefined) {
       const mt = normalizeString(changes.membershipType).toLowerCase();
@@ -335,7 +337,7 @@ Deno.serve(async (req) => {
     }) as Array<{ id: string; email: string; owner_user_id: string | null; customer_type: string | null }>;
   }
   const visibleExpandedRows = expandedRows.filter((row) => {
-    if (userRole !== "trainer") return true;
+    if (userRole !== "trainer") return normalizeEmail(row.email) === currentEmail;
     if (!visibleAnchors.length) return false;
     return canTrainerEditAnchor(
       row as { owner_user_id?: string | null; customer_type?: string | null },

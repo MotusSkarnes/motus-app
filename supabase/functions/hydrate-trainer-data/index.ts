@@ -16,6 +16,12 @@ type HydratePayload = {
 };
 
 type RowWithId = { id?: string };
+type AuthUser = {
+  id: string;
+  email?: string;
+  app_metadata?: Record<string, unknown>;
+  user_metadata?: Record<string, unknown>;
+};
 
 function normalizeEmail(value: unknown): string {
   return String(value ?? "").trim().toLowerCase();
@@ -95,6 +101,13 @@ function isSharedMember(row: Record<string, unknown>): boolean {
     String(row.customer_type ?? "").trim().toLowerCase() === "medlem" &&
     String(row.membership_type ?? "").trim().toLowerCase() !== "premium"
   );
+}
+
+function isTrainerUser(user: AuthUser): boolean {
+  const appRole = String(user.app_metadata?.role ?? "").trim().toLowerCase();
+  const userRole = String(user.user_metadata?.role ?? "").trim().toLowerCase();
+  if (appRole === "trainer" || userRole === "trainer") return true;
+  return normalizeEmail(user.email).endsWith("@motus-skarnes.no");
 }
 
 function isPrivateRosterMember(row: Record<string, unknown>): boolean {
@@ -269,13 +282,33 @@ Deno.serve(async (req) => {
     return jsonResponse(400, { error: "Invalid JSON body" });
   }
 
-  const ownerUserId = String(payload.ownerUserId ?? "").trim();
+  const requestedOwnerUserId = String(payload.ownerUserId ?? "").trim();
   const includeDebug = payload.includeDebug === true;
-  if (!ownerUserId) {
-    return jsonResponse(400, { error: "ownerUserId is required" });
+
+  const authHeader = req.headers.get("Authorization") ?? "";
+  const accessToken = authHeader.replace(/^Bearer\s+/i, "").trim();
+  if (!accessToken) {
+    return jsonResponse(401, { error: "Authorization bearer token is required" });
   }
 
-  const adminClient = createClient(supabaseUrl, serviceRoleKey);
+  const adminClient = createClient(supabaseUrl, serviceRoleKey, {
+    auth: { persistSession: false, autoRefreshToken: false },
+  });
+
+  const {
+    data: { user: caller },
+    error: userError,
+  } = await adminClient.auth.getUser(accessToken);
+  if (userError || !caller?.id) {
+    return jsonResponse(401, { error: "Invalid trainer session" });
+  }
+  if (!isTrainerUser(caller as AuthUser)) {
+    return jsonResponse(403, { error: "Only trainers can hydrate trainer data" });
+  }
+  if (requestedOwnerUserId && requestedOwnerUserId !== caller.id) {
+    return jsonResponse(403, { error: "Cannot hydrate another trainer's data" });
+  }
+  const ownerUserId = caller.id;
 
   async function tableHasNullOwnerRowsForMembers(
     table: "training_programs" | "workout_logs" | "chat_messages",
