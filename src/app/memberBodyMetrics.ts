@@ -1,4 +1,8 @@
-import { PROFILE_METRICS_PREFIX, parsePersonalGoalsJson } from "./memberProfilePayload";
+import {
+  PROFILE_METRICS_PREFIX,
+  parsePersonalGoalsJson,
+  readProfileExtensions,
+} from "./memberProfilePayload";
 import { getMonthlyCheckInsFromPersonalGoals } from "./memberMonthlyCheckIn";
 
 export const MEMBER_BODY_METRICS_VERSION = 1;
@@ -262,6 +266,7 @@ export function createMemberBodyMetricEntry(input: {
 
 function buildPayloadFromExisting(existingPersonalGoals: string | undefined, bodyMetrics: MemberBodyMetricEntry[]): string {
   const existing = parsePersonalGoalsJson(existingPersonalGoals) ?? {};
+  const profileExtensions = readProfileExtensions(existingPersonalGoals);
   const payload = {
     sessionsPerWeekTarget: String(existing.sessionsPerWeekTarget ?? ""),
     dailyStepsTarget: String(existing.dailyStepsTarget ?? ""),
@@ -285,6 +290,7 @@ function buildPayloadFromExisting(existingPersonalGoals: string | undefined, bod
       ? { onboardingCompletedAt: String(existing.onboardingCompletedAt) }
       : {}),
     ...(Array.isArray(existing.monthlyCheckIns) ? { monthlyCheckIns: existing.monthlyCheckIns } : {}),
+    ...profileExtensions,
     bodyMetrics,
   };
   return `${PROFILE_METRICS_PREFIX}${JSON.stringify(payload)}`;

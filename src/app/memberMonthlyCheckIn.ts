@@ -1,4 +1,8 @@
-import { PROFILE_METRICS_PREFIX, parsePersonalGoalsJson } from "./memberProfilePayload";
+import {
+  PROFILE_METRICS_PREFIX,
+  parsePersonalGoalsJson,
+  readProfileExtensions,
+} from "./memberProfilePayload";
 import { isOnboardingCompleted } from "./memberOnboarding";
 import type { Member } from "./types";
 
@@ -191,6 +195,7 @@ export function mergeCheckInIntoPersonalGoals(
   checkIn: MemberMonthlyCheckInAnswers,
 ): string {
   const existing = parsePersonalGoalsJson(existingPersonalGoals) ?? {};
+  const profileExtensions = readProfileExtensions(existingPersonalGoals);
   const previous = Array.isArray(existing.monthlyCheckIns)
     ? existing.monthlyCheckIns
         .map((entry) => normalizeCheckInEntry(entry))
@@ -222,6 +227,7 @@ export function mergeCheckInIntoPersonalGoals(
       ? { onboardingCompletedAt: String(existing.onboardingCompletedAt) }
       : {}),
     ...(Array.isArray(existing.bodyMetrics) ? { bodyMetrics: existing.bodyMetrics } : {}),
+    ...profileExtensions,
     monthlyCheckIns: [checkIn, ...withoutMonth].slice(0, 24),
   };
   return `${PROFILE_METRICS_PREFIX}${JSON.stringify(payload)}`;

@@ -7,6 +7,7 @@ import {
   resolveCheckInWindow,
   shouldPromptMonthlyCheckIn,
 } from "./memberMonthlyCheckIn";
+import { readProfileExtensions } from "./memberProfilePayload";
 import type { Member } from "./types";
 
 function memberWithGoals(personalGoals: string): Member {
@@ -115,5 +116,30 @@ describe("mergeCheckInIntoPersonalGoals", () => {
     expect(merged.startsWith("MOTUS_PROFILE_V1:")).toBe(true);
     expect(hasCompletedCheckInForMonth(merged, "2026-05")).toBe(true);
     expect(merged).toContain('"onboarding"');
+  });
+
+  it("preserves stop goals when saving a check-in", () => {
+    const stopGoal = { target: "Brus", customTarget: "", startedAt: "2026-07-01" };
+    const stopGoals = [
+      stopGoal,
+      { target: "Røyk", customTarget: "", startedAt: "2026-07-02", breakCount: 2 },
+    ];
+    const existing = `MOTUS_PROFILE_V1:${JSON.stringify({ stopGoal, stopGoals })}`;
+
+    const merged = mergeCheckInIntoPersonalGoals(existing, {
+      version: 1,
+      monthKey: "2026-06",
+      trainingGoing: 4,
+      metExpectations: 3,
+      trainingNeeds: [],
+      trainingNeedsNotes: "",
+      challengingNotes: "",
+      coachNotes: "",
+      completedAt: "2026-06-30T12:00:00.000Z",
+    });
+    const extensions = readProfileExtensions(merged);
+
+    expect(extensions.stopGoal).toEqual(stopGoal);
+    expect(extensions.stopGoals).toEqual(stopGoals);
   });
 });
