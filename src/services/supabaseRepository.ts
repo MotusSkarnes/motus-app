@@ -2067,9 +2067,8 @@ export async function deleteProgramsByDisplayKeyRemote(
     console.warn("Supabase display-key program delete failed:", error.message);
     return false;
   }
-  for (const relatedMemberId of deletionKeys) {
-    if (title) await deleteLogsForProgram(relatedMemberId, title);
-  }
+  // Workout logs only store program_title, so deleting by title can erase history for
+  // distinct programs that happen to share the same title.
   return true;
 }
 
@@ -2147,9 +2146,6 @@ export async function deleteProgramRemote(
         console.warn("Supabase snapshot-linked program delete failed:", error.message);
         return false;
       }
-      for (const relatedMemberId of deletionKeys) {
-        await deleteLogsForProgram(relatedMemberId, snapshot.title);
-      }
       return true;
     }
     const { error } = await supabaseClient.from("training_programs").delete().eq("id", programId);
@@ -2206,9 +2202,6 @@ export async function deleteProgramRemote(
     return false;
   }
 
-  for (const relatedMemberId of deletionKeys) {
-    await deleteLogsForProgram(relatedMemberId, title);
-  }
   return true;
 }
 
@@ -2977,18 +2970,6 @@ async function persistWorkoutLog(log: WorkoutLog, hints?: PersistWorkoutLogHints
   );
   if (result.ok) markWorkoutLogSeenInRemote(log.id);
   return result;
-}
-
-async function deleteLogsForProgram(memberId: string, programTitle: string) {
-  if (!supabaseClient) return;
-  const { error } = await supabaseClient
-    .from("workout_logs")
-    .delete()
-    .eq("member_id", memberId)
-    .eq("program_title", programTitle);
-  if (error) {
-    console.warn("Supabase log cleanup failed:", error.message);
-  }
 }
 
 async function deleteGroupWorkoutLogs(input: RemoveGroupWorkoutLogInput) {
