@@ -9,6 +9,24 @@ export type MemberStopGoal = {
   breakCount?: number;
 };
 
+export type StopGoalSaveQueue = {
+  tail: Promise<void>;
+};
+
+export function enqueueStopGoalSave(
+  queue: StopGoalSaveQueue,
+  save: () => Promise<void>,
+  onQueueDrained: () => void,
+): Promise<void> {
+  const queued = queue.tail.catch(() => undefined).then(() => save());
+  const settled = queued.catch(() => undefined);
+  queue.tail = settled;
+  void settled.finally(() => {
+    if (queue.tail === settled) onQueueDrained();
+  });
+  return settled;
+}
+
 export function toLocalDateKey(date: Date): string {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
 }

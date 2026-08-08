@@ -236,6 +236,7 @@ import { MemberBodyMetricsSection } from "./MemberBodyMetricsSection";
 import { createMemberBodyMetricEntry, mergeBodyMetricIntoPersonalGoals } from "../app/memberBodyMetrics";
 import {
   computeStopGoalDays,
+  enqueueStopGoalSave,
   formatStopGoalWithoutLabel,
   getStopGoalsFromPersonalGoals,
   normalizeStopGoals,
@@ -243,6 +244,7 @@ import {
   recordStopGoalBreak,
   resolveStopGoalLabel,
   type MemberStopGoal,
+  type StopGoalSaveQueue,
 } from "../app/memberStopGoal";
 import { buildShareProgramChatMessage } from "../app/chatFormat";
 import { computeWeekProgressPct } from "../app/memberHomeWeekInsights";
@@ -1261,6 +1263,7 @@ export function MemberPortal(props: MemberPortalProps) {
   const stopGoalDraftDirtyMemberIdRef = useRef<string | null>(null);
   const stopGoalsLatestRef = useRef<MemberStopGoal[]>([]);
   const stopGoalSaveInFlightRef = useRef(false);
+  const stopGoalSaveQueueRef = useRef<StopGoalSaveQueue>({ tail: Promise.resolve() });
   const [pausedWorkoutsTick, setPausedWorkoutsTick] = useState(0);
   const [profileSaveInfo, setProfileSaveInfo] = useState<string | null>(null);
   const [isSavingBodyMetric, setIsSavingBodyMetric] = useState(false);
@@ -3146,6 +3149,7 @@ export function MemberPortal(props: MemberPortalProps) {
       },
       resolveMemberPersonalGoals(editableMember, members),
     );
+    const hasStopGoalsOverride = options?.stopGoalsOverride !== undefined;
     const stopGoalsForSync = normalizeStopGoals(options?.stopGoalsOverride ?? stopGoalsDraft);
     if (stopGoalsForSync.length) {
       const parsed = parsePersonalGoalsJson(metricsForSync) ?? {};
@@ -3204,7 +3208,9 @@ export function MemberPortal(props: MemberPortalProps) {
     });
     stopGoalsLatestRef.current = stopGoalsForSync;
     stopGoalDraftDirtyRef.current = false;
-    stopGoalDraftDirtyMemberIdRef.current = null;
+    if (!hasStopGoalsOverride) {
+      stopGoalDraftDirtyMemberIdRef.current = null;
+    }
     if (supabaseClient) {
       const syncResult = await syncProfileToPtBackend({
         email: normalizedCurrentUserEmail || normalizedEmail,
@@ -3307,9 +3313,16 @@ export function MemberPortal(props: MemberPortalProps) {
           stopGoalDraftDirtyMemberIdRef.current = editableMember.id;
           stopGoalSaveInFlightRef.current = true;
           setStopGoalsDraft(updated);
-          void saveProfile({ silent: true, stopGoalsOverride: updated }).finally(() => {
-            stopGoalSaveInFlightRef.current = false;
-          });
+          void enqueueStopGoalSave(
+            stopGoalSaveQueueRef.current,
+            () => saveProfile({ silent: true, stopGoalsOverride: updated }),
+            () => {
+              stopGoalSaveInFlightRef.current = false;
+              if (!stopGoalDraftDirtyRef.current) {
+                stopGoalDraftDirtyMemberIdRef.current = null;
+              }
+            },
+          );
         },
       });
     },
