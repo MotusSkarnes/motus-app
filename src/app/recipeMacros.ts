@@ -18,6 +18,7 @@ export type RecipeMacroOptions = {
 
 export type RecipeIngredient = {
   key: string;
+  legacyKey?: string;
   sourceLine: string;
   searchText: string;
   displayAmount: string;
@@ -490,7 +491,10 @@ export function applyRecipeIngredientFoodOverrides(
 ): RecipeIngredient[] {
   if (!overrides || !Object.keys(overrides).length) return ingredients;
   return ingredients.map((ingredient) => {
-    const overrideId = overrides[ingredient.key]?.trim();
+    const overrideId = (
+      overrides[ingredient.key] ??
+      (ingredient.legacyKey ? overrides[ingredient.legacyKey] : undefined)
+    )?.trim();
     if (!overrideId) return ingredient;
     const food = foodItems.find((item) => item.id === overrideId);
     if (!food) return ingredient;
@@ -553,6 +557,12 @@ export function formatIngredientDisplay(
   return `${Math.round(grams)} g ${foodName}`;
 }
 
+function recipeIngredientKey(searchText: string, line: string, occurrence: number): string {
+  const normalized = normalizeFoodKey(searchText) || normalizeFoodKey(line);
+  const base = normalized ? normalized.slice(0, 48) : "ingredient";
+  return occurrence === 0 ? `ing-${base}` : `ing-${base}-${occurrence + 1}`;
+}
+
 export function computeRecipeIngredients(
   body: string,
   foodItems: FoodItem[],
@@ -560,6 +570,7 @@ export function computeRecipeIngredients(
 ): RecipeIngredient[] {
   const lines = extractRecipeIngredientLines(body);
   const rows: RecipeIngredient[] = [];
+  const keyOccurrences = new Map<string, number>();
 
   lines.forEach((line, index) => {
     const parsed = parseIngredientLine(line);
@@ -576,8 +587,12 @@ export function computeRecipeIngredients(
     if (grams <= 0) return;
 
     const name = food.name;
+    const normalizedKey = normalizeFoodKey(parsed.searchText) || normalizeFoodKey(line) || "ingredient";
+    const occurrence = keyOccurrences.get(normalizedKey) ?? 0;
+    keyOccurrences.set(normalizedKey, occurrence + 1);
     rows.push({
-      key: `ing-${index}`,
+      key: recipeIngredientKey(parsed.searchText, line, occurrence),
+      legacyKey: `ing-${index}`,
       sourceLine: line,
       searchText: parsed.searchText,
       displayAmount: formatIngredientDisplay(parsed, grams, name),
