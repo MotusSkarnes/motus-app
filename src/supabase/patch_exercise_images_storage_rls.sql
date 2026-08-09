@@ -1,26 +1,9 @@
--- Supabase Storage setup for exercise image uploads
--- Run this in SQL Editor before using image upload in Exercise Bank.
---
--- Write/delete access is scoped:
--- - trainer/staff: exercise-bank, food-bank, program-covers, inspiration, member-avatars
--- - members: only their own member-avatars/email-<base64url(jwt.email)>.jpg object
--- Public read remains open (bucket is public for CDN URLs).
+-- Restrict exercise-images storage writes/deletes.
+-- Previous policies allowed any authenticated user insert/update/delete on the whole
+-- bucket, so knowing a victim email (deterministic member-avatars/email-<token>.jpg)
+-- or listing prefixes enabled avatar overwrite and org-wide media wipe.
+-- Kjør i Supabase SQL Editor.
 
-insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
-values (
-  'exercise-images',
-  'exercise-images',
-  true,
-  5242880,
-  array['image/jpeg', 'image/png', 'image/webp']
-)
-on conflict (id) do update
-set
-  public = excluded.public,
-  file_size_limit = excluded.file_size_limit,
-  allowed_mime_types = excluded.allowed_mime_types;
-
--- base64url(lower(trim(email))) matching client encodeEmailForPath
 create or replace function public.motus_storage_email_path_token(email text)
 returns text
 language sql
@@ -32,12 +15,6 @@ as $$
     '-_'
   );
 $$;
-
-drop policy if exists "exercise_images_public_read" on storage.objects;
-create policy "exercise_images_public_read"
-  on storage.objects
-  for select
-  using (bucket_id = 'exercise-images');
 
 drop policy if exists "exercise_images_authenticated_upload" on storage.objects;
 create policy "exercise_images_authenticated_upload"

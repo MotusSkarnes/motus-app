@@ -77,6 +77,7 @@ import type { MealPlan } from "../app/mealPlanTypes";
 import { chatMessageFromRow } from "../app/chatReadReceipts";
 import { detectNewMemberFormSubmissions } from "../app/memberFormNotifications";
 import { ensureMemberAuthLink, resolveSessionAuthRole } from "./supabaseAuth";
+import { filterRowsByExactEmail } from "./memberEmailExactMatch";
 import { supabaseClient } from "./supabaseClient";
 import {
   isPrivatePtRosterCustomerType,
@@ -685,15 +686,19 @@ async function resolveRelatedMemberIds(
   const normalizedEmail = String(memberRow?.email ?? "").trim().toLowerCase() || hintedEmail;
   const rowsByEmail =
     normalizedEmail
-      ? await supabaseClient.from("members").select("id").ilike("email", normalizedEmail)
+      ? await supabaseClient.from("members").select("id, email").ilike("email", normalizedEmail)
       : { data: [], error: null as { message: string } | null };
   if (rowsByEmail.error) {
     console.warn("Supabase related member lookup by email failed:", rowsByEmail.error.message);
   }
+  const exactEmailRows = filterRowsByExactEmail(
+    (rowsByEmail.data ?? []) as Array<{ id?: string; email?: string | null }>,
+    normalizedEmail,
+  );
   const ids = Array.from(
     new Set(
-      (rowsByEmail.data ?? [])
-        .map((row) => String((row as { id?: string }).id ?? "").trim())
+      exactEmailRows
+        .map((row) => String(row.id ?? "").trim())
         .filter((id) => Boolean(id) && id !== "__template__" && !id.startsWith("auth-")),
     ),
   );
@@ -721,13 +726,13 @@ async function persistMessage(
     if (authEmail && authEmail.includes("@")) {
       const { data: rows, error } = await supabaseClient
         .from("members")
-        .select("id")
+        .select("id, email")
         .ilike("email", authEmail);
       if (!error) {
         targetMemberIds = Array.from(
           new Set(
-            (rows ?? [])
-              .map((row) => String((row as { id?: string }).id ?? "").trim())
+            filterRowsByExactEmail((rows ?? []) as Array<{ id?: string; email?: string | null }>, authEmail)
+              .map((row) => String(row.id ?? "").trim())
               .filter((id) => id && !id.startsWith("auth-") && id !== "__template__")
           )
         );
