@@ -222,6 +222,7 @@ import {
   type TrainerRosterOption,
   upsertMemberPeriodPlansForTrainer,
 } from "../services/supabaseRepository";
+import { memberIdsMatchingExactEmail } from "../services/memberEmailExactMatch";
 import { isSupabaseConfigured, supabaseClient } from "../services/supabaseClient";
 import { patchMemberAppUiStateInPersonalGoals } from "../app/memberAppUiState";
 import { pickBestMemberDisplayName } from "../app/memberOnboarding";
@@ -3634,15 +3635,29 @@ function pickFirstName(value: unknown): string {
           }
         }
         if (updated === 0) {
-          const byEmail = await supabaseClient
+          // Never update via raw ilike: `_`/`%` are SQL wildcards and can overwrite sibling clients.
+          const { data: rowsByEmail, error: emailLookupError } = await supabaseClient
             .from("members")
-            .update(dbChanges)
-            .ilike("email", nextEmail)
-            .select("id");
-          if (!byEmail.error) {
-            updated = Math.max(updated, byEmail.data?.length ?? 0);
-          } else if (!primaryError) {
-            primaryError = byEmail.error.message;
+            .select("id, email")
+            .ilike("email", nextEmail);
+          if (emailLookupError) {
+            if (!primaryError) primaryError = emailLookupError.message;
+          } else {
+            const exactEmailIds = memberIdsMatchingExactEmail(rowsByEmail, nextEmail).filter(
+              (memberId) => memberId && !memberId.startsWith("auth-"),
+            );
+            if (exactEmailIds.length > 0) {
+              const byEmail = await supabaseClient
+                .from("members")
+                .update(dbChanges)
+                .in("id", exactEmailIds)
+                .select("id");
+              if (!byEmail.error) {
+                updated = Math.max(updated, byEmail.data?.length ?? 0);
+              } else if (!primaryError) {
+                primaryError = byEmail.error.message;
+              }
+            }
           }
         }
       }
@@ -3720,12 +3735,15 @@ function pickFirstName(value: unknown): string {
       if (!validTargetMemberIds.length && selectedMember && supabaseClient) {
         const selectedEmail = selectedMember.email.trim().toLowerCase();
         if (selectedEmail) {
-          const { data: rowsByEmail } = await supabaseClient.from("members").select("id").ilike("email", selectedEmail);
+          const { data: rowsByEmail } = await supabaseClient
+            .from("members")
+            .select("id, email")
+            .ilike("email", selectedEmail);
           validTargetMemberIds = Array.from(
             new Set(
-              (rowsByEmail ?? [])
-                .map((row) => String((row as { id?: string }).id ?? "").trim())
-                .filter((memberId) => memberId && memberId !== "__template__" && !memberId.startsWith("auth-")),
+              memberIdsMatchingExactEmail(rowsByEmail, selectedEmail).filter(
+                (memberId) => memberId && memberId !== "__template__" && !memberId.startsWith("auth-"),
+              ),
             ),
           );
         }
