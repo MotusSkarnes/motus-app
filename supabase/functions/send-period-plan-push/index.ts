@@ -86,7 +86,7 @@ Deno.serve(async (req) => {
   }
 
   // Member-facing payload ("Ny periodeplan") must reach the member auth user, not the owning trainer.
-  // resolve_member_form_push_recipient returns owner_user_id and is only correct for form→PT alerts.
+  // The form-submission recipient RPC returns owner_user_id and is only correct for form→PT alerts.
   const { data: recipientId, error: rpcError } = await admin.rpc("resolve_period_plan_push_recipient", {
     p_member_id: memberId,
   });

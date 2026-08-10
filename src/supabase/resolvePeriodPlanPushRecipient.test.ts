@@ -11,7 +11,8 @@ describe("period plan push recipient resolution", () => {
     expect(sql).not.toContain("owner_user_id");
 
     const edge = readFileSync(resolve("supabase/functions/send-period-plan-push/index.ts"), "utf8");
-    expect(edge).toContain('rpc("resolve_period_plan_push_recipient"');
-    expect(edge).not.toContain("resolve_member_form_push_recipient");
+    expect(edge).toMatch(/\.rpc\(\s*["']resolve_period_plan_push_recipient["']/);
+    expect(edge).not.toMatch(/\.rpc\(\s*["']resolve_member_form_push_recipient["']/);
   });
 });
+
