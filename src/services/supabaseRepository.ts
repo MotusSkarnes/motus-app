@@ -78,6 +78,7 @@ import { chatMessageFromRow } from "../app/chatReadReceipts";
 import { detectNewMemberFormSubmissions } from "../app/memberFormNotifications";
 import { ensureMemberAuthLink, resolveSessionAuthRole } from "./supabaseAuth";
 import { supabaseClient } from "./supabaseClient";
+import { filterRowsByExactEmail, memberIdsMatchingExactEmail } from "./memberEmailExactMatch";
 import {
   isPrivatePtRosterCustomerType,
   isSharedMedlemCustomerType,
@@ -332,15 +333,15 @@ async function resolveCanonicalMemberIdForPersistence(
     email = (fromHint.includes("@") ? fromHint : "") || (authEmail.includes("@") ? authEmail : "");
   }
   if (!email) return trimmed;
+  // Select email and exact-filter: raw ilike treats `_`/`%` as wildcards (jane_doe → janexdoe).
   const { data, error } = await supabaseClient
     .from("members")
-    .select("id")
+    .select("id, email, created_at")
     .ilike("email", email)
-    .order("created_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
-  if (error || !data?.id) return trimmed;
-  const id = String(data.id).trim();
+    .order("created_at", { ascending: false });
+  if (error || !data?.length) return trimmed;
+  const exact = filterRowsByExactEmail(data as Array<{ id?: string; email?: string | null }>, email);
+  const id = String(exact[0]?.id ?? "").trim();
   return id && !id.startsWith("auth-") ? id : trimmed;
 }
 
@@ -1511,17 +1512,29 @@ export async function persistOnboardingToSupabase(
       : { data: [] as Array<{ id: string }>, error: null as { message: string } | null };
 
     if ((directUpdate.data?.length ?? 0) === 0) {
-      directUpdate = await supabaseClient
+      // Never update via raw ilike: `_`/`%` are SQL wildcards and can overwrite sibling clients.
+      const { data: rowsByEmail, error: emailLookupError } = await supabaseClient
         .from("members")
-        .update({
-          goal: changes.goal,
-          focus: changes.focus,
-          injuries: changes.injuries,
-          personal_goals: changes.personalGoals,
-          level: changes.level,
-        })
-        .ilike("email", syncEmail)
-        .select("id");
+        .select("id, email")
+        .ilike("email", syncEmail);
+      if (emailLookupError) {
+        directUpdate = { data: [] as Array<{ id: string }>, error: emailLookupError };
+      } else {
+        const exactEmailIds = memberIdsMatchingExactEmail(rowsByEmail, syncEmail);
+        directUpdate = exactEmailIds.length
+          ? await supabaseClient
+              .from("members")
+              .update({
+                goal: changes.goal,
+                focus: changes.focus,
+                injuries: changes.injuries,
+                personal_goals: changes.personalGoals,
+                level: changes.level,
+              })
+              .in("id", exactEmailIds)
+              .select("id")
+          : { data: [] as Array<{ id: string }>, error: null as { message: string } | null };
+      }
     }
 
     if (!directUpdate.error && (directUpdate.data?.length ?? 0) > 0) {
@@ -1788,20 +1801,34 @@ async function persistMember(member: Member, previousPersonalGoals?: string) {
           .select("id");
       }
       if ((directUpdate.data?.length ?? 0) === 0) {
-        directUpdate = await supabaseClient
+        // Never update via raw ilike: `_`/`%` are SQL wildcards and can overwrite sibling clients.
+        const { data: rowsByEmail, error: emailLookupError } = await supabaseClient
           .from("members")
-          .update(profileUpdateFields)
-          .ilike("email", normalizedEmail)
-          .select("id");
-        if (
-          directUpdate.error &&
-          isMissingDbColumnError(directUpdate.error.message, "avatar_url")
-        ) {
-          directUpdate = await supabaseClient
-            .from("members")
-            .update(stripAvatarUrlField(profileUpdateFields))
-            .ilike("email", normalizedEmail)
-            .select("id");
+          .select("id, email")
+          .ilike("email", normalizedEmail);
+        if (emailLookupError) {
+          directUpdate = { data: [] as Array<{ id: string }>, error: emailLookupError };
+        } else {
+          const exactEmailIds = memberIdsMatchingExactEmail(rowsByEmail, normalizedEmail);
+          if (exactEmailIds.length) {
+            directUpdate = await supabaseClient
+              .from("members")
+              .update(profileUpdateFields)
+              .in("id", exactEmailIds)
+              .select("id");
+            if (
+              directUpdate.error &&
+              isMissingDbColumnError(directUpdate.error.message, "avatar_url")
+            ) {
+              directUpdate = await supabaseClient
+                .from("members")
+                .update(stripAvatarUrlField(profileUpdateFields))
+                .in("id", exactEmailIds)
+                .select("id");
+            }
+          } else {
+            directUpdate = { data: [] as Array<{ id: string }>, error: null as { message: string } | null };
+          }
         }
       }
       if (!directUpdate.error && (directUpdate.data?.length ?? 0) > 0) {
