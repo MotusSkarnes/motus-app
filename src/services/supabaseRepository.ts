@@ -2216,6 +2216,7 @@ async function persistMemberProgramLibraryStatus(programIds: string[], status: "
   if (!supabaseClient) return;
   const ids = Array.from(new Set(programIds.map((id) => id.trim()).filter(Boolean)));
   if (!ids.length) return;
+  // Only member_library_status is member-writable; SQL trigger rejects other columns.
   const { error } = await supabaseClient.from("training_programs").update({ member_library_status: status }).in("id", ids);
   if (error && isMemberLibraryStatusColumnDbError(error.message)) {
     console.warn("member_library_status column missing; run training_programs_member_library_status.sql:", error.message);

@@ -6,4 +6,5 @@ alter table public.training_programs add column if not exists member_library_sta
 comment on column public.training_programs.member_library_status is 'archived (legacy: hidden) — medlemsvisning; null = synlig i hovedlisten';
 
 -- Kjør også training_programs_member_library_rls.sql slik at medlem kan lagre skjul/arkiv til Supabase.
+-- Kjør patch_training_programs_member_library_column_guard.sql slik at medlem kun kan endre member_library_status.
 -- Kjør training_programs_member_delete_rls.sql slik at medlem kan slette egne program i skyen.

@@ -9,6 +9,7 @@ const requiredPatches = [
   "fix_chat_messages_rls_no_user_metadata.sql",
   "fix_training_programs_rls_no_user_metadata.sql",
   "fix_training_programs_member_rls_no_user_metadata.sql",
+  "patch_training_programs_member_library_column_guard.sql",
   "fix_workout_logs_rls_no_user_metadata.sql",
   "fix_member_period_plans_rls_no_user_metadata.sql",
   "fix_member_meal_plans_rls_no_user_metadata.sql",
