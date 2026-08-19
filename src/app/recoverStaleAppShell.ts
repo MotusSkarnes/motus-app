@@ -30,7 +30,8 @@ export function isStaleAppShellError(error: unknown): boolean {
     lower.includes("importing a module script failed") ||
     lower.includes("error loading dynamically imported module") ||
     lower.includes("css chunk load error") ||
-    lower.includes("failed to load module script")
+    lower.includes("failed to load module script") ||
+    lower.includes("sw stale shell signal")
   );
 }
 
