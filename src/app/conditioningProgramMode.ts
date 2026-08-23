@@ -26,11 +26,22 @@ export function buildConditioningProgramNotes(mode: ConditioningDeliveryMode, de
   return body ? `__motusConditioningMode=${mode}\n${body}` : `__motusConditioningMode=${mode}`;
 }
 
+/** Fjern logg-etter-økt felt når programmet skal kjøres som intervalltimer. */
+export function stripLogFieldKeysFromExercises(exercises: ProgramExercise[]): ProgramExercise[] {
+  return exercises.map((exercise) => {
+    if (!exercise.logFieldKeys?.length) return exercise;
+    const { logFieldKeys: _removed, ...rest } = exercise;
+    return rest;
+  });
+}
+
 export function enrichProgramWithConditioningMode(program: TrainingProgram): TrainingProgram {
   const mode = resolveConditioningDeliveryMode(program);
   if (!mode) return program;
   const exercises =
-    mode === "logAfter" ? sanitizeProgramExercisesForLogAfter(program.exercises) : program.exercises;
+    mode === "logAfter"
+      ? sanitizeProgramExercisesForLogAfter(program.exercises)
+      : stripLogFieldKeysFromExercises(program.exercises);
   return {
     ...program,
     conditioningDeliveryMode: mode,

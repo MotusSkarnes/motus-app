@@ -71,6 +71,7 @@ import {
   sanitizeProgramExercisesForLogAfter,
   serializeConditioningProgramNotes,
   stripConditioningModeMarker,
+  stripLogFieldKeysFromExercises,
   type ConditioningDeliveryMode,
 } from "../app/conditioningProgramMode";
 import {
@@ -2440,12 +2441,17 @@ function pickFirstName(value: unknown): string {
     setConditioningDeliveryMode(mode);
     if (mode === "logAfter") {
       setProgramExercisesDraft((prev) => sanitizeProgramExercisesForLogAfter(prev));
+      return;
     }
+    // Drop stale log-after fields when switching back to the interval timer.
+    setProgramExercisesDraft((prev) => stripLogFieldKeysFromExercises(prev));
   }
 
   function programExercisesForConditioningSave(draft: ProgramExercise[]): ProgramExercise[] {
-    if (conditioningDeliveryMode !== "logAfter") return draft;
-    return sanitizeProgramExercisesForLogAfter(draft);
+    if (conditioningDeliveryMode === "logAfter") {
+      return sanitizeProgramExercisesForLogAfter(draft);
+    }
+    return stripLogFieldKeysFromExercises(draft);
   }
 
   function buildCustomerProgramNotesForSave(userNotes: string): string {
@@ -2531,9 +2537,13 @@ function pickFirstName(value: unknown): string {
     setProgramNotes(stripConditioningModeMarker(program.notes));
     setProgramFormImageUrl(program.imageUrl ?? "");
     setProgramCoverCleared(false);
-    const draft = program.exercises.map((exercise) => ({ ...exercise }));
+    const mode = parseConditioningDeliveryMode(program) ?? "interval";
+    const draft =
+      mode === "logAfter"
+        ? sanitizeProgramExercisesForLogAfter(program.exercises.map((exercise) => ({ ...exercise })))
+        : stripLogFieldKeysFromExercises(program.exercises.map((exercise) => ({ ...exercise })));
     setProgramExercisesDraft(draft);
-    setConditioningDeliveryMode(parseConditioningDeliveryMode(program) ?? "interval");
+    setConditioningDeliveryMode(mode);
     setCardioIntervalIntensity(inferCardioIntensityFromDraft(draft));
     setCustomerProgramBuilderFocus("training");
     setCustomerSubTab("programs");
