@@ -171,7 +171,13 @@ create policy "members_select_own"
 create policy "members_insert_own"
   on public.members
   for insert to authenticated
-  with check (owner_user_id = auth.uid());
+  with check (
+    owner_user_id = auth.uid()
+    and (
+      nullif(auth.jwt() -> 'app_metadata' ->> 'role', '') = 'trainer'
+      or lower(trim(coalesce(auth.jwt() ->> 'email', ''))) like '%@motus-skarnes.no'
+    )
+  );
 
 create policy "members_update_own"
   on public.members
