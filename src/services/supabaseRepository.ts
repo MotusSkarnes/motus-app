@@ -1999,10 +1999,10 @@ async function collectProgramIdsToDeleteByDisplayKey(input: {
       .from("training_programs")
       .select("id, member_id, title, goal, notes, exercises, created_at, owner_user_id, program_created_by")
       .eq("title", title);
-    if (targetOwnerUserId) {
-      titleQuery = titleQuery.eq("owner_user_id", targetOwnerUserId);
-    } else if (deletionKeys.length) {
+    if (deletionKeys.length) {
       titleQuery = titleQuery.in("member_id", deletionKeys);
+    } else if (targetOwnerUserId) {
+      titleQuery = titleQuery.eq("owner_user_id", targetOwnerUserId);
     }
     const { data: titleRows, error: titleError } = await titleQuery;
     if (titleError) {
@@ -2020,11 +2020,13 @@ async function collectProgramIdsToDeleteByDisplayKey(input: {
             return false;
           }
           if (trainingProgramDisplayKeyFromRow(row) !== targetKey) return false;
-          if (targetOwnerUserId) {
-            return String(row.owner_user_id ?? "").trim() === targetOwnerUserId;
-          }
           const candidateMemberId = String(row.member_id ?? "").trim();
-          return !deletionKeys.length || deletionKeys.includes(candidateMemberId);
+          // Never fan out across every program owned by the trainer. Same-title
+          // assigned copies (template → Kari and Ola) must stay member-scoped.
+          if (deletionKeys.length) {
+            return deletionKeys.includes(candidateMemberId);
+          }
+          return String(row.id ?? "").trim() === programId;
         })
         .map((row) => String(row.id ?? "").trim())
         .filter(Boolean),
