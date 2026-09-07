@@ -416,6 +416,8 @@ type MemberPortalProps = {
   onboardingSubstantivelyComplete?: boolean;
   homeOverviewHeaderActions?: ReactNode;
   homeOverviewNotificationsPanel?: ReactNode;
+  /** Trainer phone-frame preview — keep single-column mobile layout. */
+  devicePreview?: boolean;
 };
 
 const MEMBER_AVATAR_BUCKET = "exercise-images";
@@ -1184,6 +1186,7 @@ export function MemberPortal(props: MemberPortalProps) {
     onboardingSubstantivelyComplete = false,
     homeOverviewHeaderActions,
     homeOverviewNotificationsPanel,
+    devicePreview = false,
   } = props;
   const [messageText, setMessageText] = useState("");
   const [memberChatSendStatus, setMemberChatSendStatus] = useState<string | null>(null);
@@ -6879,8 +6882,16 @@ export function MemberPortal(props: MemberPortalProps) {
   return (
     <>
     <div className="space-y-4 sm:space-y-6">
-      <div className={`grid gap-4 sm:gap-6 ${memberTab === "overview" ? "" : "lg:grid-cols-[280px_1fr]"}`}>
-        <Card className={`hidden p-4 h-fit xl:p-5 ${memberTab === "overview" ? "" : "lg:block"}`}>
+      <div
+        className={`grid gap-4 sm:gap-6 ${
+          memberTab !== "overview" && !devicePreview ? "lg:grid-cols-[280px_1fr]" : ""
+        }`}
+      >
+        <Card
+          className={`hidden p-4 h-fit xl:p-5 ${
+            memberTab !== "overview" && !devicePreview ? "lg:block" : ""
+          }`}
+        >
           <div className="flex items-start gap-3">
             <MotusSectionIcon><UserCircle2 className="h-5 w-5" /></MotusSectionIcon>
             <div>

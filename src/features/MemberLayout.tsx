@@ -579,6 +579,7 @@ export function MemberLayout({
     },
     showOnboardingHomePrompt: !welcomeModalOpen && !onboardingGateOpen && !onboardingSubmitted,
     onboardingSubstantivelyComplete: onboardingCompleted,
+    devicePreview,
     homeOverviewHeaderActions: (
       <MemberHomeHeaderActions
         showNotifications={!isMemberLimited}

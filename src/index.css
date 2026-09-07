@@ -13791,13 +13791,25 @@ html:has(.motus-trainer-app) {
   position: relative;
   flex: 1 1 auto;
   min-height: 0;
-  overflow: auto;
+  overflow-x: hidden;
+  overflow-y: auto;
   overscroll-behavior: contain;
   background:
     linear-gradient(180deg, #f8fafc 0%, #ffffff 28%),
     #ffffff;
   border-radius: 1.35rem;
   -webkit-overflow-scrolling: touch;
+}
+
+.motus-client-preview__screen .motus-member-device-preview,
+.motus-client-preview__screen .motus-member-device-preview > * {
+  max-width: 100%;
+  min-width: 0;
+}
+
+/* Desktop breakpoints still match the browser width; force phone-column layout inside the frame. */
+.motus-client-preview__screen .motus-member-device-preview .grid.lg\:grid-cols-\[280px_1fr\] {
+  grid-template-columns: minmax(0, 1fr) !important;
 }
 
 .motus-client-preview__home-indicator {
