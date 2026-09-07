@@ -27,7 +27,7 @@ import { normalizeMemberGender } from "../app/memberGender";
 import { parseTrainerVacation } from "../app/trainerProfile";
 import { dedupePeriodPlansById } from "../app/periodPlanMerge";
 import { programExerciseUsesBankExercise } from "../app/exerciseBankUsage";
-import { localExercisesMissingFromRemote } from "../app/exerciseBankMerge";
+import { localExercisesSafeToInsertInRemoteBank } from "../app/exerciseBankMerge";
 import { normalizeStoredExerciseCategory } from "../app/exerciseCategories";
 import { parsePrescriptionFieldsFromDb, prescriptionFieldsForExerciseSave } from "../app/exercisePrescriptionFields";
 import {
@@ -1959,28 +1959,41 @@ function stripExercisePersistColumnsForError(
   return stripped ? next : null;
 }
 
-async function persistExercise(exercise: Exercise): Promise<boolean> {
-  if (!supabaseClient) return false;
+function isUniqueViolation(error: { code?: string; message?: string } | null | undefined): boolean {
+  if (!error) return false;
+  if (String(error.code ?? "") === "23505") return true;
+  const message = String(error.message ?? "").toLowerCase();
+  return message.includes("duplicate") || message.includes("unique constraint");
+}
+
+type PersistExerciseResult = "ok" | "exists" | "failed";
+
+async function persistExercise(exercise: Exercise, mode: "upsert" | "insert" = "upsert"): Promise<PersistExerciseResult> {
+  if (!supabaseClient) return "failed";
   const id = exercise.id.trim();
-  if (!id || !exercise.name.trim()) return false;
+  if (!id || !exercise.name.trim()) return "failed";
 
   let row: Record<string, unknown> = buildExerciseBankPersistRow({ ...exercise, id });
   for (let attempt = 0; attempt < 4; attempt += 1) {
-    const { error } = await supabaseClient.from("exercise_bank").upsert(row, { onConflict: "id" });
-    if (!error) return true;
+    const { error } =
+      mode === "insert"
+        ? await supabaseClient.from("exercise_bank").insert(row)
+        : await supabaseClient.from("exercise_bank").upsert(row, { onConflict: "id" });
+    if (!error) return "ok";
+    if (mode === "insert" && isUniqueViolation(error)) return "exists";
     const stripped = stripExercisePersistColumnsForError(row, error.message);
     if (!stripped) {
       console.warn("Supabase exercise persist failed:", error.message, exercise.id, exercise.name);
-      return false;
+      return "failed";
     }
     row = stripped;
   }
-  return false;
+  return "failed";
 }
 
 export type ExerciseBankSyncResult = { pushed: number; failures: string[] };
 
-/** Upsert local-only custom exercises so they appear on other devices. */
+/** Insert local-only custom exercises so they appear on other devices. Never upsert: hydrate omits deactivated rows, and upserting those IDs would undelete them. */
 export async function syncLocalExercisesToSupabase(
   localExercises: Exercise[],
   remoteExercises: Exercise[],
@@ -1988,11 +2001,11 @@ export async function syncLocalExercisesToSupabase(
   const result: ExerciseBankSyncResult = { pushed: 0, failures: [] };
   if (!supabaseClient) return result;
 
-  const missing = localExercisesMissingFromRemote(localExercises, remoteExercises);
+  const missing = localExercisesSafeToInsertInRemoteBank(localExercises, remoteExercises);
   for (const exercise of missing) {
-    const ok = await persistExercise(exercise);
-    if (ok) result.pushed += 1;
-    else result.failures.push(`${exercise.name} (${exercise.id})`);
+    const status = await persistExercise(exercise, "insert");
+    if (status === "ok") result.pushed += 1;
+    else if (status === "failed") result.failures.push(`${exercise.name} (${exercise.id})`);
   }
   return result;
 }
@@ -4950,8 +4963,8 @@ export const supabaseAppRepository: AppRepository = {
       ? nextState.exercises.find((item) => item.id === input.id)
       : nextState.exercises.find((item) => !previousIds.has(item.id)) ?? nextState.exercises[0];
     if (exercise) {
-      void persistExercise(exercise).then((ok) => {
-        if (!ok) {
+      void persistExercise(exercise).then((status) => {
+        if (status !== "ok") {
           console.warn("Øvelse lagret lokalt, men sky-synk feilet:", exercise.name);
         }
       });

@@ -34,7 +34,7 @@ export function mergeExerciseBanks(remote: Exercise[], local: Exercise[]): Exerc
   );
 }
 
-/** Local customs missing from remote — candidates to upsert to exercise_bank. */
+/** Local customs missing from remote — candidates to insert into exercise_bank. */
 export function localExercisesMissingFromRemote(local: Exercise[], remote: Exercise[]): Exercise[] {
   const remoteIds = new Set(remote.map((exercise) => exercise.id.trim()).filter(Boolean));
   return local.filter((exercise) => {
@@ -44,4 +44,22 @@ export function localExercisesMissingFromRemote(local: Exercise[], remote: Exerc
     if (!exercise.name.trim()) return false;
     return true;
   });
+}
+
+/**
+ * Cloud push must not run against an empty/untrusted remote bank: every local row
+ * would look "missing" and get written. Deactivated rows are omitted from hydrate,
+ * so they also look missing — callers must INSERT (not UPSERT) to avoid undelete.
+ */
+export function localExercisesSafeToInsertInRemoteBank(local: Exercise[], remote: Exercise[]): Exercise[] {
+  if (!remote.length) return [];
+  return localExercisesMissingFromRemote(local, remote);
+}
+
+export function shouldPushLocalExercisesToCloud(
+  remoteExercises: Exercise[] | null | undefined,
+  options: { isTrainerSession: boolean },
+): boolean {
+  if (!options.isTrainerSession) return false;
+  return Boolean(remoteExercises && remoteExercises.length > 0);
 }

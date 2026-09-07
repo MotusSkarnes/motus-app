@@ -98,7 +98,7 @@ import {
   mergeMemberProgramsWithActivityTemplates,
 } from "./activityTemplate";
 import { ensureDefaultMotusGroupClassTemplates } from "./motusGroupClassTemplates";
-import { mergeExerciseBanks } from "./exerciseBankMerge";
+import { mergeExerciseBanks, shouldPushLocalExercisesToCloud } from "./exerciseBankMerge";
 import { memberMayDeleteProgram, mergeProgramAuthorFields } from "./programAuthor";
 import {
   mergeProgramImageUrl,
@@ -1650,13 +1650,18 @@ export function useAppState() {
         }
       }
 
-      if (!cancelled && stateAfterHydrate && remoteExercises && typeof window !== "undefined") {
+      if (
+        !cancelled &&
+        stateAfterHydrate &&
+        typeof window !== "undefined" &&
+        shouldPushLocalExercisesToCloud(remoteExercises, { isTrainerSession })
+      ) {
         // Keep pushing local-only customs until cloud has them (no one-shot session gate).
         if (!exerciseBankPushInFlightRef.current) {
           exerciseBankPushInFlightRef.current = true;
           void (async () => {
             try {
-              const pushResult = await syncLocalExercisesToSupabase(stateAfterHydrate!.exercises, remoteExercises);
+              const pushResult = await syncLocalExercisesToSupabase(stateAfterHydrate!.exercises, remoteExercises ?? []);
               if (pushResult.pushed > 0) {
                 console.info(`Sky-synk: lastet opp ${pushResult.pushed} øvelser fra denne enheten.`);
                 if (!cancelled) await hydrateRemoteData();
