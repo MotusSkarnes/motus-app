@@ -65,4 +65,18 @@ describe("trainerMessagesInbox", () => {
     expect(memberHasTrainerMessagingAccess(members[0]!)).toBe(true);
     expect(memberHasTrainerMessagingAccess(members[1]!)).toBe(false);
   });
+
+  it("dedupes duplicate roster rows for the same email", () => {
+    const duplicates = [
+      member({ id: "m-a", name: "Lene Ruud", email: "lene@example.com", customerType: "Medlem", membershipType: "Standard" }),
+      member({ id: "m-b", name: "Lene Ruud", email: "lene@example.com", customerType: "PT-kunde", membershipType: "Premium" }),
+      member({ id: "m-c", name: "Lene Ruud", email: "lene@example.com" }),
+      member({ id: "m-other", name: "Lene Ruud", email: "other@example.com" }),
+    ];
+    const rows = buildTrainerMessageInboxRows(duplicates, [], {});
+    const leneRows = rows.filter((row) => row.member.email.toLowerCase() === "lene@example.com");
+    expect(leneRows).toHaveLength(1);
+    expect(leneRows[0]?.member.id).toBe("m-b");
+    expect(rows.filter((row) => row.member.name === "Lene Ruud")).toHaveLength(2);
+  });
 });

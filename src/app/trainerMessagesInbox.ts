@@ -67,15 +67,47 @@ export type TrainerMessageInboxRow = {
   preview: string;
 };
 
+function inboxMemberPriority(member: Member): number {
+  let score = 0;
+  if (member.isActive !== false) score += 100;
+  if (member.customerType === "PT-kunde") score += 50;
+  if (member.membershipType === "Premium") score += 20;
+  if (memberHasTrainerMessagingAccess(member)) score += 10;
+  if (member.firstLoginAt?.trim()) score += 2;
+  if (member.invitedAt?.trim()) score += 1;
+  return score;
+}
+
+/** One list row per person (by e-post). Same name alone does not merge. */
+export function dedupeMembersForMessageInbox(members: Member[]): Member[] {
+  const byKey = new Map<string, Member>();
+  for (const member of members) {
+    if (member.isActive === false || member.id === "__template__") continue;
+    const email = member.email.trim().toLowerCase();
+    const key = email.includes("@") ? `email:${email}` : `id:${member.id.trim()}`;
+    if (!key || key === "id:") continue;
+    const existing = byKey.get(key);
+    if (!existing) {
+      byKey.set(key, member);
+      continue;
+    }
+    const delta = inboxMemberPriority(member) - inboxMemberPriority(existing);
+    if (delta > 0 || (delta === 0 && member.id.localeCompare(existing.id) < 0)) {
+      byKey.set(key, member);
+    }
+  }
+  return Array.from(byKey.values());
+}
+
 export function buildTrainerMessageInboxRows(
   members: Member[],
   messages: ChatMessage[],
   unreadByMemberId: Record<string, number>,
 ): TrainerMessageInboxRow[] {
   const unreadByIdentity = buildUnreadMessagesByIdentityKey(members, unreadByMemberId);
-  const active = members.filter((member) => member.isActive !== false && member.id !== "__template__");
+  const uniqueMembers = dedupeMembersForMessageInbox(members);
 
-  const rows: TrainerMessageInboxRow[] = active.map((member) => {
+  const rows: TrainerMessageInboxRow[] = uniqueMembers.map((member) => {
     const thread = filterMessagesForRosterMember(messages, members, member.id);
     const latestMessage = thread.length ? thread[thread.length - 1]! : null;
     const latestAtMs = latestMessage ? parseChatCreatedAtMs(latestMessage.createdAt) : 0;
