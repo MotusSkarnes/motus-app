@@ -1,5 +1,7 @@
--- Unread chat message email reminders (24h).
+-- Unread chat message email reminders (10 minutes).
 -- Run in Supabase SQL Editor.
+-- Only considers trainer messages created from "today" (Europe/Oslo) onward,
+-- so historical unread do not trigger a backlog of reminder emails.
 
 create table if not exists public.chat_message_email_reminders (
   id bigserial primary key,
@@ -57,7 +59,10 @@ as $$
     join public.members m on m.id = cm.member_id
     where cm.sender = 'trainer'
       and cm.read_by_member_at is null
-      and cm.created_at <= (now() - interval '24 hours')
+      -- Wait 10 minutes after the message before reminding.
+      and cm.created_at <= (now() - interval '10 minutes')
+      -- Only messages from the start of today (Oslo) — avoids backlog spam.
+      and cm.created_at >= (date_trunc('day', timezone('Europe/Oslo', now())) at time zone 'Europe/Oslo')
       and m.is_active = true
       and coalesce(trim(m.email), '') <> ''
       and not exists (
@@ -86,9 +91,10 @@ $$;
 revoke all on function public.select_unread_message_email_reminder_candidates() from public;
 grant execute on function public.select_unread_message_email_reminder_candidates() to service_role;
 
--- Optional scheduler (pg_cron + pg_net):
+-- Required scheduler (pg_cron + pg_net):
 -- 1) deploy function:
---    supabase functions deploy send-unread-message-email-reminders
+--    supabase functions deploy send-unread-message-email-reminders --no-verify-jwt
+--    The function deliberately uses CHAT_REMINDER_SECRET instead of a user JWT.
 --
 -- 2) set function secrets:
 --    CHAT_REMINDER_SECRET=...
@@ -96,10 +102,10 @@ grant execute on function public.select_unread_message_email_reminder_candidates
 --    REMINDER_EMAIL_FROM=Motus <hello@your-domain.no>
 --    PUBLIC_APP_URL=https://motus-pt-app.vercel.app
 --
--- 3) configure hourly cron (example):
+-- 3) configure frequent cron while testing 10-minute wait (example every 5 min):
 -- select cron.schedule(
 --   'send-unread-message-email-reminders-hourly',
---   '15 * * * *',
+--   '*/5 * * * *',
 --   $$
 --   select net.http_post(
 --     url := 'https://<project-ref>.functions.supabase.co/send-unread-message-email-reminders',
@@ -111,4 +117,3 @@ grant execute on function public.select_unread_message_email_reminder_candidates
 --   );
 --   $$
 -- );
-

@@ -79,7 +79,10 @@ Deno.serve(async (req) => {
   if (!supabaseUrl || !serviceRoleKey) {
     return jsonResponse(500, { error: "Missing Supabase environment variables" });
   }
-  if (reminderSecret && requestSecret !== reminderSecret) {
+  if (!reminderSecret) {
+    return jsonResponse(500, { error: "CHAT_REMINDER_SECRET is not configured" });
+  }
+  if (requestSecret !== reminderSecret) {
     return jsonResponse(401, { error: "Unauthorized reminder request" });
   }
 
@@ -101,7 +104,8 @@ Deno.serve(async (req) => {
     auth: { persistSession: false, autoRefreshToken: false },
   });
 
-  // One reminder max per member per 24h; only unread trainer messages older than 24h.
+  // One reminder max per member per 24h; only unread trainer messages older than 10 minutes
+  // and created from today (Europe/Oslo) onward — see SQL RPC.
   const { data, error } = await admin.rpc("select_unread_message_email_reminder_candidates", {});
   if (error) {
     return jsonResponse(500, { error: error.message });
@@ -138,7 +142,7 @@ Deno.serve(async (req) => {
           </a>
         </p>
         <p style="margin:0; font-size:12px; color:#6b7280;">
-          Denne påminnelsen sendes kun når meldinger har vært ulest i minst 24 timer.
+          Denne påminnelsen sendes når meldinger har vært ulest en stund.
         </p>
       </div>
     `;
