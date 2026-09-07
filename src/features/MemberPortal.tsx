@@ -5454,9 +5454,9 @@ export function MemberPortal(props: MemberPortalProps) {
     nowTimestamp,
     periodPlanSwapsByPlan,
   ]);
-  const shouldPromptForHomeWeekPlan = !homeWorkoutHydrationPending && !hasPlannedWorkoutInUpcomingWeek;
+  // Never nudge "Lag ukeplan" when a period/week plan already exists — rest days are normal.
   const shouldShowHomeWeekPlanPrompt =
-    !homeWorkoutHydrationPending && (shouldPromptForHomeWeekPlan || !homeHasPlannedWorkoutToday);
+    !homeWorkoutHydrationPending && !memberHasVisiblePeriodPlan && !hasPlannedWorkoutInUpcomingWeek;
   let nextPlannedWorkout: { dayLabel: string; entry: string } | null = null;
   if (homePeriodPlanWeeklyDays && todayPlanDayKey) {
     const todayIndex = WEEKDAY_PLAN_ORDER.indexOf(todayPlanDayKey);
@@ -7054,7 +7054,7 @@ export function MemberPortal(props: MemberPortalProps) {
                     >
                       {todayPeriodPlanCompleted ? "Dagens økt er logget" : "Logg dagens økt"}
                     </GradientButton>
-                  ) : todayPlanIsPassiveDay || homeWorkoutHydrationPending ? null : !homeHasPlannedWorkoutToday ? (
+                  ) : todayPlanIsPassiveDay || homeWorkoutHydrationPending || memberHasVisiblePeriodPlan ? null : !homeHasPlannedWorkoutToday ? (
                     <GradientButton
                       type="button"
                       onClick={() => setMemberTab(nextBestAction.action === "progress" ? "progress" : "programs")}
@@ -7249,7 +7249,7 @@ export function MemberPortal(props: MemberPortalProps) {
                       : null
                   }
                   primaryAction={
-                    shouldPromptForHomeWeekPlan || !homeHasPlannedWorkoutToday
+                    shouldShowHomeWeekPlanPrompt
                       ? {
                           label: "Lag ukeplan",
                           onClick: openMemberWeekPlanBuilderFromHome,
