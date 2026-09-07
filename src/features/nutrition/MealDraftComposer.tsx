@@ -92,29 +92,17 @@ export function MealDraftComposer({
         <FoodLogFormFields onSubmit={addToDraft} submitLabel="Legg til i måltid" compact={compact} />
       </section>
 
-      {slotSavedMeals.length > 0 ? (
-        <>
-          <hr className="motus-meal-draft__section-divider" />
-          <SavedMealsPicker
-            meals={slotSavedMeals}
-            slotLabel={slotLabel}
-            onSelect={loadSavedToDraft}
-            onDelete={onDeleteSaved}
-          />
-        </>
-      ) : null}
-
       <hr className="motus-meal-draft__section-divider" />
 
       <section className="motus-meal-draft__basket" aria-label="Måltid du bygger nå">
         <header className="motus-meal-draft__basket-head">
-          <h3 className="motus-meal-draft__basket-title">Dette måltidet nå</h3>
+          <h3 className="motus-meal-draft__basket-title">Dette er måltidet nå</h3>
           {draftItems.length > 0 ? (
             <span className="motus-meal-draft__basket-sum">
               {draftItems.length} {draftItems.length === 1 ? "vare" : "varer"} · {formatMacro(draftMacros.kcal, 0)} kcal
             </span>
           ) : (
-            <span className="motus-meal-draft__basket-empty-hint">Legg til matvarer under — de vises her før du logger.</span>
+            <span className="motus-meal-draft__basket-empty-hint">Legg til matvarer over — de vises her før du logger.</span>
           )}
         </header>
 
@@ -178,6 +166,18 @@ export function MealDraftComposer({
           </>
         ) : null}
       </section>
+
+      {slotSavedMeals.length > 0 ? (
+        <>
+          <hr className="motus-meal-draft__section-divider" />
+          <SavedMealsPicker
+            meals={slotSavedMeals}
+            slotLabel={slotLabel}
+            onSelect={loadSavedToDraft}
+            onDelete={onDeleteSaved}
+          />
+        </>
+      ) : null}
     </div>
   );
 }

@@ -75,7 +75,7 @@ export function SavedMealsPicker({ meals, slotLabel, onSelect, onDelete }: Saved
         <span className="motus-saved-meals-picker__count">{meals.length}</span>
       </h3>
       <p className="motus-saved-meals-picker__lead">
-        Søk og velg — hentes inn til {slotLabel.toLowerCase()} før du logger.
+        Hurtigvalg: søk og hent inn et lagret {slotLabel.toLowerCase()}-måltid.
       </p>
       <div ref={rootRef} className="motus-saved-meals-picker__combobox relative">
         <div className="relative">
