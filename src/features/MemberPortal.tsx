@@ -235,7 +235,7 @@ import { MemberProgressScoresCard } from "./MemberProgressScoresCard";
 import { MemberBodyMetricsSection } from "./MemberBodyMetricsSection";
 import { createMemberBodyMetricEntry, mergeBodyMetricIntoPersonalGoals } from "../app/memberBodyMetrics";
 import {
-  computeStopGoalDays,
+  computeStopGoalProgress,
   formatStopGoalWithoutLabel,
   getStopGoalsFromPersonalGoals,
   normalizeStopGoals,
@@ -2250,7 +2250,7 @@ export function MemberPortal(props: MemberPortalProps) {
         .map((goal) => ({
           ...goal,
           label: resolveStopGoalLabel(goal),
-          days: computeStopGoalDays(goal.startedAt, nowDate),
+          days: computeStopGoalProgress(goal, nowDate).totalDays,
         }))
         .filter((goal) => goal.label),
     [effectiveStopGoals, nowDate],
@@ -3147,6 +3147,10 @@ export function MemberPortal(props: MemberPortalProps) {
       resolveMemberPersonalGoals(editableMember, members),
     );
     const stopGoalsForSync = normalizeStopGoals(options?.stopGoalsOverride ?? stopGoalsDraft);
+    const intentionallyClearedStopGoals =
+      options?.stopGoalsOverride !== undefined
+        ? stopGoalsForSync.length === 0
+        : stopGoalDraftDirtyRef.current && stopGoalsForSync.length === 0;
     if (stopGoalsForSync.length) {
       const parsed = parsePersonalGoalsJson(metricsForSync) ?? {};
       metricsForSync = `${PROFILE_METRICS_PREFIX}${JSON.stringify({
@@ -3155,11 +3159,13 @@ export function MemberPortal(props: MemberPortalProps) {
         stopGoals: stopGoalsForSync,
       })}`;
       setStopGoalsDraft(stopGoalsForSync);
-    } else if (stopGoalFromDb || stopGoalsFromDb.length) {
+    } else if (intentionallyClearedStopGoals && (stopGoalFromDb || stopGoalsFromDb.length)) {
+      // Only remove when the member explicitly cleared stop goals in this session.
       const parsed = parsePersonalGoalsJson(metricsForSync) ?? {};
       delete parsed.stopGoal;
       delete parsed.stopGoals;
       metricsForSync = `${PROFILE_METRICS_PREFIX}${JSON.stringify(parsed)}`;
+      setStopGoalsDraft([]);
     }
     const trimmedDisplayName = memberNameDraft.trim();
     if (trimmedDisplayName) {
@@ -3202,7 +3208,9 @@ export function MemberPortal(props: MemberPortalProps) {
         },
       });
     });
-    stopGoalsLatestRef.current = stopGoalsForSync;
+    stopGoalsLatestRef.current = stopGoalsForSync.length
+      ? stopGoalsForSync
+      : getStopGoalsFromPersonalGoals(metricsForSync);
     stopGoalDraftDirtyRef.current = false;
     stopGoalDraftDirtyMemberIdRef.current = null;
     if (supabaseClient) {
@@ -3287,14 +3295,11 @@ export function MemberPortal(props: MemberPortalProps) {
       const label = resolveStopGoalLabel(goal);
       if (!goal || !label) return;
       const withoutLabel = formatStopGoalWithoutLabel(label);
-      const days = computeStopGoalDays(goal.startedAt, nowDate);
+      const progress = computeStopGoalProgress(goal, nowDate);
 
       setConfirmDialog({
         title: "Registrer brudd?",
-        message:
-          days > 0
-            ? `Dette trekker fra 1 døgn på streaken uten ${withoutLabel}, og legger til ett brudd i statistikken.`
-            : `Dette legger til ett brudd i statistikken for ${withoutLabel}.`,
+        message: `Dette legger til 1 brudd for ${withoutLabel}. Antall dager uten (${progress.totalDays}) fortsetter å telle — du mister ikke reisen.`,
         confirmLabel: "Registrer brudd",
         onConfirm: () => {
           setConfirmDialog(null);
@@ -8414,7 +8419,7 @@ export function MemberPortal(props: MemberPortalProps) {
                   targetWeight={profileTargetWeight}
                   onLog={persistBodyMetric}
                   isSaving={isSavingBodyMetric}
-                  stopGoals={stopGoalsDraft}
+                  stopGoals={effectiveStopGoals}
                   setStopGoals={updateStopGoalsDraft}
                   onSaveStopGoals={async () => {
                     await saveProfile({ silent: false });

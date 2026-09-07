@@ -1,12 +1,15 @@
 import { describe, expect, it } from "vitest";
 import {
   computeStopGoalDays,
+  computeStopGoalProgress,
+  formatStopGoalRatioSummary,
   formatStopGoalTitle,
   formatStopGoalWithoutLabel,
   getStopGoalFromPersonalGoals,
   getStopGoalsFromPersonalGoals,
   normalizeStopGoals,
   recordStopGoalBreak,
+  resolveStopGoalJourneyStart,
 } from "./memberStopGoal";
 
 describe("memberStopGoal", () => {
@@ -19,6 +22,7 @@ describe("memberStopGoal", () => {
       target: "Brus",
       customTarget: "",
       startedAt: "2026-07-01",
+      originalStartedAt: "2026-07-01",
       breakCount: 0,
     });
   });
@@ -52,29 +56,78 @@ describe("memberStopGoal", () => {
     expect(formatStopGoalWithoutLabel("Kaffestopp")).toBe("kaffe");
   });
 
-  it("records a break by subtracting one day and incrementing break count", () => {
+  it("records a break by only incrementing break count", () => {
     const now = new Date("2026-07-05T12:00:00");
-    const goal = { target: "Godteri", customTarget: "", startedAt: "2026-07-01", breakCount: 1 };
+    const goal = normalizeStopGoals([
+      { target: "Godteri", customTarget: "", startedAt: "2026-07-01", originalStartedAt: "2026-07-01", breakCount: 1 },
+    ])[0];
 
     expect(recordStopGoalBreak(goal, now)).toEqual({
       target: "Godteri",
       customTarget: "",
-      startedAt: "2026-07-02",
+      startedAt: "2026-07-01",
+      originalStartedAt: "2026-07-01",
       breakCount: 2,
     });
-    expect(computeStopGoalDays("2026-07-02", now)).toBe(3);
+    expect(computeStopGoalDays("2026-07-01", now)).toBe(4);
   });
 
-  it("keeps startedAt on zero-day streak but still counts the break", () => {
+  it("normalizes legacy goals before recording a break so journey start is preserved", () => {
     const now = new Date("2026-07-05T12:00:00");
-    const goal = { target: "Godteri", customTarget: "", startedAt: "2026-07-05", breakCount: 0 };
+    const legacy = normalizeStopGoals([{ target: "Godteri", customTarget: "", startedAt: "2026-07-03", breakCount: 2 }])[0];
+    const afterBreak = recordStopGoalBreak(legacy, now);
 
-    expect(recordStopGoalBreak(goal, now)).toEqual({
-      target: "Godteri",
-      customTarget: "",
-      startedAt: "2026-07-05",
-      breakCount: 1,
+    expect(afterBreak.startedAt).toBe("2026-07-01");
+    expect(afterBreak.breakCount).toBe(3);
+    expect(computeStopGoalProgress(afterBreak, now).totalDays).toBe(4);
+  });
+
+  it("keeps total days growing after breaks", () => {
+    const now = new Date("2026-07-05T12:00:00");
+    const goal = { target: "Godteri", customTarget: "", startedAt: "2026-07-01", breakCount: 0 };
+    const afterBreak = recordStopGoalBreak(goal, now);
+    const progress = computeStopGoalProgress(afterBreak, now);
+
+    expect(progress.totalDays).toBe(4);
+    expect(progress.breakCount).toBe(1);
+    expect(progress.cleanDays).toBe(3);
+  });
+
+  it("recovers journey start for legacy goals that moved startedAt on break", () => {
+    const legacy = { target: "Godteri", customTarget: "", startedAt: "2026-07-03", breakCount: 2 };
+    expect(resolveStopGoalJourneyStart(legacy)).toBe("2026-07-01");
+    expect(computeStopGoalProgress(legacy, new Date("2026-07-05T12:00:00"))).toMatchObject({
+      totalDays: 4,
+      breakCount: 2,
+      cleanDays: 2,
     });
+  });
+
+  it("summarizes the clean-to-break ratio", () => {
+    expect(
+      formatStopGoalRatioSummary({
+        totalDays: 30,
+        breakCount: 0,
+        cleanDays: 30,
+        cleanRatio: 1,
+      }),
+    ).toBe("Ingen brudd — sterkt holdt!");
+    expect(
+      formatStopGoalRatioSummary({
+        totalDays: 0,
+        breakCount: 0,
+        cleanDays: 0,
+        cleanRatio: 1,
+      }),
+    ).toMatch(/Startet i dag/);
+    expect(
+      formatStopGoalRatioSummary({
+        totalDays: 20,
+        breakCount: 2,
+        cleanDays: 18,
+        cleanRatio: 18 / 20,
+      }),
+    ).toMatch(/18 dager uten/);
   });
 
   it("merges duplicate stop goals by target instead of start date", () => {
@@ -84,7 +137,13 @@ describe("memberStopGoal", () => {
     ]);
 
     expect(merged).toEqual([
-      { target: "Godteri", customTarget: "", startedAt: "2026-07-02", breakCount: 2 },
+      {
+        target: "Godteri",
+        customTarget: "",
+        startedAt: "2026-06-30",
+        originalStartedAt: "2026-06-30",
+        breakCount: 2,
+      },
     ]);
   });
 });

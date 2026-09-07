@@ -20,6 +20,7 @@ import {
   resolveMemberOnboarding,
 } from "./memberOnboarding";
 import { patchMemberAppUiStateInPersonalGoals } from "./memberAppUiState";
+import { getStopGoalsFromPersonalGoals } from "./memberStopGoal";
 import type { Member } from "./types";
 
 describe("memberOnboarding", () => {
@@ -268,6 +269,24 @@ describe("memberOnboarding", () => {
     const merged = mergePersonalGoalsFromCandidates([notificationOnly, onboardingBlob]);
     expect(isOnboardingCompleted(merged)).toBe(true);
     expect(getOnboardingFromPersonalGoals(merged)?.trainingGoals).toEqual(["Styrke"]);
+  });
+
+  it("mergePersonalGoalsFromCandidates keeps stop goals when best blob lacks them", () => {
+    const withStop = `MOTUS_PROFILE_V1:${JSON.stringify({
+      stopGoals: [{ target: "Godteri", customTarget: "", startedAt: "2026-07-01", breakCount: 0 }],
+    })}`;
+    const notificationOnly = `MOTUS_PROFILE_V1:${JSON.stringify({
+      notificationPreferences: { seenHiddenBadgeIds: ["badge-1"], openedMemberAlertIds: ["alert-1"] },
+      onboardingCompletedAt: "2026-05-16T12:00:00.000Z",
+      onboarding: {
+        version: 1,
+        completedAt: "2026-05-16T12:00:00.000Z",
+        trainingGoals: ["Styrke"],
+        motivations: ["Helse"],
+      },
+    })}`;
+    const merged = mergePersonalGoalsFromCandidates([notificationOnly, withStop]);
+    expect(getStopGoalsFromPersonalGoals(merged).map((goal) => goal.target)).toEqual(["Godteri"]);
   });
 
   it("isMemberOnboardingComplete respects local completion marker", () => {

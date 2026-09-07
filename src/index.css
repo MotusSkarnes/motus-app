@@ -476,6 +476,48 @@ button {
   margin-top: 0.2rem;
   font-size: 0.72rem;
   font-weight: 600;
+  color: #64748b;
+}
+
+.motus-home-stop-card__ratio {
+  display: flex;
+  margin-top: 0.45rem;
+  height: 0.4rem;
+  overflow: hidden;
+  border-radius: 9999px;
+  background: rgba(148, 163, 184, 0.22);
+}
+
+.motus-home-stop-card__ratio--fresh {
+  background: rgba(45, 212, 191, 0.18);
+}
+
+.motus-home-stop-card__ratio-fresh {
+  display: block;
+  width: 28%;
+  border-radius: 9999px;
+  background: linear-gradient(90deg, rgba(20, 184, 166, 0.35), #2dd4bf);
+}
+
+.motus-home-stop-card__ratio-clean {
+  display: block;
+  min-width: 0;
+  background: linear-gradient(90deg, #14b8a6, #2dd4bf);
+}
+
+.motus-home-stop-card__ratio-break {
+  display: block;
+  min-width: 0;
+  background: linear-gradient(90deg, #fb7185, #db2777);
+}
+
+.motus-home-stop-card__ratio-legend {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-top: 0.28rem;
+  font-size: 0.68rem;
+  font-weight: 650;
   color: #94a3b8;
 }
 

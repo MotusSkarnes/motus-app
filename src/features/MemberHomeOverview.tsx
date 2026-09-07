@@ -12,7 +12,12 @@ import {
 } from "lucide-react";
 import { MOTUS } from "../app/data";
 import { imageObjectPositionFromSrc } from "../app/imageFocalPoint";
-import { formatStopGoalBreakCount, formatStopGoalWithoutLabel, type MemberStopGoal } from "../app/memberStopGoal";
+import {
+  computeStopGoalProgress,
+  formatStopGoalRatioSummary,
+  formatStopGoalWithoutLabel,
+  type MemberStopGoal,
+} from "../app/memberStopGoal";
 import { GradientButton, OutlineButton, TrainingStartButton } from "../app/ui";
 
 export type MemberHomeStatusCard = {
@@ -273,13 +278,20 @@ export function MemberHomeOverview({
         <section className="motus-home-stop-carousel" aria-label="Stopp">
           <div className="motus-home-stop-carousel__track" tabIndex={0}>
             {visibleStopGoals.map((goal, index) => {
-              const days = Math.max(0, Number(goal.days ?? 0));
-              const breakCount = Math.max(0, Number(goal.breakCount ?? 0));
+              const progress = computeStopGoalProgress(goal);
+              const days = Math.max(0, Number(goal.days ?? progress.totalDays));
+              const hasJourney = days > 0 || progress.breakCount > 0;
+              const cleanPct = hasJourney ? Math.round(progress.cleanRatio * 100) : 0;
+              const breakPct = hasJourney ? Math.max(0, 100 - cleanPct) : 0;
               return (
                 <article
                   key={`${goal.withoutLabel}-${goal.startedAt}-${index}`}
                   className="motus-home-stop-card"
-                  aria-label={`${days} døgn uten ${goal.withoutLabel}`}
+                  aria-label={
+                    hasJourney
+                      ? `${days} døgn uten ${goal.withoutLabel}, ${progress.breakCount} brudd`
+                      : `Reise uten ${goal.withoutLabel} startet i dag`
+                  }
                 >
                   <div className="motus-home-stop-card__icon" aria-hidden>
                     <ShieldCheck className="h-5 w-5" strokeWidth={2.3} />
@@ -287,9 +299,33 @@ export function MemberHomeOverview({
                   <div className="min-w-0 flex-1">
                     <p className="motus-home-stop-card__label">Stopp</p>
                     <p className="motus-home-stop-card__value">
-                      {days} {days === 1 ? "døgn" : "døgn"} uten {goal.withoutLabel}
+                      {hasJourney
+                        ? `${days} ${days === 1 ? "døgn" : "døgn"} uten ${goal.withoutLabel}`
+                        : `Reise uten ${goal.withoutLabel}`}
                     </p>
-                    <p className="motus-home-stop-card__meta">{formatStopGoalBreakCount(breakCount)}</p>
+                    <p className="motus-home-stop-card__meta">{formatStopGoalRatioSummary(progress)}</p>
+                    <div
+                      className={`motus-home-stop-card__ratio${hasJourney ? "" : " motus-home-stop-card__ratio--fresh"}`}
+                      role="img"
+                      aria-label={
+                        hasJourney
+                          ? `${progress.cleanDays} dager uten mot ${progress.breakCount} brudd`
+                          : "Ingen dager eller brudd ennå"
+                      }
+                    >
+                      {hasJourney ? (
+                        <>
+                          <span className="motus-home-stop-card__ratio-clean" style={{ width: `${cleanPct}%` }} />
+                          <span className="motus-home-stop-card__ratio-break" style={{ width: `${breakPct}%` }} />
+                        </>
+                      ) : (
+                        <span className="motus-home-stop-card__ratio-fresh" />
+                      )}
+                    </div>
+                    <div className="motus-home-stop-card__ratio-legend">
+                      <span>{hasJourney ? `${progress.cleanDays} uten` : "Dag 0"}</span>
+                      <span>{progress.breakCount} brudd</span>
+                    </div>
                   </div>
                   {onRecordStopGoalBreak ? (
                     <button

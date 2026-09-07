@@ -2,6 +2,7 @@ import {
   mergeFoodAvoidancesAcrossCandidates,
   mergeFoodAvoidancesIntoPersonalGoals,
 } from "./memberFoodAvoidances";
+import { mergeStopGoalsAcrossCandidates, mergeStopGoalsIntoPersonalGoals } from "./memberStopGoal";
 import { readMemberAppUiState, readProfileDisplayName } from "./memberAppUiState";
 import {
   parsePersonalGoalsJson,
@@ -361,10 +362,11 @@ export function mergePersonalGoalsFromCandidates(candidates: Array<string | unde
   const values = candidates.map((value) => String(value ?? "").trim()).filter(Boolean);
   if (!values.length) return "";
   const mergedAvoidances = mergeFoodAvoidancesAcrossCandidates(values);
+  const mergedStopGoals = mergeStopGoalsAcrossCandidates(values);
   let merged = pickBestPersonalGoals(values);
   if (onboardingAnswersAreSubstantive(getOnboardingFromPersonalGoals(merged))) {
     merged = mergeFoodAvoidancesIntoPersonalGoals(merged, mergedAvoidances);
-    return merged;
+    return mergeStopGoalsIntoPersonalGoals(merged, mergedStopGoals);
   }
   for (const value of values) {
     const onboarding = getOnboardingFromPersonalGoals(value);
@@ -373,7 +375,8 @@ export function mergePersonalGoalsFromCandidates(candidates: Array<string | unde
       break;
     }
   }
-  return mergeFoodAvoidancesIntoPersonalGoals(merged, mergedAvoidances);
+  merged = mergeFoodAvoidancesIntoPersonalGoals(merged, mergedAvoidances);
+  return mergeStopGoalsIntoPersonalGoals(merged, mergedStopGoals);
 }
 
 export function resolveMemberPersonalGoals(
