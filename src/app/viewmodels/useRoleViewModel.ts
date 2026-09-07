@@ -99,8 +99,7 @@ export function useRoleViewModel(state: AppStateHookResult): RoleViewModel {
     onPersistMemberNotificationPreferences,
     onTrainerOpenMessage: (memberId) => {
       state.patchState({ selectedMemberId: memberId });
-      state.setTrainerTab("customers");
-      setOpenCustomerMessagesSignal((prev) => prev + 1);
+      state.setTrainerTab("messages");
     },
     onTrainerOpenCustomers: () => {
       state.setTrainerTab("customers");
@@ -230,6 +229,7 @@ export function useRoleViewModel(state: AppStateHookResult): RoleViewModel {
     patchState: state.patchState,
     messageBadgeCount: trainerUnreadMessageCount,
     unreadMessagesByMemberId: trainerUnreadMessagesByMemberId,
+    markTrainerMessagesReadForMember,
     addMember: state.addMember,
     deactivateMember: state.deactivateMember,
     deleteMember: state.deleteMember,

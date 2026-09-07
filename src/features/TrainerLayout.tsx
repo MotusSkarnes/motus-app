@@ -24,6 +24,7 @@ import { TrainerPortal } from "./TrainerPortal";
 import type { MemberPortal } from "./MemberPortal";
 import { TrainerFoodBankView } from "./TrainerFoodBankView";
 import { TrainerMealPlanHubView } from "./TrainerMealPlanHubView";
+import { TrainerMessagesHubView } from "./TrainerMessagesHubView";
 import { InspirationHub } from "./InspirationHub";
 import { TrainerBadgeCatalog } from "./TrainerBadgeCatalog";
 
@@ -43,14 +44,11 @@ type TrainerWorkoutBridge = Pick<
   | "cancelWorkoutMode"
 >;
 
-type TrainerNavAction = "messages" | "calendar";
-
 type TrainerMenuItem = {
   key: TrainerTab;
   label: string;
   icon: LucideIcon;
   badge?: number;
-  action?: TrainerNavAction;
 };
 
 type TrainerLayoutProps = {
@@ -60,6 +58,7 @@ type TrainerLayoutProps = {
   patchState: (patch: Partial<AppState>) => void;
   messageBadgeCount?: number;
   unreadMessagesByMemberId?: Record<string, number>;
+  markTrainerMessagesReadForMember?: (memberId: string) => void;
   addMember: ComponentProps<typeof TrainerPortal>["addMember"];
   deactivateMember: ComponentProps<typeof TrainerPortal>["deactivateMember"];
   deleteMember: ComponentProps<typeof TrainerPortal>["deleteMember"];
@@ -106,7 +105,7 @@ function buildTrainerMenuItems(messageBadgeCount: number, includeAdmin: boolean)
     { key: "nutrition", label: "Matvarebank", icon: Apple },
     { key: "mealPlan", label: "Ernæring", icon: UtensilsCrossed },
     { key: "badges", label: "Badges", icon: Award },
-    { key: "customers", label: "Meldinger", icon: MessageSquare, badge: messageBadgeCount, action: "messages" },
+    { key: "messages", label: "Meldinger", icon: MessageSquare, badge: messageBadgeCount },
     { key: "calendar", label: "Kalender", icon: CalendarDays },
     { key: "statistics", label: "Statistikk", icon: BarChart3 },
     { key: "settings", label: "Innstillinger", icon: Settings },
@@ -120,12 +119,13 @@ function buildTrainerMenuItems(messageBadgeCount: number, includeAdmin: boolean)
 const mobileTabs: Array<{ id: TrainerTab; label: string; icon: LucideIcon }> = [
   { id: "dashboard", label: "Hjem", icon: Home },
   { id: "customers", label: "Klienter", icon: Users },
+  { id: "messages", label: "Meldinger", icon: MessageSquare },
   { id: "programs", label: "Program", icon: ClipboardList },
   { id: "inspiration", label: "Innhold", icon: FileText },
-  { id: "exerciseBank", label: "Øvelser", icon: Dumbbell },
 ];
 
 const mobileMoreTabs: Array<{ id: TrainerTab; label: string; icon: LucideIcon }> = [
+  { id: "exerciseBank", label: "Øvelser", icon: Dumbbell },
   { id: "calendar", label: "Kalender", icon: CalendarDays },
   { id: "nutrition", label: "Matvarebank", icon: Apple },
   { id: "mealPlan", label: "Ernæring", icon: UtensilsCrossed },
@@ -136,7 +136,6 @@ const mobileMoreTabs: Array<{ id: TrainerTab; label: string; icon: LucideIcon }>
 ];
 
 function isNavItemActive(item: TrainerMenuItem, trainerTab: TrainerTab): boolean {
-  if (item.action) return false;
   return trainerTab === item.key;
 }
 
@@ -147,6 +146,7 @@ export function TrainerLayout({
   patchState,
   messageBadgeCount = 0,
   unreadMessagesByMemberId = {},
+  markTrainerMessagesReadForMember,
   addMember,
   deactivateMember,
   deleteMember,
@@ -201,11 +201,6 @@ export function TrainerLayout({
   const isMoreTabActive = mobileMoreTabs.some((tab) => tab.id === trainerTab);
 
   const handleNavClick = (item: TrainerMenuItem) => {
-    if (item.action === "messages") {
-      setTrainerTab("customers");
-      setOpenCustomerMessagesSignal((value) => value + 1);
-      return;
-    }
     setTrainerTab(item.key);
   };
 
@@ -369,6 +364,19 @@ export function TrainerLayout({
                 memberSearch={mealPlanMemberSearch}
                 onMemberSearchChange={setMealPlanMemberSearch}
               />
+            ) : trainerTab === "messages" ? (
+              <TrainerMessagesHubView
+                members={appState.members.filter((member) => memberRecordIsActive(member))}
+                messages={appState.messages}
+                selectedMemberId={appState.selectedMemberId}
+                onSelectMember={(memberId) => patchState({ selectedMemberId: memberId })}
+                unreadMessagesByMemberId={unreadMessagesByMemberId}
+                memberAvatarById={memberAvatarById}
+                sendTrainerMessage={sendTrainerMessage}
+                toggleChatMessageReaction={toggleChatMessageReaction}
+                markChatConversationRead={markChatConversationRead}
+                markTrainerMessagesReadForMember={markTrainerMessagesReadForMember ?? (() => undefined)}
+              />
             ) : trainerTab === "badges" ? (
               <TrainerBadgeCatalog />
             ) : (
@@ -421,6 +429,7 @@ export function TrainerLayout({
           {visibleMobileTabs.map((tab) => {
             const Icon = tab.icon;
             const isActive = trainerTab === tab.id;
+            const badge = tab.id === "messages" && messageBadgeCount > 0 ? messageBadgeCount : 0;
             return (
               <button
                 key={tab.id}
@@ -429,15 +438,22 @@ export function TrainerLayout({
                   setMoreMenuOpen(false);
                   setTrainerTab(tab.id);
                 }}
-                className={`flex min-w-0 flex-1 flex-col items-center justify-center gap-0.5 rounded-xl px-1 py-2 text-[10px] font-semibold transition ${
+                className={`relative flex min-w-0 flex-1 flex-col items-center justify-center gap-0.5 rounded-xl px-1 py-2 text-[10px] font-semibold transition ${
                   isActive ? "motus-mobile-tab-active" : "text-slate-400"
                 }`}
               >
-                <Icon
-                  className={`shrink-0 ${isActive ? "h-6 w-6" : "h-[22px] w-[22px]"}`}
-                  strokeWidth={isActive ? 2.5 : 2}
-                  style={isActive ? { color: MOTUS.turquoise } : undefined}
-                />
+                <span className="relative">
+                  <Icon
+                    className={`shrink-0 ${isActive ? "h-6 w-6" : "h-[22px] w-[22px]"}`}
+                    strokeWidth={isActive ? 2.5 : 2}
+                    style={isActive ? { color: MOTUS.turquoise } : undefined}
+                  />
+                  {badge > 0 ? (
+                    <span className="absolute -right-2 -top-1 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-teal-600 px-1 text-[9px] font-bold text-white">
+                      {badge > 9 ? "9+" : badge}
+                    </span>
+                  ) : null}
+                </span>
                 <span className="truncate leading-none">{tab.label}</span>
                 {isActive ? (
                   <span className="h-0.5 w-4 rounded-full" style={{ backgroundColor: MOTUS.turquoise }} aria-hidden />

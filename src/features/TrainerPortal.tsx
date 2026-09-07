@@ -5251,8 +5251,7 @@ function pickFirstName(value: unknown): string {
             onOpenNutrition: () => setTrainerTab("mealPlan"),
             onShareContent: () => setTrainerTab("inspiration"),
             onBulkMessage: () => {
-              setTrainerTab("customers");
-              setOpenCustomerMessagesSignal?.((value) => value + 1);
+              setTrainerTab("messages");
             },
           }}
         />

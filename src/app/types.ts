@@ -18,7 +18,8 @@ export type TrainerTab =
   | "mealPlan"
   | "badges"
   | "statistics"
-  | "settings";
+  | "settings"
+  | "messages";
 export type CustomerSubTab = "overview" | "profile" | "programs" | "workouts" | "messages" | "nutrition";
 
 /** Vist på klientfane-raden i trenervisning (Klienter → valgt kunde). */
