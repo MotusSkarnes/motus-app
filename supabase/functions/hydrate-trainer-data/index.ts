@@ -2,7 +2,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { buildMemberEmailIlikeOrFilter } from "../_shared/memberEmailQueries.ts";
 
 const EXERCISE_BANK_SELECT =
-  "id, name, category, muscle_group, equipment, level, description, image_url, personal_record_image_url, is_active, created_at, updated_at";
+  "id, name, category, muscle_group, equipment, level, description, image_url, personal_record_image_url, prescription_fields, custom_field_1_label, custom_field_2_label, is_active, created_at, updated_at";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",

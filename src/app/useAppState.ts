@@ -98,6 +98,7 @@ import {
   mergeMemberProgramsWithActivityTemplates,
 } from "./activityTemplate";
 import { ensureDefaultMotusGroupClassTemplates } from "./motusGroupClassTemplates";
+import { mergeExerciseBanks } from "./exerciseBankMerge";
 import { memberMayDeleteProgram, mergeProgramAuthorFields } from "./programAuthor";
 import {
   mergeProgramImageUrl,
@@ -124,6 +125,7 @@ import {
   restoreMemberByEmailFromSupabase,
   supabaseAppRepository,
   syncMemberLocalCatalogToSupabase,
+  syncLocalExercisesToSupabase,
   type HydratedMemberData,
   type RestoreMemberOptions,
 } from "../services/supabaseRepository";
@@ -1561,7 +1563,7 @@ export function useAppState() {
         }
 
         if (shouldAdoptNonEmptyRemoteOnly(remoteExercises)) {
-          next.exercises = remoteExercises;
+          next.exercises = mergeExerciseBanks(remoteExercises!, prevStripped.exercises);
         }
 
         if (isMemberLikeSession && sessionEmail) {
@@ -1636,6 +1638,22 @@ export function useAppState() {
               if (!cancelled) await hydrateRemoteData();
             } else if (pushResult.failures.length) {
               console.warn("Sky-synk feilet for noe lokalt innhold:", pushResult.failures.slice(0, 3).join(" | "));
+            }
+          })();
+        }
+      }
+
+      if (!cancelled && stateAfterHydrate && remoteExercises && typeof window !== "undefined") {
+        const exercisePushKey = `motus.exerciseBankPush:v1:${sessionUser?.id ?? sessionEmail ?? "anon"}`;
+        if (!window.sessionStorage.getItem(exercisePushKey)) {
+          window.sessionStorage.setItem(exercisePushKey, "1");
+          void (async () => {
+            const pushResult = await syncLocalExercisesToSupabase(stateAfterHydrate!.exercises, remoteExercises);
+            if (pushResult.pushed > 0) {
+              console.info(`Sky-synk: lastet opp ${pushResult.pushed} øvelser fra denne enheten.`);
+              if (!cancelled) await hydrateRemoteData();
+            } else if (pushResult.failures.length) {
+              console.warn("Sky-synk feilet for øvelser:", pushResult.failures.slice(0, 3).join(" | "));
             }
           })();
         }

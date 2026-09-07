@@ -27,6 +27,7 @@ import { normalizeMemberGender } from "../app/memberGender";
 import { parseTrainerVacation } from "../app/trainerProfile";
 import { dedupePeriodPlansById } from "../app/periodPlanMerge";
 import { programExerciseUsesBankExercise } from "../app/exerciseBankUsage";
+import { localExercisesMissingFromRemote } from "../app/exerciseBankMerge";
 import { normalizeStoredExerciseCategory } from "../app/exerciseCategories";
 import { parsePrescriptionFieldsFromDb, prescriptionFieldsForExerciseSave } from "../app/exercisePrescriptionFields";
 import {
@@ -1896,9 +1897,27 @@ async function persistMember(member: Member, previousPersonalGoals?: string) {
   }
 }
 
-async function persistExercise(exercise: Exercise) {
-  if (!supabaseClient) return;
-  const row = {
+type ExerciseBankPersistRow = {
+  id: string;
+  name: string;
+  category: string;
+  muscle_group: string;
+  equipment: string;
+  level: string;
+  description: string;
+  image_url: string | null;
+  personal_record_image_url: string | null;
+  prescription_fields: ReturnType<typeof prescriptionFieldsForExerciseSave>;
+  custom_field_1_label: string;
+  custom_field_2_label: string;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+};
+
+function buildExerciseBankPersistRow(exercise: Exercise): ExerciseBankPersistRow {
+  const now = new Date().toISOString();
+  return {
     id: exercise.id,
     name: exercise.name,
     category: exercise.category,
@@ -1912,20 +1931,70 @@ async function persistExercise(exercise: Exercise) {
     custom_field_1_label: exercise.customField1Label?.trim() ?? "",
     custom_field_2_label: exercise.customField2Label?.trim() ?? "",
     is_active: true,
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString(),
+    created_at: now,
+    updated_at: now,
   };
-  const { error } = await supabaseClient.from("exercise_bank").upsert(row, { onConflict: "id" });
-  if (error) {
-    if (error.message.toLowerCase().includes("personal_record_image_url")) {
-      const { personal_record_image_url: _personalRecordImageUrl, ...fallbackRow } = row;
-      const { error: fallbackError } = await supabaseClient.from("exercise_bank").upsert(fallbackRow, { onConflict: "id" });
-      if (!fallbackError) return;
-      console.warn("Supabase exercise persist failed:", fallbackError.message);
-      return;
+}
+
+function stripExercisePersistColumnsForError(
+  row: Record<string, unknown>,
+  errorMessage: string,
+): Record<string, unknown> | null {
+  const lower = errorMessage.toLowerCase();
+  const next = { ...row };
+  let stripped = false;
+  const optionalColumns = [
+    "personal_record_image_url",
+    "prescription_fields",
+    "custom_field_1_label",
+    "custom_field_2_label",
+    "image_url",
+  ] as const;
+  for (const column of optionalColumns) {
+    if (lower.includes(column) && column in next) {
+      delete next[column];
+      stripped = true;
     }
-    console.warn("Supabase exercise persist failed:", error.message);
   }
+  return stripped ? next : null;
+}
+
+async function persistExercise(exercise: Exercise): Promise<boolean> {
+  if (!supabaseClient) return false;
+  const id = exercise.id.trim();
+  if (!id || !exercise.name.trim()) return false;
+
+  let row: Record<string, unknown> = buildExerciseBankPersistRow({ ...exercise, id });
+  for (let attempt = 0; attempt < 4; attempt += 1) {
+    const { error } = await supabaseClient.from("exercise_bank").upsert(row, { onConflict: "id" });
+    if (!error) return true;
+    const stripped = stripExercisePersistColumnsForError(row, error.message);
+    if (!stripped) {
+      console.warn("Supabase exercise persist failed:", error.message, exercise.id, exercise.name);
+      return false;
+    }
+    row = stripped;
+  }
+  return false;
+}
+
+export type ExerciseBankSyncResult = { pushed: number; failures: string[] };
+
+/** Upsert local-only custom exercises so they appear on other devices. */
+export async function syncLocalExercisesToSupabase(
+  localExercises: Exercise[],
+  remoteExercises: Exercise[],
+): Promise<ExerciseBankSyncResult> {
+  const result: ExerciseBankSyncResult = { pushed: 0, failures: [] };
+  if (!supabaseClient) return result;
+
+  const missing = localExercisesMissingFromRemote(localExercises, remoteExercises);
+  for (const exercise of missing) {
+    const ok = await persistExercise(exercise);
+    if (ok) result.pushed += 1;
+    else result.failures.push(`${exercise.name} (${exercise.id})`);
+  }
+  return result;
 }
 
 async function deactivateExerciseInSupabase(exerciseId: string, updatedPrograms: TrainingProgram[]) {
@@ -4875,10 +4944,17 @@ export const supabaseAppRepository: AppRepository = {
   },
   saveExercise(state: AppState, input: SaveExerciseInput): AppState {
     if (!input.name.trim() || !input.group.trim()) return state;
+    const previousIds = new Set(state.exercises.map((item) => item.id));
     const nextState = localAppRepository.saveExercise(state, input);
-    const exercise = nextState.exercises.find((item) => item.id === input.id) ?? nextState.exercises[0];
+    const exercise = input.id
+      ? nextState.exercises.find((item) => item.id === input.id)
+      : nextState.exercises.find((item) => !previousIds.has(item.id)) ?? nextState.exercises[0];
     if (exercise) {
-      void persistExercise(exercise);
+      void persistExercise(exercise).then((ok) => {
+        if (!ok) {
+          console.warn("Øvelse lagret lokalt, men sky-synk feilet:", exercise.name);
+        }
+      });
     }
     return nextState;
   },

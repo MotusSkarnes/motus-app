@@ -4,7 +4,7 @@ import { buildMemberEmailIlikeOrFilter } from "../_shared/memberEmailQueries.ts"
 const PROGRAMS_SELECT =
   "id, member_id, title, goal, notes, exercises, created_at, owner_user_id, program_created_by, program_created_by_name, image_url, member_library_status";
 const EXERCISE_BANK_SELECT =
-  "id, name, category, muscle_group, equipment, level, description, image_url, personal_record_image_url, is_active, created_at, updated_at";
+  "id, name, category, muscle_group, equipment, level, description, image_url, personal_record_image_url, prescription_fields, custom_field_1_label, custom_field_2_label, is_active, created_at, updated_at";
 const PROGRAM_TEMPLATE_COVER_SELECT =
   "id, member_id, title, notes, exercises, created_at, owner_user_id, image_url";
 
