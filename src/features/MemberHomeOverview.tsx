@@ -1,4 +1,5 @@
 ﻿import type { CSSProperties, ReactNode } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   Bookmark,
   CheckCircle2,
@@ -15,6 +16,7 @@ import { imageObjectPositionFromSrc } from "../app/imageFocalPoint";
 import {
   computeStopGoalProgress,
   formatStopGoalRatioSummary,
+  formatStopGoalTitle,
   formatStopGoalWithoutLabel,
   type MemberStopGoal,
 } from "../app/memberStopGoal";
@@ -105,8 +107,42 @@ export function MemberHomeOverview({
   const streakLabel = streakWeeks > 0 ? `${streakWeeks} ${streakWeeks === 1 ? "uke" : "uker"}` : "0 uker";
   const headerLine = headerMotivation?.trim() || todayDateLabel;
   const visibleStopGoals = stopGoals
-    .map((goal) => ({ ...goal, withoutLabel: formatStopGoalWithoutLabel(goal.label) }))
+    .map((goal) => ({
+      ...goal,
+      withoutLabel: formatStopGoalWithoutLabel(goal.label),
+      stopTitle: formatStopGoalTitle(goal.label),
+    }))
     .filter((goal) => goal.withoutLabel);
+  const stopCarouselRef = useRef<HTMLDivElement | null>(null);
+  const [activeStopIndex, setActiveStopIndex] = useState(0);
+
+  useEffect(() => {
+    setActiveStopIndex(0);
+  }, [visibleStopGoals.length]);
+
+  useEffect(() => {
+    const track = stopCarouselRef.current;
+    if (!track || visibleStopGoals.length <= 1) return;
+
+    const updateActive = () => {
+      const cards = Array.from(track.querySelectorAll<HTMLElement>(".motus-home-stop-card"));
+      if (!cards.length) return;
+      let bestIndex = 0;
+      let bestDistance = Number.POSITIVE_INFINITY;
+      cards.forEach((card, index) => {
+        const distance = Math.abs(card.offsetLeft - track.scrollLeft);
+        if (distance < bestDistance) {
+          bestDistance = distance;
+          bestIndex = index;
+        }
+      });
+      setActiveStopIndex(bestIndex);
+    };
+
+    updateActive();
+    track.addEventListener("scroll", updateActive, { passive: true });
+    return () => track.removeEventListener("scroll", updateActive);
+  }, [visibleStopGoals.length]);
 
   return (
     <div className="motus-home motus-fade-in-up">
@@ -275,8 +311,11 @@ export function MemberHomeOverview({
       </section>
 
       {visibleStopGoals.length ? (
-        <section className="motus-home-stop-carousel" aria-label="Stopp">
-          <div className="motus-home-stop-carousel__track" tabIndex={0}>
+        <section
+          className={`motus-home-stop-carousel${visibleStopGoals.length > 1 ? " motus-home-stop-carousel--multi" : ""}`}
+          aria-label="Stopp"
+        >
+          <div className="motus-home-stop-carousel__track" ref={stopCarouselRef} tabIndex={0}>
             {visibleStopGoals.map((goal, index) => {
               const progress = computeStopGoalProgress(goal);
               const days = Math.max(0, Number(goal.days ?? progress.totalDays));
@@ -289,21 +328,20 @@ export function MemberHomeOverview({
                   className="motus-home-stop-card"
                   aria-label={
                     hasJourney
-                      ? `${days} døgn uten ${goal.withoutLabel}, ${progress.breakCount} brudd`
-                      : `Reise uten ${goal.withoutLabel} startet i dag`
+                      ? `${goal.stopTitle}: ${days} døgn uten, ${progress.breakCount} brudd`
+                      : `${goal.stopTitle}: startet i dag`
                   }
                 >
                   <div className="motus-home-stop-card__icon" aria-hidden>
                     <ShieldCheck className="h-5 w-5" strokeWidth={2.3} />
                   </div>
                   <div className="min-w-0 flex-1">
-                    <p className="motus-home-stop-card__label">Stopp</p>
-                    <p className="motus-home-stop-card__value">
+                    <p className="motus-home-stop-card__value">{goal.stopTitle}</p>
+                    <p className="motus-home-stop-card__meta">
                       {hasJourney
-                        ? `${days} ${days === 1 ? "døgn" : "døgn"} uten ${goal.withoutLabel}`
-                        : `Reise uten ${goal.withoutLabel}`}
+                        ? `${days} ${days === 1 ? "døgn" : "døgn"} uten · ${formatStopGoalRatioSummary(progress)}`
+                        : formatStopGoalRatioSummary(progress)}
                     </p>
-                    <p className="motus-home-stop-card__meta">{formatStopGoalRatioSummary(progress)}</p>
                     <div
                       className={`motus-home-stop-card__ratio${hasJourney ? "" : " motus-home-stop-card__ratio--fresh"}`}
                       role="img"
@@ -344,10 +382,16 @@ export function MemberHomeOverview({
             })}
           </div>
           {visibleStopGoals.length > 1 ? (
-            <div className="motus-home-stop-carousel__dots" aria-hidden>
-              {visibleStopGoals.map((goal, index) => (
-                <span key={`${goal.withoutLabel}-${index}`} />
-              ))}
+            <div className="motus-home-stop-carousel__footer">
+              <p className="motus-home-stop-carousel__hint">Sveip for flere stopp</p>
+              <div className="motus-home-stop-carousel__dots" aria-hidden>
+                {visibleStopGoals.map((goal, index) => (
+                  <span
+                    key={`${goal.withoutLabel}-${index}`}
+                    className={index === activeStopIndex ? "is-active" : undefined}
+                  />
+                ))}
+              </div>
             </div>
           ) : null}
         </section>

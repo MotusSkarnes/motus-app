@@ -396,40 +396,71 @@ button {
 
 .motus-home-stop-carousel {
   position: relative;
+  width: 100%;
   overflow: hidden;
 }
 
 .motus-home-stop-carousel__track {
-  display: flex;
+  display: grid;
+  width: 100%;
+  grid-auto-flow: column;
+  grid-auto-columns: 100%;
   gap: 0.75rem;
   overflow-x: auto;
   overscroll-behavior-x: contain;
   scroll-snap-type: x mandatory;
   scrollbar-width: none;
+  touch-action: pan-x;
+  -webkit-overflow-scrolling: touch;
+}
+
+.motus-home-stop-carousel--multi .motus-home-stop-carousel__track {
+  grid-auto-columns: calc(100% - 1.25rem);
+  padding-right: 0.5rem;
 }
 
 .motus-home-stop-carousel__track::-webkit-scrollbar {
   display: none;
 }
 
+.motus-home-stop-carousel__footer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.35rem;
+  margin-top: 0.45rem;
+}
+
+.motus-home-stop-carousel__hint {
+  font-size: 0.68rem;
+  font-weight: 650;
+  color: #94a3b8;
+}
+
 .motus-home-stop-carousel__dots {
   display: flex;
   justify-content: center;
   gap: 0.35rem;
-  margin-top: 0.45rem;
 }
 
 .motus-home-stop-carousel__dots span {
   width: 0.375rem;
   height: 0.375rem;
   border-radius: 9999px;
-  background: rgba(48, 227, 190, 0.45);
+  background: rgba(48, 227, 190, 0.35);
+  transition: width 160ms ease, background-color 160ms ease;
+}
+
+.motus-home-stop-carousel__dots span.is-active {
+  width: 1rem;
+  background: rgba(15, 118, 110, 0.85);
 }
 
 .motus-home-stop-card {
   position: relative;
   display: flex;
-  flex: 0 0 100%;
+  width: 100%;
+  min-width: 0;
   align-items: center;
   gap: 0.875rem;
   overflow: hidden;
@@ -465,7 +496,7 @@ button {
 }
 
 .motus-home-stop-card__value {
-  margin-top: 0.125rem;
+  margin-top: 0;
   font-size: clamp(1.1rem, 5vw, 1.5rem);
   font-weight: 800;
   line-height: 1.12;

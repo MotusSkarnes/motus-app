@@ -233,11 +233,13 @@ export function MemberBodyMetricsSection({
   }
 
   function addStopGoal() {
-    setStopGoals([...stopGoals, createEmptyStopGoal()]);
+    const source = stopGoals.length ? stopGoals : [createEmptyStopGoal()];
+    setStopGoals([...source, createEmptyStopGoal()]);
   }
 
   function removeStopGoal(index: number) {
-    setStopGoals(stopGoals.filter((_, goalIndex) => goalIndex !== index));
+    const source = stopGoals.length ? stopGoals : [createEmptyStopGoal()];
+    setStopGoals(source.filter((_, goalIndex) => goalIndex !== index));
   }
 
   return (
@@ -350,15 +352,20 @@ export function MemberBodyMetricsSection({
         <div className="min-w-0 flex-1">
           <p className="text-xs font-semibold uppercase tracking-wide text-teal-700">Profil</p>
           <h3 className="mt-0.5 text-lg font-bold text-slate-900">Stopp</h3>
-          <p className="mt-0.5 text-xs text-slate-500">Velg hva du vil stoppe med, eller skriv inn ditt eget.</p>
+          <p className="mt-0.5 text-xs text-slate-500">
+            Legg til ett eller flere stopp. På forsiden kan du sveipe mellom dem.
+          </p>
         </div>
       </div>
       <div className="mt-4 space-y-3">
         {(stopGoals.length ? stopGoals : [createEmptyStopGoal()]).map((goal, index) => (
           <div key={`${index}-${goal.startedAt}`} className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+            <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
+              Stopp {index + 1}
+            </div>
             <div className="grid gap-3 sm:grid-cols-[1fr_1fr_10rem_auto] sm:items-end">
               <label className="space-y-1">
-                <span className="text-xs font-semibold text-slate-700">Stopp</span>
+                <span className="text-xs font-semibold text-slate-700">Velg</span>
                 <SelectBox
                   value={goal.target}
                   onChange={(value) => updateStopGoal(index, { target: value })}
@@ -398,7 +405,7 @@ export function MemberBodyMetricsSection({
         <OutlineButton type="button" onClick={addStopGoal} className="w-full sm:w-auto">
           <span className="inline-flex items-center gap-2">
             <Plus className="h-4 w-4" aria-hidden />
-            Legg til stopp
+            Legg til flere stopp
           </span>
         </OutlineButton>
         <GradientButton type="button" onClick={() => void onSaveStopGoals()} className="w-full sm:w-auto">
