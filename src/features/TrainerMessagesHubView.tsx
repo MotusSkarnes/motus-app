@@ -226,10 +226,10 @@ export function TrainerMessagesHubView({
         )}
       </div>
 
-      {/* Desktop: chat left, members right */}
-      <div className="hidden lg:grid lg:min-h-[70vh] lg:grid-cols-[minmax(0,1.4fr)_minmax(18rem,22rem)]">
-        <div className="min-h-0 border-r border-slate-200/80">{chatPane(false)}</div>
-        <div className="min-h-0 bg-slate-50/40">{memberList}</div>
+      {/* Desktop: members left, chat right */}
+      <div className="hidden lg:grid lg:min-h-[70vh] lg:grid-cols-[minmax(18rem,22rem)_minmax(0,1.4fr)]">
+        <div className="min-h-0 border-r border-slate-200/80 bg-slate-50/40">{memberList}</div>
+        <div className="min-h-0">{chatPane(false)}</div>
       </div>
     </Card>
   );
