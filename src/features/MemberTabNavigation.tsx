@@ -105,12 +105,16 @@ export function MemberMobileTabNav({
   onSelectTab,
   isMemberLimited,
   hasNutritionAccess = false,
-}: MemberTabNavigationProps) {
+  forceVisible = false,
+}: MemberTabNavigationProps & { forceVisible?: boolean }) {
   const tabs = memberNavTabs(isMemberLimited, hasNutritionAccess);
 
   return (
-    <div className="motus-mobile-tab-bar fixed inset-x-0 bottom-0 z-[9999] px-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-1.5 lg:hidden">
-      <div className="mx-auto flex max-w-md items-stretch gap-0.5">
+    <div
+      className={`motus-mobile-tab-bar fixed inset-x-0 bottom-0 z-[9999] px-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-1.5${
+        forceVisible ? "" : " lg:hidden"
+      }`}
+    >      <div className="mx-auto flex max-w-md items-stretch gap-0.5">
         {tabs.map((tab) => (
           <MemberMobileTabButton
             key={tab.id}

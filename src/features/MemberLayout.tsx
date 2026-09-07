@@ -149,6 +149,8 @@ type MemberLayoutProps = {
   isLocalDemoSession?: ComponentProps<typeof MemberPortal>["isLocalDemoSession"];
   refreshRemoteHydration?: ComponentProps<typeof MemberPortal>["refreshRemoteHydration"];
   onLogout: () => void;
+  /** Force mobile chrome (for trainer phone-frame preview on desktop). */
+  devicePreview?: boolean;
 };
 
 export function MemberLayout({
@@ -219,6 +221,7 @@ export function MemberLayout({
   isLocalDemoSession = false,
   refreshRemoteHydration,
   onLogout,
+  devicePreview = false,
 }: MemberLayoutProps) {
   const [onboardingGateOpen, setOnboardingGateOpen] = useState(false);
   const [welcomeModalOpen, setWelcomeModalOpen] = useState(false);
@@ -667,15 +670,17 @@ export function MemberLayout({
 
   return (
     <>
-      <div className="space-y-4 sm:space-y-5">
-        <MemberDesktopTabNav
-          memberTab={memberTab}
-          setMemberTab={setMemberTab}
-          onSelectTab={handleMemberNavSelect}
-          isMemberLimited={isMemberLimited}
-          hasNutritionAccess={hasNutritionAccess}
-        />
-        <div className="pb-24 lg:pb-0">
+      <div className={`space-y-4 sm:space-y-5${devicePreview ? " motus-member-device-preview" : ""}`}>
+        {devicePreview ? null : (
+          <MemberDesktopTabNav
+            memberTab={memberTab}
+            setMemberTab={setMemberTab}
+            onSelectTab={handleMemberNavSelect}
+            isMemberLimited={isMemberLimited}
+            hasNutritionAccess={hasNutritionAccess}
+          />
+        )}
+        <div className={devicePreview ? "pb-24" : "pb-24 lg:pb-0"}>
         {memberTab === "nutrition" ? (
           hasNutritionAccess && activeMember ? (
             <MemberNutritionView
@@ -719,6 +724,7 @@ export function MemberLayout({
           onSelectTab={handleMemberNavSelect}
           isMemberLimited={isMemberLimited}
           hasNutritionAccess={hasNutritionAccess}
+          forceVisible={devicePreview}
         />
       ) : null}
 

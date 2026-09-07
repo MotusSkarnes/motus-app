@@ -1,10 +1,10 @@
 import { useEffect, useRef, useState } from "react";
 import { OfflineBanner } from "./app/OfflineBanner";
 import { AppErrorBoundary } from "./app/AppErrorBoundary";
-import { resolveLayoutRole } from "./app/resolveLayoutRole";
+import { resolveLayoutRole, isTrainerMemberPreview } from "./app/resolveLayoutRole";
 import { useAppViewModel } from "./app/viewmodels";
 import { AppShell } from "./app/ui";
-import { AppHeader, LoginScreen, MemberLayout, TrainerLayout } from "./features";
+import { AppHeader, LoginScreen, MemberLayout, TrainerLayout, TrainerMemberPreviewShell } from "./features";
 import { isSupabaseConfigured } from "./services/supabaseClient";
 
 const AUTH_LOADING_RELOAD_MS = 12_000;
@@ -50,6 +50,10 @@ export default function App() {
   const { appState, isAuthSessionLoading, isRecoveryMode, loginScreenProps, appHeaderProps, trainerLayoutProps, memberLayoutProps } =
     useAppViewModel();
   const layoutRole = resolveLayoutRole(appState);
+  const trainerMemberPreview = isTrainerMemberPreview(appState);
+  const previewClientName =
+    appState.members.find((member) => member.id === appState.memberViewId)?.name?.trim() ||
+    undefined;
 
   return (
     <AppErrorBoundary>
@@ -60,7 +64,9 @@ export default function App() {
         <LoginScreen {...loginScreenProps} />
       ) : (
         <div
-          className={`space-y-3 pb-[calc(5rem+env(safe-area-inset-bottom,0px))] xl:space-y-4 xl:pb-6 ${layoutRole === "trainer" ? "motus-trainer-app" : ""}`}
+          className={`space-y-3 pb-[calc(5rem+env(safe-area-inset-bottom,0px))] xl:space-y-4 xl:pb-6 ${
+            layoutRole === "trainer" ? "motus-trainer-app" : ""
+          }${trainerMemberPreview ? " motus-client-preview-active" : ""}`}
         >
           {!isSupabaseConfigured ? (
             <div className="rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900">
@@ -71,9 +77,20 @@ export default function App() {
             </div>
           ) : null}
           <OfflineBanner />
-          <AppHeader {...appHeaderProps} />
+          {trainerMemberPreview ? null : <AppHeader {...appHeaderProps} />}
 
-          {layoutRole === "trainer" ? <TrainerLayout {...trainerLayoutProps} /> : <MemberLayout {...memberLayoutProps} />}
+          {trainerMemberPreview ? (
+            <TrainerMemberPreviewShell
+              clientName={previewClientName}
+              onExit={() => memberLayoutProps.patchState({ role: "trainer" })}
+            >
+              <MemberLayout {...memberLayoutProps} devicePreview />
+            </TrainerMemberPreviewShell>
+          ) : layoutRole === "trainer" ? (
+            <TrainerLayout {...trainerLayoutProps} />
+          ) : (
+            <MemberLayout {...memberLayoutProps} />
+          )}
         </div>
       )}
       </AppShell>

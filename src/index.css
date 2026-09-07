@@ -13693,3 +13693,140 @@ html:has(.motus-trainer-app) {
 .motus-inspo-community-cta:hover {
   background: rgba(255, 255, 255, 0.16) !important;
 }
+
+/* Trainer client preview — phone frame */
+.motus-client-preview-active {
+  padding-bottom: 1rem !important;
+}
+
+.motus-client-preview {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  width: 100%;
+}
+
+.motus-client-preview__toolbar {
+  display: flex;
+  width: min(100%, 28rem);
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.motus-client-preview__eyebrow {
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #64748b;
+}
+
+.motus-client-preview__title {
+  margin-top: 0.1rem;
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: #0f172a;
+  line-height: 1.2;
+}
+
+.motus-client-preview__hint {
+  margin-top: 0.2rem;
+  font-size: 0.75rem;
+  color: #64748b;
+}
+
+.motus-client-preview__exit {
+  flex-shrink: 0;
+  border-radius: 0.75rem;
+  border: 1px solid rgba(15, 23, 42, 0.1);
+  background: #fff;
+  padding: 0.55rem 0.85rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: #0f172a;
+  box-shadow: 0 6px 16px -12px rgba(15, 23, 42, 0.35);
+}
+
+.motus-client-preview__stage {
+  display: flex;
+  width: 100%;
+  justify-content: center;
+  padding: 0.25rem 0 0.75rem;
+}
+
+.motus-client-preview__device {
+  position: relative;
+  display: flex;
+  width: min(390px, calc(100vw - 1.5rem));
+  height: min(844px, calc(100dvh - 7.5rem));
+  flex-direction: column;
+  overflow: hidden;
+  border: 10px solid #0f172a;
+  border-radius: 2.25rem;
+  background: #0f172a;
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.08) inset,
+    0 28px 60px -28px rgba(15, 23, 42, 0.55);
+  /* Contain position:fixed member chrome (tab bar) inside the phone frame */
+  transform: translateZ(0);
+  isolation: isolate;
+}
+
+.motus-client-preview__speaker {
+  position: absolute;
+  top: 0.55rem;
+  left: 50%;
+  z-index: 2;
+  width: 5.5rem;
+  height: 0.7rem;
+  transform: translateX(-50%);
+  border-radius: 9999px;
+  background: #020617;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.06);
+}
+
+.motus-client-preview__screen {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  overscroll-behavior: contain;
+  background:
+    linear-gradient(180deg, #f8fafc 0%, #ffffff 28%),
+    #ffffff;
+  border-radius: 1.35rem;
+  -webkit-overflow-scrolling: touch;
+}
+
+.motus-client-preview__home-indicator {
+  position: absolute;
+  bottom: 0.45rem;
+  left: 50%;
+  z-index: 2;
+  width: 7rem;
+  height: 0.28rem;
+  transform: translateX(-50%);
+  border-radius: 9999px;
+  background: rgba(255, 255, 255, 0.35);
+  pointer-events: none;
+}
+
+.motus-client-preview__screen .motus-member-device-preview {
+  min-height: 100%;
+  padding: 0.75rem 0.75rem 0;
+}
+
+.motus-client-preview__screen .motus-mobile-tab-bar {
+  padding-bottom: 0.85rem;
+}
+
+@media (max-width: 430px) {
+  .motus-client-preview__device {
+    width: min(100%, calc(100vw - 0.75rem));
+    height: min(844px, calc(100dvh - 6.5rem));
+    border-width: 8px;
+    border-radius: 1.75rem;
+  }
+}
