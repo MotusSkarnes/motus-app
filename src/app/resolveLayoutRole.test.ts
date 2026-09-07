@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { isTrainerMemberPreview, resolveLayoutRole } from "./resolveLayoutRole";
+import { isTrainerMemberPreview, resolveLayoutRole, resolveTrainerMemberPreviewId } from "./resolveLayoutRole";
 import type { AppState } from "./types";
 
 function state(partial: Partial<AppState>): Pick<AppState, "role" | "currentUser"> {
@@ -42,5 +42,31 @@ describe("resolveLayoutRole", () => {
         }),
       ),
     ).toBe(true);
+  });
+
+  it("picks selected client for trainer member preview", () => {
+    expect(
+      resolveTrainerMemberPreviewId({
+        selectedMemberId: "m2",
+        memberViewId: "m1",
+        members: [
+          { id: "m1", customerType: "PT-kunde", isActive: true },
+          { id: "m2", customerType: "PT-kunde", isActive: true },
+        ],
+      }),
+    ).toBe("m2");
+  });
+
+  it("falls back to first active PT client when nothing is selected", () => {
+    expect(
+      resolveTrainerMemberPreviewId({
+        selectedMemberId: "",
+        memberViewId: "",
+        members: [
+          { id: "m-medlem", customerType: "Medlem", isActive: true },
+          { id: "m-pt", customerType: "PT-kunde", isActive: true },
+        ],
+      }),
+    ).toBe("m-pt");
   });
 });

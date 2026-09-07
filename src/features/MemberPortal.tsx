@@ -1437,7 +1437,7 @@ export function MemberPortal(props: MemberPortalProps) {
   const editableMember =
     currentUserRole === "member"
       ? currentMemberByEmail ?? viewedMember ?? null
-      : viewedMember ?? members[0] ?? null;
+      : viewedMember ?? null;
   const updateProfileSessionsPerWeekTargetDraft = useCallback(
     (value: string) => {
       profileMetricsDraftDirtyRef.current = true;
@@ -1670,7 +1670,8 @@ export function MemberPortal(props: MemberPortalProps) {
       relatedMembersForProfile.map((member) => `${member.id}:${member.personalGoals ?? ""}`).join("|"),
     [relatedMembersForProfile],
   );
-  if (editableMember?.id !== periodPlanSwapsOwnerId) {
+  useEffect(() => {
+    if (editableMember?.id === periodPlanSwapsOwnerId) return;
     const localSwaps =
       editableMember?.id && typeof window !== "undefined"
         ? parsePeriodPlanSwapsState(window.localStorage.getItem(getPeriodPlanSwapsStorageKey(editableMember.id)))
@@ -1690,7 +1691,7 @@ export function MemberPortal(props: MemberPortalProps) {
     setPeriodPlanSwapsByPlan(mergedSwaps.swapsByPlan);
     periodPlanSwapsLocalUpdatedAtRef.current = mergedSwaps.updatedAt;
     periodPlanSwapsDirtyRef.current = false;
-  }
+  }, [editableMember, editableMember?.id, members, periodPlanSwapsOwnerId, relatedMemberIdSet]);
   useEffect(() => {
     if (!editableMember?.id || periodPlanSwapsDirtyRef.current) return;
     const remoteSwaps = readPeriodPlanSwapsFromPersonalGoals(

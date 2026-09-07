@@ -24,10 +24,11 @@ import {
   type MemberOnboardingAnswers,
 } from "../app/memberOnboarding";
 import { normalizePeriodSchedulePlan, readPeriodPlansByMemberId, writePeriodPlansByMemberId } from "../app/periodPlanMerge";
+import { isTrainerMemberPreview } from "../app/resolveLayoutRole";
 import type { AppState, Member, MemberTab, PeriodSchedulePlan } from "../app/types";
 import { applyFirstLoginStampToMembersByEmail } from "../app/memberInviteStatus";
 import { ensureMemberAuthLink } from "../services/supabaseAuth";
-import { Card } from "../app/ui";
+import { Card, GradientButton } from "../app/ui";
 import type { MemberAlert } from "../app/useNotifications";
 import { isMemberAppAccessBlocked, memberRecordIsActive, MEMBER_ARCHIVED_APP_MESSAGE } from "../services/memberAccessRules";
 import { persistOnboardingToSupabase, upsertMemberPeriodPlansForTrainer } from "../services/supabaseRepository";
@@ -52,10 +53,21 @@ function resolveActiveMemberForUser(appState: AppState): Member | null {
   const currentUser = appState.currentUser;
   if (!currentUser) return null;
   const normalizedEmail = currentUser.email.trim().toLowerCase();
+  const previewingAsTrainer = isTrainerMemberPreview(appState);
+  const viewedId = appState.memberViewId.trim();
+
+  // Trainer client preview must follow the selected client, not the PT login email.
+  if (previewingAsTrainer && viewedId) {
+    const viewed =
+      appState.members.find((member) => member.id === viewedId && memberRecordIsActive(member)) ?? null;
+    if (viewed) return viewed;
+  }
+
   const candidates = appState.members.filter((member) => {
     if (!memberRecordIsActive(member)) return false;
     if (currentUser.memberId && member.id === currentUser.memberId) return true;
-    if (appState.memberViewId && member.id === appState.memberViewId) return true;
+    if (viewedId && member.id === viewedId) return true;
+    if (previewingAsTrainer) return false;
     return Boolean(normalizedEmail && member.email.trim().toLowerCase() === normalizedEmail);
   });
   if (!candidates.length) return null;
@@ -462,6 +474,10 @@ export function MemberLayout({
   const isMemberLimited = useMemo(() => {
     const currentUser = appState.currentUser;
     if (!currentUser) return false;
+    if (isTrainerMemberPreview(appState)) {
+      if (!activeMember) return false;
+      return activeMember.customerType === "Medlem" && activeMember.membershipType !== "Premium";
+    }
     const normalizedEmail = currentUser.email.trim().toLowerCase();
     const candidates = appState.members.filter((member) => {
       if (currentUser.memberId && member.id === currentUser.memberId) return true;
@@ -474,7 +490,7 @@ export function MemberLayout({
       );
     }
     return candidates.some((member) => member.customerType === "Medlem" && member.membershipType !== "Premium");
-  }, [appState.currentUser, appState.members, appState.memberViewId]);
+  }, [activeMember, appState, appState.currentUser, appState.members, appState.memberViewId]);
   const hasNutritionAccess = memberHasNutritionAccess(activeMember);
 
   function handleMemberNavSelect(tab: MemberTab) {
@@ -628,6 +644,23 @@ export function MemberLayout({
         >
           Logg ut
         </button>
+      </Card>
+    );
+  }
+
+  if (isTrainerMemberPreview(appState) && !activeMember) {
+    return (
+      <Card className="mx-auto max-w-lg p-6 text-center shadow-sm ring-1 ring-black/5 sm:p-8">
+        <h2 className="text-lg font-semibold text-slate-900">Velg en klient først</h2>
+        <p className="mt-3 text-sm leading-relaxed text-slate-600">
+          Klientvisning viser appen slik en kunde ser den. Gå tilbake til PT-visning og velg en klient, eller åpne en
+          kunde før du bytter.
+        </p>
+        <div className="mt-6 flex justify-center">
+          <GradientButton type="button" onClick={() => patchState({ role: "trainer" })} className="w-full sm:w-auto">
+            Til PT-visning
+          </GradientButton>
+        </div>
       </Card>
     );
   }
