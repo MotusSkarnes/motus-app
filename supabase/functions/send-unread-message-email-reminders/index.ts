@@ -104,8 +104,8 @@ Deno.serve(async (req) => {
     auth: { persistSession: false, autoRefreshToken: false },
   });
 
-  // One reminder max per member per 24h; only unread trainer messages older than 10 minutes
-  // and created from today (Europe/Oslo) onward — see SQL RPC.
+  // One reminder max per member per 24h; only unread trainer messages older than 24h
+  // and created on/after 2026-09-07 (Europe/Oslo) — see SQL RPC.
   const { data, error } = await admin.rpc("select_unread_message_email_reminder_candidates", {});
   if (error) {
     return jsonResponse(500, { error: error.message });
@@ -142,7 +142,7 @@ Deno.serve(async (req) => {
           </a>
         </p>
         <p style="margin:0; font-size:12px; color:#6b7280;">
-          Denne påminnelsen sendes når meldinger har vært ulest en stund.
+          Denne påminnelsen sendes når meldinger har vært ulest i minst 24 timer.
         </p>
       </div>
     `;
