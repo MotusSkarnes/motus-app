@@ -1,5 +1,6 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { formatMacro, type FoodItem } from "../../app/foodBankTypes";
+import { normalizeFoodBankNameKey } from "../../app/foodBankNameKey";
 import {
   defaultMeasureModeForFood,
   foodMeasureOptionsForItem,
@@ -21,13 +22,32 @@ type FoodLogFormFieldsProps = {
   compact?: boolean;
 };
 
+/** Prefer live bank row by id, then name key, else keep sticky snapshot. */
+export function resolveSelectedFoodFromBank(
+  foodItems: FoodItem[],
+  selected: FoodItem | null,
+): FoodItem | null {
+  if (!selected) return null;
+  const byId = foodItems.find((item) => item.id === selected.id);
+  if (byId) return byId;
+  const nameKey = normalizeFoodBankNameKey(selected.name);
+  if (!nameKey) return selected;
+  const byName = foodItems.find(
+    (item) =>
+      item.category === selected.category && normalizeFoodBankNameKey(item.name) === nameKey,
+  );
+  return byName ?? selected;
+}
+
 export function FoodLogFormFields({ onSubmit, submitLabel = "Logg", compact = false }: FoodLogFormFieldsProps) {
   const foodItems = useFoodBankItems();
   const [search, setSearch] = useState("");
-  const [selectedFoodId, setSelectedFoodId] = useState("");
+  const [selectedFood, setSelectedFood] = useState<FoodItem | null>(null);
   const [measureMode, setMeasureMode] = useState<FoodMeasureMode>("grams");
   const [quantityInput, setQuantityInput] = useState("100");
   const [error, setError] = useState<string | null>(null);
+  const quantityInputRef = useRef<HTMLInputElement | null>(null);
+  const lastConfiguredFoodIdRef = useRef("");
   const hasSearchQuery = search.trim().length > 0;
 
   const filteredFoods = useMemo(() => {
@@ -40,10 +60,17 @@ export function FoodLogFormFields({ onSubmit, submitLabel = "Logg", compact = fa
     return matched.slice(0, 24);
   }, [foodItems, search]);
 
-  const selectedFood = useMemo(
-    () => foodItems.find((item) => item.id === selectedFoodId) ?? null,
-    [foodItems, selectedFoodId],
-  );
+  // Keep selection sticky across food-bank sync/dedupe (id may change for duplicates).
+  useEffect(() => {
+    setSelectedFood((prev) => {
+      const next = resolveSelectedFoodFromBank(foodItems, prev);
+      if (prev && next && prev.id !== next.id) {
+        // Same food, remapped id — don't treat as a new selection (preserve quantity).
+        lastConfiguredFoodIdRef.current = next.id;
+      }
+      return next;
+    });
+  }, [foodItems]);
 
   const measureOptions = useMemo(() => foodMeasureOptionsForItem(selectedFood), [selectedFood]);
 
@@ -53,20 +80,37 @@ export function FoodLogFormFields({ onSubmit, submitLabel = "Logg", compact = fa
   );
 
   useEffect(() => {
-    if (!selectedFoodId) return;
-    const food = foodItems.find((item) => item.id === selectedFoodId);
-    if (!food) return;
-    const mode = defaultMeasureModeForFood(food);
+    if (!selectedFood) {
+      lastConfiguredFoodIdRef.current = "";
+      return;
+    }
+    if (lastConfiguredFoodIdRef.current === selectedFood.id) return;
+    lastConfiguredFoodIdRef.current = selectedFood.id;
+    const mode = defaultMeasureModeForFood(selectedFood);
     setMeasureMode(mode);
-    setQuantityInput(mode === "portion" ? "1" : String(defaultPortionGramsForFood(food)));
-    // Kun ved ny matvare — ikke når matvarebanken synkes (nytt objekt, samme id).
-  }, [selectedFoodId]);
+    setQuantityInput(mode === "portion" ? "1" : String(defaultPortionGramsForFood(selectedFood)));
+  }, [selectedFood]);
 
   const previewGrams = useMemo(() => {
     if (!selectedFood) return 0;
     const quantity = Number(quantityInput.replace(",", "."));
     return resolveFoodLogGrams(selectedFood, activeMeasure.mode, quantity, activeMeasure.gramsPerUnit);
   }, [activeMeasure, quantityInput, selectedFood]);
+
+  function selectFood(item: FoodItem) {
+    lastConfiguredFoodIdRef.current = "";
+    setSelectedFood(item);
+    setSearch("");
+    setError(null);
+    requestAnimationFrame(() => quantityInputRef.current?.focus());
+  }
+
+  function clearSelectedFood() {
+    setSelectedFood(null);
+    lastConfiguredFoodIdRef.current = "";
+    setQuantityInput("100");
+    setMeasureMode("grams");
+  }
 
   function handleSubmit() {
     if (!selectedFood) {
@@ -82,41 +126,55 @@ export function FoodLogFormFields({ onSubmit, submitLabel = "Logg", compact = fa
     setError(null);
     onSubmit({ food: selectedFood, grams });
     setSearch("");
-    setSelectedFoodId("");
-    setQuantityInput("100");
-    setMeasureMode("grams");
+    clearSelectedFood();
   }
 
   return (
     <div className={`motus-food-log-form ${compact ? "motus-food-log-form--compact" : ""}`}>
-      <TextInput
-        value={search}
-        onChange={(e) => setSearch(e.target.value)}
-        placeholder="Søk matvare…"
-        className="motus-food-log-form__search"
-      />
-      {hasSearchQuery ? (
-        <div className="motus-food-log-form__food-list" role="listbox" aria-label="Matvarer">
-          {filteredFoods.length === 0 ? (
-            <p className="motus-food-log-form__empty">Ingen matvarer matcher søket.</p>
-          ) : (
-            filteredFoods.map((item) => (
-              <button
-                key={item.id}
-                type="button"
-                role="option"
-                aria-selected={item.id === selectedFoodId}
-                className={`motus-food-log-form__food-option ${item.id === selectedFoodId ? "motus-food-log-form__food-option--active" : ""}`}
-                onClick={() => setSelectedFoodId(item.id)}
-              >
-                <span className="motus-food-log-form__food-name">{item.name}</span>
-                <span className="motus-food-log-form__food-meta">{defaultPortionGramsForFood(item)} g / 100g</span>
-              </button>
-            ))
-          )}
+      {selectedFood ? (
+        <div className="motus-food-log-form__selected">
+          <div className="motus-food-log-form__selected-main">
+            <span className="motus-food-log-form__selected-name">{selectedFood.name}</span>
+            <span className="motus-food-log-form__selected-meta">
+              {formatMacro(selectedFood.nutritionPer100g.kcal, 0)} kcal / 100 g
+            </span>
+          </div>
+          <button type="button" className="motus-food-log-form__selected-clear" onClick={clearSelectedFood}>
+            Bytt
+          </button>
         </div>
       ) : (
-        <p className="text-xs text-slate-500">Skriv i søkefeltet for å se varer.</p>
+        <>
+          <TextInput
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Søk matvare…"
+            className="motus-food-log-form__search"
+          />
+          {hasSearchQuery ? (
+            <div className="motus-food-log-form__food-list" role="listbox" aria-label="Matvarer">
+              {filteredFoods.length === 0 ? (
+                <p className="motus-food-log-form__empty">Ingen matvarer matcher søket.</p>
+              ) : (
+                filteredFoods.map((item) => (
+                  <button
+                    key={item.id}
+                    type="button"
+                    role="option"
+                    aria-selected={false}
+                    className="motus-food-log-form__food-option"
+                    onClick={() => selectFood(item)}
+                  >
+                    <span className="motus-food-log-form__food-name">{item.name}</span>
+                    <span className="motus-food-log-form__food-meta">{defaultPortionGramsForFood(item)} g / 100g</span>
+                  </button>
+                ))
+              )}
+            </div>
+          ) : (
+            <p className="text-xs text-slate-500">Skriv i søkefeltet for å se varer.</p>
+          )}
+        </>
       )}
       {selectedFood ? (
         <>
@@ -141,6 +199,7 @@ export function FoodLogFormFields({ onSubmit, submitLabel = "Logg", compact = fa
                 {measureMode === "portion" ? `Antall (${activeMeasure.label})` : "Gram"}
               </span>
               <TextInput
+                ref={quantityInputRef}
                 value={quantityInput}
                 onChange={(e) => setQuantityInput(e.target.value)}
                 inputMode="decimal"

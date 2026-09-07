@@ -26,7 +26,7 @@ export function MemberQuickFoodLogPanel({ memberId, readOnly = false, onRefreshF
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState<string | null>(null);
   const [state, setState] = useState(() => loadMemberMealPlanState(memberId));
-  const [selectedFoodId, setSelectedFoodId] = useState("");
+  const [selectedFood, setSelectedFood] = useState<FoodItem | null>(null);
   const [gramsInput, setGramsInput] = useState("100");
 
   const key = todayKey();
@@ -57,15 +57,20 @@ export function MemberQuickFoodLogPanel({ memberId, readOnly = false, onRefreshF
     return matched.slice(0, 25);
   }, [foodItems, search]);
 
-  const selectedFood = useMemo(
-    () => foodItems.find((item) => item.id === selectedFoodId) ?? null,
-    [foodItems, selectedFoodId],
-  );
+  useEffect(() => {
+    setSelectedFood((prev) => {
+      if (!prev) return null;
+      const byId = foodItems.find((item) => item.id === prev.id);
+      if (byId) return byId;
+      const nameKey = prev.name.trim().toLowerCase();
+      return foodItems.find((item) => item.name.trim().toLowerCase() === nameKey) ?? prev;
+    });
+  }, [foodItems]);
 
   useEffect(() => {
     if (!selectedFood) return;
     setGramsInput(String(defaultPortionGramsForFood(selectedFood)));
-  }, [selectedFood]);
+  }, [selectedFood?.id]);
 
   const persist = useCallback(
     (nextLogs: MemberQuickFoodLogEntry[]) => {
@@ -152,11 +157,20 @@ export function MemberQuickFoodLogPanel({ memberId, readOnly = false, onRefreshF
           <TextInput value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Søk enkeltvare…" />
           <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_110px_auto]">
             <select
-              value={selectedFoodId}
-              onChange={(e) => setSelectedFoodId(e.target.value)}
+              value={selectedFood?.id ?? ""}
+              onChange={(e) => {
+                const next = foodItems.find((item) => item.id === e.target.value) ?? null;
+                setSelectedFood(next);
+                if (next) setSearch("");
+              }}
               className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm"
             >
               <option value="">Velg matvare</option>
+              {selectedFood && !filteredFoods.some((item) => item.id === selectedFood.id) ? (
+                <option value={selectedFood.id}>
+                  {selectedFood.name} ({defaultPortionGramsForFood(selectedFood)} g)
+                </option>
+              ) : null}
               {filteredFoods.map((item) => (
                 <option key={item.id} value={item.id}>
                   {item.name} ({defaultPortionGramsForFood(item)} g)
