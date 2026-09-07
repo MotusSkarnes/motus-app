@@ -1,3 +1,4 @@
+import { useMemo, useState } from "react";
 import {
   Apple,
   BarChart3,
@@ -7,12 +8,14 @@ import {
   FileText,
   Megaphone,
   MessageSquare,
+  Search,
   Share2,
   Sparkles,
   TrendingUp,
   UserRound,
   Users,
   Video,
+  X,
 } from "lucide-react";
 import { MOTUS } from "../../app/data";
 import type {
@@ -31,6 +34,13 @@ export type TrainerPtHomeQuickActions = {
   onBulkMessage: () => void;
 };
 
+export type TrainerPtHomePreviewClient = {
+  memberId: string;
+  memberName: string;
+  avatarUrl: string | null;
+  detailLabel?: string;
+};
+
 export type TrainerPtHomeScreenProps = {
   trainerFirstName: string;
   todayDateLabel: string;
@@ -43,11 +53,12 @@ export type TrainerPtHomeScreenProps = {
   progressFocusLabel: string;
   popularContent: TrainerPtHomePopularContent[];
   quickActions: TrainerPtHomeQuickActions;
+  previewClients?: TrainerPtHomePreviewClient[];
   onOpenCalendar: () => void;
   onOpenAllClients: () => void;
   onOpenClient: (memberId: string) => void;
   onOpenInsights: () => void;
-  onSwitchToMemberView?: () => void;
+  onSwitchToMemberView?: (memberId: string) => void;
 };
 
 function ClientAvatar({ name, avatarUrl }: { name: string; avatarUrl: string | null }) {
@@ -132,14 +143,37 @@ export function TrainerPtHomeScreen({
   progressFocusLabel,
   popularContent,
   quickActions,
+  previewClients = [],
   onOpenCalendar,
   onOpenAllClients,
   onOpenClient,
   onOpenInsights,
   onSwitchToMemberView,
 }: TrainerPtHomeScreenProps) {
+  const [clientPreviewOpen, setClientPreviewOpen] = useState(false);
+  const [clientPreviewQuery, setClientPreviewQuery] = useState("");
   const progressDeltaLabel =
     progressDeltaPct > 0 ? `+${progressDeltaPct}%` : progressDeltaPct < 0 ? `${progressDeltaPct}%` : "0%";
+
+  const filteredPreviewClients = useMemo(() => {
+    const query = clientPreviewQuery.trim().toLocaleLowerCase("nb-NO");
+    if (!query) return previewClients;
+    return previewClients.filter((client) => {
+      const haystack = `${client.memberName} ${client.detailLabel ?? ""}`.toLocaleLowerCase("nb-NO");
+      return haystack.includes(query);
+    });
+  }, [clientPreviewQuery, previewClients]);
+
+  function openClientPreviewPicker() {
+    setClientPreviewQuery("");
+    setClientPreviewOpen(true);
+  }
+
+  function chooseClientPreview(memberId: string) {
+    setClientPreviewOpen(false);
+    setClientPreviewQuery("");
+    onSwitchToMemberView?.(memberId);
+  }
 
   return (
     <div className="motus-pt-home motus-fade-in-up">
@@ -158,7 +192,7 @@ export function TrainerPtHomeScreen({
           </p>
         </div>
         {onSwitchToMemberView ? (
-          <button type="button" className="motus-pt-home-client-toggle motus-pressable" onClick={onSwitchToMemberView}>
+          <button type="button" className="motus-pt-home-client-toggle motus-pressable" onClick={openClientPreviewPicker}>
             <span className="motus-pt-home-client-toggle-track" aria-hidden>
               <span className="motus-pt-home-client-toggle-thumb" />
             </span>
@@ -337,6 +371,79 @@ export function TrainerPtHomeScreen({
           </div>
         </div>
       </section>
+
+      {clientPreviewOpen && onSwitchToMemberView ? (
+        <div
+          className="fixed inset-0 z-[10040] flex items-end justify-center bg-slate-950/45 p-3 sm:items-center sm:p-6"
+          role="presentation"
+          onClick={() => setClientPreviewOpen(false)}
+        >
+          <div
+            className="motus-pt-home-preview-sheet flex max-h-[min(85vh,36rem)] w-full max-w-md flex-col overflow-hidden rounded-2xl bg-white shadow-xl"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="motus-pt-home-preview-title"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="flex items-start justify-between gap-3 border-b border-slate-100 px-4 py-3">
+              <div className="min-w-0">
+                <h2 id="motus-pt-home-preview-title" className="text-base font-bold text-slate-900">
+                  Velg klient
+                </h2>
+                <p className="mt-0.5 text-xs text-slate-500">Se appen slik kunden ser den</p>
+              </div>
+              <button
+                type="button"
+                className="inline-flex h-9 w-9 items-center justify-center rounded-full text-slate-500 transition hover:bg-slate-100 hover:text-slate-800"
+                aria-label="Lukk"
+                onClick={() => setClientPreviewOpen(false)}
+              >
+                <X className="h-4 w-4" aria-hidden />
+              </button>
+            </div>
+            <label className="relative block border-b border-slate-100 px-4 py-3">
+              <span className="sr-only">Søk etter klient</span>
+              <Search className="pointer-events-none absolute left-7 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" aria-hidden />
+              <input
+                type="search"
+                value={clientPreviewQuery}
+                onChange={(event) => setClientPreviewQuery(event.target.value)}
+                placeholder="Søk navn…"
+                className="w-full rounded-xl border border-slate-200 bg-slate-50 py-2.5 pl-9 pr-3 text-sm text-slate-900 outline-none ring-teal-500/30 placeholder:text-slate-400 focus:border-teal-400 focus:bg-white focus:ring-2"
+                autoFocus
+              />
+            </label>
+            <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-2">
+              {filteredPreviewClients.length === 0 ? (
+                <p className="px-3 py-8 text-center text-sm text-slate-500">
+                  {previewClients.length === 0 ? "Ingen aktive klienter å vise." : "Ingen treff. Prøv et annet søk."}
+                </p>
+              ) : (
+                <ul className="space-y-1">
+                  {filteredPreviewClients.map((client) => (
+                    <li key={client.memberId}>
+                      <button
+                        type="button"
+                        className="motus-pressable flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left transition hover:bg-slate-50"
+                        onClick={() => chooseClientPreview(client.memberId)}
+                      >
+                        <ClientAvatar name={client.memberName} avatarUrl={client.avatarUrl} />
+                        <span className="min-w-0 flex-1">
+                          <span className="block truncate text-sm font-semibold text-slate-900">{client.memberName}</span>
+                          {client.detailLabel ? (
+                            <span className="block truncate text-xs text-slate-500">{client.detailLabel}</span>
+                          ) : null}
+                        </span>
+                        <ChevronRight className="h-4 w-4 shrink-0 text-slate-400" aria-hidden />
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }

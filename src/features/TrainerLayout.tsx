@@ -18,7 +18,6 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { MOTUS } from "../app/data";
-import { resolveTrainerMemberPreviewId } from "../app/resolveLayoutRole";
 import type { AppState, AuthUser, TrainerTab } from "../app/types";
 import { Card } from "../app/ui";
 import { TrainerPortal } from "./TrainerPortal";
@@ -247,20 +246,15 @@ export function TrainerLayout({
     unreadMessagesByMemberId,
     trainerTab,
     setTrainerTab,
-    onSwitchToMemberView: () =>
-      patchState((prev) => {
-        const memberId = resolveTrainerMemberPreviewId({
-          selectedMemberId: prev.selectedMemberId,
-          memberViewId: prev.memberViewId,
-          members: prev.members,
-        });
-        if (!memberId) return prev;
-        return {
-          role: "member",
-          memberViewId: memberId,
-          selectedMemberId: memberId,
-        };
-      }),
+    onSwitchToMemberView: (memberId: string) => {
+      const trimmed = memberId.trim();
+      if (!trimmed) return;
+      patchState({
+        role: "member",
+        memberViewId: trimmed,
+        selectedMemberId: trimmed,
+      });
+    },
     addMember,
     deactivateMember,
     deleteMember,

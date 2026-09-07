@@ -343,7 +343,7 @@ type TrainerPortalProps = {
   unreadMessagesByMemberId?: Record<string, number>;
   trainerTab: TrainerTab;
   setTrainerTab: (tab: TrainerTab) => void;
-  onSwitchToMemberView?: () => void;
+  onSwitchToMemberView?: (memberId: string) => void;
   addMember: (input: CreateMemberInput) => Promise<CreateMemberResult>;
   deactivateMember: (memberId: string) => void;
   deleteMember: (memberId: string) => void;
@@ -5244,6 +5244,15 @@ function pickFirstName(value: unknown): string {
             selectMemberWithUnsavedChangesGuard(memberId, () => setCustomerSubTab("overview"));
           }}
           onOpenInsights={() => openCustomersWithListFilters({ priorityFilter: "red" })}
+          previewClients={activeMembers
+            .slice()
+            .sort((a, b) => a.name.localeCompare(b.name, "nb"))
+            .map((member) => ({
+              memberId: member.id,
+              memberName: member.name,
+              avatarUrl: resolveMemberAvatarUrl(member) || null,
+              detailLabel: getMemberCustomerTypeDisplay(member).label,
+            }))}
           onSwitchToMemberView={onSwitchToMemberView}
             quickActions={{
             onCreateProgram: () => setTrainerTab("programs"),
