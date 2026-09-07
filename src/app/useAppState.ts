@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { flushSync } from "react-dom";
 import { STORAGE_KEY, demoUsers, getDefaultState } from "./data";
 import { loadState, saveState } from "./storage";
+import { resolveRoleAfterAuthSync } from "./resolveLayoutRole";
 import {
   createMember,
   ensureWorkoutModeSessionMetadata,
@@ -1843,12 +1844,21 @@ export function useAppState() {
           programs: baseState.programs,
           fallbackId: user.memberId ?? (baseState.memberViewId || `auth-${user.id}`),
         });
+        const nextRole = resolveRoleAfterAuthSync({
+          authUserRole: user.role,
+          previousRole: prev.role,
+        });
+        const keepTrainerPreview = user.role === "trainer" && nextRole === "member";
         return {
           ...baseState,
           currentUser: user,
-          role: user.role,
-          selectedMemberId: resolvedSelectedMemberId,
-          memberViewId: resolvedMemberViewId,
+          role: nextRole,
+          selectedMemberId: keepTrainerPreview
+            ? prev.selectedMemberId.trim() || resolvedSelectedMemberId
+            : resolvedSelectedMemberId,
+          memberViewId: keepTrainerPreview
+            ? prev.memberViewId.trim() || resolvedMemberViewId
+            : resolvedMemberViewId,
         };
       });
       if (user.role === "member") {
@@ -1915,12 +1925,21 @@ export function useAppState() {
           programs: baseState.programs,
           fallbackId: user.memberId ?? (baseState.memberViewId || `auth-${user.id}`),
         });
+        const nextRole = resolveRoleAfterAuthSync({
+          authUserRole: user.role,
+          previousRole: prev.role,
+        });
+        const keepTrainerPreview = user.role === "trainer" && nextRole === "member";
         return {
           ...baseState,
           currentUser: user,
-          role: user.role,
-          selectedMemberId: resolvedSelectedMemberId,
-          memberViewId: resolvedMemberViewId,
+          role: nextRole,
+          selectedMemberId: keepTrainerPreview
+            ? prev.selectedMemberId.trim() || resolvedSelectedMemberId
+            : resolvedSelectedMemberId,
+          memberViewId: keepTrainerPreview
+            ? prev.memberViewId.trim() || resolvedMemberViewId
+            : resolvedMemberViewId,
         };
       });
       setIsAuthSessionLoading(false);

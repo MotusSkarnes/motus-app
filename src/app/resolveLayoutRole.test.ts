@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { isTrainerMemberPreview, resolveLayoutRole, resolveTrainerMemberPreviewId } from "./resolveLayoutRole";
+import { isTrainerMemberPreview, resolveLayoutRole, resolveRoleAfterAuthSync, resolveTrainerMemberPreviewId } from "./resolveLayoutRole";
 import type { AppState } from "./types";
 
 function state(partial: Partial<AppState>): Pick<AppState, "role" | "currentUser"> {
@@ -68,5 +68,11 @@ describe("resolveLayoutRole", () => {
         ],
       }),
     ).toBe("m-pt");
+  });
+
+  it("keeps trainer member preview role across auth sync", () => {
+    expect(resolveRoleAfterAuthSync({ authUserRole: "trainer", previousRole: "member" })).toBe("member");
+    expect(resolveRoleAfterAuthSync({ authUserRole: "trainer", previousRole: "trainer" })).toBe("trainer");
+    expect(resolveRoleAfterAuthSync({ authUserRole: "member", previousRole: "member" })).toBe("member");
   });
 });

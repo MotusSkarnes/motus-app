@@ -32,3 +32,17 @@ export function resolveTrainerMemberPreviewId(input: {
     active[0];
   return preferred?.id?.trim() ?? "";
 }
+
+/**
+ * Keep trainer "Til klientvisning" open across auth token refreshes.
+ * Auth events must update currentUser, but must not force role back to trainer mid-preview.
+ */
+export function resolveRoleAfterAuthSync(input: {
+  authUserRole: AppState["role"];
+  previousRole: AppState["role"];
+}): AppState["role"] {
+  if (input.authUserRole === "trainer" && input.previousRole === "member") {
+    return "member";
+  }
+  return input.authUserRole;
+}
