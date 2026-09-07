@@ -2243,6 +2243,9 @@ export function MemberPortal(props: MemberPortalProps) {
   const shouldUseStopGoalsDraft =
     stopGoalDraftDirtyRef.current || normalizedStopGoalsDraft.length > 0 || stopGoalsFromDb.length === 0;
   const effectiveStopGoals = shouldUseStopGoalsDraft ? normalizedStopGoalsDraft : stopGoalsFromDb;
+  // Keep empty placeholder rows in the profile editor; normalize only for home/save.
+  const stopGoalsForEditor =
+    stopGoalDraftDirtyRef.current || stopGoalsFromDb.length === 0 ? stopGoalsDraft : stopGoalsFromDb;
   stopGoalsLatestRef.current = effectiveStopGoals;
   const homeStopGoals = useMemo(
     () =>
@@ -8419,10 +8422,10 @@ export function MemberPortal(props: MemberPortalProps) {
                   targetWeight={profileTargetWeight}
                   onLog={persistBodyMetric}
                   isSaving={isSavingBodyMetric}
-                  stopGoals={effectiveStopGoals}
+                  stopGoals={stopGoalsForEditor}
                   setStopGoals={updateStopGoalsDraft}
                   onSaveStopGoals={async () => {
-                    await saveProfile({ silent: false });
+                    await saveProfile({ silent: false, stopGoalsOverride: stopGoalsDraft });
                     setProfileSaveInfo("Stopp lagret.");
                   }}
                   stopGoalsSaveStatus={profileSaveInfo}
