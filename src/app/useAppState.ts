@@ -827,6 +827,7 @@ const INITIAL_SUPABASE_AUTH_FROM_URL = captureInitialSupabaseAuthUrl();
 
 export function useAppState() {
   const remoteHydrateRef = useRef<(() => Promise<void>) | null>(null);
+  const exerciseBankPushInFlightRef = useRef(false);
   const rosterCloudSyncInFlightRef = useRef(false);
   const pinnedTrainerMembersRef = useRef(new Map<string, { member: Member; expiresAt: number }>());
 
@@ -1394,12 +1395,18 @@ export function useAppState() {
         (isTrainerSession && Boolean(hydratedTrainer) && !trainerHydrateFailed) ||
         (isMemberLikeSession && hydratedMember !== null) ||
         (isMemberLikeSession && hydratedMember === null && Array.isArray(directMemberLogs) && directMemberLogs.length > 0);
-      const remoteExercises =
+      let remoteExercises =
         trainerHydrateOkEarly
           ? (hydratedTrainer?.exercises ?? [])
           : memberHydrateOkEarly
             ? (hydratedMember?.exercises ?? [])
             : hydratedTrainer?.exercises ?? hydratedMember?.exercises ?? (await fetchExercisesFromSupabase());
+      // Hydrate can report ok while exercise_bank select failed (empty []). Never trust empty bank
+      // over a direct fetch — that left each PC stuck on its local-only catalog.
+      if (!remoteExercises?.length) {
+        const directExercises = await fetchExercisesFromSupabase();
+        if (directExercises?.length) remoteExercises = directExercises;
+      }
       if (cancelled) return;
 
       if (
@@ -1644,16 +1651,20 @@ export function useAppState() {
       }
 
       if (!cancelled && stateAfterHydrate && remoteExercises && typeof window !== "undefined") {
-        const exercisePushKey = `motus.exerciseBankPush:v1:${sessionUser?.id ?? sessionEmail ?? "anon"}`;
-        if (!window.sessionStorage.getItem(exercisePushKey)) {
-          window.sessionStorage.setItem(exercisePushKey, "1");
+        // Keep pushing local-only customs until cloud has them (no one-shot session gate).
+        if (!exerciseBankPushInFlightRef.current) {
+          exerciseBankPushInFlightRef.current = true;
           void (async () => {
-            const pushResult = await syncLocalExercisesToSupabase(stateAfterHydrate!.exercises, remoteExercises);
-            if (pushResult.pushed > 0) {
-              console.info(`Sky-synk: lastet opp ${pushResult.pushed} øvelser fra denne enheten.`);
-              if (!cancelled) await hydrateRemoteData();
-            } else if (pushResult.failures.length) {
-              console.warn("Sky-synk feilet for øvelser:", pushResult.failures.slice(0, 3).join(" | "));
+            try {
+              const pushResult = await syncLocalExercisesToSupabase(stateAfterHydrate!.exercises, remoteExercises);
+              if (pushResult.pushed > 0) {
+                console.info(`Sky-synk: lastet opp ${pushResult.pushed} øvelser fra denne enheten.`);
+                if (!cancelled) await hydrateRemoteData();
+              } else if (pushResult.failures.length) {
+                console.warn("Sky-synk feilet for øvelser:", pushResult.failures.slice(0, 3).join(" | "));
+              }
+            } finally {
+              exerciseBankPushInFlightRef.current = false;
             }
           })();
         }

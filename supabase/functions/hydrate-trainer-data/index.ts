@@ -3,6 +3,8 @@ import { buildMemberEmailIlikeOrFilter } from "../_shared/memberEmailQueries.ts"
 
 const EXERCISE_BANK_SELECT =
   "id, name, category, muscle_group, equipment, level, description, image_url, personal_record_image_url, prescription_fields, custom_field_1_label, custom_field_2_label, is_active, created_at, updated_at";
+const EXERCISE_BANK_SELECT_FALLBACK =
+  "id, name, category, muscle_group, equipment, level, description, image_url, is_active, created_at, updated_at";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -575,6 +577,18 @@ Deno.serve(async (req) => {
     .select(EXERCISE_BANK_SELECT)
     .or("is_active.is.null,is_active.eq.true")
     .order("name", { ascending: true });
+  let resolvedExercises = exercises ?? [];
+  let resolvedExercisesError = exercisesError;
+  if (exercisesError) {
+    console.warn("hydrate-trainer-data: exercise_bank query failed, retrying fallback select:", exercisesError.message);
+    const fallback = await adminClient
+      .from("exercise_bank")
+      .select(EXERCISE_BANK_SELECT_FALLBACK)
+      .or("is_active.is.null,is_active.eq.true")
+      .order("name", { ascending: true });
+    resolvedExercises = fallback.data ?? [];
+    resolvedExercisesError = fallback.error;
+  }
 
   let periodPlanRows: Array<{ member_id: string; plan: unknown }> = [];
   const { data: periodRows, error: periodPlansError } =
@@ -607,7 +621,7 @@ Deno.serve(async (req) => {
     programsByMember: programsByMemberError?.message ?? null,
     logsByMember: logsByMemberError?.message ?? null,
     messagesByMember: messagesByMemberError?.message ?? null,
-    exercises: exercisesError?.message ?? null,
+    exercises: resolvedExercisesError?.message ?? null,
   };
   const hasQueryErrors = Object.values(queryErrors).some((value) => Boolean(value));
 
@@ -616,7 +630,7 @@ Deno.serve(async (req) => {
     programs: mergedPrograms,
     logs: mergedLogs,
     messages: mergedMessages,
-    exercises: exercises ?? [],
+    exercises: resolvedExercises,
     periodPlans: periodPlanRows,
     debug: includeDebug
       ? {

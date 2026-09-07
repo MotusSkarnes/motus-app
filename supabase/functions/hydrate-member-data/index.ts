@@ -5,6 +5,8 @@ const PROGRAMS_SELECT =
   "id, member_id, title, goal, notes, exercises, created_at, owner_user_id, program_created_by, program_created_by_name, image_url, member_library_status";
 const EXERCISE_BANK_SELECT =
   "id, name, category, muscle_group, equipment, level, description, image_url, personal_record_image_url, prescription_fields, custom_field_1_label, custom_field_2_label, is_active, created_at, updated_at";
+const EXERCISE_BANK_SELECT_FALLBACK =
+  "id, name, category, muscle_group, equipment, level, description, image_url, is_active, created_at, updated_at";
 const PROGRAM_TEMPLATE_COVER_SELECT =
   "id, member_id, title, notes, exercises, created_at, owner_user_id, image_url";
 
@@ -552,7 +554,17 @@ Deno.serve(async (req) => {
     .or("is_active.is.null,is_active.eq.true")
     .order("name", { ascending: true });
   if (exercisesError) {
-    console.warn("hydrate-member-data: exercise_bank query failed:", exercisesError.message);
+    console.warn("hydrate-member-data: exercise_bank query failed, retrying fallback select:", exercisesError.message);
+    const fallback = await adminClient
+      .from("exercise_bank")
+      .select(EXERCISE_BANK_SELECT_FALLBACK)
+      .or("is_active.is.null,is_active.eq.true")
+      .order("name", { ascending: true });
+    if (fallback.error) {
+      console.warn("hydrate-member-data: exercise_bank fallback failed:", fallback.error.message);
+    } else {
+      exercises = (fallback.data ?? []) as Array<Record<string, unknown>>;
+    }
   } else {
     exercises = (exerciseRows ?? []) as Array<Record<string, unknown>>;
   }
