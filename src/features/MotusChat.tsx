@@ -3,6 +3,7 @@ import {
   AlertTriangle,
   ChevronLeft,
   Dumbbell,
+  Mail,
   MoreHorizontal,
   Paperclip,
   Phone,
@@ -170,6 +171,18 @@ function ReactionBar({
   );
 }
 
+function formatEmailReminderLabel(iso: string): string {
+  const parsed = Date.parse(iso);
+  if (!Number.isFinite(parsed)) return "E-postpåminnelse sendt";
+  const formatted = new Date(parsed).toLocaleString("nb-NO", {
+    day: "numeric",
+    month: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+  return `E-postpåminnelse sendt ${formatted}`;
+}
+
 function MessageBubble({
   message,
   isOwn,
@@ -194,6 +207,10 @@ function MessageBubble({
   const [reactionOpen, setReactionOpen] = useState(false);
   const [reactionPulse, setReactionPulse] = useState(false);
   const wrapRef = useRef<HTMLDivElement>(null);
+  const emailReminderSentAt = message.emailReminderSentAt?.trim() ?? "";
+  const showEmailReminder =
+    isOwn && viewerRole === "trainer" && message.sender === "trainer" && Boolean(emailReminderSentAt);
+  const emailReminderLabel = showEmailReminder ? formatEmailReminderLabel(emailReminderSentAt) : "";
 
   const openReactions = useCallback(() => {
     setReactionOpen(true);
@@ -265,6 +282,11 @@ function MessageBubble({
           <p className="whitespace-pre-wrap break-words">{message.text}</p>
           <div className="motus-chat-bubble-meta">
             <span>{formatChatTime(message.createdAt)}</span>
+            {showEmailReminder ? (
+              <span className="motus-chat-email-reminder" title={emailReminderLabel} aria-label={emailReminderLabel}>
+                <Mail className="h-3 w-3" aria-hidden />
+              </span>
+            ) : null}
             {isOwn ? (
               <span
                 className={`motus-chat-read-mark ${isChatMessageReadByRecipient(message) ? "motus-chat-read-mark--read" : ""}`}

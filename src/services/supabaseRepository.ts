@@ -3718,11 +3718,16 @@ export async function fetchHydratedMemberData(): Promise<HydratedMemberData | nu
 export async function fetchMessagesFromSupabase(): Promise<ChatMessage[] | null> {
   if (!supabaseClient) return null;
 
+  const selectWithReminder =
+    "id, member_id, sender, text, created_at, read_by_member_at, read_by_trainer_at, email_reminder_sent_at";
   const selectWithRead =
     "id, member_id, sender, text, created_at, read_by_member_at, read_by_trainer_at";
   const selectBase = "id, member_id, sender, text, created_at";
 
-  let result = await supabaseClient.from("chat_messages").select(selectWithRead).order("created_at", { ascending: true });
+  let result = await supabaseClient.from("chat_messages").select(selectWithReminder).order("created_at", { ascending: true });
+  if (result.error?.message?.includes("email_reminder_sent_at")) {
+    result = await supabaseClient.from("chat_messages").select(selectWithRead).order("created_at", { ascending: true });
+  }
   if (result.error?.message?.includes("read_by_")) {
     result = await supabaseClient.from("chat_messages").select(selectBase).order("created_at", { ascending: true });
   }

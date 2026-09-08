@@ -17,6 +17,7 @@ export function chatMessageFromRow(row: Record<string, unknown>): ChatMessage {
     text: String(row.text ?? ""),
     createdAt: mapIsoToCreatedAt(String(row.created_at ?? row.createdAt ?? "")),
     ...mapChatMessageReadFields(row),
+    ...mapChatMessageEmailReminderFields(row),
   };
 }
 
@@ -24,6 +25,14 @@ export function mapChatMessageReadFields(row: Record<string, unknown>): Pick<Cha
   const readByMemberAt = typeof row.read_by_member_at === "string" ? row.read_by_member_at : undefined;
   const readByTrainerAt = typeof row.read_by_trainer_at === "string" ? row.read_by_trainer_at : undefined;
   return { readByMemberAt, readByTrainerAt };
+}
+
+export function mapChatMessageEmailReminderFields(
+  row: Record<string, unknown>,
+): Pick<ChatMessage, "emailReminderSentAt"> {
+  const raw = row.email_reminder_sent_at ?? row.emailReminderSentAt;
+  const emailReminderSentAt = typeof raw === "string" && raw.trim() ? raw.trim() : undefined;
+  return emailReminderSentAt ? { emailReminderSentAt } : {};
 }
 
 export function isChatMessageReadByRecipient(message: ChatMessage): boolean {

@@ -277,6 +277,8 @@ export type ChatMessage = {
   readByMemberAt?: string;
   /** Satt når PT har åpnet chat og sett medlemsmeldingen. */
   readByTrainerAt?: string;
+  /** Satt når ulest-påminnelse er sendt på e-post til medlemmet. */
+  emailReminderSentAt?: string;
   reactions?: ChatReactionState;
 };
 

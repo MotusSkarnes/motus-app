@@ -529,7 +529,7 @@ Deno.serve(async (req) => {
 
   const { data: messagesByOwner, error: messagesByOwnerError } = await adminClient
     .from("chat_messages")
-    .select("id, member_id, owner_user_id, sender, text, created_at, read_by_member_at, read_by_trainer_at")
+    .select("id, member_id, owner_user_id, sender, text, created_at, read_by_member_at, read_by_trainer_at, email_reminder_sent_at")
     .eq("owner_user_id", ownerUserId)
     .order("created_at", { ascending: true });
 
@@ -565,7 +565,7 @@ Deno.serve(async (req) => {
   if (visibleMemberIds.length > 0) {
     const { data, error } = await adminClient
       .from("chat_messages")
-      .select("id, member_id, owner_user_id, sender, text, created_at, read_by_member_at, read_by_trainer_at")
+      .select("id, member_id, owner_user_id, sender, text, created_at, read_by_member_at, read_by_trainer_at, email_reminder_sent_at")
       .in("member_id", visibleMemberIds)
       .order("created_at", { ascending: true });
     messagesByMember = ((data ?? []) as Array<Record<string, unknown>>).filter((row) => rowBelongsToOwner(row, ownerUserId));

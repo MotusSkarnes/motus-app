@@ -492,7 +492,7 @@ Deno.serve(async (req) => {
     memberDataLookupList.length > 0
       ? await adminClient
           .from("chat_messages")
-          .select("id, member_id, owner_user_id, sender, text, created_at, read_by_member_at, read_by_trainer_at")
+          .select("id, member_id, owner_user_id, sender, text, created_at, read_by_member_at, read_by_trainer_at, email_reminder_sent_at")
           .in("member_id", memberDataLookupList)
           .order("created_at", { ascending: true })
       : { data: [], error: null };
@@ -500,7 +500,7 @@ Deno.serve(async (req) => {
     requesterUserId
       ? await adminClient
           .from("chat_messages")
-          .select("id, member_id, owner_user_id, sender, text, created_at, read_by_member_at, read_by_trainer_at")
+          .select("id, member_id, owner_user_id, sender, text, created_at, read_by_member_at, read_by_trainer_at, email_reminder_sent_at")
           .eq("owner_user_id", requesterUserId)
           .order("created_at", { ascending: true })
       : { data: [], error: null };

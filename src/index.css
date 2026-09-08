@@ -9560,6 +9560,17 @@ html:has(.motus-trainer-app) {
   color: rgba(13, 148, 136, 0.95);
 }
 
+.motus-chat-email-reminder {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(13, 148, 136, 0.95);
+}
+
+.motus-chat-bubble--own .motus-chat-email-reminder {
+  color: rgba(15, 118, 110, 0.95);
+}
+
 .motus-chat-reactions {
   display: flex;
   flex-wrap: wrap;

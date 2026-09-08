@@ -153,16 +153,26 @@ Deno.serve(async (req) => {
       continue;
     }
 
+    const sentAt = new Date().toISOString();
     const { error: insertError } = await admin.from("chat_message_email_reminders").insert({
       message_id: row.message_id,
       member_id: row.member_id,
       recipient_email: email,
-      sent_at: new Date().toISOString(),
+      sent_at: sentAt,
     });
 
     if (insertError) {
       failures.push({ memberId: row.member_id, email, error: insertError.message });
       continue;
+    }
+
+    const { error: stampError } = await admin
+      .from("chat_messages")
+      .update({ email_reminder_sent_at: sentAt })
+      .eq("id", row.message_id);
+    if (stampError) {
+      // Reminder email already sent; stamp is best-effort for trainer UI.
+      console.warn("Failed to stamp email_reminder_sent_at:", row.message_id, stampError.message);
     }
     sent += 1;
   }
