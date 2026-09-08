@@ -191,6 +191,44 @@ export function removeQuickFoodLog(
   return nextState;
 }
 
+export type QuickFoodLogEntryPatch = {
+  grams?: number;
+  mealId?: string;
+};
+
+export function updateQuickFoodLog(
+  memberId: string,
+  state: MemberMealPlanState,
+  dateKey: string,
+  entryId: string,
+  patch: QuickFoodLogEntryPatch,
+): MemberMealPlanState {
+  const logs = state.quickFoodLogs[dateKey] ?? [];
+  const index = logs.findIndex((entry) => entry.id === entryId);
+  if (index < 0) return state;
+
+  const current = logs[index]!;
+  const nextGrams =
+    patch.grams !== undefined && Number.isFinite(patch.grams) && patch.grams > 0
+      ? Math.round(patch.grams * 10) / 10
+      : current.grams;
+  const nextMealId = patch.mealId !== undefined ? patch.mealId.trim() || undefined : current.mealId;
+  const updated: MemberQuickFoodLogEntry = {
+    ...current,
+    grams: nextGrams,
+    mealId: nextMealId,
+  };
+  const nextLogs = [...logs];
+  nextLogs[index] = updated;
+  const nextState: MemberMealPlanState = {
+    ...state,
+    quickFoodLogs: { ...state.quickFoodLogs, [dateKey]: nextLogs },
+    updatedAt: new Date().toISOString(),
+  };
+  persistMemberMealPlanStateLocalAndScheduleCloud(memberId, nextState);
+  return nextState;
+}
+
 export function toggleFoodLogged(
   memberId: string,
   state: MemberMealPlanState,

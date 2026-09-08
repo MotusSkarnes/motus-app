@@ -3835,6 +3835,27 @@
   border-bottom: none;
 }
 
+.motus-log-meal-panel__item--editing {
+  align-items: stretch;
+  padding: 0.55rem 0.15rem;
+}
+
+.motus-log-meal-panel__item--compact {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.35rem;
+  margin-bottom: 0.4rem;
+  padding: 0.55rem 0.65rem;
+  border-radius: 0.65rem;
+  border: 1px solid #e2e8f0;
+  background: #fff;
+}
+
+.motus-log-meal-panel__item--compact:last-child {
+  margin-bottom: 0;
+  border-bottom: 1px solid #e2e8f0;
+}
+
 .motus-log-meal-panel__item-name {
   margin: 0;
   font-size: 0.8125rem;
@@ -3848,17 +3869,112 @@
   color: #64748b;
 }
 
+.motus-log-meal-panel__item-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+  flex-shrink: 0;
+}
+
+.motus-log-meal-panel__edit,
 .motus-log-meal-panel__remove {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.2rem;
   flex-shrink: 0;
   border: none;
   background: none;
-  padding: 0.2rem;
+  padding: 0.2rem 0.35rem;
+  border-radius: 0.4rem;
   color: #94a3b8;
+  font-size: 0.6875rem;
+  font-weight: 650;
   cursor: pointer;
+}
+
+.motus-log-meal-panel__edit:hover {
+  color: #0f766e;
+  background: #f0fdfa;
 }
 
 .motus-log-meal-panel__remove:hover {
   color: #be123c;
+  background: #fef2f2;
+}
+
+.motus-log-entry-edit {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  width: 100%;
+}
+
+.motus-log-entry-edit__name {
+  margin: 0;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.motus-log-entry-edit__fields {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.45rem;
+}
+
+.motus-log-entry-edit__field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  font-size: 0.6875rem;
+  font-weight: 650;
+  color: #475569;
+}
+
+.motus-log-entry-edit__input,
+.motus-log-entry-edit__select {
+  width: 100%;
+  border-radius: 0.55rem;
+  border: 1px solid #cbd5e1;
+  background: #fff;
+  padding: 0.45rem 0.55rem;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: #0f172a;
+}
+
+.motus-log-entry-edit__error {
+  margin: 0;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #b91c1c;
+}
+
+.motus-log-entry-edit__actions {
+  display: flex;
+  gap: 0.4rem;
+}
+
+.motus-log-entry-edit__save,
+.motus-log-entry-edit__cancel {
+  border-radius: 0.55rem;
+  padding: 0.4rem 0.7rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.motus-log-entry-edit__save {
+  border: 0;
+  background: #0f766e;
+  color: #fff;
+}
+
+.motus-log-entry-edit__cancel {
+  border: 1px solid #e2e8f0;
+  background: #fff;
+  color: #475569;
 }
 
 .motus-saved-meals {

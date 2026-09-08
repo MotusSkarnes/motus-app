@@ -65,6 +65,7 @@ import {
   addQuickFoodLogs,
   removeMemberSavedMeal,
   removeQuickFoodLog,
+  updateQuickFoodLog,
   toIsoDateKey,
   weekdayShortLabel,
 } from "../../app/memberMealPlanTracking";
@@ -77,6 +78,7 @@ import { MacroProgressBar } from "./MacroProgressBar";
 import { MacroProgressRing } from "./MacroProgressRing";
 import { draftToQuickLogEntry, type MealDraftItem } from "../../app/mealDraft";
 import { resolveNutritionFromFoodItems } from "../../app/memberNutritionRehydrate";
+import { LoggedQuickFoodEntryRow } from "./LoggedQuickFoodEntryRow";
 import { MealDraftComposer } from "./MealDraftComposer";
 import { LogMealPanel } from "./LogMealPanel";
 import { MemberWaterIntakeSection } from "./MemberWaterIntakeSection";
@@ -209,11 +211,6 @@ function logsOutsidePlanMeals(
     const mealId = entry.mealId?.trim() ?? "";
     return !mealId || !planMealIds.has(mealId);
   });
-}
-
-function selfLogMacroLine(entry: MemberQuickFoodLogEntry): string {
-  const scale = entry.grams > 0 ? entry.grams / 100 : 0;
-  return `${formatMacro(entry.nutritionPer100g.kcal * scale, 0)} kcal · P ${formatMacro(entry.nutritionPer100g.protein * scale, 1)} g`;
 }
 
 function isMealComplete(
@@ -624,6 +621,13 @@ export function MemberMealPlanDashboard({ plan, memberId, onOpenAvoidances, onRe
       const confirmRemove = window.confirm(`Vil du fjerne ${entry.name}?`);
       if (!confirmRemove) return;
       setTracking((prev) => removeQuickFoodLog(memberId, prev, selectedDateKey, entry.id));
+    },
+    [memberId, selectedDateKey],
+  );
+
+  const handleUpdateSelfLog = useCallback(
+    (entryId: string, patch: { grams: number; mealId: string }) => {
+      setTracking((prev) => updateQuickFoodLog(memberId, prev, selectedDateKey, entryId, patch));
     },
     [memberId, selectedDateKey],
   );
@@ -1089,24 +1093,13 @@ export function MemberMealPlanDashboard({ plan, memberId, onOpenAvoidances, onRe
                       {selfLogs.length > 0 ? (
                         <ul className="motus-matplan-meal-foods motus-matplan-meal-foods--self">
                           {selfLogs.map((entry) => (
-                            <li key={entry.id} className="motus-matplan-meal-food motus-matplan-meal-food--self">
-                              <div className="motus-matplan-meal-food-main">
-                                <span className="motus-matplan-meal-food-name">{entry.name}</span>
-                                <span className="motus-matplan-meal-food-grams">{formatMacro(entry.grams, 0)} g</span>
-                              </div>
-                              <div className="motus-matplan-meal-food-meta">{selfLogMacroLine(entry)}</div>
-                              <div className="motus-matplan-meal-food-actions">
-                                <button
-                                  type="button"
-                                  className="motus-matplan-food-remove motus-pressable"
-                                  onClick={() => handleRemoveSelfLog(entry)}
-                                  aria-label={`Fjern ${entry.name}`}
-                                >
-                                  <X className="h-3.5 w-3.5" aria-hidden />
-                                  Fjern
-                                </button>
-                              </div>
-                            </li>
+                            <LoggedQuickFoodEntryRow
+                              key={entry.id}
+                              entry={entry}
+                              compact
+                              onSave={(patch) => handleUpdateSelfLog(entry.id, patch)}
+                              onRemove={() => handleRemoveSelfLog(entry)}
+                            />
                           ))}
                         </ul>
                       ) : null}

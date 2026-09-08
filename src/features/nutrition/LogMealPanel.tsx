@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { ChevronLeft, ChevronRight, Plus, Trash2, UtensilsCrossed } from "lucide-react";
+import { ChevronLeft, ChevronRight, Plus, UtensilsCrossed } from "lucide-react";
 import { formatMacro } from "../../app/foodBankTypes";
 import { MEMBER_MEAL_SLOTS, memberMealSlotLabel } from "../../app/memberMealSlots";
 import { draftToQuickLogEntry, type MealDraftItem } from "../../app/mealDraft";
@@ -13,12 +13,13 @@ import { loadMemberMealPlanState } from "../../app/memberMealPlanState";
 import { persistMemberMealPlanStateLocalAndScheduleCloud, syncMemberMealPlanState } from "../../app/memberMealPlanStateCloud";
 import { MEAL_PLAN_STATE_CHANGED_EVENT } from "../../app/memberMealPlanState";
 import type { MemberSavedMeal } from "../../app/memberSavedMeals";
-import { addMemberSavedMeal, addQuickFoodLogs, removeMemberSavedMeal } from "../../app/memberMealPlanTracking";
+import { addMemberSavedMeal, addQuickFoodLogs, removeMemberSavedMeal, updateQuickFoodLog } from "../../app/memberMealPlanTracking";
 import type { MealPlanTargets } from "../../app/mealPlanTypes";
 import { useFoodBankItems } from "../../app/useFoodBankItems";
 import { GradientButton } from "../../app/ui";
 import { sumQuickFoodLogMacros } from "../../app/quickFoodLogMacros";
 import { DailyLoggedMacrosSummary } from "./DailyLoggedMacrosSummary";
+import { LoggedQuickFoodEntryRow } from "./LoggedQuickFoodEntryRow";
 import { MealDraftComposer } from "./MealDraftComposer";
 import { computeTotalWaterLiters, MemberWaterIntakeSection } from "./MemberWaterIntakeSection";
 import "../../foodbank.css";
@@ -68,11 +69,6 @@ function formatLogDateLabel(dateKey: string): string {
   const date = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
   const base = date.toLocaleDateString("nb-NO", { weekday: "short", day: "numeric", month: "short" });
   return dateKey === todayKey() ? `I dag · ${base}` : base;
-}
-
-function entryMacros(entry: MemberQuickFoodLogEntry): string {
-  const scale = entry.grams > 0 ? entry.grams / 100 : 0;
-  return `${formatMacro(entry.nutritionPer100g.kcal * scale, 0)} kcal · P ${formatMacro(entry.nutritionPer100g.protein * scale, 1)} g`;
 }
 
 export function LogMealPanel({
@@ -219,6 +215,25 @@ export function LogMealPanel({
     [dateKey, logsForDate, persistState, state],
   );
 
+  const saveLogEdit = useCallback(
+    (entry: MemberQuickFoodLogEntry, patch: { grams: number; mealId: string }) => {
+      const next = updateQuickFoodLog(memberId, state, dateKey, entry.id, patch);
+      setState(next);
+      setStatus(`Oppdatert ${entry.name}.`);
+    },
+    [dateKey, memberId, state],
+  );
+
+  const renderLogEntries = (entries: MemberQuickFoodLogEntry[]) =>
+    entries.map((entry) => (
+      <LoggedQuickFoodEntryRow
+        key={entry.id}
+        entry={entry}
+        onSave={(patch) => saveLogEdit(entry, patch)}
+        onRemove={() => removeLog(entry)}
+      />
+    ));
+
   const dateNav = (
     <div className="motus-log-meal-panel__date-nav" role="group" aria-label="Velg dag for matlogg">
       <button
@@ -334,26 +349,7 @@ export function LogMealPanel({
                       {formatMacro(slotMacros.kcal, 0)} kcal · P {formatMacro(slotMacros.protein, 0)} g
                     </span>
                   </header>
-                  <ul className="motus-log-meal-panel__list">
-                    {entries.map((entry) => (
-                      <li key={entry.id} className="motus-log-meal-panel__item">
-                        <div className="min-w-0">
-                          <p className="motus-log-meal-panel__item-name">
-                            {entry.name} · {formatMacro(entry.grams, 0)} g
-                          </p>
-                          <p className="motus-log-meal-panel__item-meta">{entryMacros(entry)}</p>
-                        </div>
-                        <button
-                          type="button"
-                          className="motus-log-meal-panel__remove"
-                          onClick={() => removeLog(entry)}
-                          aria-label={`Fjern ${entry.name}`}
-                        >
-                          <Trash2 className="h-4 w-4" aria-hidden />
-                        </button>
-                      </li>
-                    ))}
-                  </ul>
+                  <ul className="motus-log-meal-panel__list">{renderLogEntries(entries)}</ul>
                 </article>
               );
             })}
@@ -365,26 +361,7 @@ export function LogMealPanel({
                     {formatMacro(sumQuickFoodLogMacros(logsBySlot.get("other")).kcal, 0)} kcal
                   </span>
                 </header>
-                <ul className="motus-log-meal-panel__list">
-                  {(logsBySlot.get("other") ?? []).map((entry) => (
-                    <li key={entry.id} className="motus-log-meal-panel__item">
-                      <div className="min-w-0">
-                        <p className="motus-log-meal-panel__item-name">
-                          {entry.name} · {formatMacro(entry.grams, 0)} g
-                        </p>
-                        <p className="motus-log-meal-panel__item-meta">{entryMacros(entry)}</p>
-                      </div>
-                      <button
-                        type="button"
-                        className="motus-log-meal-panel__remove"
-                        onClick={() => removeLog(entry)}
-                        aria-label={`Fjern ${entry.name}`}
-                      >
-                        <Trash2 className="h-4 w-4" aria-hidden />
-                      </button>
-                    </li>
-                  ))}
-                </ul>
+                <ul className="motus-log-meal-panel__list">{renderLogEntries(logsBySlot.get("other") ?? [])}</ul>
               </article>
             ) : null}
           </div>
