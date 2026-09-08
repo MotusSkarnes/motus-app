@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Search } from "lucide-react";
+import { MessageSquare, Search } from "lucide-react";
 import type { ChatMessage, ChatReactionActor, ChatReactionEmoji, Member } from "../app/types";
-import { Card } from "../app/ui";
 import {
   buildTrainerMessageInboxRows,
   filterMessagesForRosterMember,
@@ -57,6 +56,11 @@ export function TrainerMessagesHubView({
     });
   }, [inboxRows, search]);
 
+  const totalUnread = useMemo(
+    () => inboxRows.reduce((sum, row) => sum + (row.unreadCount > 0 ? row.unreadCount : 0), 0),
+    [inboxRows],
+  );
+
   const selectedMember =
     members.find((member) => member.id === selectedMemberId) ??
     filteredRows[0]?.member ??
@@ -111,22 +115,25 @@ export function TrainerMessagesHubView({
   }
 
   const memberList = (
-    <div className="flex h-full min-h-0 flex-col">
-      <div className="border-b border-slate-200/80 px-3 py-3">
-        <div className="text-sm font-semibold text-slate-900">Kunder</div>
-        <label className="mt-2 flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-600">
-          <Search className="h-4 w-4 shrink-0 text-slate-400" aria-hidden />
+    <div className="motus-messages-hub__list">
+      <div className="motus-messages-hub__list-head">
+        <div className="motus-messages-hub__list-title-row">
+          <h3 className="motus-messages-hub__list-title">Samtaler</h3>
+          <span className="motus-messages-hub__list-count">{filteredRows.length}</span>
+        </div>
+        <label className="motus-messages-hub__search">
+          <Search className="h-4 w-4 shrink-0" aria-hidden />
           <input
             value={search}
             onChange={(event) => setSearch(event.target.value)}
             placeholder="Søk etter kunde…"
-            className="w-full bg-transparent outline-none placeholder:text-slate-400"
+            aria-label="Søk etter kunde"
           />
         </label>
       </div>
-      <div className="min-h-0 flex-1 overflow-y-auto">
+      <div className="motus-messages-hub__list-body">
         {filteredRows.length === 0 ? (
-          <div className="px-4 py-8 text-center text-sm text-slate-500">Ingen kunder matcher søket.</div>
+          <div className="motus-messages-hub__empty-list">Ingen kunder matcher søket.</div>
         ) : (
           filteredRows.map((row) => {
             const active = row.member.id === effectiveSelectedId;
@@ -137,32 +144,27 @@ export function TrainerMessagesHubView({
                 key={row.member.id}
                 type="button"
                 onClick={() => handleSelectMember(row.member.id)}
-                className={`flex w-full items-start gap-3 border-b border-slate-100 px-3 py-3 text-left transition ${
-                  active ? "bg-teal-50/80" : "bg-white hover:bg-slate-50"
+                className={`motus-messages-hub__row motus-pressable ${active ? "motus-messages-hub__row--active" : ""} ${
+                  row.unreadCount > 0 ? "motus-messages-hub__row--unread" : ""
                 }`}
               >
-                <div className="relative h-10 w-10 shrink-0 overflow-hidden rounded-full bg-slate-100 text-sm font-semibold text-slate-500">
-                  <span className="absolute inset-0 flex items-center justify-center">{initial}</span>
-                  {rowAvatar ? (
-                    <img src={rowAvatar} alt="" className="relative z-10 h-full w-full object-cover" loading="lazy" />
-                  ) : null}
+                <div className="motus-messages-hub__avatar" aria-hidden>
+                  <span>{initial}</span>
+                  {rowAvatar ? <img src={rowAvatar} alt="" loading="lazy" /> : null}
+                  {row.unreadCount > 0 ? <i className="motus-messages-hub__avatar-dot" /> : null}
                 </div>
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2">
-                    <div className={`truncate text-sm ${row.unreadCount > 0 ? "font-semibold text-slate-900" : "font-medium text-slate-800"}`}>
-                      {row.member.name}
-                    </div>
+                <div className="motus-messages-hub__row-main">
+                  <div className="motus-messages-hub__row-top">
+                    <span className="motus-messages-hub__row-name">{row.member.name}</span>
                     {row.unreadCount > 0 ? (
-                      <span className="ml-auto inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-teal-600 px-1.5 text-[11px] font-semibold text-white">
+                      <span className="motus-messages-hub__unread-badge">
                         {row.unreadCount > 9 ? "9+" : row.unreadCount}
                       </span>
                     ) : row.latestAtMs ? (
-                      <span className="ml-auto shrink-0 text-[11px] text-slate-400">{formatInboxTimestamp(row.latestAtMs)}</span>
+                      <span className="motus-messages-hub__row-time">{formatInboxTimestamp(row.latestAtMs)}</span>
                     ) : null}
                   </div>
-                  <div className={`mt-0.5 truncate text-xs ${row.unreadCount > 0 ? "font-medium text-slate-700" : "text-slate-500"}`}>
-                    {row.preview}
-                  </div>
+                  <div className="motus-messages-hub__row-preview">{row.preview}</div>
                 </div>
               </button>
             );
@@ -205,32 +207,53 @@ export function TrainerMessagesHubView({
         onBack={showBack ? () => setMobileShowThread(false) : undefined}
       />
     ) : (
-      <div className="flex h-full min-h-[24rem] items-center justify-center px-6 text-center text-sm text-slate-500">
-        Velg en kunde i listen for å se meldinger.
+      <div className="motus-messages-hub__empty-thread">
+        <div className="motus-messages-hub__empty-thread-icon" aria-hidden>
+          <MessageSquare className="h-6 w-6" />
+        </div>
+        <p className="motus-messages-hub__empty-thread-title">Velg en samtale</p>
+        <p className="motus-messages-hub__empty-thread-text">Åpne en kunde i listen for å lese og svare.</p>
       </div>
     );
 
   return (
-    <Card className="overflow-hidden p-0 shadow-sm ring-1 ring-black/5">
-      <div className="border-b border-slate-200/80 px-4 py-3 sm:px-5">
-        <h2 className="text-base font-semibold text-slate-900 sm:text-lg">Meldinger</h2>
-        <p className="mt-0.5 text-xs text-slate-500 sm:text-sm">Se og svar på meldinger fra kundene dine.</p>
-      </div>
-
-      {/* Mobile: list or thread */}
-      <div className="lg:hidden">
-        {mobileShowThread && selectedMember ? (
-          <div className="min-h-[70vh]">{chatPane(true)}</div>
+    <div className="motus-messages-hub motus-fade-in-up">
+      <header className="motus-messages-hub__hero">
+        <div className="motus-messages-hub__hero-copy">
+          <div className="motus-messages-hub__hero-icon" aria-hidden>
+            <MessageSquare className="h-5 w-5" />
+          </div>
+          <div className="min-w-0">
+            <h2 className="motus-messages-hub__title">Meldinger</h2>
+            <p className="motus-messages-hub__subtitle">Hold dialogen med kundene dine samlet på ett sted.</p>
+          </div>
+        </div>
+        {totalUnread > 0 ? (
+          <div className="motus-messages-hub__hero-chip" aria-label={`${totalUnread} uleste meldinger`}>
+            <span className="motus-messages-hub__hero-chip-value">{totalUnread > 99 ? "99+" : totalUnread}</span>
+            <span className="motus-messages-hub__hero-chip-label">ulest{totalUnread === 1 ? "" : "e"}</span>
+          </div>
         ) : (
-          <div className="max-h-[70vh] min-h-[24rem]">{memberList}</div>
+          <div className="motus-messages-hub__hero-chip motus-messages-hub__hero-chip--quiet">
+            <span className="motus-messages-hub__hero-chip-label">Ingen uleste</span>
+          </div>
         )}
-      </div>
+      </header>
 
-      {/* Desktop: members left, chat right */}
-      <div className="hidden lg:grid lg:min-h-[70vh] lg:grid-cols-[minmax(18rem,22rem)_minmax(0,1.4fr)]">
-        <div className="min-h-0 border-r border-slate-200/80 bg-slate-50/40">{memberList}</div>
-        <div className="min-h-0">{chatPane(false)}</div>
+      <div className="motus-messages-hub__shell">
+        <div className="lg:hidden">
+          {mobileShowThread && selectedMember ? (
+            <div className="motus-messages-hub__mobile-thread">{chatPane(true)}</div>
+          ) : (
+            <div className="motus-messages-hub__mobile-list">{memberList}</div>
+          )}
+        </div>
+
+        <div className="motus-messages-hub__desktop">
+          <aside className="motus-messages-hub__aside">{memberList}</aside>
+          <section className="motus-messages-hub__thread">{chatPane(false)}</section>
+        </div>
       </div>
-    </Card>
+    </div>
   );
 }
