@@ -1761,9 +1761,6 @@ function pickFirstName(value: unknown): string {
     if (!container) return;
     container.scrollTop = container.scrollHeight;
   }, [customerSubTab, selectedMessages.length]);
-  useEffect(() => {
-    setChatShareProgramPickerOpen(false);
-  }, [selectedMemberId, customerSubTab]);
   const filteredWorkoutLogs = useMemo(() => {
     const now = Date.now();
     const query = workoutSearchQuery.trim().toLowerCase();
