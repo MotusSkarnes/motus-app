@@ -43,6 +43,8 @@ export function computeTotalWaterLiters(
 type MemberWaterIntakeSectionProps = {
   memberId: string;
   foodItems: FoodItem[];
+  /** When set, water is logged for this day instead of today. */
+  dateKey?: string;
   /** Vann fra avhuket matplan-mat (kun med matplan). */
   planFoodWaterLiters?: number;
   className?: string;
@@ -51,10 +53,12 @@ type MemberWaterIntakeSectionProps = {
 export function MemberWaterIntakeSection({
   memberId,
   foodItems,
+  dateKey: dateKeyProp,
   planFoodWaterLiters = 0,
   className = "",
 }: MemberWaterIntakeSectionProps) {
-  const dateKey = todayKey();
+  const dateKey = dateKeyProp?.trim() || todayKey();
+  const isToday = dateKey === todayKey();
   const [tracking, setTracking] = useState<MemberMealPlanState>(() => loadMemberMealPlanState(memberId));
 
   useEffect(() => {
@@ -92,13 +96,16 @@ export function MemberWaterIntakeSection({
   );
 
   return (
-    <section className={`motus-water-intake ${className}`.trim()} aria-label="Vanninntak i dag">
+    <section
+      className={`motus-water-intake ${className}`.trim()}
+      aria-label={isToday ? "Vanninntak i dag" : "Vanninntak for valgt dag"}
+    >
       <header className="motus-water-intake__head">
         <span className="motus-water-intake__icon" aria-hidden>
           <GlassWater className="h-4 w-4" />
         </span>
         <div className="min-w-0">
-          <h3 className="motus-water-intake__title">Vann i dag</h3>
+          <h3 className="motus-water-intake__title">{isToday ? "Vann i dag" : "Vann for valgt dag"}</h3>
           <p className="motus-water-intake__total">
             {totalLiters.toFixed(1)} / {WATER_TARGET_L} L totalt
           </p>

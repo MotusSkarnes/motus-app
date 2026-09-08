@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Plus, Trash2, UtensilsCrossed } from "lucide-react";
+import { ChevronLeft, ChevronRight, Plus, Trash2, UtensilsCrossed } from "lucide-react";
 import { formatMacro } from "../../app/foodBankTypes";
 import { MEMBER_MEAL_SLOTS, memberMealSlotLabel } from "../../app/memberMealSlots";
 import { draftToQuickLogEntry, type MealDraftItem } from "../../app/mealDraft";
@@ -23,6 +23,9 @@ import { MealDraftComposer } from "./MealDraftComposer";
 import { computeTotalWaterLiters, MemberWaterIntakeSection } from "./MemberWaterIntakeSection";
 import "../../foodbank.css";
 
+/** How far back members may backfill meal logs. */
+const FOOD_LOG_LOOKBACK_DAYS = 14;
+
 type LogMealPanelProps = {
   memberId: string;
   mealPlanTargets?: MealPlanTargets | null;
@@ -31,10 +34,40 @@ type LogMealPanelProps = {
   /** Vann logges nederst i matplan-dashboard; skjul her for å unngå duplikat. */
   showWaterSection?: boolean;
   planFoodWaterLiters?: number;
+  /** Synkroniser logg-dato med valgt matplan-dag når satt. */
+  preferredDateKey?: string;
 };
 
 function todayKey(): string {
   return toIsoDateKey(new Date());
+}
+
+function shiftDateKey(dateKey: string, deltaDays: number): string {
+  const parts = dateKey.split("-").map(Number);
+  if (parts.length !== 3 || parts.some((n) => !Number.isFinite(n))) return todayKey();
+  const date = new Date(parts[0]!, parts[1]! - 1, parts[2]!);
+  date.setDate(date.getDate() + deltaDays);
+  return toIsoDateKey(date);
+}
+
+function minLogDateKey(): string {
+  return shiftDateKey(todayKey(), -FOOD_LOG_LOOKBACK_DAYS);
+}
+
+function clampLogDateKey(dateKey: string): string {
+  const today = todayKey();
+  const min = minLogDateKey();
+  if (dateKey > today) return today;
+  if (dateKey < min) return min;
+  return dateKey;
+}
+
+function formatLogDateLabel(dateKey: string): string {
+  const parts = dateKey.split("-");
+  if (parts.length !== 3) return dateKey;
+  const date = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
+  const base = date.toLocaleDateString("nb-NO", { weekday: "short", day: "numeric", month: "short" });
+  return dateKey === todayKey() ? `I dag · ${base}` : base;
 }
 
 function entryMacros(entry: MemberQuickFoodLogEntry): string {
@@ -49,6 +82,7 @@ export function LogMealPanel({
   hasMealPlan = false,
   showWaterSection = true,
   planFoodWaterLiters = 0,
+  preferredDateKey,
 }: LogMealPanelProps) {
   const foodItems = useFoodBankItems();
   const [open, setOpen] = useState(false);
@@ -56,11 +90,23 @@ export function LogMealPanel({
   const [draftBySlot, setDraftBySlot] = useState<Record<string, MealDraftItem[]>>({});
   const [status, setStatus] = useState<string | null>(null);
   const [state, setState] = useState<MemberMealPlanState>(() => loadMemberMealPlanState(memberId));
+  const [dateKey, setDateKey] = useState(() =>
+    clampLogDateKey(preferredDateKey?.trim() || todayKey()),
+  );
 
-  const dateKey = todayKey();
-  const logsToday = state.quickFoodLogs[dateKey] ?? [];
-  const hasLogs = logsToday.length > 0;
+  const logsForDate = state.quickFoodLogs[dateKey] ?? [];
+  const hasLogs = logsForDate.length > 0;
   const draftItems = draftBySlot[mealSlotId] ?? [];
+  const isToday = dateKey === todayKey();
+  const dateLabel = formatLogDateLabel(dateKey);
+  const canGoBack = dateKey > minLogDateKey();
+  const canGoForward = dateKey < todayKey();
+
+  useEffect(() => {
+    const preferred = preferredDateKey?.trim();
+    if (!preferred) return;
+    setDateKey(clampLogDateKey(preferred));
+  }, [preferredDateKey]);
 
   useEffect(() => {
     onRefreshFoodBank?.();
@@ -83,8 +129,8 @@ export function LogMealPanel({
     return () => window.removeEventListener(MEAL_PLAN_STATE_CHANGED_EVENT, handler);
   }, [memberId]);
 
-  const macrosToday = useMemo(() => sumQuickFoodLogMacros(logsToday), [logsToday]);
-  const totalWaterTodayLiters = useMemo(
+  const macrosForDate = useMemo(() => sumQuickFoodLogMacros(logsForDate), [logsForDate]);
+  const totalWaterForDateLiters = useMemo(
     () => computeTotalWaterLiters(state, dateKey, foodItems, planFoodWaterLiters),
     [dateKey, foodItems, planFoodWaterLiters, state],
   );
@@ -94,12 +140,12 @@ export function LogMealPanel({
       grouped.set(slot.id, []);
     }
     grouped.set("other", []);
-    for (const entry of logsToday) {
+    for (const entry of logsForDate) {
       const slot = entry.mealId?.trim() && grouped.has(entry.mealId) ? entry.mealId : "other";
       grouped.get(slot)!.push(entry);
     }
     return grouped;
-  }, [logsToday]);
+  }, [logsForDate]);
 
   const setDraftForSlot = useCallback((slotId: string, items: MealDraftItem[]) => {
     setDraftBySlot((prev) => ({ ...prev, [slotId]: items }));
@@ -123,9 +169,23 @@ export function LogMealPanel({
     setState(next);
     setDraftForSlot(mealSlotId, []);
     const slotLabel = memberMealSlotLabel(mealSlotId);
-    setStatus(`${draftItems.length} ${draftItems.length === 1 ? "vare" : "varer"} logget til ${slotLabel.toLowerCase()}.`);
+    const when = isToday ? "" : ` (${dateLabel})`;
+    setStatus(
+      `${draftItems.length} ${draftItems.length === 1 ? "vare" : "varer"} logget til ${slotLabel.toLowerCase()}${when}.`,
+    );
     setOpen(hasLogs || draftItems.length > 1);
-  }, [dateKey, draftItems, foodItems, hasLogs, mealSlotId, memberId, setDraftForSlot, state]);
+  }, [
+    dateKey,
+    dateLabel,
+    draftItems,
+    foodItems,
+    hasLogs,
+    isToday,
+    mealSlotId,
+    memberId,
+    setDraftForSlot,
+    state,
+  ]);
 
   const handleSaveTemplate = useCallback(
     (meal: MemberSavedMeal) => {
@@ -149,26 +209,66 @@ export function LogMealPanel({
     (entry: MemberQuickFoodLogEntry) => {
       const confirmRemove = window.confirm(`Vil du fjerne ${entry.name}?`);
       if (!confirmRemove) return;
-      const nextLogs = logsToday.filter((row) => row.id !== entry.id);
+      const nextLogs = logsForDate.filter((row) => row.id !== entry.id);
       persistState({
         ...state,
         quickFoodLogs: { ...state.quickFoodLogs, [dateKey]: nextLogs },
         updatedAt: new Date().toISOString(),
       });
     },
-    [dateKey, logsToday, persistState, state],
+    [dateKey, logsForDate, persistState, state],
+  );
+
+  const dateNav = (
+    <div className="motus-log-meal-panel__date-nav" role="group" aria-label="Velg dag for matlogg">
+      <button
+        type="button"
+        className="motus-log-meal-panel__date-btn motus-pressable"
+        onClick={() => setDateKey((prev) => clampLogDateKey(shiftDateKey(prev, -1)))}
+        disabled={!canGoBack}
+        aria-label="Forrige dag"
+      >
+        <ChevronLeft className="h-4 w-4" aria-hidden />
+      </button>
+      <label className="motus-log-meal-panel__date-picker">
+        <span className="motus-log-meal-panel__date-label">{dateLabel}</span>
+        <input
+          type="date"
+          className="motus-log-meal-panel__date-input"
+          value={dateKey}
+          min={minLogDateKey()}
+          max={todayKey()}
+          aria-label="Dato for måltid"
+          onChange={(e) => {
+            const next = e.target.value.trim();
+            if (next) setDateKey(clampLogDateKey(next));
+          }}
+        />
+      </label>
+      <button
+        type="button"
+        className="motus-log-meal-panel__date-btn motus-pressable"
+        onClick={() => setDateKey((prev) => clampLogDateKey(shiftDateKey(prev, 1)))}
+        disabled={!canGoForward}
+        aria-label="Neste dag"
+      >
+        <ChevronRight className="h-4 w-4" aria-hidden />
+      </button>
+    </div>
   );
 
   if (!open && !hasLogs) {
     return (
       <div className="motus-log-meal-panel motus-log-meal-panel--intro">
+        {dateNav}
         <div className="motus-log-meal-hero">
           <div className="motus-log-meal-hero__icon" aria-hidden>
             <UtensilsCrossed className="h-7 w-7" />
           </div>
           <h2 className="motus-log-meal-hero__title">Logg det du spiser</h2>
           <p className="motus-log-meal-hero__lead">
-            Bygg måltidet med matvarer du legger til — se listen underveis. Logg eller lagre favoritten når du er ferdig.
+            Bygg måltidet med matvarer du legger til — se listen underveis. Glemte du noe i går? Velg dato over og logg
+            tilbake i tid.
           </p>
           <GradientButton type="button" className="motus-log-meal-cta" onClick={() => setOpen(true)}>
             <Plus className="h-4 w-4" aria-hidden />
@@ -178,6 +278,7 @@ export function LogMealPanel({
         {showWaterSection ? (
           <MemberWaterIntakeSection
             memberId={memberId}
+            dateKey={dateKey}
             foodItems={foodItems}
             planFoodWaterLiters={planFoodWaterLiters}
             className="motus-log-meal-panel__water"
@@ -189,26 +290,29 @@ export function LogMealPanel({
 
   return (
     <div className="motus-log-meal-panel">
+      {dateNav}
+
       {hasLogs && !hasMealPlan ? (
         <DailyLoggedMacrosSummary
-          macros={macrosToday}
+          macros={macrosForDate}
           targets={mealPlanTargets}
-          title="I dag totalt"
-          totalWaterLiters={totalWaterTodayLiters}
+          title={`${dateLabel} — totalt`}
+          totalWaterLiters={totalWaterForDateLiters}
         />
       ) : null}
 
       {hasLogs && !open ? (
-        <section className="motus-log-meal-panel__summary" aria-label="Logget i dag">
+        <section className="motus-log-meal-panel__summary" aria-label={`Logget ${dateLabel}`}>
           <header className="motus-log-meal-panel__summary-head">
             <div className="motus-log-meal-panel__summary-title-wrap">
               <span className="motus-log-meal-panel__summary-icon" aria-hidden>
                 <UtensilsCrossed className="h-4 w-4" />
               </span>
               <div className="min-w-0">
-                <h2 className="motus-log-meal-panel__title">Logget i dag</h2>
+                <h2 className="motus-log-meal-panel__title">Logget {isToday ? "i dag" : dateLabel}</h2>
                 <p className="motus-log-meal-panel__summary-sub">
-                  {logsToday.length} {logsToday.length === 1 ? "post" : "poster"} · {formatMacro(macrosToday.kcal, 0)} kcal
+                  {logsForDate.length} {logsForDate.length === 1 ? "post" : "poster"} · {formatMacro(macrosForDate.kcal, 0)}{" "}
+                  kcal
                 </p>
               </div>
             </div>
@@ -298,6 +402,10 @@ export function LogMealPanel({
             </div>
           ) : null}
 
+          {!isToday ? (
+            <p className="motus-log-meal-panel__backfill-hint">Logger til {dateLabel}</p>
+          ) : null}
+
           <p className="motus-log-meal-panel__step-label">1. Velg måltid</p>
           <div className="motus-log-meal-panel__slots" role="tablist" aria-label="Måltidstype">
             {MEMBER_MEAL_SLOTS.map((slot) => (
@@ -334,6 +442,7 @@ export function LogMealPanel({
       {showWaterSection ? (
         <MemberWaterIntakeSection
           memberId={memberId}
+          dateKey={dateKey}
           foodItems={foodItems}
           planFoodWaterLiters={planFoodWaterLiters}
           className="motus-log-meal-panel__water"

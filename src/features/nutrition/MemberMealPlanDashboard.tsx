@@ -1135,9 +1135,11 @@ export function MemberMealPlanDashboard({ plan, memberId, onOpenAvoidances, onRe
             onRefreshFoodBank={onRefreshFoodBank}
             hasMealPlan
             showWaterSection={false}
+            preferredDateKey={selectedDateKey}
           />
           <MemberWaterIntakeSection
             memberId={memberId}
+            dateKey={selectedDateKey}
             foodItems={foodItems}
             planFoodWaterLiters={waterFromLoggedPlanFoodTodayLiters}
             className="motus-log-meal-panel__water"

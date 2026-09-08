@@ -27,6 +27,12 @@ create policy "member_meal_plan_state_select"
       where mp.member_id = member_meal_plan_state.member_id
         and mp.owner_user_id = auth.uid()
     )
+    or exists (
+      select 1
+      from public.members m
+      where m.id::text = member_meal_plan_state.member_id
+        and m.owner_user_id = auth.uid()
+    )
   );
 
 drop policy if exists "member_meal_plan_state_upsert_own" on public.member_meal_plan_state;
