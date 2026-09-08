@@ -7246,38 +7246,40 @@ function pickFirstName(value: unknown): string {
                 ) : null}
 
                 {customerSubTab === "messages" ? (
-                  <MotusChat
-                    variant="trainer"
-                    messages={selectedMessages}
-                    viewerRole="trainer"
-                    counterpartyName={selectedMemberProfile?.name?.trim() || selectedMember?.name?.trim() || "Kunde"}
-                    counterpartyAvatarUrl={selectedMember ? resolveMemberAvatarUrl(selectedMember) : null}
-                    locked={selectedMemberMessagesLocked}
-                    lockedMessage="Medlem har ikke tilgang til meldinger."
-                    composeValue={trainerMessage}
-                    onComposeChange={(value) => {
-                      setTrainerMessage(value);
-                          if (trainerChatSendStatus) setTrainerChatSendStatus(null);
-                        }}
-                    onSend={() => {
-                          if (!selectedMemberId || selectedMemberId === "__template__" || !trainerMessage.trim()) return;
-                      void dispatchTrainerMessageToSelectedMember(trainerMessage).then((sent) => {
+                  <div className="motus-chat-page">
+                    <MotusChat
+                      variant="trainer"
+                      messages={selectedMessages}
+                      viewerRole="trainer"
+                      counterpartyName={selectedMemberProfile?.name?.trim() || selectedMember?.name?.trim() || "Kunde"}
+                      counterpartyAvatarUrl={selectedMember ? resolveMemberAvatarUrl(selectedMember) : null}
+                      locked={selectedMemberMessagesLocked}
+                      lockedMessage="Medlem har ikke tilgang til meldinger."
+                      composeValue={trainerMessage}
+                      onComposeChange={(value) => {
+                        setTrainerMessage(value);
+                        if (trainerChatSendStatus) setTrainerChatSendStatus(null);
+                      }}
+                      onSend={() => {
+                        if (!selectedMemberId || selectedMemberId === "__template__" || !trainerMessage.trim()) return;
+                        void dispatchTrainerMessageToSelectedMember(trainerMessage).then((sent) => {
                           if (sent) setTrainerMessage("");
-                      });
-                    }}
-                    isSending={isSendingTrainerMessage}
-                    sendDisabled={!trainerMessage.trim()}
-                    composePlaceholder="Skriv melding..."
-                    sendStatus={trainerChatSendStatus}
-                    messagesContainerRef={trainerMessagesContainerRef}
-                    onToggleReaction={toggleChatMessageReaction}
-                    onMarkConversationRead={
-                      selectedMemberId && !selectedMemberMessagesLocked
-                        ? () => markChatConversationRead(selectedMemberId, "trainer")
-                        : undefined
-                    }
-                  />
-                    ) : null}
+                        });
+                      }}
+                      isSending={isSendingTrainerMessage}
+                      sendDisabled={!trainerMessage.trim()}
+                      composePlaceholder="Skriv melding..."
+                      sendStatus={trainerChatSendStatus}
+                      messagesContainerRef={trainerMessagesContainerRef}
+                      onToggleReaction={toggleChatMessageReaction}
+                      onMarkConversationRead={
+                        selectedMemberId && !selectedMemberMessagesLocked
+                          ? () => markChatConversationRead(selectedMemberId, "trainer")
+                          : undefined
+                      }
+                    />
+                  </div>
+                ) : null}
                 </TrainerPtDetailPortal>
               </div>
             ) : (

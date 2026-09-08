@@ -8319,34 +8319,36 @@ export function MemberPortal(props: MemberPortalProps) {
           ) : null}
 
           {!isMemberLimited && memberTab === "messages" ? (
-            <MotusChat
-              variant="member"
-              messages={memberMessages}
-              viewerRole="member"
-              counterpartyName={chatTrainerName}
-              composeValue={messageText}
-              onComposeChange={(value) => {
-                setMessageText(value);
-                      if (memberChatSendStatus) setMemberChatSendStatus(null);
-                    }}
-              onSend={() => {
-                    if (!activeMemberId || !messageText.trim()) return;
-                    void dispatchMemberMessageToRelatedMembers(messageText);
-                    setMessageText("");
-              }}
-              isSending={isSendingMemberMessage}
-              sendDisabled={!messageText.trim()}
-              composePlaceholder="Skriv melding..."
-              sendStatus={memberChatSendStatus}
-              notice={chatTrainerVacationNotice}
-              messagesContainerRef={memberMessagesContainerRef}
-              onToggleReaction={toggleChatMessageReaction}
-              onMarkConversationRead={
-                activeMemberId && !isMemberLimited
-                  ? () => markChatConversationRead(activeMemberId, "member")
-                  : undefined
-              }
-            />
+            <div className="motus-chat-page">
+              <MotusChat
+                variant="member"
+                messages={memberMessages}
+                viewerRole="member"
+                counterpartyName={chatTrainerName}
+                composeValue={messageText}
+                onComposeChange={(value) => {
+                  setMessageText(value);
+                  if (memberChatSendStatus) setMemberChatSendStatus(null);
+                }}
+                onSend={() => {
+                  if (!activeMemberId || !messageText.trim()) return;
+                  void dispatchMemberMessageToRelatedMembers(messageText);
+                  setMessageText("");
+                }}
+                isSending={isSendingMemberMessage}
+                sendDisabled={!messageText.trim()}
+                composePlaceholder="Skriv melding..."
+                sendStatus={memberChatSendStatus}
+                notice={chatTrainerVacationNotice}
+                messagesContainerRef={memberMessagesContainerRef}
+                onToggleReaction={toggleChatMessageReaction}
+                onMarkConversationRead={
+                  activeMemberId && !isMemberLimited
+                    ? () => markChatConversationRead(activeMemberId, "member")
+                    : undefined
+                }
+              />
+            </div>
           ) : null}
 
           {memberTab === "profile" ? (
