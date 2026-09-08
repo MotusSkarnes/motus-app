@@ -6,11 +6,9 @@ import {
   Mail,
   MoreHorizontal,
   Paperclip,
-  Phone,
   Send,
   Share2,
   Smile,
-  Video,
   type LucideIcon,
 } from "lucide-react";
 import { isChatMessageReadByRecipient } from "../app/chatReadReceipts";
@@ -385,17 +383,7 @@ export function MotusChat({
             </div>
             <h2 className="mt-2 truncate text-base font-bold text-slate-950">{counterpartyName}</h2>
           </div>
-          <div className="flex items-center gap-1">
-            <button type="button" className="motus-chat-header-icon motus-pressable" aria-label="Ring">
-              <Phone className="h-4 w-4" />
-            </button>
-            <button type="button" className="motus-chat-header-icon motus-pressable" aria-label="Video">
-              <Video className="h-4 w-4" />
-            </button>
-            <button type="button" className="motus-chat-header-icon motus-pressable" aria-label="Flere valg">
-              <MoreHorizontal className="h-4 w-4" />
-            </button>
-          </div>
+          <div className="w-9" aria-hidden />
         </div>
         {headerExtra}
       </header>
