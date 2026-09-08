@@ -244,10 +244,9 @@ import {
   resolveStopGoalLabel,
   type MemberStopGoal,
 } from "../app/memberStopGoal";
-import { buildShareProgramChatMessage } from "../app/chatFormat";
 import { computeWeekProgressPct } from "../app/memberHomeWeekInsights";
 import type { ChatReactionActor, ChatReactionEmoji } from "../app/chatReactions";
-import { MotusChat, type MotusChatQuickAction } from "./MotusChat";
+import { MotusChat } from "./MotusChat";
 import { buildTrainerVacationNotice, resolveMemberTrainerDisplayName } from "../app/trainerProfile";
 import { MemberPersonalRecordsSection } from "./MemberPersonalRecordsSection";
 import { WorkoutCelebrationModal } from "./WorkoutCelebrationModal";
@@ -1991,29 +1990,6 @@ export function MemberPortal(props: MemberPortalProps) {
   }, [activeMemberId, workoutMode, pausedWorkoutsTick]);
   const secondaryPausedWorkouts = pausedWorkouts;
   const nextProgram = memberProgramsInActiveLibrary[0] ?? null;
-
-  async function handleMemberShareProgramClick() {
-    if (!nextProgram) {
-      setMemberTab("programs");
-      setMemberChatSendStatus("Du har ingen aktivt program — gikk til Mine programmer.");
-      return;
-    }
-    const message = buildShareProgramChatMessage({
-      programTitle: nextProgram.title,
-      goal: nextProgram.goal,
-      sender: "member",
-    });
-    await dispatchMemberMessageToRelatedMembers(message);
-  }
-
-  const memberChatQuickActions = useMemo(
-    (): MotusChatQuickAction[] => [
-      { id: "workout", label: "Send økt", icon: Dumbbell, onClick: () => setMemberTab("home") },
-      { id: "program", label: "Del program", icon: Share2, onClick: () => void handleMemberShareProgramClick() },
-      { id: "more", label: "Flere", icon: MoreHorizontal },
-    ],
-    [nextProgram, setMemberTab],
-  );
 
   useEffect(() => {
     if (!isMemberLimited) return;
@@ -8364,7 +8340,6 @@ export function MemberPortal(props: MemberPortalProps) {
               sendStatus={memberChatSendStatus}
               notice={chatTrainerVacationNotice}
               messagesContainerRef={memberMessagesContainerRef}
-              quickActions={memberChatQuickActions}
               onToggleReaction={toggleChatMessageReaction}
               onMarkConversationRead={
                 activeMemberId && !isMemberLimited

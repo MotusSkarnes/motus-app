@@ -9,7 +9,7 @@
   type ReactNode,
   type SetStateAction,
 } from "react";
-import { Apple, CalendarRange, ChevronDown, ChevronUp, ClipboardList, Copy, Dumbbell, Eye, EyeOff, Mail, MessageSquare, MoreHorizontal, Pencil, Play, Share2, ShieldCheck, Star, Trash2, UserCheck, UserCircle2, Users } from "lucide-react";
+import { Apple, CalendarRange, ChevronDown, ChevronUp, ClipboardList, Copy, Eye, EyeOff, Mail, MessageSquare, Pencil, Play, ShieldCheck, Star, Trash2, UserCheck, UserCircle2, Users } from "lucide-react";
 import { formatActivityDurationLabel, formatReflectionLevelForDisplay, isActivityWorkoutLog } from "../app/activityWorkoutLog";
 import { buildUnreadMessagesByIdentityKey, unreadCountForMember } from "../app/trainerUnreadMessages";
 import { MOTUS } from "../app/data";
@@ -137,9 +137,8 @@ import {
 import { TrainerProfileCard } from "./TrainerProfileCard";
 import { TrainerHomeOverview } from "./TrainerHomeOverview";
 import type { TrainerFollowUpCardModel, TrainerPriorityMemberModel, TrainerTodoModel } from "./TrainerHomeOverview";
-import { buildShareProgramChatMessage } from "../app/chatFormat";
 import type { ChatReactionActor, ChatReactionEmoji } from "../app/chatReactions";
-import { MotusChat, type MotusChatQuickAction } from "./MotusChat";
+import { MotusChat } from "./MotusChat";
 import {
   buildTrainerFocusItems,
   buildTrainerTodayFeed,
@@ -820,7 +819,6 @@ function pickFirstName(value: unknown): string {
   const trainerMessagesContainerRef = useRef<HTMLDivElement | null>(null);
   const trainerSendAttemptRef = useRef(0);
   const [trainerChatSendStatus, setTrainerChatSendStatus] = useState<string | null>(null);
-  const [chatShareProgramPickerOpen, setChatShareProgramPickerOpen] = useState(false);
   const [ptListFilterTab, setPtListFilterTab] = useState<TrainerListFilterTab>("all");
   const [statsPeriodPreset, setStatsPeriodPreset] = useState<StatsPeriodPreset>("30d");
   const [customerSubTab, setCustomerSubTab] = useState<CustomerSubTab>("overview");
@@ -3772,42 +3770,6 @@ function pickFirstName(value: unknown): string {
       isSendingTrainerMessageRef.current = false;
     }
   }
-
-  async function shareSelectedProgramInChat(program: TrainingProgram) {
-    const message = buildShareProgramChatMessage({
-      programTitle: program.title,
-      goal: program.goal,
-      sender: "trainer",
-    });
-    const sent = await dispatchTrainerMessageToSelectedMember(message);
-    if (sent) {
-      setTrainerMessage("");
-      setChatShareProgramPickerOpen(false);
-    }
-  }
-
-  function handleTrainerShareProgramClick() {
-    if (selectedPrograms.length === 0) {
-      setChatShareProgramPickerOpen(false);
-      setCustomerSubTab("programs");
-      setTrainerChatSendStatus("Lag et program først — åpnet Program-fanen.");
-      return;
-    }
-    if (selectedPrograms.length === 1) {
-      void shareSelectedProgramInChat(selectedPrograms[0]);
-      return;
-    }
-    setChatShareProgramPickerOpen((open) => !open);
-  }
-
-  const trainerChatQuickActions = useMemo(
-    (): MotusChatQuickAction[] => [
-      { id: "workout", label: "Send økt", icon: Dumbbell, onClick: () => setCustomerSubTab("workouts") },
-      { id: "program", label: "Del program", icon: Share2, onClick: handleTrainerShareProgramClick },
-      { id: "more", label: "Flere", icon: MoreHorizontal },
-    ],
-    [selectedPrograms],
-  );
 
   function resetMemberListControls() {
     setMemberSearch("");
@@ -7311,34 +7273,11 @@ function pickFirstName(value: unknown): string {
                     composePlaceholder="Skriv melding..."
                     sendStatus={trainerChatSendStatus}
                     messagesContainerRef={trainerMessagesContainerRef}
-                    quickActions={trainerChatQuickActions}
                     onToggleReaction={toggleChatMessageReaction}
                     onMarkConversationRead={
                       selectedMemberId && !selectedMemberMessagesLocked
                         ? () => markChatConversationRead(selectedMemberId, "trainer")
                         : undefined
-                    }
-                    headerExtra={
-                      chatShareProgramPickerOpen && selectedPrograms.length > 1 ? (
-                        <div className="motus-chat-share-panel">
-                          <div className="motus-chat-share-panel-title">Velg program å dele</div>
-                          <div className="motus-chat-share-panel-list">
-                            {selectedPrograms.map((program) => (
-                              <button
-                                key={program.id}
-                                type="button"
-                                className="motus-chat-share-panel-item"
-                                onClick={() => void shareSelectedProgramInChat(program)}
-                              >
-                                <span className="font-medium">{program.title}</span>
-                                {program.goal?.trim() ? (
-                                  <span className="motus-chat-share-panel-goal">{program.goal.trim()}</span>
-                                ) : null}
-                              </button>
-                            ))}
-                    </div>
-                      </div>
-                      ) : null
                     }
                   />
                     ) : null}

@@ -2,14 +2,10 @@ import { useCallback, useEffect, useRef, useState, type ReactNode, type RefObjec
 import {
   AlertTriangle,
   ChevronLeft,
-  Dumbbell,
   Mail,
-  MoreHorizontal,
   Paperclip,
   Send,
-  Share2,
   Smile,
-  type LucideIcon,
 } from "lucide-react";
 import { isChatMessageReadByRecipient } from "../app/chatReadReceipts";
 import type { ChatMessage } from "../app/types";
@@ -22,13 +18,6 @@ import {
   type ChatReactionEmoji,
   type ChatReactionState,
 } from "../app/chatReactions";
-
-export type MotusChatQuickAction = {
-  id: string;
-  label: string;
-  icon: LucideIcon;
-  onClick?: () => void;
-};
 
 export type MotusChatProps = {
   variant: "member" | "trainer";
@@ -45,7 +34,6 @@ export type MotusChatProps = {
   sendStatus?: string | null;
   locked?: boolean;
   lockedMessage?: string;
-  quickActions?: MotusChatQuickAction[];
   quickReplies?: string[];
   messagesContainerRef?: RefObject<HTMLDivElement | null>;
   onBack?: () => void;
@@ -67,12 +55,6 @@ const DEFAULT_TRAINER_QUICK_REPLIES = [
 ];
 
 const DEFAULT_MEMBER_QUICK_REPLIES = ["Hei! Kort status:", "Trenger hjelp med programmet", "Kan vi justere planen?"];
-
-const DEFAULT_QUICK_ACTIONS: MotusChatQuickAction[] = [
-  { id: "workout", label: "Send økt", icon: Dumbbell },
-  { id: "program", label: "Del program", icon: Share2 },
-  { id: "more", label: "Flere", icon: MoreHorizontal },
-];
 
 function AvatarBubble({
   name,
@@ -324,7 +306,6 @@ export function MotusChat({
   sendStatus,
   locked = false,
   lockedMessage = "Meldinger er ikke tilgjengelig.",
-  quickActions,
   quickReplies,
   messagesContainerRef,
   onBack,
@@ -338,7 +319,6 @@ export function MotusChat({
   const [reactionVersion, setReactionVersion] = useState(0);
   const markReadRef = useRef(onMarkConversationRead);
   markReadRef.current = onMarkConversationRead;
-  const resolvedQuickActions = quickActions ?? DEFAULT_QUICK_ACTIONS;
   const resolvedQuickReplies = quickReplies ?? (variant === "trainer" ? DEFAULT_TRAINER_QUICK_REPLIES : DEFAULT_MEMBER_QUICK_REPLIES);
 
   useEffect(() => {
@@ -387,22 +367,6 @@ export function MotusChat({
         </div>
         {headerExtra}
       </header>
-
-      {resolvedQuickActions.length > 0 ? (
-        <div className="motus-chat-quick-actions scrollbar-none">
-          {resolvedQuickActions.map((action) => {
-            const Icon = action.icon;
-            return (
-              <button key={action.id} type="button" className="motus-chat-quick-action motus-pressable" onClick={action.onClick}>
-                <span className="motus-chat-quick-action-icon">
-                  <Icon className="h-4 w-4" aria-hidden />
-                </span>
-                <span>{action.label}</span>
-              </button>
-            );
-          })}
-        </div>
-      ) : null}
 
       {notice ? (
         <div className="motus-chat-notice" role="status" aria-live="polite">
