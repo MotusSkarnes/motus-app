@@ -217,6 +217,9 @@ export function updateQuickFoodLog(
     ...current,
     grams: nextGrams,
     mealId: nextMealId,
+    // Merge prefers the later loggedAt for the same id; gram/slot edits must
+    // win over a stale copy on another device that still has the original time.
+    loggedAt: new Date().toISOString(),
   };
   const nextLogs = [...logs];
   nextLogs[index] = updated;

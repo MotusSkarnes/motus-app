@@ -53,6 +53,9 @@ describe("updateQuickFoodLog", () => {
         mealId: "member-lunsj",
       }),
     ]);
+    expect(Date.parse(next.quickFoodLogs["2026-09-08"]![0]!.loggedAt)).toBeGreaterThan(
+      Date.parse("2026-09-08T10:00:00.000Z"),
+    );
   });
 
   it("ignores invalid grams and keeps current value", () => {

@@ -35,6 +35,43 @@ export function isMemberMealSlotId(mealId: string | undefined | null): boolean {
   return Boolean(id && SLOT_BY_ID.has(id));
 }
 
+/** Empty select value = "Annet" (no member slot). Do not default unknown ids to frokost. */
+export const MEMBER_MEAL_SLOT_OTHER_ID = "";
+
+/**
+ * Value for the food-log meal-slot <select>. PT plan ids such as meal-0-frokost
+ * map to member-frokost for display; unknown/empty ids stay as Annet.
+ */
+export function resolveMemberMealSlotSelectValue(
+  mealId?: string | null,
+  mealNameOrLabel?: string | null,
+): string {
+  const raw = mealId?.trim() ?? "";
+  if (isMemberMealSlotId(raw)) return raw;
+  const canonical = canonicalMemberMealSlotId(raw, mealNameOrLabel);
+  if (canonical && isMemberMealSlotId(canonical)) return canonical;
+  return MEMBER_MEAL_SLOT_OTHER_ID;
+}
+
+/**
+ * Persist the original meal id when the user did not pick a different slot.
+ * Otherwise meal-plan extra logs (meal-0-frokost) would be rewritten to
+ * member-frokost and vanish from the plan meal card on gram-only edits.
+ */
+export function persistMemberMealSlotAfterEdit(
+  originalMealId: string | undefined,
+  selectedSlotId: string,
+  mealNameOrLabel?: string | null,
+): string | undefined {
+  const selected = selectedSlotId.trim();
+  const originalResolved = resolveMemberMealSlotSelectValue(originalMealId, mealNameOrLabel);
+  if (selected === originalResolved) {
+    const original = originalMealId?.trim();
+    return original || undefined;
+  }
+  return selected || undefined;
+}
+
 /** PT-matplan bruker meal-0-lunsj — medlemslogging bruker member-lunsj. */
 export function canonicalMemberMealSlotId(
   mealSlotId?: string | null,

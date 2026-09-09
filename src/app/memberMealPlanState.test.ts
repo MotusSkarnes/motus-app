@@ -67,4 +67,39 @@ describe("mergeMemberMealPlanStates", () => {
     const merged = mergeMemberMealPlanStates(local, remote);
     expect(merged.quickFoodLogs["2026-06-02"]).toHaveLength(1);
   });
+
+  it("keeps the edited grams when local still has the original loggedAt", () => {
+    const original = {
+      id: "log-1",
+      name: "Havregrøt",
+      grams: 200,
+      source: "food" as const,
+      loggedAt: "2026-09-08T10:00:00.000Z",
+      mealId: "meal-0-frokost",
+      nutritionPer100g: {
+        kcal: 70,
+        protein: 2,
+        carbs: 12,
+        fat: 1,
+        fiber: 1,
+        sugar: 0,
+        saturatedFat: 0,
+        sodium: 0,
+      },
+    };
+    const local = makeState({
+      updatedAt: "2026-09-08T10:00:00.000Z",
+      quickFoodLogs: { "2026-09-08": [original] },
+    });
+    const remote = makeState({
+      updatedAt: "2026-09-08T11:00:00.000Z",
+      quickFoodLogs: {
+        "2026-09-08": [{ ...original, grams: 150, loggedAt: "2026-09-08T11:00:00.000Z" }],
+      },
+    });
+    const merged = mergeMemberMealPlanStates(local, remote);
+    expect(merged.quickFoodLogs["2026-09-08"]?.[0]).toEqual(
+      expect.objectContaining({ grams: 150, mealId: "meal-0-frokost" }),
+    );
+  });
 });
