@@ -1,7 +1,11 @@
 import { useEffect, useState } from "react";
 import { Pencil, Trash2, X } from "lucide-react";
 import { formatMacro } from "../../app/foodBankTypes";
-import { MEMBER_MEAL_SLOTS, canonicalMemberMealSlotId, isMemberMealSlotId } from "../../app/memberMealSlots";
+import {
+  MEMBER_MEAL_SLOTS,
+  persistMemberMealSlotAfterEdit,
+  resolveMemberMealSlotSelectValue,
+} from "../../app/memberMealSlots";
 import type { MemberQuickFoodLogEntry } from "../../app/memberMealPlanState";
 import { sumQuickFoodLogMacros } from "../../app/quickFoodLogMacros";
 
@@ -19,11 +23,7 @@ function entryMacroLine(entry: MemberQuickFoodLogEntry): string {
 }
 
 function resolveEditMealId(entry: MemberQuickFoodLogEntry): string {
-  const raw = entry.mealId?.trim() ?? "";
-  if (isMemberMealSlotId(raw)) return raw;
-  const canonical = canonicalMemberMealSlotId(raw, entry.name);
-  if (canonical && isMemberMealSlotId(canonical)) return canonical;
-  return MEMBER_MEAL_SLOTS[0]!.id;
+  return resolveMemberMealSlotSelectValue(entry.mealId, entry.name);
 }
 
 export function LoggedQuickFoodEntryRow({ entry, onSave, onRemove, compact = false }: LoggedQuickFoodEntryRowProps) {
@@ -61,7 +61,7 @@ export function LoggedQuickFoodEntryRow({ entry, onSave, onRemove, compact = fal
       setError("Mengde kan ikke være over 5000 g.");
       return;
     }
-    onSave({ grams, mealId });
+    onSave({ grams, mealId: persistMemberMealSlotAfterEdit(entry.mealId, mealId, entry.name) ?? "" });
     setEditing(false);
     setError(null);
   }
@@ -94,6 +94,7 @@ export function LoggedQuickFoodEntryRow({ entry, onSave, onRemove, compact = fal
                 className="motus-log-entry-edit__select"
                 aria-label={`Måltid for ${entry.name}`}
               >
+                <option value="">Annet</option>
                 {MEMBER_MEAL_SLOTS.map((slot) => (
                   <option key={slot.id} value={slot.id}>
                     {slot.label}
