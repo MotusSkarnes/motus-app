@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ArrowLeft, Check, ChevronRight, Minus, Plus, Repeat2, SkipForward, TimerReset, Trash2, X } from "lucide-react";
+import { ArrowLeft, Check, ChevronRight, Minus, Plus, Repeat2, SkipForward, Trash2, X } from "lucide-react";
 import { motusHaptic } from "../app/haptics";
 import { remainingSecondsUntilDeadline } from "../app/intervalTimerDeadline";
 import { useScreenWakeLock } from "../app/useScreenWakeLock";
@@ -1230,30 +1230,17 @@ export function LiveWorkoutSessionModal({
             </button>
           ) : null}
           {restCountdown ? (
-            <div className="mb-2 rounded-lg border bg-teal-50 px-2.5 py-2 sm:mb-3 sm:rounded-xl sm:p-3" style={{ borderColor: "rgba(48,227,190,0.25)" }}>
+            <div
+              className="relative mb-2 overflow-hidden rounded-lg border bg-teal-50 px-2.5 py-1.5 sm:mb-3 sm:rounded-xl sm:px-3 sm:py-2"
+              style={{ borderColor: "rgba(48,227,190,0.25)" }}
+              aria-live="polite"
+              aria-label={`Pause ${restCountdownRemainingSeconds} sekunder`}
+            >
               <div className="flex items-center justify-between gap-2 sm:gap-3">
-                <div className="flex min-w-0 items-center gap-2 sm:gap-3">
-                  <div className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white text-teal-700 shadow-sm sm:h-10 sm:w-10">
-                    <TimerReset className="h-4 w-4 sm:h-5 sm:w-5" aria-hidden />
-                  </div>
-                  <div className="min-w-0">
-                    <div className="text-[10px] font-semibold uppercase tracking-wide text-teal-700 sm:text-xs">
-                      Pause
-                    </div>
-                    <div className="text-xs font-semibold text-slate-900 sm:text-sm">
-                      {restCountdownRemainingSeconds}s til {currentGroupIsComplete && nextWorkoutGroup ? "neste øvelse" : "neste sett"}
-                    </div>
-                    <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-white">
-                      <div
-                        className="h-full rounded-full transition-all duration-300"
-                        style={{
-                          width: `${Math.max(0, Math.min(100, (restCountdownRemainingSeconds / restCountdown.totalSeconds) * 100))}%`,
-                          background: `linear-gradient(90deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)`,
-                        }}
-                      />
-                    </div>
-                  </div>
-                </div>
+                <p className="min-w-0 tabular-nums text-[2.25rem] font-black leading-none tracking-tight text-slate-900 sm:text-[3rem]">
+                  {restCountdownRemainingSeconds}
+                  <span className="ml-0.5 align-top text-[0.42em] font-bold text-teal-800">s</span>
+                </p>
                 <button
                   type="button"
                   onClick={() => {
@@ -1265,6 +1252,15 @@ export function LiveWorkoutSessionModal({
                 >
                   Hopp over
                 </button>
+              </div>
+              <div className="pointer-events-none absolute inset-x-0 bottom-0 h-1 bg-white/80">
+                <div
+                  className="h-full transition-all duration-300"
+                  style={{
+                    width: `${Math.max(0, Math.min(100, (restCountdownRemainingSeconds / restCountdown.totalSeconds) * 100))}%`,
+                    background: `linear-gradient(90deg, ${MOTUS.turquoise} 0%, ${MOTUS.pink} 100%)`,
+                  }}
+                />
               </div>
             </div>
           ) : null}
