@@ -27,6 +27,18 @@ export function parsePersonalGoalsJson(personalGoals: string | undefined): Recor
   }
 }
 
+/** Patch profile JSON without dropping unrelated fields such as stopGoals. */
+export function patchPersonalGoalsJson(
+  existingPersonalGoals: string | undefined,
+  patch: Record<string, unknown>,
+): string {
+  const existing = parsePersonalGoalsJson(existingPersonalGoals) ?? {};
+  return `${PROFILE_METRICS_PREFIX}${JSON.stringify({
+    ...existing,
+    ...patch,
+  })}`;
+}
+
 /** Preserve non-onboarding profile payload when updating personal goals. */
 export function readProfileExtensions(personalGoals: string | undefined): Record<string, unknown> {
   const payload = parsePersonalGoalsJson(personalGoals);

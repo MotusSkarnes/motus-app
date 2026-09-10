@@ -1,4 +1,4 @@
-import { PROFILE_METRICS_PREFIX, parsePersonalGoalsJson } from "./memberProfilePayload";
+import { parsePersonalGoalsJson, patchPersonalGoalsJson } from "./memberProfilePayload";
 import { isOnboardingCompleted } from "./memberOnboarding";
 import type { Member } from "./types";
 
@@ -197,34 +197,9 @@ export function mergeCheckInIntoPersonalGoals(
         .filter((entry): entry is MemberMonthlyCheckInAnswers => Boolean(entry))
     : [];
   const withoutMonth = previous.filter((entry) => entry.monthKey !== checkIn.monthKey);
-  const payload = {
-    sessionsPerWeekTarget: String(existing.sessionsPerWeekTarget ?? ""),
-    dailyStepsTarget: String(existing.dailyStepsTarget ?? ""),
-    targetWeight: String(existing.targetWeight ?? ""),
-    currentDailySteps: String(existing.currentDailySteps ?? ""),
-    ...(existing.homeVisibility && typeof existing.homeVisibility === "object"
-      ? { homeVisibility: existing.homeVisibility }
-      : {}),
-    ...(Array.isArray(existing.favoritePersonalRecords)
-      ? { favoritePersonalRecords: existing.favoritePersonalRecords }
-      : {}),
-    ...(existing.notificationPreferences && typeof existing.notificationPreferences === "object"
-      ? { notificationPreferences: existing.notificationPreferences }
-      : {}),
-    ...(existing.foodAvoidances && typeof existing.foodAvoidances === "object"
-      ? { foodAvoidances: existing.foodAvoidances }
-      : {}),
-    ...(existing.memberAppUi && typeof existing.memberAppUi === "object"
-      ? { memberAppUi: existing.memberAppUi }
-      : {}),
-    ...(existing.onboarding && typeof existing.onboarding === "object" ? { onboarding: existing.onboarding } : {}),
-    ...(String(existing.onboardingCompletedAt ?? "").trim()
-      ? { onboardingCompletedAt: String(existing.onboardingCompletedAt) }
-      : {}),
-    ...(Array.isArray(existing.bodyMetrics) ? { bodyMetrics: existing.bodyMetrics } : {}),
+  return patchPersonalGoalsJson(existingPersonalGoals, {
     monthlyCheckIns: [checkIn, ...withoutMonth].slice(0, 24),
-  };
-  return `${PROFILE_METRICS_PREFIX}${JSON.stringify(payload)}`;
+  });
 }
 
 export function buildCheckInNotificationCopy(window: CheckInWindow): { title: string; text: string; detail: string } {

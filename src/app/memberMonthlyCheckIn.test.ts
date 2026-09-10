@@ -116,4 +116,26 @@ describe("mergeCheckInIntoPersonalGoals", () => {
     expect(hasCompletedCheckInForMonth(merged, "2026-05")).toBe(true);
     expect(merged).toContain('"onboarding"');
   });
+
+  it("preserves stop goals when saving a monthly check-in", () => {
+    const withStop = `MOTUS_PROFILE_V1:${JSON.stringify({
+      onboarding: { version: 1, completedAt: "2026-01-01T00:00:00.000Z" },
+      stopGoals: [{ target: "Godteri", customTarget: "", startedAt: "2026-07-01", breakCount: 1 }],
+      stopGoal: { target: "Godteri", customTarget: "", startedAt: "2026-07-01", breakCount: 1 },
+    })}`;
+    const merged = mergeCheckInIntoPersonalGoals(withStop, {
+      version: 1,
+      monthKey: "2026-05",
+      trainingGoing: 5,
+      metExpectations: 4,
+      trainingNeeds: [],
+      trainingNeedsNotes: "",
+      challengingNotes: "",
+      coachNotes: "",
+      completedAt: "2026-05-31T12:00:00.000Z",
+    });
+    expect(merged).toContain('"stopGoals"');
+    expect(merged).toContain("Godteri");
+    expect(merged).toContain("2026-07-01");
+  });
 });

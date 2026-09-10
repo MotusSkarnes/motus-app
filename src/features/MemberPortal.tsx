@@ -83,7 +83,6 @@ import {
   mergePersonalGoalsFromCandidates,
   parsePersonalGoalsJson,
   pickCanonicalMemberRowForProfile,
-  readProfileExtensions,
   resolveMemberPersonalGoals,
 } from "../app/memberOnboarding";
 import { pickBestPersonalGoals } from "../app/memberProfileGoals";
@@ -516,36 +515,20 @@ function encodeMemberProfileMetrics(
   const normalizedFavoritePersonalRecords = normalizeFavoritePersonalRecordNames(
     preferences?.favoritePersonalRecords ?? existing?.favoritePersonalRecords,
   );
-  const profileExtensions = readProfileExtensions(existingPersonalGoals);
+  const existingPayload = parsePersonalGoalsJson(existingPersonalGoals) ?? {};
   const payload: ProfileMetricsPayload = {
+    ...existingPayload,
     ...metrics,
     ...(normalizedHomeVisibility ? { homeVisibility: normalizedHomeVisibility } : {}),
     ...(normalizedFavoritePersonalRecords ? { favoritePersonalRecords: normalizedFavoritePersonalRecords } : {}),
-    ...(profileExtensions.onboarding
-      ? {
-          onboarding: profileExtensions.onboarding as ProfileMetricsPayload["onboarding"],
-          onboardingCompletedAt: String(profileExtensions.onboardingCompletedAt ?? ""),
-        }
-      : profileExtensions.onboardingCompletedAt
-        ? { onboardingCompletedAt: String(profileExtensions.onboardingCompletedAt) }
-        : {}),
-    ...(Array.isArray(profileExtensions.monthlyCheckIns)
-      ? { monthlyCheckIns: profileExtensions.monthlyCheckIns }
-      : {}),
-    ...(Array.isArray(profileExtensions.bodyMetrics) ? { bodyMetrics: profileExtensions.bodyMetrics } : {}),
-    ...(profileExtensions.notificationPreferences && typeof profileExtensions.notificationPreferences === "object"
-      ? { notificationPreferences: profileExtensions.notificationPreferences }
-      : {}),
-    ...(profileExtensions.foodAvoidances && typeof profileExtensions.foodAvoidances === "object"
-      ? { foodAvoidances: profileExtensions.foodAvoidances }
-      : {}),
-    ...(profileExtensions.stopGoal && typeof profileExtensions.stopGoal === "object"
-      ? { stopGoal: profileExtensions.stopGoal as MemberStopGoal }
-      : {}),
-    ...(Array.isArray(profileExtensions.stopGoals)
-      ? { stopGoals: normalizeStopGoals(profileExtensions.stopGoals) }
-      : {}),
   };
+  if (Array.isArray(existingPayload.stopGoals) || existingPayload.stopGoal) {
+    const preserved = normalizeStopGoals(existingPayload.stopGoals ?? existingPayload.stopGoal);
+    if (preserved.length) {
+      payload.stopGoal = preserved[0];
+      payload.stopGoals = preserved;
+    }
+  }
   return `${PROFILE_METRICS_PREFIX}${JSON.stringify(payload)}`;
 }
 
@@ -2213,11 +2196,15 @@ export function MemberPortal(props: MemberPortalProps) {
     if (rescuedProgram) return { kind: "start-program" as const, program: rescuedProgram };
     return resolved;
   }, [todayPlanEntry, memberProgramsForPeriodPlan, memberPrograms]);
-  const profileMetricsFromDb = decodeMemberProfileMetrics(editableMember?.personalGoals);
-  const stopGoalFromDb = getStopGoalFromPersonalGoals(editableMember?.personalGoals);
+  const resolvedPersonalGoalsForMember = useMemo(
+    () => (editableMember ? resolveMemberPersonalGoals(editableMember, members) : ""),
+    [editableMember, members],
+  );
+  const profileMetricsFromDb = decodeMemberProfileMetrics(resolvedPersonalGoalsForMember);
+  const stopGoalFromDb = getStopGoalFromPersonalGoals(resolvedPersonalGoalsForMember);
   const stopGoalsFromDb = useMemo(
-    () => getStopGoalsFromPersonalGoals(editableMember?.personalGoals),
-    [editableMember?.personalGoals],
+    () => getStopGoalsFromPersonalGoals(resolvedPersonalGoalsForMember),
+    [resolvedPersonalGoalsForMember],
   );
   const normalizedStopGoalsDraft = useMemo(() => normalizeStopGoals(stopGoalsDraft), [stopGoalsDraft]);
   const shouldUseStopGoalsDraft =
@@ -3346,8 +3333,8 @@ export function MemberPortal(props: MemberPortalProps) {
     }
     stopGoalDraftDirtyRef.current = false;
     stopGoalDraftDirtyMemberIdRef.current = null;
-    setStopGoalsDraft(getStopGoalsFromPersonalGoals(editableMember.personalGoals));
-  }, [editableMember?.id, editableMember?.personalGoals]);
+    setStopGoalsDraft(getStopGoalsFromPersonalGoals(resolvedPersonalGoalsForMember));
+  }, [editableMember?.id, resolvedPersonalGoalsForMember]);
   useEffect(() => {
     if (!editableMember) return;
     if (

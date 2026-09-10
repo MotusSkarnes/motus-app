@@ -263,7 +263,10 @@ export function MemberLayout({
   const persistMemberUiStateToCloud = (patch: Partial<MemberAppUiState>) => {
     if (!activeMember) return;
     const canonical = pickCanonicalMemberRowForProfile(activeMember, appState.members);
-    const personalGoals = patchMemberAppUiStateInPersonalGoals(canonical.personalGoals, patch);
+    const personalGoals = patchMemberAppUiStateInPersonalGoals(
+      resolveMemberPersonalGoals(canonical, appState.members),
+      patch,
+    );
     const emailKey = activeMember.email.trim().toLowerCase();
     const targets = appState.members.filter((member) => {
       if (member.id === canonical.id) return true;
@@ -356,7 +359,10 @@ export function MemberLayout({
     if (!activeMember) return;
     const loginEmail = appState.currentUser?.email.trim().toLowerCase() ?? "";
     const canonicalMember = pickCanonicalMemberRowForProfile(activeMember, appState.members);
-    const personalGoals = mergeOnboardingIntoPersonalGoals(canonicalMember.personalGoals, answers);
+    const personalGoals = mergeOnboardingIntoPersonalGoals(
+      resolveMemberPersonalGoals(canonicalMember, appState.members),
+      answers,
+    );
     const focusSummary = answers.trainingGoals.slice(0, 3).join(" · ");
     const changes = {
       goal: primaryGoalFromOnboarding(answers),

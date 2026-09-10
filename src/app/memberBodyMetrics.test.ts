@@ -88,4 +88,18 @@ describe("memberBodyMetrics", () => {
     expect(timeline.weightSeries).toHaveLength(2);
     expect(timeline.entries.some((row) => row.source === "check-in")).toBe(true);
   });
+
+  it("preserves stop goals when logging body metrics", () => {
+    const withStop = `MOTUS_PROFILE_V1:${JSON.stringify({
+      onboarding: { version: 1, completedAt: "2026-01-01T00:00:00.000Z", skipped: false },
+      targetWeight: "75",
+      stopGoals: [{ target: "Snus", customTarget: "", startedAt: "2026-09-01", breakCount: 0 }],
+    })}`;
+    const entry = createMemberBodyMetricEntry({ weightKg: 74 })!;
+    const merged = mergeBodyMetricIntoPersonalGoals(withStop, entry);
+    expect(merged).toContain('"stopGoals"');
+    expect(merged).toContain("Snus");
+    expect(merged).toContain("2026-09-01");
+    expect(getBodyMetricsFromPersonalGoals(merged)).toHaveLength(1);
+  });
 });

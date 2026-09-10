@@ -139,6 +139,10 @@ function scorePersonalGoalsBlob(value: string): number {
   if (raw.includes('"onboarding"') && raw.includes("completedAt")) score += 160;
   else if (raw.includes('"onboarding"')) score += 80;
   if (raw.includes('"monthlyCheckIns"')) score += 50;
+  if (raw.includes('"stopGoals"') || raw.includes('"stopGoal"')) score += 90;
+  if (raw.includes('"foodAvoidances"')) score += 100;
+  if (raw.includes('"notificationPreferences"')) score += 120;
+  if (raw.includes('"periodPlanCompletion"')) score += 140;
   score += Math.min(20, Math.floor(raw.length / 200));
   return score;
 }
@@ -157,6 +161,60 @@ function pickBestPersonalGoalsFromRows(rows: Array<Record<string, unknown>>): st
   return best;
 }
 
+const PROFILE_METRICS_PREFIX = "MOTUS_PROFILE_V1:";
+
+function parseProfileBlob(value: string): Record<string, unknown> | null {
+  const raw = String(value ?? "").trim();
+  if (!raw) return null;
+  const jsonPart = raw.startsWith(PROFILE_METRICS_PREFIX)
+    ? raw.slice(PROFILE_METRICS_PREFIX.length)
+    : raw.startsWith("{")
+      ? raw
+      : "";
+  if (!jsonPart) return null;
+  try {
+    const parsed = JSON.parse(jsonPart);
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return null;
+    return parsed as Record<string, unknown>;
+  } catch {
+    return null;
+  }
+}
+
+function collectStopGoalsFromBlob(parsed: Record<string, unknown>): unknown[] {
+  if (Array.isArray(parsed.stopGoals)) {
+    return parsed.stopGoals.filter((item) => item && typeof item === "object");
+  }
+  if (parsed.stopGoal && typeof parsed.stopGoal === "object") return [parsed.stopGoal];
+  return [];
+}
+
+/** Keep stop goals (and similar unique blobs) when duplicate rows have diverged. */
+function mergePersonalGoalsFromRows(rows: Array<Record<string, unknown>>): string {
+  const values = rows.map((row) => String(row.personal_goals ?? "").trim()).filter(Boolean);
+  if (!values.length) return "";
+  const best = pickBestPersonalGoalsFromRows(rows);
+  const merged = { ...(parseProfileBlob(best) ?? {}) };
+  const stopGoals: unknown[] = [];
+  for (const value of values) {
+    const parsed = parseProfileBlob(value);
+    if (!parsed) continue;
+    stopGoals.push(...collectStopGoalsFromBlob(parsed));
+    if (!merged.foodAvoidances && parsed.foodAvoidances) merged.foodAvoidances = parsed.foodAvoidances;
+    if (!merged.memberAppUi && parsed.memberAppUi) merged.memberAppUi = parsed.memberAppUi;
+    if (!merged.onboarding && parsed.onboarding) {
+      merged.onboarding = parsed.onboarding;
+      if (parsed.onboardingCompletedAt) merged.onboardingCompletedAt = parsed.onboardingCompletedAt;
+    }
+  }
+  if (stopGoals.length) {
+    merged.stopGoals = stopGoals;
+    merged.stopGoal = stopGoals[0];
+  }
+  if (!Object.keys(merged).length) return best;
+  return `${PROFILE_METRICS_PREFIX}${JSON.stringify(merged)}`;
+}
+
 /** Synk duplikat-rader per e-post — behold rikest personal_goals (oppstartsskjema). */
 function harmonizeMemberProfilesByEmail(rows: Array<Record<string, unknown>>): Array<Record<string, unknown>> {
   const byEmail = new Map<string, Array<Record<string, unknown>>>();
@@ -169,7 +227,7 @@ function harmonizeMemberProfilesByEmail(rows: Array<Record<string, unknown>>): A
   }
   for (const [, group] of byEmail) {
     if (group.length <= 1) continue;
-    const bestPersonalGoals = pickBestPersonalGoalsFromRows(group);
+    const bestPersonalGoals = mergePersonalGoalsFromRows(group);
     if (bestPersonalGoals) {
       for (const row of group) {
         row.personal_goals = bestPersonalGoals;

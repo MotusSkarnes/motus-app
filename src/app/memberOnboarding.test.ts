@@ -289,6 +289,21 @@ describe("memberOnboarding", () => {
     expect(getStopGoalsFromPersonalGoals(merged).map((goal) => goal.target)).toEqual(["Godteri"]);
   });
 
+  it("keeps stop goals when onboarding is merged into an existing profile", () => {
+    const withStop = `MOTUS_PROFILE_V1:${JSON.stringify({
+      stopGoals: [{ target: "Alkohol", customTarget: "", startedAt: "2026-08-01", breakCount: 2 }],
+    })}`;
+    const merged = mergeOnboardingIntoPersonalGoals(withStop, {
+      ...createEmptyOnboardingDraft(),
+      version: 1,
+      trainingGoals: ["Styrke"],
+      motivations: ["Helse"],
+      completedAt: "2026-05-16T12:00:00.000Z",
+    });
+    expect(getStopGoalsFromPersonalGoals(merged).map((goal) => goal.target)).toEqual(["Alkohol"]);
+    expect(getOnboardingFromPersonalGoals(merged)?.trainingGoals).toEqual(["Styrke"]);
+  });
+
   it("isMemberOnboardingComplete respects local completion marker", () => {
     const member: Member = {
       id: "local-onboarding",

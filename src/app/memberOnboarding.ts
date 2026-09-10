@@ -6,7 +6,7 @@ import { mergeStopGoalsAcrossCandidates, mergeStopGoalsIntoPersonalGoals } from 
 import { readMemberAppUiState, readProfileDisplayName } from "./memberAppUiState";
 import {
   parsePersonalGoalsJson,
-  PROFILE_METRICS_PREFIX,
+  patchPersonalGoalsJson,
   readProfileExtensions,
 } from "./memberProfilePayload";
 import { pickBestPersonalGoals } from "./memberProfileGoals";
@@ -486,22 +486,14 @@ export function mergeOnboardingIntoPersonalGoals(
   onboarding: MemberOnboardingAnswers,
 ): string {
   const existing = parsePersonalGoalsJson(existingPersonalGoals) ?? {};
-  const payload = {
+  return patchPersonalGoalsJson(existingPersonalGoals, {
     sessionsPerWeekTarget: String(existing.sessionsPerWeekTarget ?? onboarding.sessionsPerWeekTarget ?? ""),
     dailyStepsTarget: String(existing.dailyStepsTarget ?? ""),
     targetWeight: String(existing.targetWeight ?? ""),
     currentDailySteps: String(existing.currentDailySteps ?? ""),
-    ...(existing.homeVisibility && typeof existing.homeVisibility === "object"
-      ? { homeVisibility: existing.homeVisibility }
-      : {}),
-    ...(Array.isArray(existing.favoritePersonalRecords)
-      ? { favoritePersonalRecords: existing.favoritePersonalRecords }
-      : {}),
-    ...(Array.isArray(existing.monthlyCheckIns) ? { monthlyCheckIns: existing.monthlyCheckIns } : {}),
     onboarding,
     onboardingCompletedAt: onboarding.completedAt,
-  };
-  return `${PROFILE_METRICS_PREFIX}${JSON.stringify(payload)}`;
+  });
 }
 
 export function primaryGoalFromOnboarding(onboarding: MemberOnboardingAnswers): string {
