@@ -1,6 +1,7 @@
-import { isHoldBasedExerciseCategory, programExerciseHoldSeconds } from "./exerciseCategories";
+import { programExerciseHoldSeconds } from "./exerciseCategories";
 import {
   formatCustomPrescriptionSuffix,
+  programExerciseUsesRepsOnlyLoad,
   programExerciseUsesSecondsLoad,
   resolveExercisePrescriptionFields,
   resolvePrescriptionFieldLabel,
@@ -90,11 +91,7 @@ export function formatProgramExercisePrescription(
     return `${exercise.sets || "-"} ${dragLabel} × ${timeLabel}${exercise.speed ? ` · ${exercise.speed} km/t` : ""}${exercise.incline ? ` · ${exercise.incline}% incline` : ""} · ${restSeconds}s${pauseLabel}${cardioTargetHrPrescriptionSuffix(exercise.targetHrPercent)}${appendCustomPrescriptionParts(exercise, linkedExercise)}`;
   }
 
-  const isHold =
-    options?.treatAsHold ??
-    Boolean(
-      (category && isHoldBasedExerciseCategory(category)) || programExerciseUsesSecondsLoad(exercise, linkedExercise),
-    );
+  const isHold = options?.treatAsHold ?? programExerciseUsesSecondsLoad(exercise, linkedExercise);
   if (isHold) {
     const hold =
       (category ? programExerciseHoldSeconds(exercise, category) : "") ||
@@ -105,8 +102,11 @@ export function formatProgramExercisePrescription(
   }
 
   const repsUnit = exercise.repsUnit === "minutes" ? "min" : "reps";
-  const weightUnit = exercise.weightUnit === "seconds" ? "sek" : "kg";
   const seatSuffix = exercise.seatSetting?.trim() ? ` · sete ${exercise.seatSetting.trim()}` : "";
+  if (programExerciseUsesRepsOnlyLoad(exercise, linkedExercise)) {
+    return `${exercise.sets || "-"}×${exercise.reps || "-"} ${repsUnit} · ${restSeconds}s${pauseLabel}${seatSuffix}${appendCustomPrescriptionParts(exercise, linkedExercise)}`;
+  }
+  const weightUnit = exercise.weightUnit === "seconds" ? "sek" : "kg";
   return `${exercise.sets || "-"}×${exercise.reps || "-"} ${repsUnit} · ${exercise.weight || "0"} ${weightUnit} · ${restSeconds}s${pauseLabel}${seatSuffix}${appendCustomPrescriptionParts(exercise, linkedExercise)}`;
 }
 
@@ -142,10 +142,7 @@ export function lookupFrozenWorkoutPlanLabel(
 function workoutRowsToProgramExercise(rows: WorkoutExerciseResult[]): ProgramExercise | null {
   const row = rows[0];
   if (!row) return null;
-  const isHold =
-    row.plannedWeightUnit === "seconds" ||
-    row.performedLoadUnit === "sec" ||
-    Boolean(row.exerciseCategory && isHoldBasedExerciseCategory(row.exerciseCategory));
+  const isHold = row.plannedWeightUnit === "seconds" || row.performedLoadUnit === "sec";
   return {
     id: row.programExerciseId ?? row.exerciseId,
     exerciseId: row.exerciseId,
@@ -288,9 +285,7 @@ function resultIsCardio(result: WorkoutExerciseResult, linked?: Exercise): boole
   return linked?.category === "Kondisjon" || result.exerciseCategory === "Kondisjon" || Boolean(result.plannedDurationMinutes?.trim());
 }
 
-function resultIsHold(result: WorkoutExerciseResult, linked?: Exercise): boolean {
-  const category = linked?.category ?? result.exerciseCategory;
-  if (category && isHoldBasedExerciseCategory(category)) return true;
+function resultIsHold(result: WorkoutExerciseResult, _linked?: Exercise): boolean {
   return resolveWorkoutLoadUnit(result) === "sec";
 }
 
@@ -312,8 +307,10 @@ export function formatWorkoutResultSetPlanLabel(result: WorkoutExerciseResult, e
     return `${result.plannedWeight || "—"} sek`;
   }
   const repsUnit = resolveWorkoutRepsUnit(result) === "min" ? "min" : "reps";
+  const plannedLoad = String(result.plannedWeight ?? "").trim();
+  if (!plannedLoad) return `${result.plannedReps || "—"} ${repsUnit}`;
   const loadUnit = resolveWorkoutLoadUnit(result) === "sec" ? "sek" : "kg";
-  return `${result.plannedReps || "—"} ${repsUnit} · ${result.plannedWeight || "0"} ${loadUnit}`;
+  return `${result.plannedReps || "—"} ${repsUnit} · ${plannedLoad} ${loadUnit}`;
 }
 
 /** Full plan for en øvelse i treningslogg (alle sett for samme programExerciseId). */
@@ -410,5 +407,7 @@ export function formatWorkoutResultPerformedLabel(result: WorkoutExerciseResult,
     return `${result.performedWeight || "—"} sek`;
   }
   const repsUnit = resolveWorkoutRepsUnit(result) === "min" ? "min" : "reps";
-  return `${result.performedReps || "—"} ${repsUnit} · ${result.performedWeight || "—"} kg`;
+  const performedLoad = String(result.performedWeight ?? "").trim();
+  if (!performedLoad) return `${result.performedReps || "—"} ${repsUnit}`;
+  return `${result.performedReps || "—"} ${repsUnit} · ${performedLoad} kg`;
 }

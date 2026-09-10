@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { sanitizeProgramExerciseForLogAfter, programExerciseUsesSecondsLoad, exerciseBankUsesSecondsLoad, buildProgramExerciseFromBank } from "./exercisePrescriptionFields";
+import { sanitizeProgramExerciseForLogAfter, programExerciseUsesSecondsLoad, exerciseBankUsesSecondsLoad, buildProgramExerciseFromBank, resolveProgramExerciseLoadKind } from "./exercisePrescriptionFields";
 import type { Exercise, ProgramExercise } from "./types";
 
 function row(overrides: Partial<ProgramExercise> = {}): ProgramExercise {
@@ -71,6 +71,41 @@ describe("programExerciseUsesSecondsLoad", () => {
         { category: "Styrke", prescriptionFields: ["reps", "kg", "pause"] },
       ),
     ).toBe(false);
+  });
+
+  it("keeps reps-only rehab exercises off seconds", () => {
+    const diagonalHev: Exercise = {
+      id: "ex-oat0pr0",
+      name: "Diagonal hev",
+      category: "Rehab",
+      group: "Skulder",
+      equipment: "Strikk",
+      level: "Nybegynner",
+      description: "",
+      prescriptionFields: ["reps"],
+    };
+    expect(exerciseBankUsesSecondsLoad(diagonalHev)).toBe(false);
+    expect(
+      programExerciseUsesSecondsLoad(
+        { holdSeconds: "", weight: "", reps: "10", durationMinutes: "" },
+        diagonalHev,
+      ),
+    ).toBe(false);
+    expect(
+      resolveProgramExerciseLoadKind(
+        { holdSeconds: "", weight: "", reps: "10", durationMinutes: "" },
+        diagonalHev,
+      ),
+    ).toBe("reps");
+  });
+
+  it("still uses seconds for default rehab holds without custom fields", () => {
+    expect(
+      programExerciseUsesSecondsLoad(
+        { holdSeconds: "30", weight: "", reps: "1", durationMinutes: "" },
+        { category: "Rehab" },
+      ),
+    ).toBe(true);
   });
 
   it("builds program rows from seconds-based bank exercises with weightUnit seconds", () => {

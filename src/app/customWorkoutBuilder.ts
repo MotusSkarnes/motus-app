@@ -1,4 +1,3 @@
-import { isHoldBasedExerciseCategory } from "./exerciseCategories";
 import { exerciseBankUsesSecondsLoad } from "./exercisePrescriptionFields";
 import { buildExerciseGroupByName, computeMuscleGroupStats, splitMuscleGroupLabel } from "../features/muscleSplitStats";
 import type { Exercise, ProgramExercise, WorkoutLog } from "./types";
@@ -215,8 +214,7 @@ export function buildProgramExercisesFromCustomLines(lines: CustomWorkoutLine[],
   for (const line of lines) {
     const exercise = exercises.find((item) => item.id === line.exerciseId);
     if (!exercise) continue;
-    const isStretch = isHoldBasedExerciseCategory(exercise.category);
-    const usesSeconds = isStretch || exerciseBankUsesSecondsLoad(exercise);
+    const usesSeconds = exerciseBankUsesSecondsLoad(exercise);
     built.push({
       id: uid("prog-ex"),
       exerciseId: exercise.id,

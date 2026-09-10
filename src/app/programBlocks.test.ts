@@ -139,6 +139,33 @@ describe("programBlocks", () => {
     expect(results[1]?.plannedWeight).toBe("45");
   });
 
+  it("keeps rehab exercises with only reps on reps, not seconds", () => {
+    const diagonal: Exercise = {
+      id: "ex-diag",
+      name: "Diagonal hev",
+      category: "Rehab",
+      group: "Skulder",
+      equipment: "Strikk",
+      level: "Nybegynner",
+      description: "",
+      prescriptionFields: ["reps"],
+    };
+    const exercises = [
+      line("d", "Diagonal hev", "3", {
+        exerciseId: "ex-diag",
+        reps: "10",
+        weight: "",
+        holdSeconds: "",
+      }),
+    ];
+    const results = expandProgramExercisesToWorkoutResults(exercises, [diagonal]);
+    expect(results[0]?.plannedWeightUnit).toBe("kg");
+    expect(results[0]?.performedLoadUnit).toBe("kg");
+    expect(results[0]?.plannedReps).toBe("10");
+    expect(results[0]?.plannedWeight).toBe("");
+    expect(results[0]?.performedWeight).toBe("");
+  });
+
   it("treats last mislabeled drag row as nedtrapping when previous row is drag", () => {
     const exercises = [
       {

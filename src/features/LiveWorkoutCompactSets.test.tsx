@@ -97,4 +97,43 @@ describe("WorkoutCompactSetTable load labels", () => {
     expect(screen.queryByText("Vekt (Kg)")).toBeNull();
     expect(screen.queryByLabelText("Velg måleenhet")).toBeNull();
   });
+
+  it("shows REPS without SEK or kg for reps-only rehab exercises", () => {
+    const diagonal: Exercise = {
+      id: "ex-diag",
+      name: "Diagonal hev",
+      category: "Rehab",
+      group: "Skulder",
+      equipment: "Strikk",
+      level: "Nybegynner",
+      description: "",
+      prescriptionFields: ["reps"],
+    };
+    const row: WorkoutSetRow = {
+      exerciseId: "diag-set-1",
+      programExerciseId: "pe-diag",
+      setNumber: 1,
+      exerciseName: "Diagonal hev",
+      exerciseCategory: "Rehab",
+      plannedSets: "3",
+      plannedReps: "10",
+      plannedRepsUnit: "reps",
+      plannedWeight: "",
+      plannedWeightUnit: "kg",
+      performedWeight: "",
+      performedReps: "10",
+      performedLoadUnit: "kg",
+      completed: false,
+    };
+    render(
+      <WorkoutCompactSetTable
+        rows={[row]}
+        exerciseByName={new Map([["diagonal hev", diagonal]])}
+        onUpdate={vi.fn()}
+      />,
+    );
+    expect(screen.getAllByText("REPS").length).toBeGreaterThan(0);
+    expect(screen.queryByText("SEK")).toBeNull();
+    expect(screen.queryByText("Vekt (Kg)")).toBeNull();
+  });
 });

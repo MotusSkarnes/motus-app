@@ -13,7 +13,7 @@ import {
   writeMemberFavoriteExerciseIds,
 } from "../app/customWorkoutBuilder";
 import { MOTUS } from "../app/data";
-import { exerciseCategoryAccentColor, isHoldBasedExerciseCategory } from "../app/exerciseCategories";
+import { exerciseCategoryAccentColor } from "../app/exerciseCategories";
 import { exerciseBankUsesSecondsLoad } from "../app/exercisePrescriptionFields";
 import { resolveExerciseImageSrc } from "../app/exerciseIllustrations";
 import { computeExercisePopularityScores, computeTrainerProgramExerciseIds } from "../app/exerciseBankStats";
@@ -242,7 +242,7 @@ export function CustomWorkoutBuilder({
     setLines((previous) => {
       if (previous.some((line) => line.exerciseId === id)) return previous;
       const exercise = exercises.find((item) => item.id === id);
-      const usesSeconds = Boolean(exercise && (isHoldBasedExerciseCategory(exercise.category) || exerciseBankUsesSecondsLoad(exercise)));
+      const usesSeconds = Boolean(exercise && exerciseBankUsesSecondsLoad(exercise));
       const weightHint = exercise && !usesSeconds ? findSuggestedWeightForExercise(exercise.name) : "";
       const secHint = exercise && usesSeconds ? findSuggestedWeightForExercise(exercise.name) : "";
       return [
@@ -456,9 +456,7 @@ export function CustomWorkoutBuilder({
               <div className="mt-3 space-y-3">
                 {lines.map((line, index) => {
                   const exercise = exercises.find((item) => item.id === line.exerciseId);
-                  const usesSeconds = Boolean(
-                    exercise && (isHoldBasedExerciseCategory(exercise.category) || exerciseBankUsesSecondsLoad(exercise)),
-                  );
+                  const usesSeconds = Boolean(exercise && exerciseBankUsesSecondsLoad(exercise));
                   const dragActive = draggedLineKey === line.key;
                   const dragOver = dragOverLineKey === line.key && draggedLineKey !== line.key;
                   return (

@@ -135,16 +135,17 @@ function compactSetGridTemplate(options: {
   isCardio: boolean;
   isTreadmill: boolean;
   hideRepsColumn: boolean;
+  hideLoadColumn: boolean;
   removeCol: string;
 }): string {
   const remove = options.removeCol ? ` ${options.removeCol}` : "";
   if (options.showExerciseColumn) {
     if (options.isCardio && options.isTreadmill) return `minmax(0,1.2fr) 2.5rem 1fr 1fr 1fr 2.5rem${remove}`;
-    if (options.hideRepsColumn) return `minmax(0,1.2fr) 2.5rem 1fr 2.5rem${remove}`;
+    if (options.hideRepsColumn || options.hideLoadColumn) return `minmax(0,1.2fr) 2.5rem 1fr 2.5rem${remove}`;
     return `minmax(0,1.2fr) 2.5rem 1fr 1fr 2.5rem${remove}`;
   }
   if (options.isCardio && options.isTreadmill) return `2.5rem 1fr 1fr 1fr 2.5rem${remove}`;
-  if (options.hideRepsColumn) return `2.5rem 1fr 2.5rem${remove}`;
+  if (options.hideRepsColumn || options.hideLoadColumn) return `2.5rem 1fr 2.5rem${remove}`;
   return `2.5rem 1fr 1fr 2.5rem${remove}`;
 }
 
@@ -158,12 +159,27 @@ function workoutLoadColumnLabel(isCardio: boolean, isTreadmill: boolean, seconds
 function resolveRowKind(row: WorkoutSetRow, exerciseByName: Map<string, Exercise>) {
   const resolvedExercise = exerciseByName.get(String(row.exerciseName ?? "").trim().toLowerCase());
   const isCardio = (row.exerciseCategory ?? resolvedExercise?.category) === "Kondisjon";
-  const holdCategory = row.exerciseCategory ?? resolvedExercise?.category;
-  const isStretch = Boolean(holdCategory && isHoldBasedExerciseCategory(holdCategory));
   const isTreadmill = (row.exerciseEquipment ?? resolvedExercise?.equipment ?? "").toLowerCase().includes("tredem");
   const loadUnit = resolveWorkoutLoadUnit(row);
-  const isStrengthSeconds = !isCardio && !isStretch && loadUnit === "sec";
-  return { isCardio, isStretch, isTreadmill, loadUnit, isStrengthSeconds };
+  const isSecondsLoad = !isCardio && loadUnit === "sec";
+  const explicit = resolvedExercise?.prescriptionFields;
+  const isRepsOnly =
+    !isCardio &&
+    !isSecondsLoad &&
+    Boolean(
+      explicit?.length
+        ? explicit.includes("reps") && !explicit.includes("kg") && !explicit.includes("seconds")
+        : !String(row.plannedWeight ?? "").trim() && String(row.plannedReps ?? "").trim(),
+    );
+  return {
+    isCardio,
+    isTreadmill,
+    loadUnit,
+    isSecondsLoad,
+    isRepsOnly,
+    isStretch: isSecondsLoad,
+    isStrengthSeconds: isSecondsLoad,
+  };
 }
 
 function SetCheckToggle({
@@ -339,9 +355,11 @@ export function WorkoutCompactSetTable({
   const firstRow = rows[0]!;
   const { isCardio, isTreadmill } = resolveRowKind(firstRow, exerciseByName);
   const loadKinds = rows.map((row) => resolveRowKind(row, exerciseByName));
-  const secondsCount = loadKinds.filter((kind) => kind.isStretch || kind.isStrengthSeconds).length;
-  const kgCount = loadKinds.filter((kind) => !kind.isCardio && !kind.isStretch && !kind.isStrengthSeconds).length;
-  const hideRepsColumn = !isCardio && secondsCount > 0 && kgCount === 0;
+  const secondsCount = loadKinds.filter((kind) => kind.isSecondsLoad).length;
+  const repsOnlyCount = loadKinds.filter((kind) => kind.isRepsOnly).length;
+  const kgCount = loadKinds.filter((kind) => !kind.isCardio && !kind.isSecondsLoad && !kind.isRepsOnly).length;
+  const hideRepsColumn = !isCardio && secondsCount > 0 && kgCount === 0 && repsOnlyCount === 0;
+  const hideLoadColumn = !isCardio && repsOnlyCount > 0 && secondsCount === 0 && kgCount === 0;
   const repsUnitLabel = resolveWorkoutRepsUnit(firstRow) === "min" ? "MIN" : "REPS";
   const col3Label = workoutLoadColumnLabel(isCardio, isTreadmill, secondsCount, kgCount);
   const removeCol = showRemoveLastSet && onRemoveLastSet ? "2.25rem" : "";
@@ -350,6 +368,7 @@ export function WorkoutCompactSetTable({
     isCardio,
     isTreadmill,
     hideRepsColumn,
+    hideLoadColumn,
     removeCol,
   });
 
@@ -373,6 +392,10 @@ export function WorkoutCompactSetTable({
   function handleRepsFieldKeyDown(row: WorkoutSetRow, event: React.KeyboardEvent<HTMLInputElement>) {
     if (event.key !== "Enter") return;
     event.preventDefault();
+    if (hideLoadColumn || resolveRowKind(row, exerciseByName).isRepsOnly) {
+      tryCompleteSet(row);
+      return;
+    }
     focusWeightInput(row.exerciseId);
   }
 
@@ -386,12 +409,13 @@ export function WorkoutCompactSetTable({
     if (row.logFieldKeys?.length) {
       return row.logFieldKeys.some((key) => logAfterFieldHasValue(row, key));
     }
-    const { isCardio: cardio, isStretch: stretch, isTreadmill: treadmill, isStrengthSeconds } = resolveRowKind(row, exerciseByName);
+    const { isCardio: cardio, isStretch: stretch, isTreadmill: treadmill, isStrengthSeconds, isRepsOnly } = resolveRowKind(row, exerciseByName);
     if (cardio) {
       const duration = (row.performedDurationMinutes ?? "").trim();
       const speed = (row.performedSpeed ?? "").trim();
       return Number(duration) > 0 && (!treadmill || Number(speed) > 0);
     }
+    if (isRepsOnly) return Number(row.performedReps.trim()) > 0;
     if (isStrengthSeconds) return Number(row.performedWeight.trim()) > 0;
     if (stretch) return Number(row.performedWeight.trim()) > 0;
     return Number(row.performedWeight.trim()) > 0 && Number(row.performedReps.trim()) > 0;
@@ -478,14 +502,16 @@ export function WorkoutCompactSetTable({
     if (row.logFieldKeys?.length) {
       return renderLogAfterControls(row);
     }
-    const { isCardio: cardio, isStretch: stretch, isTreadmill: treadmill, isStrengthSeconds } = resolveRowKind(row, exerciseByName);
+    const { isCardio: cardio, isStretch: stretch, isTreadmill: treadmill, isStrengthSeconds, isRepsOnly } = resolveRowKind(row, exerciseByName);
     const activeLastWeight = lastWeightFor(row);
+    const activeLastReps = lastRepsFor(row);
     const activeLastDuration = lastDurationFor(row);
     const activeLastSpeed = lastSpeedFor(row);
     const activeWeightPlaceholder =
       stretch || isStrengthSeconds
         ? row.plannedWeight || activeLastWeight || "0"
         : activeLastWeight || row.plannedWeight || "0";
+    const activeRepsPlaceholder = activeLastReps || row.plannedReps || "0";
     const activeDurationPlaceholder = activeLastDuration || row.plannedDurationMinutes || "Min";
     const activeSpeedPlaceholder = activeLastSpeed || row.plannedSpeed || "km/t";
 
@@ -538,39 +564,51 @@ export function WorkoutCompactSetTable({
       );
     }
 
-    const step = stretch || isStrengthSeconds ? 5 : 2.5;
+    const usesSeconds = stretch || isStrengthSeconds;
     return (
       <div className="mt-2 space-y-1.5 rounded-lg border border-pink-200 bg-white p-2 sm:mt-3 sm:space-y-2 sm:rounded-xl sm:p-3">
         <div className="text-center text-[11px] font-semibold tracking-wide text-slate-500">
-          {stretch || isStrengthSeconds ? "SEK" : "Vekt (Kg)"}
+          {usesSeconds ? "SEK" : isRepsOnly ? "REPS" : "Vekt (Kg)"}
         </div>
         <div className="flex items-center justify-center gap-3">
           <button
             type="button"
-            onClick={() => handleInputChange(row, "performedWeight", stepWeightValue(row.performedWeight, -step))}
+            onClick={() =>
+              handleInputChange(
+                row,
+                isRepsOnly ? "performedReps" : "performedWeight",
+                stepWeightValue(isRepsOnly ? row.performedReps : row.performedWeight, usesSeconds ? -5 : isRepsOnly ? -1 : -2.5),
+              )
+            }
             className="inline-flex h-10 w-10 items-center justify-center rounded-lg border bg-slate-50"
             style={{ borderColor: "rgba(15,23,42,0.12)" }}
-            aria-label={stretch || isStrengthSeconds ? "Trekk fra 5 sek" : "Trekk fra 2,5 kg"}
+            aria-label={usesSeconds ? "Trekk fra 5 sek" : isRepsOnly ? "Trekk fra 1 rep" : "Trekk fra 2,5 kg"}
           >
             <Minus className="h-4 w-4" aria-hidden />
           </button>
           <TextInput
-            value={row.performedWeight}
-            onChange={(e) => handleInputChange(row, "performedWeight", e.target.value)}
+            value={isRepsOnly ? row.performedReps : row.performedWeight}
+            onChange={(e) => handleInputChange(row, isRepsOnly ? "performedReps" : "performedWeight", e.target.value)}
             onFocus={(event) => event.currentTarget.select()}
-            onKeyDown={(e) => handleWeightFieldKeyDown(row, e)}
+            onKeyDown={(e) => (isRepsOnly ? handleRepsFieldKeyDown(row, e) : handleWeightFieldKeyDown(row, e))}
             enterKeyHint="done"
-            data-workout-weight={row.exerciseId}
-            placeholder={activeWeightPlaceholder}
+            data-workout-weight={isRepsOnly ? undefined : row.exerciseId}
+            placeholder={isRepsOnly ? activeRepsPlaceholder : activeWeightPlaceholder}
             className="h-10 w-20 text-center text-lg font-semibold"
-            aria-label={stretch || isStrengthSeconds ? "Sekunder" : "Kg"}
+            aria-label={usesSeconds ? "Sekunder" : isRepsOnly ? "Reps" : "Kg"}
           />
           <button
             type="button"
-            onClick={() => handleInputChange(row, "performedWeight", stepWeightValue(row.performedWeight, step))}
+            onClick={() =>
+              handleInputChange(
+                row,
+                isRepsOnly ? "performedReps" : "performedWeight",
+                stepWeightValue(isRepsOnly ? row.performedReps : row.performedWeight, usesSeconds ? 5 : isRepsOnly ? 1 : 2.5),
+              )
+            }
             className="inline-flex h-10 w-10 items-center justify-center rounded-lg border bg-slate-50"
             style={{ borderColor: "rgba(15,23,42,0.12)" }}
-            aria-label={stretch || isStrengthSeconds ? "Legg til 5 sek" : "Legg til 2,5 kg"}
+            aria-label={usesSeconds ? "Legg til 5 sek" : isRepsOnly ? "Legg til 1 rep" : "Legg til 2,5 kg"}
           >
             <Plus className="h-4 w-4" aria-hidden />
           </button>
@@ -607,7 +645,7 @@ export function WorkoutCompactSetTable({
           <span>Sett</span>
           {hideRepsColumn ? null : <span className="text-center">{isCardio ? "PLAN" : repsUnitLabel}</span>}
           {isCardio && isTreadmill ? <span className="text-center">Km/t</span> : null}
-          <span className="text-center normal-case">{col3Label}</span>
+          {hideLoadColumn ? null : <span className="text-center normal-case">{col3Label}</span>}
           <span className="sr-only">Fullført</span>
           {removeCol ? <span className="sr-only">Fjern</span> : null}
         </div>
@@ -741,31 +779,33 @@ export function WorkoutCompactSetTable({
                   </span>
                 )
               ) : null}
-              {isActive && isCardio ? (
-                <TextInput
-                  value={row.performedDurationMinutes ?? ""}
-                  onChange={(e) => handleInputChange(row, "performedDurationMinutes", e.target.value)}
-                  placeholder={durationFallback || "0"}
-                  className="h-9 text-center text-sm"
-                  aria-label="Minutter"
-                />
-              ) : isActive && !isCardio ? (
-                <TextInput
-                  value={row.performedWeight}
-                  onChange={(e) => handleInputChange(row, "performedWeight", e.target.value)}
-                  onFocus={(event) => event.currentTarget.select()}
-                  onKeyDown={(e) => handleWeightFieldKeyDown(row, e)}
-                  enterKeyHint="done"
-                  data-workout-weight={row.exerciseId}
-                  placeholder={weightFallback || "0"}
-                  className="h-9 text-center text-sm"
-                  aria-label={rowStretch || rowStrengthSeconds || rowLoadUnit === "sec" ? "Sekunder" : "Kg"}
-                />
-              ) : (
-                <span className={`text-center text-sm font-medium ${isDone ? "text-slate-900" : "text-slate-400"}`}>
-                  {displayWeight}
-                </span>
-              )}
+              {!hideLoadColumn ? (
+                isActive && isCardio ? (
+                  <TextInput
+                    value={row.performedDurationMinutes ?? ""}
+                    onChange={(e) => handleInputChange(row, "performedDurationMinutes", e.target.value)}
+                    placeholder={durationFallback || "0"}
+                    className="h-9 text-center text-sm"
+                    aria-label="Minutter"
+                  />
+                ) : isActive && !isCardio ? (
+                  <TextInput
+                    value={row.performedWeight}
+                    onChange={(e) => handleInputChange(row, "performedWeight", e.target.value)}
+                    onFocus={(event) => event.currentTarget.select()}
+                    onKeyDown={(e) => handleWeightFieldKeyDown(row, e)}
+                    enterKeyHint="done"
+                    data-workout-weight={row.exerciseId}
+                    placeholder={weightFallback || "0"}
+                    className="h-9 text-center text-sm"
+                    aria-label={rowStretch || rowStrengthSeconds || rowLoadUnit === "sec" ? "Sekunder" : "Kg"}
+                  />
+                ) : (
+                  <span className={`text-center text-sm font-medium ${isDone ? "text-slate-900" : "text-slate-400"}`}>
+                    {displayWeight}
+                  </span>
+                )
+              ) : null}
               <SetCheckToggle
                 size="sm"
                 completed={row.completed}

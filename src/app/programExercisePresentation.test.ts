@@ -222,4 +222,19 @@ describe("workout log labels", () => {
     expect(formatWorkoutResultSetPlanLabel(row, library)).toBe("45 sek");
     expect(formatWorkoutResultPerformedLabel(row, library)).toBe("50 sek");
   });
+
+  it("formats reps-only rehab without kg or seconds", () => {
+    const row = workoutRow({
+      exerciseName: "Diagonal hev",
+      exerciseCategory: "Rehab",
+      plannedReps: "10",
+      plannedWeight: "",
+      plannedWeightUnit: "kg",
+      performedReps: "10",
+      performedWeight: "",
+      performedLoadUnit: "kg",
+    });
+    expect(formatWorkoutResultSetPlanLabel(row, library)).toBe("10 reps");
+    expect(formatWorkoutResultPerformedLabel(row, library)).toBe("10 reps");
+  });
 });

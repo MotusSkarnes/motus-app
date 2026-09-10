@@ -17,4 +17,8 @@ describe("resolveWorkoutLoadUnit", () => {
   it("defaults ordinary strength to kg", () => {
     expect(resolveWorkoutLoadUnit({ plannedWeightUnit: "kg", exerciseCategory: "Styrke" })).toBe("kg");
   });
+
+  it("does not treat rehab as seconds just because of category", () => {
+    expect(resolveWorkoutLoadUnit({ plannedWeightUnit: "kg", performedLoadUnit: "kg", exerciseCategory: "Rehab" })).toBe("kg");
+  });
 });

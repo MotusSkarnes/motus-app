@@ -1,11 +1,9 @@
-import { isHoldBasedExerciseCategory } from "./exerciseCategories";
 import type { WorkoutExerciseResult } from "./types";
 
 export function resolveWorkoutLoadUnit(row: Pick<WorkoutExerciseResult, "performedLoadUnit" | "plannedWeightUnit" | "exerciseCategory">): "kg" | "sec" {
   if (row.performedLoadUnit === "sec") return "sec";
   if (row.performedLoadUnit === "kg") return "kg";
   if (row.plannedWeightUnit === "seconds") return "sec";
-  if (row.exerciseCategory && isHoldBasedExerciseCategory(row.exerciseCategory)) return "sec";
   return "kg";
 }
 

@@ -129,15 +129,53 @@ function weightLooksEmptyOrZero(value: string | undefined): boolean {
   return !trimmed || trimmed === "0";
 }
 
+export type ProgramExerciseLoadKind = "seconds" | "kg" | "reps";
+
+function explicitPrescriptionFields(
+  exercise?: Pick<Exercise, "prescriptionFields">,
+): ExercisePrescriptionFieldKey[] | undefined {
+  if (exercise?.prescriptionFields?.length) return [...exercise.prescriptionFields];
+  return undefined;
+}
+
 /** Øvelsen i banken logges som hold/tid (sek), ikke reps + kg. */
 export function exerciseBankUsesSecondsLoad(
   exercise?: Pick<Exercise, "category" | "prescriptionFields">,
 ): boolean {
   if (!exercise) return false;
   if (exercise.category === "Kondisjon") return false;
-  if (isHoldBasedExerciseCategory(exercise.category)) return true;
   const fields = resolveExercisePrescriptionFields(exercise);
+  if (fields.includes("reps") && !fields.includes("seconds")) return false;
   return fields.includes("seconds") && !fields.includes("kg");
+}
+
+export function resolveProgramExerciseLoadKind(
+  exercise: Pick<ProgramExercise, "weightUnit" | "holdSeconds" | "weight" | "durationMinutes" | "reps">,
+  linked?: Pick<Exercise, "category" | "prescriptionFields">,
+): ProgramExerciseLoadKind {
+  if (linked?.category === "Kondisjon") return "kg";
+  if (String(exercise.durationMinutes ?? "").trim()) return "kg";
+  if (exercise.weightUnit === "seconds") return "seconds";
+  if (exercise.weightUnit === "kg") return "kg";
+
+  const explicit = explicitPrescriptionFields(linked);
+  if (explicit) {
+    const hasSeconds = explicit.includes("seconds");
+    const hasKg = explicit.includes("kg");
+    const hasReps = explicit.includes("reps");
+    if (hasSeconds && !hasKg) return "seconds";
+    if (hasReps && !hasSeconds && !hasKg) return "reps";
+    if (hasKg) return "kg";
+    if (hasReps) return "reps";
+  }
+
+  const hold = String(exercise.holdSeconds ?? "").trim();
+  const reps = String(exercise.reps ?? "").trim();
+  const hasWeight = !weightLooksEmptyOrZero(exercise.weight);
+  if (reps && !hold) return hasWeight ? "kg" : "reps";
+  if (hold && !hasWeight) return "seconds";
+  if (linked?.category && isHoldBasedExerciseCategory(linked.category)) return "seconds";
+  return "kg";
 }
 
 /**
@@ -145,19 +183,17 @@ export function exerciseBankUsesSecondsLoad(
  * Brukes både i programbygger og når økten utvides til sett-rader.
  */
 export function programExerciseUsesSecondsLoad(
-  exercise: Pick<ProgramExercise, "weightUnit" | "holdSeconds" | "weight" | "durationMinutes">,
+  exercise: Pick<ProgramExercise, "weightUnit" | "holdSeconds" | "weight" | "durationMinutes" | "reps">,
   linked?: Pick<Exercise, "category" | "prescriptionFields">,
 ): boolean {
-  if (linked?.category === "Kondisjon") return false;
-  if (String(exercise.durationMinutes ?? "").trim()) return false;
-  if (linked?.category && isHoldBasedExerciseCategory(linked.category)) return true;
-  if (exercise.weightUnit === "seconds") return true;
-  if (exercise.weightUnit === "kg") return false;
-  if (exerciseBankUsesSecondsLoad(linked)) return true;
+  return resolveProgramExerciseLoadKind(exercise, linked) === "seconds";
+}
 
-  const hold = String(exercise.holdSeconds ?? "").trim();
-  if (hold && weightLooksEmptyOrZero(exercise.weight)) return true;
-  return false;
+export function programExerciseUsesRepsOnlyLoad(
+  exercise: Pick<ProgramExercise, "weightUnit" | "holdSeconds" | "weight" | "durationMinutes" | "reps">,
+  linked?: Pick<Exercise, "category" | "prescriptionFields">,
+): boolean {
+  return resolveProgramExerciseLoadKind(exercise, linked) === "reps";
 }
 
 export function exercisePrescriptionFieldDef(key: ExercisePrescriptionFieldKey): ExercisePrescriptionFieldDef {
