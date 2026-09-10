@@ -3,6 +3,11 @@ import { LineChart, Share2, X } from "lucide-react";
 import { MOTUS } from "../app/data";
 import { motusShareStatusMessage, sharePersonalRecordCard } from "../app/motusShareCard";
 import { buildExerciseStrengthHistory, buildStrengthChartGeometry } from "../app/personalRecordProgress";
+import {
+  formatPersonalRecordScore,
+  personalRecordKindLabel,
+  type PersonalRecordKind,
+} from "../app/personalRecordScore";
 import type { WorkoutLog } from "../app/types";
 import { GradientButton, OutlineButton } from "../app/ui";
 
@@ -12,6 +17,7 @@ const MOTUS_GRADIENT = `${MOTUS.gradient}`;
 
 type PersonalRecordProgressModalProps = {
   exerciseName: string;
+  recordKind?: PersonalRecordKind;
   logs: WorkoutLog[];
   memberDisplayName?: string;
   shareLogoSrc?: string;
@@ -28,8 +34,15 @@ function parseBestSetLabel(label: string): { weightKg: number; reps: number } | 
   return { weightKg, reps };
 }
 
+function recordUnit(kind: PersonalRecordKind): string {
+  if (kind === "seconds") return "sek";
+  if (kind === "reps") return "reps";
+  return "kg";
+}
+
 export function PersonalRecordProgressModal({
   exerciseName,
+  recordKind = "oneRm",
   logs,
   memberDisplayName,
   shareLogoSrc,
@@ -39,21 +52,27 @@ export function PersonalRecordProgressModal({
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
   const [isSharing, setIsSharing] = useState(false);
 
-  const history = useMemo(() => buildExerciseStrengthHistory(logs, exerciseName), [exerciseName, logs]);
+  const history = useMemo(
+    () => buildExerciseStrengthHistory(logs, exerciseName, recordKind),
+    [exerciseName, logs, recordKind],
+  );
   const geometry = useMemo(
-    () => buildStrengthChartGeometry(history, CHART_WIDTH, CHART_HEIGHT),
-    [history],
+    () => buildStrengthChartGeometry(history, CHART_WIDTH, CHART_HEIGHT, recordUnit(recordKind)),
+    [history, recordKind],
   );
   const hoveredPoint = hoveredIndex !== null ? history[hoveredIndex] : history[history.length - 1] ?? null;
   const latest = history[history.length - 1] ?? null;
   const first = history[0] ?? null;
-  const changeKg =
+  const changeValue =
     latest && first && history.length > 1 ? Math.round((latest.estimated1RmKg - first.estimated1RmKg) * 10) / 10 : null;
-  const canShare = Boolean(memberDisplayName && shareLogoSrc && latest);
   const latestSet = latest ? parseBestSetLabel(latest.bestSetLabel) : null;
+  const canShare = Boolean(
+    memberDisplayName && shareLogoSrc && latest && (recordKind === "oneRm" ? latestSet : latest.estimated1RmKg > 0),
+  );
 
   async function shareLatestRecord() {
-    if (!canShare || !latest || !latestSet || !memberDisplayName || !shareLogoSrc || isSharing) return;
+    if (!canShare || !latest || !memberDisplayName || !shareLogoSrc || isSharing) return;
+    if (recordKind === "oneRm" && !latestSet) return;
     setIsSharing(true);
     onShareStatus?.(null);
     try {
@@ -61,10 +80,11 @@ export function PersonalRecordProgressModal({
         logoSrc: shareLogoSrc,
         memberDisplayName,
         exerciseName,
-        weightKg: latestSet.weightKg,
-        reps: latestSet.reps,
+        weightKg: recordKind === "seconds" ? latest.estimated1RmKg : latestSet?.weightKg ?? 0,
+        reps: recordKind === "reps" ? latest.estimated1RmKg : latestSet?.reps ?? 0,
         estimated1RmKg: latest.estimated1RmKg,
         previousEstimated1RmKg: history.length > 1 ? first?.estimated1RmKg : undefined,
+        recordKind,
       });
       onShareStatus?.(motusShareStatusMessage(outcome));
     } finally {
@@ -91,11 +111,13 @@ export function PersonalRecordProgressModal({
               <LineChart className="h-5 w-5" />
             </span>
             <div className="min-w-0">
-              <p className="text-xs font-semibold uppercase tracking-wide text-teal-700">Styrkeutvikling</p>
+              <p className="text-xs font-semibold uppercase tracking-wide text-teal-700">
+                {recordKind === "oneRm" ? "Styrkeutvikling" : "Rekordutvikling"}
+              </p>
               <h2 id="pr-progress-title" className="mt-0.5 text-lg font-bold text-slate-900">
                 {exerciseName}
               </h2>
-              <p className="mt-0.5 text-xs text-slate-500">Estimert 1RM over tid (fra loggede sett)</p>
+              <p className="mt-0.5 text-xs text-slate-500">{personalRecordKindLabel(recordKind)} over tid (fra loggede sett)</p>
             </div>
           </div>
           <button
@@ -118,7 +140,8 @@ export function PersonalRecordProgressModal({
             <div className="rounded-xl border bg-teal-50 px-4 py-3 text-sm text-teal-950" style={{ borderColor: "rgba(48,227,190,0.25)" }}>
               <div className="font-semibold">{history[0].dateLabel}</div>
               <div className="mt-1">
-                Estimert 1RM: <span className="font-bold">{history[0].estimated1RmKg} kg</span> ({history[0].bestSetLabel})
+                {personalRecordKindLabel(recordKind)}:{" "}
+                <span className="font-bold">{formatPersonalRecordScore(recordKind, history[0].estimated1RmKg)}</span> ({history[0].bestSetLabel})
               </div>
             </div>
           </div>
@@ -127,7 +150,9 @@ export function PersonalRecordProgressModal({
             <div className="mt-4 grid grid-cols-3 gap-2 text-center">
               <div className="rounded-xl bg-slate-50 px-2 py-2.5">
                 <div className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">Siste</div>
-                <div className="mt-0.5 text-sm font-bold text-slate-900">{latest?.estimated1RmKg} kg</div>
+                <div className="mt-0.5 text-sm font-bold text-slate-900">
+                  {latest ? formatPersonalRecordScore(recordKind, latest.estimated1RmKg) : "–"}
+                </div>
               </div>
               <div className="rounded-xl bg-slate-50 px-2 py-2.5">
                 <div className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">Økter</div>
@@ -136,9 +161,11 @@ export function PersonalRecordProgressModal({
               <div className="rounded-xl bg-slate-50 px-2 py-2.5">
                 <div className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">Endring</div>
                 <div
-                  className={`mt-0.5 text-sm font-bold ${changeKg !== null && changeKg >= 0 ? "text-emerald-700" : "text-rose-700"}`}
+                  className={`mt-0.5 text-sm font-bold ${changeValue !== null && changeValue >= 0 ? "text-emerald-700" : "text-rose-700"}`}
                 >
-                  {changeKg === null ? "–" : `${changeKg >= 0 ? "+" : ""}${changeKg} kg`}
+                  {changeValue === null
+                    ? "–"
+                    : `${changeValue >= 0 ? "+" : ""}${formatPersonalRecordScore(recordKind, Math.abs(changeValue))}`}
                 </div>
               </div>
             </div>
@@ -147,7 +174,8 @@ export function PersonalRecordProgressModal({
               <div className="mt-3 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-700">
                 <span className="font-semibold">{hoveredPoint.dateLabel}</span>
                 {" · "}
-                Estimert 1RM <span className="font-bold text-slate-900">{hoveredPoint.estimated1RmKg} kg</span>
+                {personalRecordKindLabel(recordKind)}{" "}
+                <span className="font-bold text-slate-900">{formatPersonalRecordScore(recordKind, hoveredPoint.estimated1RmKg)}</span>
                 {" · "}
                 Beste sett: {hoveredPoint.bestSetLabel}
               </div>
@@ -158,7 +186,7 @@ export function PersonalRecordProgressModal({
                 viewBox={`0 0 ${CHART_WIDTH} ${CHART_HEIGHT}`}
                 className="w-full min-w-[280px]"
                 role="img"
-                aria-label={`Graf over estimert 1RM for ${exerciseName}`}
+                aria-label={`Graf over ${personalRecordKindLabel(recordKind).toLowerCase()} for ${exerciseName}`}
               >
                 <defs>
                   <linearGradient id="pr-area-gradient" x1="0" y1="0" x2="0" y2="1">
@@ -208,7 +236,7 @@ export function PersonalRecordProgressModal({
         )}
 
         <div className="mt-5 flex flex-wrap gap-2">
-          {canShare && latestSet ? (
+          {canShare ? (
             <OutlineButton
               type="button"
               onClick={() => void shareLatestRecord()}

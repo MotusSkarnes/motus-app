@@ -1,6 +1,7 @@
 import type { WorkoutLog } from "./types";
 import { parseLogDateMs } from "./workoutLogDate";
 import { resolveWorkoutLoadUnit } from "./workoutResultUnits";
+import type { PersonalRecordKind } from "./personalRecordScore";
 
 export type StrengthHistoryPoint = {
   dateMs: number;
@@ -18,7 +19,11 @@ function formatDateLabel(dateMs: number): string {
   return new Date(dateMs).toLocaleDateString("nb-NO", { day: "numeric", month: "short", year: "2-digit" });
 }
 
-export function buildExerciseStrengthHistory(logs: WorkoutLog[], exerciseName: string): StrengthHistoryPoint[] {
+export function buildExerciseStrengthHistory(
+  logs: WorkoutLog[],
+  exerciseName: string,
+  kind: PersonalRecordKind = "oneRm",
+): StrengthHistoryPoint[] {
   const normalizedName = exerciseName.trim().toLowerCase();
   if (!normalizedName) return [];
 
@@ -32,14 +37,24 @@ export function buildExerciseStrengthHistory(logs: WorkoutLog[], exerciseName: s
     (log.results ?? []).forEach((result) => {
       if (!result.completed) return;
       if (result.exerciseName.trim().toLowerCase() !== normalizedName) return;
-      if (resolveWorkoutLoadUnit(result) === "sec") return;
 
-      const weight = Number(result.performedWeight) || 0;
-      const reps = Number(result.performedReps) || 0;
-      const estimated1RmKg = estimate1RmKg(weight, reps);
+      const weight = Number(String(result.performedWeight ?? "").replace(",", ".")) || 0;
+      const reps = Number(String(result.performedReps ?? "").replace(",", ".")) || 0;
+      let estimated1RmKg = 0;
+      let bestSetLabel = "";
+      if (kind === "seconds") {
+        estimated1RmKg = weight;
+        bestSetLabel = `${weight} sek`;
+      } else if (kind === "reps") {
+        estimated1RmKg = reps;
+        bestSetLabel = `${reps} reps`;
+      } else {
+        if (resolveWorkoutLoadUnit(result) === "sec") return;
+        estimated1RmKg = estimate1RmKg(weight, reps);
+        bestSetLabel = `${weight} kg × ${reps}`;
+      }
       if (estimated1RmKg <= 0) return;
 
-      const bestSetLabel = `${weight} kg × ${reps}`;
       const existing = bestByDay.get(dateMs);
       if (!existing || estimated1RmKg > existing.estimated1RmKg) {
         bestByDay.set(dateMs, { estimated1RmKg, bestSetLabel });
@@ -69,6 +84,7 @@ export function buildStrengthChartGeometry(
   points: StrengthHistoryPoint[],
   width: number,
   height: number,
+  valueSuffix = "kg",
 ): StrengthChartGeometry | null {
   if (points.length === 0) return null;
 
@@ -109,7 +125,7 @@ export function buildStrengthChartGeometry(
 
   const yTicks = [yMin, (yMin + yMax) / 2, yMax].map((value) => ({
     y: toY(value),
-    label: `${Math.round(value)} kg`,
+    label: `${Math.round(value)} ${valueSuffix}`,
   }));
 
   const labelIndexes =

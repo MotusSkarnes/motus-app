@@ -1308,6 +1308,7 @@ export function MemberPortal(props: MemberPortalProps) {
   const [hiddenBadgeCelebration, setHiddenBadgeCelebration] = useState<MemberBadge | null>(null);
   const [locallySeenHiddenBadgeIds, setLocallySeenHiddenBadgeIds] = useState<string[]>([]);
   const [liveWorkoutCelebration, setLiveWorkoutCelebration] = useState<WorkoutCelebration | null>(null);
+  const celebratedLivePrKeysRef = useRef<Set<string>>(new Set());
   /** Unngår popup ved første lasting; feirer kun når `achievedLevel` faktisk øker. */
   const achievementCelebrationBaselineRef = useRef<number | null>(null);
   const hiddenBadgeUnlockedBaselineRef = useRef<{ memberId: string; badgeIds: Set<string> } | null>(null);
@@ -3054,13 +3055,19 @@ export function MemberPortal(props: MemberPortalProps) {
     return computeWorkoutCelebrationStats(recentlyFinishedLog, memberLogs);
   }, [recentlyFinishedLog, memberLogs]);
   const showWorkoutCompletionCelebration = Boolean(recentlyFinishedLog && recentlyFinishedStats);
+  const activeCelebrationKey = activeCelebration
+    ? personalRecordMapKey(activeCelebration.exerciseName, activeCelebration.recordKind ?? "oneRm")
+    : "";
+  const alreadyShownLivePr =
+    Boolean(activeCelebrationKey) && !liveWorkoutCelebration && celebratedLivePrKeysRef.current.has(activeCelebrationKey);
   /** Ny PR / økt rekord: alltid synlig for aktiv bruker (uavhengig av «små feiringer»). */
   const shouldShowPrCelebration =
-    Boolean(activeCelebration && activeCelebration.memberId === activeMemberId) && !showWorkoutCompletionCelebration;
+    Boolean(activeCelebration && activeCelebration.memberId === activeMemberId) &&
+    !showWorkoutCompletionCelebration &&
+    !alreadyShownLivePr;
 
   function handleDismissWorkoutCompletionCelebration() {
     dismissRecentlyFinishedLog();
-    if (workoutCelebration) dismissWorkoutCelebration();
     setLiveWorkoutCelebration(null);
   }
 
@@ -4247,8 +4254,6 @@ export function MemberPortal(props: MemberPortalProps) {
   }
 
   function openPersonalRecordProgress(name: string) {
-    const record = personalRecords.find((item) => item.name === name);
-    if (record?.kind && record.kind !== "oneRm") return;
     setPrProgressExerciseName(name);
   }
 
@@ -5484,10 +5489,12 @@ export function MemberPortal(props: MemberPortalProps) {
     if (!activeWorkoutModeProgramId) {
       setLiveWorkoutCelebration(null);
       setSyncedWorkoutExerciseIndex(0);
+      celebratedLivePrKeysRef.current = new Set();
       return;
     }
     setLiveWorkoutCelebration(null);
     setSyncedWorkoutExerciseIndex(0);
+    celebratedLivePrKeysRef.current = new Set();
   }, [activeWorkoutModeProgramId]);
 
   useEffect(() => {
@@ -6226,11 +6233,16 @@ export function MemberPortal(props: MemberPortalProps) {
     setPeriodPlanActionStatus(`Fjernet markering for «${trimmed}».`);
   }
 
-  function maybeCelebrateCurrentWorkoutGroup() {
-    if (!currentWorkoutGroup || !activeMemberId) return;
+  function maybeCelebrateWorkoutRows(
+    rows: WorkoutModeState["results"],
+    exerciseName?: string,
+  ) {
+    if (!activeMemberId) return;
+    const wantedName = exerciseName?.trim().toLowerCase();
     let bestCandidate: WorkoutCelebration | null = null;
-    currentWorkoutGroup.rows.forEach((row) => {
+    rows.forEach((row) => {
       if (!row.completed) return;
+      if (wantedName && row.exerciseName.trim().toLowerCase() !== wantedName) return;
       const linked = exercises.find(
         (exercise) =>
           exercise.name.trim().toLowerCase() === row.exerciseName.trim().toLowerCase() ||
@@ -6242,23 +6254,36 @@ export function MemberPortal(props: MemberPortalProps) {
       if (currentScore <= 0) return;
       const previousScore = bestPersonalRecordScoreForExercise(memberLogs, row.exerciseName, kind, activeMemberId);
       if (currentScore <= previousScore) return;
+      const key = personalRecordMapKey(row.exerciseName, kind);
+      if (celebratedLivePrKeysRef.current.has(key)) return;
       if (
         !bestCandidate ||
         currentScore - previousScore >
           bestCandidate.newEstimated1RM - bestCandidate.previousEstimated1RM
       ) {
+        const weight = Number(String(row.performedWeight ?? "").replace(",", ".")) || 0;
+        const reps = Number(String(row.performedReps ?? "").replace(",", ".")) || 0;
         bestCandidate = {
           memberId: activeMemberId,
           exerciseName: row.exerciseName,
           previousEstimated1RM: previousScore,
           newEstimated1RM: currentScore,
-          reps: Number(row.performedReps) || 0,
-          weight: Number(row.performedWeight) || 0,
+          reps,
+          weight,
           recordKind: kind,
         };
       }
     });
-    if (bestCandidate) setLiveWorkoutCelebration(bestCandidate);
+    if (!bestCandidate) return;
+    celebratedLivePrKeysRef.current.add(
+      personalRecordMapKey(bestCandidate.exerciseName, bestCandidate.recordKind ?? "oneRm"),
+    );
+    setLiveWorkoutCelebration(bestCandidate);
+  }
+
+  function maybeCelebrateCurrentWorkoutGroup() {
+    if (!currentWorkoutGroup) return;
+    maybeCelebrateWorkoutRows(currentWorkoutGroup.rows);
   }
 
   function handleDeleteLoggedExercise(logId: string, exerciseId: string) {
@@ -7102,7 +7127,7 @@ export function MemberPortal(props: MemberPortalProps) {
           ) : null}
 
           {!isMemberLimited && shouldShowPrCelebration ? (
-            <div className="motus-modal-insets fixed inset-0 z-[10020] flex justify-center overflow-y-auto overscroll-contain bg-slate-900/55 px-4 py-10 pt-[max(2rem,env(safe-area-inset-top))]">
+            <div className="motus-modal-insets fixed inset-0 z-[10030] flex justify-center overflow-y-auto overscroll-contain bg-slate-900/55 px-4 py-10 pt-[max(2rem,env(safe-area-inset-top))]">
               <div
                 className="motus-pop-in h-fit w-full max-w-md rounded-2xl border bg-white p-6 shadow-2xl ring-2 ring-emerald-500/20"
                 style={{ borderColor: "rgba(15,23,42,0.08)" }}
@@ -7116,7 +7141,11 @@ export function MemberPortal(props: MemberPortalProps) {
                   </div>
                   <p className="mt-5 text-xs font-semibold uppercase tracking-[0.14em] text-emerald-700">Ny personlig rekord</p>
                   <h2 id="pr-celebration-heading" className="mt-2 text-2xl font-bold tracking-tight text-slate-900">
-                    Sterkere enn før
+                    {activeCelebration?.recordKind === "seconds"
+                      ? "Lengre enn før"
+                      : activeCelebration?.recordKind === "reps"
+                        ? "Flere reps enn før"
+                        : "Sterkere enn før"}
                   </h2>
                   <p className="mt-2 max-w-sm text-sm leading-relaxed text-slate-600">
                     Du satte ny personlig rekord i øvelsen du nettopp gjorde.
@@ -8529,6 +8558,9 @@ export function MemberPortal(props: MemberPortalProps) {
         restCountdownEnabled={restCountdownEnabled}
         previousPersonalBests={previousPersonalBestsByExercise}
         lastSessionByExercise={lastSessionResultsByExercise}
+        onSetPersonalRecord={(exerciseName) => {
+          maybeCelebrateWorkoutRows(currentWorkoutGroup?.rows ?? [], exerciseName);
+        }}
         onDismissWorkout={() => {
           handleDismissWorkoutMode();
         }}
@@ -8537,6 +8569,7 @@ export function MemberPortal(props: MemberPortalProps) {
     {prProgressExerciseName ? (
       <PersonalRecordProgressModal
         exerciseName={prProgressExerciseName}
+        recordKind={personalRecords.find((record) => record.name === prProgressExerciseName)?.kind ?? "oneRm"}
         logs={completedLogs}
         memberDisplayName={memberShareDisplayName}
         shareLogoSrc={motusShareLogoSrc}
