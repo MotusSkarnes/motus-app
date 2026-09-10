@@ -1237,10 +1237,15 @@ export function LiveWorkoutSessionModal({
               aria-label={`Pause ${restCountdownRemainingSeconds} sekunder`}
             >
               <div className="flex items-center justify-between gap-2 sm:gap-3">
-                <p className="min-w-0 tabular-nums text-[2.25rem] font-black leading-none tracking-tight text-slate-900 sm:text-[3rem]">
-                  {restCountdownRemainingSeconds}
-                  <span className="ml-0.5 align-top text-[0.42em] font-bold text-teal-800">s</span>
-                </p>
+                <div className="flex min-w-0 items-center gap-2 sm:gap-3">
+                  <span className="shrink-0 text-[10px] font-semibold uppercase tracking-wide text-teal-700 sm:text-xs">
+                    Pause
+                  </span>
+                  <p className="min-w-0 tabular-nums text-[2.25rem] font-black leading-none tracking-tight text-slate-900 sm:text-[3rem]">
+                    {restCountdownRemainingSeconds}
+                    <span className="ml-0.5 align-top text-[0.42em] font-bold text-teal-800">s</span>
+                  </p>
+                </div>
                 <button
                   type="button"
                   onClick={() => {
