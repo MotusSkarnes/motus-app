@@ -1,4 +1,6 @@
 import { useEffect, useState } from "react";
+import { MOTUS } from "../app/data";
+import { motusHaptic } from "../app/haptics";
 import { formatHoldStopwatch, holdStopwatchLoggedSeconds } from "../app/workoutHoldStopwatch";
 
 type WorkoutHoldStopwatchProps = {
@@ -39,6 +41,12 @@ export function WorkoutHoldStopwatch({ onStopWithSeconds }: WorkoutHoldStopwatch
     if (seconds > 0) onStopWithSeconds?.(seconds);
   }
 
+  function handleToggle() {
+    motusHaptic("medium");
+    if (running) handleStop();
+    else handleStart();
+  }
+
   return (
     <div
       className="relative mb-2 overflow-hidden rounded-lg border bg-teal-50 px-2.5 py-1.5 sm:mb-3 sm:rounded-xl sm:px-3 sm:py-2"
@@ -46,7 +54,7 @@ export function WorkoutHoldStopwatch({ onStopWithSeconds }: WorkoutHoldStopwatch
       aria-live="polite"
       aria-label={`Stoppeklokke ${display}`}
     >
-      <div className="flex items-center justify-between gap-2 sm:gap-3">
+      <div className="flex items-center justify-between gap-3">
         <div className="flex min-w-0 items-center gap-2 sm:gap-3">
           <span className="shrink-0 text-[10px] font-semibold uppercase tracking-wide text-teal-700 sm:text-xs">
             Stoppeklokke
@@ -55,26 +63,14 @@ export function WorkoutHoldStopwatch({ onStopWithSeconds }: WorkoutHoldStopwatch
             {display}
           </p>
         </div>
-        <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
-          <button
-            type="button"
-            onClick={handleStart}
-            disabled={running}
-            className="rounded-lg border bg-white px-2.5 py-1.5 text-[11px] font-semibold text-slate-700 transition hover:bg-slate-50 disabled:cursor-default disabled:opacity-40 sm:px-3 sm:py-2 sm:text-xs"
-            style={{ borderColor: "rgba(15,23,42,0.08)" }}
-          >
-            Start
-          </button>
-          <button
-            type="button"
-            onClick={handleStop}
-            disabled={!running}
-            className="rounded-lg border bg-white px-2.5 py-1.5 text-[11px] font-semibold text-slate-700 transition hover:bg-slate-50 disabled:cursor-default disabled:opacity-40 sm:px-3 sm:py-2 sm:text-xs"
-            style={{ borderColor: "rgba(15,23,42,0.08)" }}
-          >
-            Stopp
-          </button>
-        </div>
+        <button
+          type="button"
+          onClick={handleToggle}
+          className="motus-pressable inline-flex min-h-12 min-w-[6.5rem] shrink-0 items-center justify-center rounded-xl px-5 text-sm font-bold text-white shadow-sm transition hover:opacity-95 sm:min-h-[3.25rem] sm:min-w-[7.5rem] sm:text-base"
+          style={{ background: running ? MOTUS.pink : MOTUS.turquoise }}
+        >
+          {running ? "Stopp" : "Start"}
+        </button>
       </div>
     </div>
   );

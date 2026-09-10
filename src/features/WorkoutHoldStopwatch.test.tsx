@@ -9,12 +9,16 @@ describe("WorkoutHoldStopwatch", () => {
     vi.useRealTimers();
   });
 
-  it("shows start and stop in a pause-sized timer", () => {
+  it("shows a single start button that becomes stop while running", async () => {
+    const user = userEvent.setup();
     render(<WorkoutHoldStopwatch />);
     expect(screen.getByLabelText(/Stoppeklokke 0:00.00/)).toBeTruthy();
     expect(screen.getByRole("button", { name: "Start" })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Stopp" })).toBeNull();
+
+    await user.click(screen.getByRole("button", { name: "Start" }));
     expect(screen.getByRole("button", { name: "Stopp" })).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Stopp" })).toBeDisabled();
+    expect(screen.queryByRole("button", { name: "Start" })).toBeNull();
   });
 
   it("runs the clock and reports whole seconds on stop", async () => {
@@ -24,14 +28,11 @@ describe("WorkoutHoldStopwatch", () => {
     render(<WorkoutHoldStopwatch onStopWithSeconds={onStopWithSeconds} />);
 
     await user.click(screen.getByRole("button", { name: "Start" }));
-    expect(screen.getByRole("button", { name: "Start" })).toBeDisabled();
-    expect(screen.getByRole("button", { name: "Stopp" })).toBeEnabled();
-
     await vi.advanceTimersByTimeAsync(30_120);
     expect(screen.getByLabelText(/Stoppeklokke 0:30/)).toBeTruthy();
 
     await user.click(screen.getByRole("button", { name: "Stopp" }));
     expect(onStopWithSeconds).toHaveBeenCalledWith(30);
-    expect(screen.getByRole("button", { name: "Start" })).toBeEnabled();
+    expect(screen.getByRole("button", { name: "Start" })).toBeTruthy();
   });
 });
