@@ -90,6 +90,55 @@ describe("programBlocks", () => {
     expect(groups[1]?.exerciseName).toBe("Planke");
   });
 
+  it("expands strength hold exercises to seconds, not kg", () => {
+    const plankBank: Exercise[] = [
+      {
+        ...bank[2]!,
+        prescriptionFields: ["seconds", "pause"],
+      },
+    ];
+    const exercises = [
+      line("c", "Planke", "2", {
+        exerciseId: "ex-c",
+        reps: "",
+        weight: "0",
+        holdSeconds: "45",
+        restSeconds: "30",
+      }),
+    ];
+    const results = expandProgramExercisesToWorkoutResults(exercises, plankBank);
+    expect(results).toHaveLength(2);
+    expect(results[0]?.plannedWeightUnit).toBe("seconds");
+    expect(results[0]?.performedLoadUnit).toBe("sec");
+    expect(results[0]?.plannedWeight).toBe("45");
+    expect(results[0]?.performedWeight).toBe("45");
+  });
+
+  it("keeps kg for ordinary strength exercises in the same program as a seconds hold", () => {
+    const mixedBank: Exercise[] = [
+      bank[0]!,
+      { ...bank[2]!, prescriptionFields: ["seconds", "pause"] },
+    ];
+    const exercises = [
+      line("a", "Knebøy", "1", { exerciseId: "ex-a", weight: "80" }),
+      line("c", "Planke", "1", {
+        exerciseId: "ex-c",
+        reps: "",
+        weight: "",
+        holdSeconds: "45",
+      }),
+    ];
+    const results = expandProgramExercisesToWorkoutResults(exercises, mixedBank);
+    expect(results[0]?.exerciseName).toBe("Knebøy");
+    expect(results[0]?.plannedWeightUnit).toBe("kg");
+    expect(results[0]?.performedLoadUnit).toBe("kg");
+    expect(results[0]?.plannedWeight).toBe("80");
+    expect(results[1]?.exerciseName).toBe("Planke");
+    expect(results[1]?.plannedWeightUnit).toBe("seconds");
+    expect(results[1]?.performedLoadUnit).toBe("sec");
+    expect(results[1]?.plannedWeight).toBe("45");
+  });
+
   it("treats last mislabeled drag row as nedtrapping when previous row is drag", () => {
     const exercises = [
       {

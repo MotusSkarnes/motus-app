@@ -130,6 +130,31 @@ function stepWeightValue(current: string, delta: number): string {
   return Number.isInteger(next) ? String(next) : String(next);
 }
 
+function compactSetGridTemplate(options: {
+  showExerciseColumn: boolean;
+  isCardio: boolean;
+  isTreadmill: boolean;
+  hideRepsColumn: boolean;
+  removeCol: string;
+}): string {
+  const remove = options.removeCol ? ` ${options.removeCol}` : "";
+  if (options.showExerciseColumn) {
+    if (options.isCardio && options.isTreadmill) return `minmax(0,1.2fr) 2.5rem 1fr 1fr 1fr 2.5rem${remove}`;
+    if (options.hideRepsColumn) return `minmax(0,1.2fr) 2.5rem 1fr 2.5rem${remove}`;
+    return `minmax(0,1.2fr) 2.5rem 1fr 1fr 2.5rem${remove}`;
+  }
+  if (options.isCardio && options.isTreadmill) return `2.5rem 1fr 1fr 1fr 2.5rem${remove}`;
+  if (options.hideRepsColumn) return `2.5rem 1fr 2.5rem${remove}`;
+  return `2.5rem 1fr 1fr 2.5rem${remove}`;
+}
+
+function workoutLoadColumnLabel(isCardio: boolean, isTreadmill: boolean, secondsCount: number, kgCount: number): string {
+  if (isCardio) return isTreadmill ? "FART" : "MIN";
+  if (secondsCount && !kgCount) return "SEK";
+  if (kgCount && !secondsCount) return "Vekt (Kg)";
+  return "Vekt / SEK";
+}
+
 function resolveRowKind(row: WorkoutSetRow, exerciseByName: Map<string, Exercise>) {
   const resolvedExercise = exerciseByName.get(String(row.exerciseName ?? "").trim().toLowerCase());
   const isCardio = (row.exerciseCategory ?? resolvedExercise?.category) === "Kondisjon";
@@ -312,18 +337,21 @@ export function WorkoutCompactSetTable({
     );
   }
   const firstRow = rows[0]!;
-  const { isCardio, isStretch, isTreadmill, isStrengthSeconds } = resolveRowKind(firstRow, exerciseByName);
+  const { isCardio, isTreadmill } = resolveRowKind(firstRow, exerciseByName);
+  const loadKinds = rows.map((row) => resolveRowKind(row, exerciseByName));
+  const secondsCount = loadKinds.filter((kind) => kind.isStretch || kind.isStrengthSeconds).length;
+  const kgCount = loadKinds.filter((kind) => !kind.isCardio && !kind.isStretch && !kind.isStrengthSeconds).length;
+  const hideRepsColumn = !isCardio && secondsCount > 0 && kgCount === 0;
   const repsUnitLabel = resolveWorkoutRepsUnit(firstRow) === "min" ? "MIN" : "REPS";
-  const loadUnitLabel = isStretch || isStrengthSeconds ? "SEK" : "KG";
-  const col3Label = isCardio ? (isTreadmill ? "FART" : "MIN") : `VEKT (${loadUnitLabel})`;
+  const col3Label = workoutLoadColumnLabel(isCardio, isTreadmill, secondsCount, kgCount);
   const removeCol = showRemoveLastSet && onRemoveLastSet ? "2.25rem" : "";
-  const gridCols = showExerciseColumn
-    ? isCardio && isTreadmill
-      ? `minmax(0,1.2fr) 2.5rem 1fr 1fr 1fr 2.5rem${removeCol ? ` ${removeCol}` : ""}`
-      : `minmax(0,1.2fr) 2.5rem 1fr 1fr 2.5rem${removeCol ? ` ${removeCol}` : ""}`
-    : isCardio && isTreadmill
-      ? `2.5rem 1fr 1fr 1fr 2.5rem${removeCol ? ` ${removeCol}` : ""}`
-      : `2.5rem 1fr 1fr 2.5rem${removeCol ? ` ${removeCol}` : ""}`;
+  const gridCols = compactSetGridTemplate({
+    showExerciseColumn,
+    isCardio,
+    isTreadmill,
+    hideRepsColumn,
+    removeCol,
+  });
 
   function handleInputChange(row: WorkoutSetRow, field: Exclude<UpdateField, "completed">, value: string) {
     onUpdate(row.exerciseId, field, value);
@@ -454,7 +482,10 @@ export function WorkoutCompactSetTable({
     const activeLastWeight = lastWeightFor(row);
     const activeLastDuration = lastDurationFor(row);
     const activeLastSpeed = lastSpeedFor(row);
-    const activeWeightPlaceholder = activeLastWeight || row.plannedWeight || "0";
+    const activeWeightPlaceholder =
+      stretch || isStrengthSeconds
+        ? row.plannedWeight || activeLastWeight || "0"
+        : activeLastWeight || row.plannedWeight || "0";
     const activeDurationPlaceholder = activeLastDuration || row.plannedDurationMinutes || "Min";
     const activeSpeedPlaceholder = activeLastSpeed || row.plannedSpeed || "km/t";
 
@@ -510,23 +541,9 @@ export function WorkoutCompactSetTable({
     const step = stretch || isStrengthSeconds ? 5 : 2.5;
     return (
       <div className="mt-2 space-y-1.5 rounded-lg border border-pink-200 bg-white p-2 sm:mt-3 sm:space-y-2 sm:rounded-xl sm:p-3">
-        {!stretch ? (
-          <div className="grid gap-1">
-            <label className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Måleenhet</label>
-            <select
-              value={isStrengthSeconds ? "sec" : "kg"}
-              onChange={(event) => {
-                const next = event.target.value === "sec" ? "sec" : "kg";
-                onUpdate(row.exerciseId, "performedLoadUnit", next);
-              }}
-              className="h-9 rounded-lg border border-slate-200 bg-white px-2 text-xs font-semibold text-slate-700"
-              aria-label="Velg måleenhet"
-            >
-              <option value="kg">Kg</option>
-              <option value="sec">Sekunder</option>
-            </select>
-          </div>
-        ) : null}
+        <div className="text-center text-[11px] font-semibold tracking-wide text-slate-500">
+          {stretch || isStrengthSeconds ? "SEK" : "Vekt (Kg)"}
+        </div>
         <div className="flex items-center justify-center gap-3">
           <button
             type="button"
@@ -588,9 +605,9 @@ export function WorkoutCompactSetTable({
         >
           {showExerciseColumn ? <span>Øvelse</span> : null}
           <span>Sett</span>
-          <span className="text-center">{isCardio ? "PLAN" : repsUnitLabel}</span>
+          {hideRepsColumn ? null : <span className="text-center">{isCardio ? "PLAN" : repsUnitLabel}</span>}
           {isCardio && isTreadmill ? <span className="text-center">Km/t</span> : null}
-          <span className="text-center">{col3Label}</span>
+          <span className="text-center normal-case">{col3Label}</span>
           <span className="sr-only">Fullført</span>
           {removeCol ? <span className="sr-only">Fjern</span> : null}
         </div>
@@ -613,7 +630,10 @@ export function WorkoutCompactSetTable({
           const lastSpeed = lastSpeedFor(row);
           // Last-session values override programmed plan as the inactive/placeholder hint.
           const repsFallback = lastReps || row.plannedReps || "";
-          const weightFallback = lastWeight || row.plannedWeight || "";
+          const weightFallback =
+            rowStretch || rowStrengthSeconds
+              ? row.plannedWeight || lastWeight || ""
+              : lastWeight || row.plannedWeight || "";
           const durationFallback = lastDuration || row.plannedDurationMinutes || "";
           const speedFallback = lastSpeed || row.plannedSpeed || "";
           const plannedRepsDisplay = formatWorkoutPlannedRepsDisplay(row);
@@ -688,22 +708,24 @@ export function WorkoutCompactSetTable({
               <span className={`text-sm font-semibold ${isDone ? "text-slate-900" : "text-slate-500"}`}>
                 {row.setNumber ?? row.blockRound ?? index + 1}
               </span>
-              {isActive && !isCardio && !rowStrengthSeconds ? (
-                <TextInput
-                  value={row.performedReps}
-                  onChange={(e) => handleInputChange(row, "performedReps", e.target.value)}
-                  onFocus={(event) => event.currentTarget.select()}
-                  onKeyDown={(e) => handleRepsFieldKeyDown(row, e)}
-                  enterKeyHint="next"
-                  placeholder={repsFallback || "0"}
-                  className="h-9 text-center text-sm"
-                  aria-label={rowRepsUnit === "min" ? "Minutter" : "Reps"}
-                />
-              ) : (
-                <span className={`text-center text-sm font-medium ${isDone ? "text-slate-900" : "text-slate-400"}`}>
-                  {rowCardio ? plannedLoadDisplay : rowStrengthSeconds ? "—" : displayReps}
-                </span>
-              )}
+              {!hideRepsColumn ? (
+                isActive && !isCardio && !rowStrengthSeconds ? (
+                  <TextInput
+                    value={row.performedReps}
+                    onChange={(e) => handleInputChange(row, "performedReps", e.target.value)}
+                    onFocus={(event) => event.currentTarget.select()}
+                    onKeyDown={(e) => handleRepsFieldKeyDown(row, e)}
+                    enterKeyHint="next"
+                    placeholder={repsFallback || "0"}
+                    className="h-9 text-center text-sm"
+                    aria-label={rowRepsUnit === "min" ? "Minutter" : "Reps"}
+                  />
+                ) : (
+                  <span className={`text-center text-sm font-medium ${isDone ? "text-slate-900" : "text-slate-400"}`}>
+                    {rowCardio ? plannedLoadDisplay : rowStrengthSeconds ? "—" : displayReps}
+                  </span>
+                )
+              ) : null}
               {isCardio && isTreadmill ? (
                 isActive ? (
                   <TextInput

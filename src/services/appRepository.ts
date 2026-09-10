@@ -10,7 +10,7 @@ import {
 import { markWorkoutLogDeletedLocally } from "../app/workoutLogRemoteSeen";
 import { filterProgramExercisesAfterBankDelete } from "../app/exerciseBankUsage";
 import { isHoldBasedExerciseCategory } from "../app/exerciseCategories";
-import { prescriptionFieldsForExerciseSave } from "../app/exercisePrescriptionFields";
+import { prescriptionFieldsForExerciseSave, programExerciseUsesSecondsLoad, buildProgramExerciseFromBank } from "../app/exercisePrescriptionFields";
 import { applyFirstLoginStampToMembersByEmail } from "../app/memberInviteStatus";
 import {
   buildTrainingProgramDisplayKey,
@@ -807,7 +807,15 @@ export function replaceWorkoutExerciseGroupInState(state: AppState, input: Repla
   const replacementExercise = state.exercises.find(
     (exercise) => exercise.name.trim().toLowerCase() === normalizedName.toLowerCase(),
   );
-  const isKgBasedReplacement = !replacementExercise || !isHoldBasedExerciseCategory(replacementExercise.category);
+  const isSecondsReplacement = Boolean(replacementExercise && programExerciseUsesSecondsLoad({
+    weightUnit: undefined,
+    holdSeconds: "",
+    weight: "",
+    durationMinutes: "",
+  }, replacementExercise));
+  const isKgBasedReplacement =
+    !replacementExercise ||
+    (!isHoldBasedExerciseCategory(replacementExercise.category) && !isSecondsReplacement);
   const historyMemberId =
     state.workoutMode.memberId?.trim() || state.selectedMemberId?.trim() || state.memberViewId?.trim() || "";
   const historyLogs = historyMemberId
@@ -825,14 +833,21 @@ export function replaceWorkoutExerciseGroupInState(state: AppState, input: Repla
           ? {
               ...result,
               exerciseName: normalizedName,
-              ...(isKgBasedReplacement
+              ...(isSecondsReplacement
                 ? {
-                    plannedWeight: suggestedWeight,
-                    performedWeight: suggestedWeight,
-                    plannedWeightUnit: "kg" as const,
-                    performedLoadUnit: "kg" as const,
+                    plannedWeight: "30",
+                    performedWeight: "30",
+                    plannedWeightUnit: "seconds" as const,
+                    performedLoadUnit: "sec" as const,
                   }
-                : {}),
+                : isKgBasedReplacement
+                  ? {
+                      plannedWeight: suggestedWeight,
+                      performedWeight: suggestedWeight,
+                      plannedWeightUnit: "kg" as const,
+                      performedLoadUnit: "kg" as const,
+                    }
+                  : {}),
               ...(replacementExercise
                 ? { exerciseCategory: replacementExercise.category, exerciseEquipment: replacementExercise.equipment }
                 : {}),
@@ -845,6 +860,10 @@ export function replaceWorkoutExerciseGroupInState(state: AppState, input: Repla
 
 /** Øvre grense for antall sett per øvelses-gruppe under økt (plan + ekstra sett underveis). */
 function buildWorkoutModeAddedProgramExercise(exercise: Exercise): ProgramExercise {
+  const fromBank = buildProgramExerciseFromBank(exercise);
+  if (programExerciseUsesSecondsLoad(fromBank, exercise)) {
+    return fromBank;
+  }
   const isHoldBased = isHoldBasedExerciseCategory(exercise.category);
   const isCardio = exercise.category === "Kondisjon";
   return {

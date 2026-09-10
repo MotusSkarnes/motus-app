@@ -124,6 +124,42 @@ export function resolveExercisePrescriptionFields(exercise?: Pick<Exercise, "cat
   return defaultPrescriptionFieldsForCategory(exercise?.category ?? "Styrke");
 }
 
+function weightLooksEmptyOrZero(value: string | undefined): boolean {
+  const trimmed = String(value ?? "").trim();
+  return !trimmed || trimmed === "0";
+}
+
+/** Øvelsen i banken logges som hold/tid (sek), ikke reps + kg. */
+export function exerciseBankUsesSecondsLoad(
+  exercise?: Pick<Exercise, "category" | "prescriptionFields">,
+): boolean {
+  if (!exercise) return false;
+  if (exercise.category === "Kondisjon") return false;
+  if (isHoldBasedExerciseCategory(exercise.category)) return true;
+  const fields = resolveExercisePrescriptionFields(exercise);
+  return fields.includes("seconds") && !fields.includes("kg");
+}
+
+/**
+ * Programøvelsen skal logges i sekunder (planke, hold, osv.), ikke kg.
+ * Brukes både i programbygger og når økten utvides til sett-rader.
+ */
+export function programExerciseUsesSecondsLoad(
+  exercise: Pick<ProgramExercise, "weightUnit" | "holdSeconds" | "weight" | "durationMinutes">,
+  linked?: Pick<Exercise, "category" | "prescriptionFields">,
+): boolean {
+  if (linked?.category === "Kondisjon") return false;
+  if (String(exercise.durationMinutes ?? "").trim()) return false;
+  if (linked?.category && isHoldBasedExerciseCategory(linked.category)) return true;
+  if (exercise.weightUnit === "seconds") return true;
+  if (exercise.weightUnit === "kg") return false;
+  if (exerciseBankUsesSecondsLoad(linked)) return true;
+
+  const hold = String(exercise.holdSeconds ?? "").trim();
+  if (hold && weightLooksEmptyOrZero(exercise.weight)) return true;
+  return false;
+}
+
 export function exercisePrescriptionFieldDef(key: ExercisePrescriptionFieldKey): ExercisePrescriptionFieldDef {
   return EXERCISE_PRESCRIPTION_FIELD_OPTIONS.find((option) => option.key === key)!;
 }
@@ -180,6 +216,7 @@ export function buildProgramExerciseFromBank(exercise: Exercise): ProgramExercis
   if (fields.includes("kg")) row.weight = "0";
   if (fields.includes("seconds")) row.holdSeconds = "30";
   if (fields.includes("minutes")) row.durationMinutes = exercise.category === "Kondisjon" ? "20" : "";
+  if (fields.includes("seconds") && !fields.includes("kg")) row.weightUnit = "seconds";
   return row;
 }
 

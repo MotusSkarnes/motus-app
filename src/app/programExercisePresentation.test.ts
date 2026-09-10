@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  formatProgramExercisePrescription,
   formatWorkoutGroupPlanLabel,
   formatWorkoutResultPerformedLabel,
   formatWorkoutResultSetPlanLabel,
@@ -149,6 +150,36 @@ describe("formatWorkoutGroupPlanLabel", () => {
     );
     expect(label).toBe("3×10 reps · 62 kg · 90s");
   });
+
+  it("formats strength hold as sett × sek instead of reps and kg", () => {
+    const plankLibrary = [
+      {
+        id: "ex-plank",
+        name: "Planke",
+        category: "Styrke" as const,
+        group: "Kjerne",
+        equipment: "Kroppsvekt",
+        level: "Nybegynner" as const,
+        description: "",
+        imageUrl: "",
+        prescriptionFields: ["seconds", "pause"] as const,
+      },
+    ];
+    const exercise = programExercise({
+      id: "pe-plank",
+      exerciseId: "ex-plank",
+      exerciseName: "Planke",
+      sets: "3",
+      reps: "",
+      weight: "",
+      weightUnit: "seconds",
+      holdSeconds: "45",
+      restSeconds: "30",
+    });
+    expect(formatProgramExercisePrescription(exercise, 0, [exercise], plankLibrary)).toBe(
+      "3 sett × 45 sek · 30s",
+    );
+  });
 });
 
 describe("workout log labels", () => {
@@ -175,5 +206,20 @@ describe("workout log labels", () => {
     });
     expect(formatWorkoutResultSetPlanLabel(row, library)).toBe("4 min · 12 km/t · 2% incline");
     expect(formatWorkoutResultPerformedLabel(row, library)).toBe("4 min · 11.5 km/t · 1% incline");
+  });
+
+  it("formats strength hold as seconds without reps or kg", () => {
+    const row = workoutRow({
+      exerciseName: "Planke",
+      exerciseCategory: "Styrke",
+      plannedReps: "1",
+      plannedWeight: "45",
+      plannedWeightUnit: "seconds",
+      performedReps: "1",
+      performedWeight: "50",
+      performedLoadUnit: "sec",
+    });
+    expect(formatWorkoutResultSetPlanLabel(row, library)).toBe("45 sek");
+    expect(formatWorkoutResultPerformedLabel(row, library)).toBe("50 sek");
   });
 });

@@ -74,6 +74,7 @@ import {
 } from "../app/memberSessionCache";
 import { isSupabaseConfigured } from "../services/supabaseClient";
 import { isHoldBasedExerciseCategory, programExerciseHoldSeconds } from "../app/exerciseCategories";
+import { programExerciseUsesSecondsLoad } from "../app/exercisePrescriptionFields";
 import { MEMBER_GOAL_OPTIONS } from "../app/memberGoals";
 import { patchMemberAppUiStateInPersonalGoals } from "../app/memberAppUiState";
 import {
@@ -2267,12 +2268,12 @@ export function MemberPortal(props: MemberPortalProps) {
   function resolveSuggestedWorkoutWeight(programExercise: TrainingProgram["exercises"][number]): string {
     const override = suggestedWeightOverridesByProgramExerciseId[programExercise.id];
     if (override !== undefined) return override;
+    const meta = exercises.find((e) => e.id === programExercise.exerciseId);
+    if (programExerciseUsesSecondsLoad(programExercise, meta)) {
+      return programExerciseHoldSeconds(programExercise, meta?.category) || String(programExercise.weight ?? "").trim() || "30";
+    }
     const fromHistory = findSuggestedWeightForExercise(programExercise.exerciseName);
     if (fromHistory) return fromHistory;
-    const meta = exercises.find((e) => e.id === programExercise.exerciseId);
-    if (meta?.category && isHoldBasedExerciseCategory(meta.category)) {
-      return programExerciseHoldSeconds(programExercise, meta.category) || "30";
-    }
     return String(programExercise.weight ?? "");
   }
 

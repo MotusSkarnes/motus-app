@@ -1,6 +1,7 @@
 import { isHoldBasedExerciseCategory, programExerciseHoldSeconds } from "./exerciseCategories";
 import {
   formatCustomPrescriptionSuffix,
+  programExerciseUsesSecondsLoad,
   resolveExercisePrescriptionFields,
   resolvePrescriptionFieldLabel,
 } from "./exercisePrescriptionFields";
@@ -90,12 +91,16 @@ export function formatProgramExercisePrescription(
   }
 
   const isHold =
-    options?.treatAsHold ?? Boolean(category && isHoldBasedExerciseCategory(category));
-  if (isHold && category) {
-    return `${exercise.sets || "-"} sett × ${programExerciseHoldSeconds(exercise, category) || "-"} sek · ${restSeconds}s${pauseLabel}${appendCustomPrescriptionParts(exercise, linkedExercise)}`;
-  }
+    options?.treatAsHold ??
+    Boolean(
+      (category && isHoldBasedExerciseCategory(category)) || programExerciseUsesSecondsLoad(exercise, linkedExercise),
+    );
   if (isHold) {
-    const hold = programExerciseHoldSeconds(exercise, undefined) || exercise.holdSeconds || exercise.weight || "-";
+    const hold =
+      (category ? programExerciseHoldSeconds(exercise, category) : "") ||
+      exercise.holdSeconds ||
+      exercise.weight ||
+      "-";
     return `${exercise.sets || "-"} sett × ${hold} sek · ${restSeconds}s${pauseLabel}${appendCustomPrescriptionParts(exercise, linkedExercise)}`;
   }
 
@@ -139,6 +144,7 @@ function workoutRowsToProgramExercise(rows: WorkoutExerciseResult[]): ProgramExe
   if (!row) return null;
   const isHold =
     row.plannedWeightUnit === "seconds" ||
+    row.performedLoadUnit === "sec" ||
     Boolean(row.exerciseCategory && isHoldBasedExerciseCategory(row.exerciseCategory));
   return {
     id: row.programExerciseId ?? row.exerciseId,
@@ -284,7 +290,8 @@ function resultIsCardio(result: WorkoutExerciseResult, linked?: Exercise): boole
 
 function resultIsHold(result: WorkoutExerciseResult, linked?: Exercise): boolean {
   const category = linked?.category ?? result.exerciseCategory;
-  return Boolean(category && isHoldBasedExerciseCategory(category));
+  if (category && isHoldBasedExerciseCategory(category)) return true;
+  return resolveWorkoutLoadUnit(result) === "sec";
 }
 
 /** Plan for ett logget sett (volum per sett, samme språk som programmet). */

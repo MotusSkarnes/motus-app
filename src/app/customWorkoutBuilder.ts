@@ -1,4 +1,5 @@
 import { isHoldBasedExerciseCategory } from "./exerciseCategories";
+import { exerciseBankUsesSecondsLoad } from "./exercisePrescriptionFields";
 import { buildExerciseGroupByName, computeMuscleGroupStats, splitMuscleGroupLabel } from "../features/muscleSplitStats";
 import type { Exercise, ProgramExercise, WorkoutLog } from "./types";
 
@@ -215,14 +216,16 @@ export function buildProgramExercisesFromCustomLines(lines: CustomWorkoutLine[],
     const exercise = exercises.find((item) => item.id === line.exerciseId);
     if (!exercise) continue;
     const isStretch = isHoldBasedExerciseCategory(exercise.category);
+    const usesSeconds = isStretch || exerciseBankUsesSecondsLoad(exercise);
     built.push({
       id: uid("prog-ex"),
       exerciseId: exercise.id,
       exerciseName: exercise.name,
-      sets: line.sets.trim() || (isStretch ? "2" : "3"),
-      reps: line.reps.trim() || (isStretch ? "1" : "10"),
-      weight: isStretch ? "" : line.weight.trim(),
-      holdSeconds: isStretch ? (line.holdSeconds ?? "").trim() || "30" : "",
+      sets: line.sets.trim() || (usesSeconds ? "2" : "3"),
+      reps: line.reps.trim() || (usesSeconds ? "1" : "10"),
+      weight: usesSeconds ? "" : line.weight.trim(),
+      holdSeconds: usesSeconds ? (line.holdSeconds ?? "").trim() || line.weight.trim() || "30" : "",
+      ...(usesSeconds ? { weightUnit: "seconds" as const } : {}),
       restSeconds: "60",
       notes: "",
     });

@@ -14,6 +14,7 @@ import {
 } from "../app/customWorkoutBuilder";
 import { MOTUS } from "../app/data";
 import { exerciseCategoryAccentColor, isHoldBasedExerciseCategory } from "../app/exerciseCategories";
+import { exerciseBankUsesSecondsLoad } from "../app/exercisePrescriptionFields";
 import { resolveExerciseImageSrc } from "../app/exerciseIllustrations";
 import { computeExercisePopularityScores, computeTrainerProgramExerciseIds } from "../app/exerciseBankStats";
 import { uploadProgramCoverImageToSupabase } from "../app/programImageUpload";
@@ -241,18 +242,18 @@ export function CustomWorkoutBuilder({
     setLines((previous) => {
       if (previous.some((line) => line.exerciseId === id)) return previous;
       const exercise = exercises.find((item) => item.id === id);
-      const isStretch = Boolean(exercise?.category && isHoldBasedExerciseCategory(exercise.category));
-      const weightHint = exercise && !isStretch ? findSuggestedWeightForExercise(exercise.name) : "";
-      const secHint = exercise && isStretch ? findSuggestedWeightForExercise(exercise.name) : "";
+      const usesSeconds = Boolean(exercise && (isHoldBasedExerciseCategory(exercise.category) || exerciseBankUsesSecondsLoad(exercise)));
+      const weightHint = exercise && !usesSeconds ? findSuggestedWeightForExercise(exercise.name) : "";
+      const secHint = exercise && usesSeconds ? findSuggestedWeightForExercise(exercise.name) : "";
       return [
         ...previous,
         {
           key: uid("row"),
           exerciseId: id,
-          sets: isStretch ? "2" : "3",
-          reps: isStretch ? "1" : "10",
-          weight: isStretch ? "" : weightHint,
-          holdSeconds: isStretch ? secHint || "30" : "",
+          sets: usesSeconds ? "2" : "3",
+          reps: usesSeconds ? "1" : "10",
+          weight: usesSeconds ? "" : weightHint,
+          holdSeconds: usesSeconds ? secHint || "30" : "",
         },
       ];
     });
@@ -455,7 +456,9 @@ export function CustomWorkoutBuilder({
               <div className="mt-3 space-y-3">
                 {lines.map((line, index) => {
                   const exercise = exercises.find((item) => item.id === line.exerciseId);
-                  const isStretch = Boolean(exercise?.category && isHoldBasedExerciseCategory(exercise.category));
+                  const usesSeconds = Boolean(
+                    exercise && (isHoldBasedExerciseCategory(exercise.category) || exerciseBankUsesSecondsLoad(exercise)),
+                  );
                   const dragActive = draggedLineKey === line.key;
                   const dragOver = dragOverLineKey === line.key && draggedLineKey !== line.key;
                   return (
@@ -520,27 +523,27 @@ export function CustomWorkoutBuilder({
                           </div>
                           <div
                             className={`motus-custom-workout-input-grid mt-3 ${
-                              isStretch ? "motus-custom-workout-input-grid--two" : "motus-custom-workout-input-grid--three"
+                              usesSeconds ? "motus-custom-workout-input-grid--two" : "motus-custom-workout-input-grid--three"
                             }`}
                           >
                             <label className="min-w-0 space-y-1">
                               <span className="text-[11px] font-semibold text-slate-600">Sett</span>
                               <TextInput value={line.sets} onChange={(event) => updateLine(line.key, { sets: event.target.value })} placeholder="3" />
                             </label>
-                            {!isStretch ? (
+                            {!usesSeconds ? (
                               <label className="min-w-0 space-y-1">
                                 <span className="text-[11px] font-semibold text-slate-600">Reps</span>
                                 <TextInput value={line.reps} onChange={(event) => updateLine(line.key, { reps: event.target.value })} placeholder="10" />
                               </label>
                             ) : null}
                             <label className="min-w-0 space-y-1">
-                              <span className="text-[11px] font-semibold text-slate-600">{isStretch ? "Sek. (hold)" : "kg"}</span>
+                              <span className="text-[11px] font-semibold text-slate-600">{usesSeconds ? "SEK" : "Vekt (Kg)"}</span>
                               <TextInput
-                                value={isStretch ? (line.holdSeconds ?? "") : line.weight}
+                                value={usesSeconds ? (line.holdSeconds ?? "") : line.weight}
                                 onChange={(event) =>
-                                  updateLine(line.key, isStretch ? { holdSeconds: event.target.value } : { weight: event.target.value })
+                                  updateLine(line.key, usesSeconds ? { holdSeconds: event.target.value } : { weight: event.target.value })
                                 }
-                                placeholder={isStretch ? "30" : "–"}
+                                placeholder={usesSeconds ? "30" : "–"}
                               />
                             </label>
                           </div>

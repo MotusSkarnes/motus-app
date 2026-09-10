@@ -1,7 +1,7 @@
 import { isConditioningLogAfterProgram } from "./conditioningProgramMode";
 import { stripConditioningModeMarker } from "./conditioningProgramMode";
 import { isHoldBasedExerciseCategory, programExerciseHoldSeconds } from "./exerciseCategories";
-import { resolveProgramExerciseLogFields } from "./exercisePrescriptionFields";
+import { programExerciseUsesSecondsLoad, resolveProgramExerciseLogFields } from "./exercisePrescriptionFields";
 import { mergeProgramAuthorFields } from "./programAuthor";
 import { pickProgramImageUrlFromDuplicateMerge } from "./programImage";
 import { CARDIO_COOLDOWN_STEP_NAME, isCardioCooldownStepName } from "./cardioEquipment";
@@ -276,11 +276,13 @@ function buildWorkoutRow(
   blockMeta?: { blockId: string; blockType: ExerciseBlockType; blockRound: number },
 ): WorkoutExerciseResult {
   const isStretch = meta ? isHoldBasedExerciseCategory(meta.category) : false;
+  const usesSecondsLoad = isStretch || programExerciseUsesSecondsLoad(ex, meta);
   const suggestedWeightRaw = options.suggestedWeightByProgramExerciseId?.[ex.id];
   const suggestedWeight = suggestedWeightRaw !== undefined ? suggestedWeightRaw.trim() : "";
   const holdPlan = programExerciseHoldSeconds(ex, meta?.category);
-  const initialWeight = isStretch ? suggestedWeight || holdPlan || "30" : suggestedWeight || ex.weight;
-  const plannedRepsForRow = isStretch ? (String(ex.reps ?? "").trim() || "1") : String(ex.reps ?? "");
+  const secondsLoad = holdPlan || String(ex.weight ?? "").trim() || "30";
+  const initialWeight = usesSecondsLoad ? holdPlan || suggestedWeight || secondsLoad : suggestedWeight || ex.weight;
+  const plannedRepsForRow = usesSecondsLoad ? (String(ex.reps ?? "").trim() || "1") : String(ex.reps ?? "");
 
   const logAfter = options.conditioningLogAfter && meta?.category === "Kondisjon";
   const logFieldKeys = logAfter ? resolveProgramExerciseLogFields(ex, meta) : undefined;
@@ -295,7 +297,7 @@ function buildWorkoutRow(
     plannedSets: ex.sets,
     plannedRepsUnit: ex.repsUnit ?? "reps",
     plannedReps: plannedRepsForRow,
-    plannedWeightUnit: isStretch ? "seconds" : (ex.weightUnit ?? "kg"),
+    plannedWeightUnit: usesSecondsLoad ? "seconds" : (ex.weightUnit ?? "kg"),
     plannedWeight: initialWeight,
     plannedDurationMinutes: ex.durationMinutes ?? "",
     plannedSpeed: ex.speed ?? "",
@@ -312,7 +314,7 @@ function buildWorkoutRow(
         }
       : {}),
     performedWeight: logAfter ? "" : initialWeight,
-    performedLoadUnit: isStretch ? "sec" : (ex.weightUnit === "seconds" ? "sec" : "kg"),
+    performedLoadUnit: usesSecondsLoad ? "sec" : (ex.weightUnit === "seconds" ? "sec" : "kg"),
     performedReps: logAfter ? "" : plannedRepsForRow,
     performedDurationMinutes: logAfter ? "" : (ex.durationMinutes ?? ""),
     performedSpeed: logAfter ? "" : (ex.speed ?? ""),

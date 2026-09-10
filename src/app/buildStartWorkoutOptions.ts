@@ -1,4 +1,5 @@
-import { isHoldBasedExerciseCategory, programExerciseHoldSeconds } from "./exerciseCategories";
+import { programExerciseHoldSeconds } from "./exerciseCategories";
+import { programExerciseUsesSecondsLoad } from "./exercisePrescriptionFields";
 import type { Exercise, TrainingProgram } from "./types";
 import type { StartWorkoutModeOptions } from "../services/appRepository";
 
@@ -10,9 +11,9 @@ export function buildDefaultStartWorkoutOptions(program: TrainingProgram, exerci
   program.exercises.forEach((exercise) => {
     if (Number(exercise.durationMinutes) > 0) return;
     const meta = exerciseBank.find((e) => e.id === exercise.exerciseId);
-    const isStretch = meta ? isHoldBasedExerciseCategory(meta.category) : false;
-    const suggested = isStretch
-      ? programExerciseHoldSeconds(exercise, meta?.category) || "30"
+    const isSecondsLoad = programExerciseUsesSecondsLoad(exercise, meta);
+    const suggested = isSecondsLoad
+      ? programExerciseHoldSeconds(exercise, meta?.category) || String(exercise.weight ?? "").trim() || "30"
       : String(exercise.weight ?? "").trim();
     if (!suggested) return;
     suggestedWeightByProgramExerciseId[exercise.id] = suggested;
