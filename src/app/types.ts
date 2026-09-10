@@ -96,6 +96,7 @@ export type WorkoutCelebration = {
   newEstimated1RM: number;
   reps: number;
   weight: number;
+  recordKind?: "oneRm" | "seconds" | "reps";
 };
 
 export type WorkoutReflection = {

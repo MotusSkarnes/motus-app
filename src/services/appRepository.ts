@@ -11,6 +11,11 @@ import { markWorkoutLogDeletedLocally } from "../app/workoutLogRemoteSeen";
 import { filterProgramExercisesAfterBankDelete } from "../app/exerciseBankUsage";
 import { isHoldBasedExerciseCategory } from "../app/exerciseCategories";
 import { prescriptionFieldsForExerciseSave, programExerciseUsesSecondsLoad, buildProgramExerciseFromBank } from "../app/exercisePrescriptionFields";
+import {
+  bestPersonalRecordScoreForExercise,
+  personalRecordScore,
+  resolvePersonalRecordKind,
+} from "../app/personalRecordScore";
 import { applyFirstLoginStampToMembersByEmail } from "../app/memberInviteStatus";
 import {
   buildTrainingProgramDisplayKey,
@@ -1182,45 +1187,35 @@ export function finishWorkoutModeInState(state: AppState, input?: FinishWorkoutI
   if (!memberId) return state;
   const programTitle = (program?.title ?? current.programTitle?.trim()) || "Egen økt";
 
-  function estimate1RM(weight: number, reps: number): number {
-    if (weight <= 0 || reps <= 0) return 0;
-    return weight * (1 + reps / 30);
-  }
-
-  function getBestEstimated1RM(logs: WorkoutLog[], exerciseName: string, memberId: string): number {
-    let best = 0;
-    logs.forEach((log) => {
-      if (log.memberId !== memberId) return;
-      (log.results ?? []).forEach((result) => {
-        if (!result.completed || result.exerciseName !== exerciseName) return;
-        if (result.exerciseCategory && isHoldBasedExerciseCategory(result.exerciseCategory)) return;
-        const weight = Number(result.performedWeight) || 0;
-        const reps = Number(result.performedReps) || 0;
-        const estimated = estimate1RM(weight, reps);
-        if (estimated > best) best = estimated;
-      });
-    });
-    return best;
-  }
-
   let bestCelebration: WorkoutCelebration | null = null;
   current.results.forEach((result) => {
     if (!result.completed) return;
-    if (result.exerciseCategory && isHoldBasedExerciseCategory(result.exerciseCategory)) return;
+    const linked = state.exercises.find(
+      (exercise) =>
+        exercise.id === result.exerciseId ||
+        exercise.name.trim().toLowerCase() === result.exerciseName.trim().toLowerCase(),
+    );
+    const kind = resolvePersonalRecordKind(result, linked);
+    if (!kind) return;
+    const newScore = personalRecordScore(result, kind);
+    if (newScore <= 0) return;
+    const previousScore = bestPersonalRecordScoreForExercise(state.logs, result.exerciseName, kind, memberId);
+    if (newScore <= previousScore) return;
     const weight = Number(result.performedWeight) || 0;
     const reps = Number(result.performedReps) || 0;
-    const newEstimated = estimate1RM(weight, reps);
-    if (newEstimated <= 0) return;
-    const previousEstimated = getBestEstimated1RM(state.logs, result.exerciseName, memberId);
-    if (newEstimated <= previousEstimated) return;
-    if (!bestCelebration || newEstimated - previousEstimated > bestCelebration.newEstimated1RM - bestCelebration.previousEstimated1RM) {
+    if (
+      !bestCelebration ||
+      newScore - previousScore >
+        bestCelebration.newEstimated1RM - bestCelebration.previousEstimated1RM
+    ) {
       bestCelebration = {
         memberId,
         exerciseName: result.exerciseName,
-        previousEstimated1RM: previousEstimated,
-        newEstimated1RM: newEstimated,
+        previousEstimated1RM: previousScore,
+        newEstimated1RM: newScore,
         reps,
         weight,
+        recordKind: kind,
       };
     }
   });

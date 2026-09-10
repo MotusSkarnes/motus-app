@@ -2,6 +2,11 @@ import { ChevronRight, Share2, Sparkles, Star } from "lucide-react";
 import { MOTUS } from "../app/data";
 import { resolveExerciseImageSrc } from "../app/exerciseIllustrations";
 import { imageObjectPositionFromSrc } from "../app/imageFocalPoint";
+import {
+  formatPersonalRecordScore,
+  personalRecordKindLabel,
+  type PersonalRecordKind,
+} from "../app/personalRecordScore";
 import { resolveProgressExerciseDisplayName, resolveProgressPersonalRecordImage } from "../app/progressImagery";
 import { STRENGTH_TRAINING_COVER_IMAGE } from "../app/programImage";
 import type { Exercise } from "../app/types";
@@ -12,8 +17,21 @@ export type PersonalRecordEntry = {
   weight: number;
   reps: number;
   score: number;
+  kind?: PersonalRecordKind;
   isNewRecord?: boolean;
 };
+
+export function personalRecordPrimaryLabel(record: PersonalRecordEntry): string {
+  const kind = record.kind ?? "oneRm";
+  if (kind === "oneRm") return `${record.weight} kg`;
+  return formatPersonalRecordScore(kind, record.score);
+}
+
+export function personalRecordSecondaryLabel(record: PersonalRecordEntry): string {
+  const kind = record.kind ?? "oneRm";
+  if (kind === "oneRm") return `${record.reps} reps`;
+  return personalRecordKindLabel(kind);
+}
 
 type MemberPersonalRecordsSectionProps = {
   records: PersonalRecordEntry[];
@@ -142,8 +160,8 @@ export function MemberPersonalRecordsSection({
                     </div>
                     <p className="motus-progress-pr-card-name">{displayName}</p>
                     <p className="motus-progress-pr-card-weight">
-                      <span className="motus-progress-pr-card-weight-value">{record.weight} kg</span>
-                      <span className="motus-progress-pr-card-weight-reps">{record.reps} reps</span>
+                      <span className="motus-progress-pr-card-weight-value">{personalRecordPrimaryLabel(record)}</span>
+                      <span className="motus-progress-pr-card-weight-reps">{personalRecordSecondaryLabel(record)}</span>
                     </p>
                     <RecordSparkline tone={index % 2 === 0 ? "mint" : "pink"} />
                   </button>

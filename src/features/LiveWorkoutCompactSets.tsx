@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Check, Minus, Plus, Trash2, Trophy } from "lucide-react";
 import { motusHaptic } from "../app/haptics";
-import { isHoldBasedExerciseCategory } from "../app/exerciseCategories";
 import {
   formatWorkoutPlannedLoadDisplay,
   formatWorkoutPlannedRepsDisplay,
@@ -9,6 +8,11 @@ import {
   resolveWorkoutRepsUnit,
 } from "../app/workoutResultUnits";
 import { resolvePrescriptionFieldLabel } from "../app/exercisePrescriptionFields";
+import {
+  personalRecordMapKey,
+  personalRecordScore,
+  resolvePersonalRecordKind,
+} from "../app/personalRecordScore";
 import { resolveLastSessionEntryForRow, type LastSessionByExerciseMap } from "../app/lastSessionSetDisplay";
 import { GradientButton, TextInput } from "../app/ui";
 import type { Exercise, ExercisePrescriptionFieldKey, WorkoutModeState } from "../app/types";
@@ -106,7 +110,7 @@ type WorkoutCompactSetTableProps = {
   planHint?: string;
   showExerciseColumn?: boolean;
   onUpdate: (exerciseId: string, field: UpdateField, value: string | boolean) => void;
-  /** Beste poengsum (vekt × max(reps, 1)) per øvelse fra tidligere fullførte logger. Brukes til å vise «Ny rekord!» når et sett slår tidligere historikk. */
+  /** Beste poengsum per øvelse+enhet fra tidligere logger. Nøkkel: `navn::oneRm|seconds|reps`. */
   previousPersonalBests?: Map<string, number>;
   /** Kalles når et sett markeres som fullført og slår tidligere rekord. */
   onSetPersonalRecord?: (exerciseName: string) => void;
@@ -210,16 +214,11 @@ function SetCheckToggle({
   );
 }
 
-function rowPersonalRecordScore(row: WorkoutSetRow): number {
-  if (row.exerciseCategory && isHoldBasedExerciseCategory(row.exerciseCategory)) return 0;
-  const weight = parseNumInput(row.performedWeight);
-  const reps = parseNumInput(row.performedReps);
-  if (weight <= 0 || reps <= 0) return 0;
-  return weight * Math.max(reps, 1);
-}
-
-function normalizeExerciseKey(name: string): string {
-  return name.trim().toLowerCase();
+function rowPersonalRecordScore(row: WorkoutSetRow, exerciseByName: Map<string, Exercise>): { kind: ReturnType<typeof resolvePersonalRecordKind>; score: number } {
+  const linked = exerciseByName.get(String(row.exerciseName ?? "").trim().toLowerCase());
+  const kind = resolvePersonalRecordKind(row, linked);
+  if (!kind) return { kind: null, score: 0 };
+  return { kind, score: personalRecordScore(row, kind) };
 }
 
 export function WorkoutCompactSetTable({
@@ -268,9 +267,9 @@ export function WorkoutCompactSetTable({
       if (!row.completed) return;
       nextCompleted.add(row.exerciseId);
       if (completedRowsRef.current.has(row.exerciseId)) return;
-      const score = rowPersonalRecordScore(row);
-      if (score <= 0) return;
-      const key = normalizeExerciseKey(row.exerciseName);
+      const { kind, score } = rowPersonalRecordScore(row, exerciseByName);
+      if (!kind || score <= 0) return;
+      const key = personalRecordMapKey(row.exerciseName, kind);
       const historical = previousPersonalBests?.get(key) ?? 0;
       const sessionBest = sessionBestRef.current.get(key) ?? 0;
       const previous = Math.max(historical, sessionBest);
@@ -287,7 +286,7 @@ export function WorkoutCompactSetTable({
       }
     });
     completedRowsRef.current = nextCompleted;
-  }, [rows, previousPersonalBests, onSetPersonalRecord]);
+  }, [rows, previousPersonalBests, onSetPersonalRecord, exerciseByName]);
 
   useEffect(() => {
     if (Object.keys(prRows).length === 0) return;

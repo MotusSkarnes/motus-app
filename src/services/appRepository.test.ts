@@ -969,4 +969,65 @@ describe("appRepository workout log guards", () => {
     const next = deleteWorkoutLogInState(state, { logId: "log-delete" });
     expect(next.logs).toHaveLength(0);
   });
+
+  it("does not celebrate a 40 kg 1RM after a 30 sek plank with leftover reps", () => {
+    const state = createBaseState();
+    state.exercises = [
+      {
+        id: "e-plank",
+        name: "Planke",
+        category: "Styrke",
+        group: "Kjerne",
+        equipment: "Kroppsvekt",
+        level: "Nybegynner",
+        description: "",
+        prescriptionFields: ["seconds", "pause"],
+      },
+    ];
+    state.logs = [
+      {
+        id: "log-old-plank",
+        memberId: "member-1",
+        programTitle: "Styrke A",
+        date: "01.05.2026",
+        status: "Fullført",
+        note: "",
+        results: [
+          {
+            exerciseId: "old-plank",
+            exerciseName: "Planke",
+            plannedSets: "1",
+            plannedReps: "10",
+            plannedWeight: "30",
+            performedWeight: "30",
+            performedReps: "10",
+            performedLoadUnit: "kg",
+            completed: true,
+          },
+        ],
+      },
+    ];
+    state.workoutMode = {
+      programId: "program-1",
+      memberId: "member-1",
+      note: "",
+      results: [
+        {
+          exerciseId: "plank-set-1",
+          exerciseName: "Planke",
+          plannedSets: "1",
+          plannedReps: "10",
+          plannedWeight: "30",
+          performedWeight: "30",
+          performedReps: "10",
+          performedLoadUnit: "sec",
+          plannedWeightUnit: "seconds",
+          completed: true,
+        },
+      ],
+    };
+
+    const next = finishWorkoutModeInState(state);
+    expect(next.workoutCelebration).toBeNull();
+  });
 });

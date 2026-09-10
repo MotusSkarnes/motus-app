@@ -75,6 +75,16 @@ import {
 import { isSupabaseConfigured } from "../services/supabaseClient";
 import { isHoldBasedExerciseCategory, programExerciseHoldSeconds } from "../app/exerciseCategories";
 import { programExerciseUsesSecondsLoad } from "../app/exercisePrescriptionFields";
+import {
+  bestPersonalRecordScoreForExercise,
+  formatPersonalRecordScore,
+  formatPersonalRecordSetSummary,
+  personalRecordKindLabel,
+  personalRecordMapKey,
+  personalRecordScore,
+  resolvePersonalRecordKind,
+  type PersonalRecordKind,
+} from "../app/personalRecordScore";
 import { MEMBER_GOAL_OPTIONS } from "../app/memberGoals";
 import { patchMemberAppUiStateInPersonalGoals } from "../app/memberAppUiState";
 import {
@@ -2931,7 +2941,13 @@ export function MemberPortal(props: MemberPortalProps) {
   });
 
   const personalRecords = useMemo(() => {
-    const best = new Map<string, { weight: number; reps: number; score: number; achievedAt: Date | null }>();
+    const exerciseByName = new Map(
+      exercises.map((exercise) => [exercise.name.trim().toLowerCase(), exercise] as const),
+    );
+    const best = new Map<
+      string,
+      { weight: number; reps: number; score: number; achievedAt: Date | null; kind: PersonalRecordKind }
+    >();
     const sortedLogs = completedLogs
       .filter((log) => log.status === "Fullført")
       .slice()
@@ -2945,12 +2961,16 @@ export function MemberPortal(props: MemberPortalProps) {
       const achievedAt = parseStoredLogDate(log.date);
       (log.results ?? []).forEach((r) => {
         if (!r.completed) return;
+        const linked = exerciseByName.get(r.exerciseName.trim().toLowerCase());
+        const kind = resolvePersonalRecordKind(r, linked);
+        if (!kind) return;
+        const score = personalRecordScore(r, kind);
+        if (score <= 0) return;
         const w = Number(r.performedWeight) || 0;
         const reps = Number(r.performedReps) || 0;
-        const score = w * Math.max(reps, 1);
         const current = best.get(r.exerciseName);
         if (!current || score > current.score) {
-          best.set(r.exerciseName, { weight: w, reps, score, achievedAt: achievedAt ?? null });
+          best.set(r.exerciseName, { weight: w, reps, score, achievedAt: achievedAt ?? null, kind });
         }
       });
     });
@@ -2963,10 +2983,11 @@ export function MemberPortal(props: MemberPortalProps) {
         weight: value.weight,
         reps: value.reps,
         score: value.score,
+        kind: value.kind,
         isNewRecord: value.achievedAt ? value.achievedAt.getTime() >= newRecordCutoffMs : false,
       }))
       .sort((a, b) => b.score - a.score);
-  }, [completedLogs, nowTimestamp]);
+  }, [completedLogs, nowTimestamp, exercises]);
   const personalRecordExerciseNameSet = useMemo(
     () => new Set(personalRecords.map((r) => r.name)),
     [personalRecords],
@@ -3005,18 +3026,20 @@ export function MemberPortal(props: MemberPortalProps) {
       if (log.status !== "Fullført") return;
       (log.results ?? []).forEach((row) => {
         if (!row.completed) return;
-        if (row.exerciseCategory && isHoldBasedExerciseCategory(row.exerciseCategory)) return;
-        const w = Number(row.performedWeight) || 0;
-        const reps = Number(row.performedReps) || 0;
-        if (w <= 0 || reps <= 0) return;
-        const score = w * Math.max(reps, 1);
-        const key = row.exerciseName.trim().toLowerCase();
+        const linked = exercises.find(
+          (exercise) => exercise.name.trim().toLowerCase() === row.exerciseName.trim().toLowerCase(),
+        );
+        const kind = resolvePersonalRecordKind(row, linked);
+        if (!kind) return;
+        const score = personalRecordScore(row, kind);
+        if (score <= 0) return;
+        const key = personalRecordMapKey(row.exerciseName, kind);
         const current = best.get(key) ?? 0;
         if (score > current) best.set(key, score);
       });
     });
     return best;
-  }, [memberLogs]);
+  }, [memberLogs, exercises]);
   const lastSessionResultsByExercise = useMemo(
     () => buildLastSessionByExerciseFromLogs(memberLogs),
     [memberLogs],
@@ -4223,8 +4246,14 @@ export function MemberPortal(props: MemberPortalProps) {
     setIntervalTimerStatus(`Hoppet til: ${nextStep.headline}`);
   }
 
+  function openPersonalRecordProgress(name: string) {
+    const record = personalRecords.find((item) => item.name === name);
+    if (record?.kind && record.kind !== "oneRm") return;
+    setPrProgressExerciseName(name);
+  }
+
   async function sharePersonalRecordEntry(
-    record: { name: string; weight: number; reps: number },
+    record: { name: string; weight: number; reps: number; score?: number; kind?: PersonalRecordKind },
     previousEstimated1RmKg?: number,
   ) {
     if (typeof window === "undefined") return;
@@ -4236,7 +4265,9 @@ export function MemberPortal(props: MemberPortalProps) {
         exerciseName: record.name,
         weightKg: record.weight,
         reps: record.reps,
+        estimated1RmKg: record.score,
         previousEstimated1RmKg,
+        recordKind: record.kind,
       });
       setMotusCardShareStatus(motusShareStatusMessage(outcome));
     } catch {
@@ -4253,6 +4284,8 @@ export function MemberPortal(props: MemberPortalProps) {
           name: activeCelebration.exerciseName,
           weight: activeCelebration.weight,
           reps: activeCelebration.reps,
+          score: activeCelebration.newEstimated1RM,
+          kind: activeCelebration.recordKind,
         },
         activeCelebration.previousEstimated1RM,
       );
@@ -6193,43 +6226,35 @@ export function MemberPortal(props: MemberPortalProps) {
     setPeriodPlanActionStatus(`Fjernet markering for «${trimmed}».`);
   }
 
-  function estimate1RM(weight: number, reps: number): number {
-    if (weight <= 0 || reps <= 0) return 0;
-    return weight * (1 + reps / 30);
-  }
-
-  function getBestEstimated1RMForMember(exerciseName: string): number {
-    let best = 0;
-    memberLogs.forEach((log) => {
-      (log.results ?? []).forEach((result) => {
-        if (!result.completed || result.exerciseName !== exerciseName) return;
-        if (result.exerciseCategory && isHoldBasedExerciseCategory(result.exerciseCategory)) return;
-        const estimated = estimate1RM(Number(result.performedWeight) || 0, Number(result.performedReps) || 0);
-        if (estimated > best) best = estimated;
-      });
-    });
-    return best;
-  }
-
   function maybeCelebrateCurrentWorkoutGroup() {
     if (!currentWorkoutGroup || !activeMemberId) return;
     let bestCandidate: WorkoutCelebration | null = null;
     currentWorkoutGroup.rows.forEach((row) => {
-      if (row.exerciseCategory && isHoldBasedExerciseCategory(row.exerciseCategory)) return;
-      const weight = Number(row.performedWeight) || 0;
-      const reps = Number(row.performedReps) || 0;
-      const currentEstimated = estimate1RM(weight, reps);
-      if (currentEstimated <= 0) return;
-      const previousEstimated = getBestEstimated1RMForMember(row.exerciseName);
-      if (currentEstimated <= previousEstimated) return;
-      if (!bestCandidate || currentEstimated - previousEstimated > bestCandidate.newEstimated1RM - bestCandidate.previousEstimated1RM) {
+      if (!row.completed) return;
+      const linked = exercises.find(
+        (exercise) =>
+          exercise.name.trim().toLowerCase() === row.exerciseName.trim().toLowerCase() ||
+          exercise.id === row.exerciseId,
+      );
+      const kind = resolvePersonalRecordKind(row, linked);
+      if (!kind) return;
+      const currentScore = personalRecordScore(row, kind);
+      if (currentScore <= 0) return;
+      const previousScore = bestPersonalRecordScoreForExercise(memberLogs, row.exerciseName, kind, activeMemberId);
+      if (currentScore <= previousScore) return;
+      if (
+        !bestCandidate ||
+        currentScore - previousScore >
+          bestCandidate.newEstimated1RM - bestCandidate.previousEstimated1RM
+      ) {
         bestCandidate = {
           memberId: activeMemberId,
           exerciseName: row.exerciseName,
-          previousEstimated1RM: previousEstimated,
-          newEstimated1RM: currentEstimated,
-          reps,
-          weight,
+          previousEstimated1RM: previousScore,
+          newEstimated1RM: currentScore,
+          reps: Number(row.performedReps) || 0,
+          weight: Number(row.performedWeight) || 0,
+          recordKind: kind,
         };
       }
     });
@@ -7100,13 +7125,34 @@ export function MemberPortal(props: MemberPortalProps) {
                     <div className="text-[11px] font-semibold uppercase tracking-wide text-emerald-900/80">Øvelse</div>
                     <div className="mt-1 text-lg font-semibold text-slate-900">{activeCelebration?.exerciseName}</div>
                     <div className="mt-3 flex flex-wrap items-baseline gap-2 text-sm">
-                      <span className="tabular-nums text-slate-600">{activeCelebration?.previousEstimated1RM.toFixed(1)} kg</span>
-                      <span className="text-slate-400">→</span>
-                      <span className="tabular-nums text-lg font-bold text-emerald-800">{activeCelebration?.newEstimated1RM.toFixed(1)} kg</span>
-                      <span className="text-xs font-medium text-emerald-900/70">1RM (estimat)</span>
+                      {(activeCelebration?.previousEstimated1RM ?? 0) > 0 ? (
+                        <>
+                          <span className="tabular-nums text-slate-600">
+                            {formatPersonalRecordScore(
+                              activeCelebration?.recordKind ?? "oneRm",
+                              activeCelebration?.previousEstimated1RM ?? 0,
+                            )}
+                          </span>
+                          <span className="text-slate-400">→</span>
+                        </>
+                      ) : null}
+                      <span className="tabular-nums text-lg font-bold text-emerald-800">
+                        {formatPersonalRecordScore(
+                          activeCelebration?.recordKind ?? "oneRm",
+                          activeCelebration?.newEstimated1RM ?? 0,
+                        )}
+                      </span>
+                      <span className="text-xs font-medium text-emerald-900/70">
+                        {personalRecordKindLabel(activeCelebration?.recordKind ?? "oneRm")}
+                      </span>
                     </div>
                     <div className="mt-2 text-xs text-slate-600">
-                      Basert på {activeCelebration?.weight}&nbsp;kg × {activeCelebration?.reps} reps i settet du nettopp logget.
+                      Basert på {formatPersonalRecordSetSummary(
+                        activeCelebration?.recordKind ?? "oneRm",
+                        activeCelebration?.weight ?? 0,
+                        activeCelebration?.reps ?? 0,
+                      )}{" "}
+                      i settet du nettopp logget.
                     </div>
                   </div>
                   <div className="mt-6 flex w-full flex-col gap-2">
@@ -7281,7 +7327,7 @@ export function MemberPortal(props: MemberPortalProps) {
                   records={personalRecords.slice(0, 8)}
                   exercises={exercises}
                   onViewAllRecords={() => setTrainingSection("history")}
-                  onOpenRecord={setPrProgressExerciseName}
+                  onOpenRecord={openPersonalRecordProgress}
                 />
               ) : null}
               {trainingSection === "programs" ? (
@@ -8203,7 +8249,7 @@ export function MemberPortal(props: MemberPortalProps) {
                   onMuscleSplitMetricChange={setMuscleSplitMetric}
                   onMuscleSplitPeriodChange={setMuscleSplitPeriod}
                   onOpenProgress={() => setMemberTab("progress")}
-                  onOpenProgressExercise={setPrProgressExerciseName}
+                  onOpenProgressExercise={openPersonalRecordProgress}
                   focusLogId={memberFocusWorkoutLogId}
                   logListProps={{
                     expandedLogId: expandedRecentLogId,
@@ -8278,7 +8324,7 @@ export function MemberPortal(props: MemberPortalProps) {
                 onToggleShowAll={() => setShowAllPersonalRecords((prev) => !prev)}
                 favoriteNames={cleanedFavoritePersonalRecordNames}
                 onToggleFavorite={toggleFavoritePersonalRecord}
-                onOpenProgress={setPrProgressExerciseName}
+                onOpenProgress={openPersonalRecordProgress}
                 onShare={(record) => void sharePersonalRecordEntry(record)}
                 exercises={exercises}
                 profileSaveInfo={profileSaveInfo && memberTab === "progress" ? profileSaveInfo : null}

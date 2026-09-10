@@ -34,6 +34,7 @@ import { resolveProgressExerciseDisplayName, resolveProgressPersonalRecordImage 
 import type { Exercise, TrainingProgram, WorkoutLog } from "../app/types";
 import { EmptyState, GradientButton } from "../app/ui";
 import type { PersonalRecordEntry } from "./MemberPersonalRecordsSection";
+import { personalRecordPrimaryLabel, personalRecordSecondaryLabel } from "./MemberPersonalRecordsSection";
 import { MuscleSplitCard } from "./MuscleSplitCard";
 import type { MuscleGroupStat, MuscleSplitMetric, MuscleSplitPeriod } from "./muscleSplitStats";
 import {
@@ -471,7 +472,12 @@ export function MemberTrainingHistoryView({
                       <div className="motus-member-history-pr-body">
                         <div className="motus-member-history-pr-name">{displayName}</div>
                         <div className="motus-member-history-pr-weight">
-                          {record.weight} kg{record.reps ? ` · ${record.reps} reps` : ""}
+                          {personalRecordPrimaryLabel(record)}
+                          {record.kind && record.kind !== "oneRm"
+                            ? ` · ${personalRecordSecondaryLabel(record)}`
+                            : record.reps
+                              ? ` · ${record.reps} reps`
+                              : ""}
                         </div>
                         <div className="motus-member-history-pr-badge-slot">
                           {record.isNewRecord ? <div className="motus-member-history-pr-badge">Ny rekord! 🎉</div> : null}

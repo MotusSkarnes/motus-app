@@ -8,6 +8,7 @@ import { resolveProgressExerciseDisplayName, resolveProgressPersonalRecordImage 
 import type { Exercise } from "../app/types";
 import { TrainingStartButton } from "../app/ui";
 import type { PersonalRecordEntry } from "./MemberPersonalRecordsSection";
+import { personalRecordPrimaryLabel } from "./MemberPersonalRecordsSection";
 
 export type TrainingHeroAction = {
   label: string;
@@ -252,7 +253,7 @@ export function MemberTrainingOverview({
                     />
                   </div>
                   <div className="motus-training-pr-name">{displayName}</div>
-                  <div className="motus-training-pr-weight">{record.weight} kg</div>
+                  <div className="motus-training-pr-weight">{personalRecordPrimaryLabel(record)}</div>
                   {record.isNewRecord ? <div className="motus-training-pr-badge">Ny rekord!</div> : null}
                 </button>
               );

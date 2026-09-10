@@ -1,4 +1,5 @@
 import type { WorkoutLog } from "./types";
+import { personalRecordMapKey, personalRecordScore, resolvePersonalRecordKind } from "./personalRecordScore";
 import { isKgBasedWorkoutResult } from "./workoutResultUnits";
 
 export type WorkoutCelebrationStats = {
@@ -23,10 +24,6 @@ function parseLogFinishTime(log: WorkoutLog): number | null {
   return Number.isFinite(parsed) ? parsed : null;
 }
 
-function workoutScore(weightKg: number, reps: number): number {
-  return weightKg * Math.max(reps, 1);
-}
-
 /**
  * Compute stats for celebrating a single finished workout log.
  * `otherLogs` should be all OTHER completed logs by the same member, used to determine which results are new personal records.
@@ -34,43 +31,51 @@ function workoutScore(weightKg: number, reps: number): number {
 export function computeWorkoutCelebrationStats(log: WorkoutLog, otherLogs: WorkoutLog[]): WorkoutCelebrationStats {
   const results = log.results ?? [];
 
-  const previousBestByExercise = new Map<string, number>();
+  const previousBestByKey = new Map<string, number>();
   for (const other of otherLogs) {
     if (other.id === log.id) continue;
     if (other.status !== "Fullført") continue;
     for (const row of other.results ?? []) {
       if (!row.completed) continue;
-      if (!isKgBasedWorkoutResult(row)) continue;
-      const score = workoutScore(Number(row.performedWeight) || 0, Number(row.performedReps) || 0);
-      const current = previousBestByExercise.get(row.exerciseName) ?? 0;
-      if (score > current) previousBestByExercise.set(row.exerciseName, score);
+      const kind = resolvePersonalRecordKind(row);
+      if (!kind) continue;
+      const score = personalRecordScore(row, kind);
+      if (score <= 0) continue;
+      const key = personalRecordMapKey(row.exerciseName, kind);
+      const current = previousBestByKey.get(key) ?? 0;
+      if (score > current) previousBestByKey.set(key, score);
     }
   }
 
   let totalVolumeKg = 0;
   let completedSets = 0;
   const uniqueExerciseNames = new Set<string>();
-  const sessionBestByExercise = new Map<string, { score: number; weight: number; reps: number }>();
+  const sessionBestByKey = new Map<string, { score: number; name: string }>();
 
   for (const row of results) {
     if (!row.completed) continue;
-    if (!isKgBasedWorkoutResult(row)) continue;
-    const weight = Number(row.performedWeight) || 0;
-    const reps = Number(row.performedReps) || 0;
     completedSets += 1;
-    totalVolumeKg += weight * reps;
     uniqueExerciseNames.add(row.exerciseName);
-    const score = workoutScore(weight, reps);
-    const existing = sessionBestByExercise.get(row.exerciseName);
+    if (isKgBasedWorkoutResult(row)) {
+      const weight = Number(row.performedWeight) || 0;
+      const reps = Number(row.performedReps) || 0;
+      totalVolumeKg += weight * reps;
+    }
+    const kind = resolvePersonalRecordKind(row);
+    if (!kind) continue;
+    const score = personalRecordScore(row, kind);
+    if (score <= 0) continue;
+    const key = personalRecordMapKey(row.exerciseName, kind);
+    const existing = sessionBestByKey.get(key);
     if (!existing || score > existing.score) {
-      sessionBestByExercise.set(row.exerciseName, { score, weight, reps });
+      sessionBestByKey.set(key, { score, name: row.exerciseName });
     }
   }
 
   const newRecords: string[] = [];
-  sessionBestByExercise.forEach(({ score }, name) => {
+  sessionBestByKey.forEach(({ score, name }, key) => {
     if (score <= 0) return;
-    const previousBest = previousBestByExercise.get(name) ?? 0;
+    const previousBest = previousBestByKey.get(key) ?? 0;
     if (score > previousBest) newRecords.push(name);
   });
 

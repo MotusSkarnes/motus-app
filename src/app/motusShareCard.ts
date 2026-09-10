@@ -1,5 +1,11 @@
 import { MOTUS } from "./data";
 import { estimate1RmKg } from "./personalRecordProgress";
+import {
+  formatPersonalRecordScore,
+  formatPersonalRecordSetSummary,
+  personalRecordKindLabel,
+  type PersonalRecordKind,
+} from "./personalRecordScore";
 
 export type MotusShareOutcome = "shared" | "downloaded" | "cancelled" | "failed";
 
@@ -294,15 +300,23 @@ export type PersonalRecordShareCardInput = {
   reps: number;
   estimated1RmKg?: number;
   previousEstimated1RmKg?: number;
+  recordKind?: PersonalRecordKind;
 };
 
 export async function buildPersonalRecordShareCardBlob(input: PersonalRecordShareCardInput): Promise<Blob | null> {
   if (typeof document === "undefined") return null;
 
-  const estimated =
+  const recordKind = input.recordKind ?? "oneRm";
+  const bestSetLabel = formatPersonalRecordSetSummary(recordKind, input.weightKg, input.reps);
+  const newScore =
     input.estimated1RmKg && input.estimated1RmKg > 0
       ? input.estimated1RmKg
-      : estimate1RmKg(input.weightKg, input.reps);
+      : recordKind === "oneRm"
+        ? estimate1RmKg(input.weightKg, input.reps)
+        : recordKind === "seconds"
+          ? input.weightKg
+          : input.reps;
+  const previousScore = input.previousEstimated1RmKg ?? 0;
 
   const canvas = document.createElement("canvas");
   canvas.width = CARD_WIDTH;
@@ -320,7 +334,7 @@ export async function buildPersonalRecordShareCardBlob(input: PersonalRecordShar
       eyebrow: "Personlig rekord",
       title: input.exerciseName,
       memberDisplayName: input.memberDisplayName,
-      subtitle: "Ny styrkerekord på Motus",
+      subtitle: recordKind === "oneRm" ? "Ny styrkerekord på Motus" : "Ny personlig rekord på Motus",
     },
     logo,
   );
@@ -357,22 +371,22 @@ export async function buildPersonalRecordShareCardBlob(input: PersonalRecordShar
   ctx.fillText("Beste sett", cardX + pad + 28, y + 52);
   ctx.fillStyle = MOTUS.ink;
   ctx.font = "bold 64px system-ui, -apple-system, Segoe UI, sans-serif";
-  ctx.fillText(`${input.weightKg} kg × ${input.reps}`, cardX + pad + 28, y + 132);
+  ctx.fillText(`${bestSetLabel}`, cardX + pad + 28, y + 132);
   ctx.fillStyle = "#475569";
   ctx.font = "26px system-ui, -apple-system, Segoe UI, sans-serif";
-  ctx.fillText(`Estimert 1RM: ${estimated.toFixed(1)} kg`, cardX + pad + 28, y + 188);
+  ctx.fillText(`${personalRecordKindLabel(recordKind)}: ${formatPersonalRecordScore(recordKind, newScore)}`, cardX + pad + 28, y + 188);
   y += statBoxH + 36;
 
-  if (input.previousEstimated1RmKg && input.previousEstimated1RmKg > 0 && input.previousEstimated1RmKg < estimated) {
+  if (previousScore > 0 && previousScore < newScore) {
     ctx.fillStyle = "#f8fafc";
     fillRoundRect(ctx, cardX + pad, y, cardW - pad * 2, 160, 22);
     ctx.fillStyle = "#64748b";
     ctx.font = "24px system-ui, -apple-system, Segoe UI, sans-serif";
-    ctx.fillText("Fra tidligere beste estimat", cardX + pad + 28, y + 52);
+    ctx.fillText("Fra tidligere beste", cardX + pad + 28, y + 52);
     ctx.fillStyle = MOTUS.ink;
     ctx.font = "bold 40px system-ui, -apple-system, Segoe UI, sans-serif";
     ctx.fillText(
-      `${input.previousEstimated1RmKg.toFixed(1)} kg  →  ${estimated.toFixed(1)} kg`,
+      `${formatPersonalRecordScore(recordKind, previousScore)}  →  ${formatPersonalRecordScore(recordKind, newScore)}`,
       cardX + pad + 28,
       y + 108,
     );
@@ -410,6 +424,6 @@ export async function sharePersonalRecordCard(input: PersonalRecordShareCardInpu
     blob,
     `motus-rekord-${slug || "pr"}.png`,
     "Min Motus-rekord",
-    `Ny personlig rekord i ${input.exerciseName} – ${input.weightKg} kg × ${input.reps} #Motus`,
+    `Ny personlig rekord i ${input.exerciseName} – ${formatPersonalRecordSetSummary(input.recordKind ?? "oneRm", input.weightKg, input.reps)} #Motus`,
   );
 }

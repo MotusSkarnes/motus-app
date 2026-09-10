@@ -1,6 +1,6 @@
-import { isHoldBasedExerciseCategory } from "./exerciseCategories";
 import type { WorkoutLog } from "./types";
 import { parseLogDateMs } from "./workoutLogDate";
+import { resolveWorkoutLoadUnit } from "./workoutResultUnits";
 
 export type StrengthHistoryPoint = {
   dateMs: number;
@@ -32,7 +32,7 @@ export function buildExerciseStrengthHistory(logs: WorkoutLog[], exerciseName: s
     (log.results ?? []).forEach((result) => {
       if (!result.completed) return;
       if (result.exerciseName.trim().toLowerCase() !== normalizedName) return;
-      if (result.exerciseCategory && isHoldBasedExerciseCategory(result.exerciseCategory)) return;
+      if (resolveWorkoutLoadUnit(result) === "sec") return;
 
       const weight = Number(result.performedWeight) || 0;
       const reps = Number(result.performedReps) || 0;
