@@ -7,9 +7,9 @@ import {
 import {
   buildMacroDisplayRows,
   buildWaterReportRows,
+  classifyMacroDisplayStatus,
   formatMacroDisplayValue,
-  macroCoveragePct,
-  type MacroDisplayRow,
+  resolveReportKcalTarget,
 } from "./nutritionReportDisplay";
 import type { MealPlanTargets } from "./mealPlanTypes";
 import type { NutritionReferenceContext } from "./personalizedNutritionReferences";
@@ -36,23 +36,20 @@ function escapeHtml(value: string): string {
     .replace(/"/g, "&quot;");
 }
 
-function macroTableHtml(rows: MacroDisplayRow[]): string {
+function macroTableHtml(rows: ReturnType<typeof buildMacroDisplayRows>): string {
   const body = rows
     .map((row) => {
-      const hasTarget = row.target > 0;
-      const pct = hasTarget ? macroCoveragePct(row.value, row.target, row.lowerIsBetter) : null;
-      const ref = hasTarget
-        ? `${row.lowerIsBetter ? "Maks " : "Ref. "}${formatMacroDisplayValue({ ...row, value: row.target })}${pct !== null ? ` (${pct}%)` : ""}`
-        : "—";
-      return `<tr>
+      const status = classifyMacroDisplayStatus(row);
+      return `<tr class="micro-status-${status.tone}">
         <td>${escapeHtml(row.label)}</td>
         <td><strong>${escapeHtml(formatMacroDisplayValue(row))}</strong></td>
-        <td>${escapeHtml(ref)}</td>
+        <td>${escapeHtml(status.referenceLine)}</td>
+        <td>${escapeHtml(status.label)}</td>
       </tr>`;
     })
     .join("");
   return `<table class="report-table">
-    <thead><tr><th>Næringsstoff</th><th>Inntatt</th><th>Referanse</th></tr></thead>
+    <thead><tr><th>Næringsstoff</th><th>Inntatt</th><th>Referanse</th><th>Status</th></tr></thead>
     <tbody>${body}</tbody>
   </table>`;
 }
@@ -106,11 +103,12 @@ function dailyKcalHtml(daily: NutritionReportPrintPayload["dailyKcal"]): string 
 }
 
 export function buildNutritionReportPrintHtml(payload: NutritionReportPrintPayload): string {
+  const kcalTarget = resolveReportKcalTarget(payload.mealPlanTargets, payload.referenceContext);
   const macroRows = [
     ...buildMacroDisplayRows(payload.totals, payload.mealPlanTargets, payload.referenceContext),
-    ...buildExtraFatDisplayRows(payload.totals),
+    ...buildExtraFatDisplayRows(payload.totals, kcalTarget),
   ];
-  const waterRows = buildWaterReportRows(payload.totals);
+  const waterRows = buildWaterReportRows(payload.totals, payload.referenceContext);
   const generated = payload.generatedAt ?? new Date().toLocaleString("nb-NO");
   const referenceNote = payload.referenceContext
     ? nutritionReferenceFootnote(payload.referenceContext)
@@ -166,6 +164,10 @@ export function buildNutritionReportPrintHtml(payload: NutritionReportPrintPaylo
       color: #92400e;
       font-size: 12px;
     }
+    .micro-status-danger td { background: #fef2f2; }
+    .micro-status-warn td { background: #fffbeb; }
+    .micro-status-ok td { background: #f0fdf4; }
+    .micro-status-muted td { background: #f8fafc; color: #64748b; }
     @media print {
       body { padding: 12px; }
       h2 { page-break-after: avoid; }
@@ -182,7 +184,7 @@ export function buildNutritionReportPrintHtml(payload: NutritionReportPrintPaylo
   ${macroTableHtml(macroRows)}
 
   <h2>Vanninntak</h2>
-  <p class="muted">Drikke = manuelt logget. Fra mat = vanninnhold i matvarer.</p>
+  <p class="muted">Drikke = manuelt logget. Fra mat = vanninnhold i matvarer. Totalt: Helsedirektoratet / NNR 2023 (2,0 L kvinner / 2,5 L menn).</p>
   ${macroTableHtml(waterRows)}
 
   <h2>Mikronæringsstoffer</h2>

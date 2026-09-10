@@ -1,5 +1,9 @@
 import { formatMacro } from "./foodBankTypes";
 import type { FoodFattyAcids } from "./foodBankFattyAcids";
+import {
+  gramsFromEnergyPercent,
+  HEALTH_DIRECTORATE_MACRO_ENERGY_PERCENT,
+} from "./healthDirectorateNutritionReferences";
 import type { MacroDisplayRow } from "./nutritionReportDisplay";
 import type { FoodLogNutritionTotals } from "./quickFoodLogNutrition";
 
@@ -17,22 +21,30 @@ export type OmegaOverviewRow = {
 export const OMEGA3_DAILY_TARGET_G = 2;
 export const EPA_DHA_DAILY_TARGET_G = 0.25;
 
-export function buildExtraFatDisplayRows(totals: FoodLogNutritionTotals): MacroDisplayRow[] {
+export function buildExtraFatDisplayRows(totals: FoodLogNutritionTotals, kcalTarget = 0): MacroDisplayRow[] {
   const fa = totals.fattyAcids;
+  const mu = HEALTH_DIRECTORATE_MACRO_ENERGY_PERCENT.monounsaturatedFat;
+  const pu = HEALTH_DIRECTORATE_MACRO_ENERGY_PERCENT.polyunsaturatedFat;
   return [
     {
       label: "Enumettet fett",
       value: fa.monounsaturatedFat,
       unit: "g",
-      target: 0,
       decimals: 1,
+      lower: gramsFromEnergyPercent(kcalTarget, mu.min, mu.kcalPerGram),
+      target: gramsFromEnergyPercent(kcalTarget, mu.recommended, mu.kcalPerGram),
+      upper: gramsFromEnergyPercent(kcalTarget, mu.max, mu.kcalPerGram),
+      goal: kcalTarget > 0 ? "range" : undefined,
     },
     {
       label: "Flerumettet fett",
       value: fa.polyunsaturatedFat,
       unit: "g",
-      target: 0,
       decimals: 1,
+      lower: gramsFromEnergyPercent(kcalTarget, pu.min, pu.kcalPerGram),
+      target: gramsFromEnergyPercent(kcalTarget, pu.recommended, pu.kcalPerGram),
+      upper: gramsFromEnergyPercent(kcalTarget, pu.max, pu.kcalPerGram),
+      goal: kcalTarget > 0 ? "range" : undefined,
     },
   ];
 }

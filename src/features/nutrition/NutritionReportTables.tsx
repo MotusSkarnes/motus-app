@@ -1,66 +1,96 @@
 import type { ReactNode } from "react";
-import { formatMacro } from "../../app/foodBankTypes";
 import { formatMicronutrientReferenceLine, formatMicronutrientWithUnit } from "../../app/foodBankMicronutrients";
 import {
   formatOmegaOverviewValue,
   type OmegaOverviewRow,
 } from "../../app/nutritionReportFattyAcids";
-import { macroCoveragePct, type MacroDisplayRow } from "../../app/nutritionReportDisplay";
+import {
+  classifyMacroDisplayStatus,
+  formatMacroDisplayValue,
+  formatMacroReferenceLine,
+  type MacroDisplayRow,
+  type NutritionReportStatusTone,
+} from "../../app/nutritionReportDisplay";
 import type { MicronutrientDailyRow, MicronutrientReportFilterMode } from "../../app/quickFoodLogNutrition";
 import { micronutrientReportEmptyMessage, micronutrientReportFilterCounts } from "../../app/quickFoodLogNutrition";
 
-function MacroReportCards({ rows }: { rows: MacroDisplayRow[] }) {
+type NutrientStatusRowView = {
+  key: string;
+  label: string;
+  statusTone: NutritionReportStatusTone;
+  statusLabel: string;
+  valueText: string;
+  refText: string;
+  barPct: number;
+  percentText?: string;
+};
+
+function NutrientStatusList({ rows }: { rows: NutrientStatusRowView[] }) {
   return (
-    <>
-      {rows.map((row) => {
-        const hasTarget = row.target > 0;
-        const pct = hasTarget ? macroCoveragePct(row.value, row.target, row.lowerIsBetter) : 0;
-        return (
-          <div key={row.label} className="motus-nutrition-report__macro-card">
-            <div className="motus-nutrition-report__macro-card-head">
-              <span className="motus-nutrition-report__macro-label">{row.label}</span>
-              <span className="motus-nutrition-report__macro-value">
-                {formatMacro(row.value, row.decimals)} {row.unit}
-              </span>
-            </div>
-            {hasTarget ? (
-              <>
-                <div className="motus-nutrition-report__bar-track" aria-hidden>
-                  <div className="motus-nutrition-report__bar-fill" style={{ width: `${pct}%` }} />
-                </div>
-                <p className="motus-nutrition-report__macro-meta">
-                  {row.lowerIsBetter ? "Maks " : "Ref. "}
-                  {formatMacro(row.target, row.decimals)} {row.unit}
-                  {hasTarget ? ` · ${pct}%` : ""}
-                </p>
-              </>
-            ) : (
-              <p className="motus-nutrition-report__macro-meta motus-nutrition-report__macro-meta--muted">Ingen referanse</p>
-            )}
+    <div className="motus-nutrition-report__micro-list">
+      {rows.map((row) => (
+        <div
+          key={row.key}
+          className={`motus-nutrition-report__micro-row motus-nutrition-report__micro-row--${row.statusTone}`}
+        >
+          <div className="motus-nutrition-report__micro-row-head">
+            <span className="motus-nutrition-report__micro-label">{row.label}</span>
+            <span
+              className={`motus-nutrition-report__micro-status motus-nutrition-report__micro-status--${row.statusTone}`}
+              title={row.statusLabel}
+            >
+              {row.statusLabel}
+            </span>
           </div>
-        );
-      })}
-    </>
+          <span className="motus-nutrition-report__micro-values">
+            {row.valueText}
+            <span className="motus-nutrition-report__micro-ref">{row.refText}</span>
+          </span>
+          {row.barPct > 0 || row.statusTone !== "muted" ? (
+            <div className="motus-nutrition-report__bar-track" aria-hidden>
+              <div
+                className={`motus-nutrition-report__bar-fill motus-nutrition-report__bar-fill--${row.statusTone}`}
+                style={{ width: `${row.barPct}%` }}
+              />
+            </div>
+          ) : null}
+          {row.percentText ? <span className="motus-nutrition-report__micro-pct">{row.percentText}</span> : null}
+        </div>
+      ))}
+    </div>
   );
 }
 
 export function MacroReportTable({ rows }: { rows: MacroDisplayRow[] }) {
   return (
-    <div className="motus-nutrition-report__macro-grid">
-      <MacroReportCards rows={rows} />
-    </div>
+    <NutrientStatusList
+      rows={rows.map((row) => {
+        const status = classifyMacroDisplayStatus(row);
+        return {
+          key: row.label,
+          label: row.label,
+          statusTone: status.tone,
+          statusLabel: status.label,
+          valueText: formatMacroDisplayValue(row),
+          refText: status.referenceLine || formatMacroReferenceLine(row),
+          barPct: status.barPct,
+          percentText: status.percentLine,
+        };
+      })}
+    />
   );
 }
 
 export function WaterReportSection({ rows }: { rows: MacroDisplayRow[] }) {
+  const totalRow = rows.find((row) => row.target > 0);
+  const waterRef = totalRow ? formatMacroReferenceLine(totalRow) : "Helsedirektoratet / NNR 2023";
   return (
     <section className="motus-nutrition-report-section" aria-label="Vanninntak">
       <h3 className="motus-nutrition-report-modal__subheading">Vanninntak</h3>
-      <div className="motus-nutrition-report__water-grid">
-        <MacroReportCards rows={rows} />
-      </div>
+      <MacroReportTable rows={rows} />
       <p className="motus-nutrition-report-modal__footnote">
-        Drikke = manuelt logget vann. Fra mat = vanninnhold i matvarer. Totalt sammenlignes med ca. 2,5 L per dag.
+        Drikke = manuelt logget vann. Fra mat = vanninnhold i matvarer. Totalt: {waterRef} (Helsedirektoratet / NNR
+        2023).
       </p>
     </section>
   );
@@ -82,45 +112,25 @@ export function OmegaOverviewTable({ rows }: { rows: OmegaOverviewRow[] }) {
 
 export function MicroReportTable({ rows }: { rows: MicronutrientDailyRow[] }) {
   return (
-    <div className="motus-nutrition-report__micro-list">
-      {rows.map((row) => {
+    <NutrientStatusList
+      rows={rows.map((row) => {
         const pct = Math.min(100, Math.round(row.coveragePct));
         const barPct =
-          row.upper && row.upper > 0
-            ? Math.min(100, Math.round((row.value / row.upper) * 100))
-            : pct;
-        return (
-          <div
-            key={row.key}
-            className={`motus-nutrition-report__micro-row motus-nutrition-report__micro-row--${row.statusTone}`}
-          >
-            <div className="motus-nutrition-report__micro-row-head">
-              <span className="motus-nutrition-report__micro-label">{row.label}</span>
-              <span
-                className={`motus-nutrition-report__micro-status motus-nutrition-report__micro-status--${row.statusTone}`}
-                title={row.statusLabel}
-              >
-                {row.statusLabel}
-              </span>
-            </div>
-            <span className="motus-nutrition-report__micro-values">
-              {formatMicronutrientWithUnit(row.value, row.decimals, row.unit)}
-              <span className="motus-nutrition-report__micro-ref">{formatMicronutrientReferenceLine(row)}</span>
-            </span>
-            <div className="motus-nutrition-report__bar-track" aria-hidden>
-              <div
-                className={`motus-nutrition-report__bar-fill motus-nutrition-report__bar-fill--${row.statusTone}`}
-                style={{ width: `${barPct}%` }}
-              />
-            </div>
-            <span className="motus-nutrition-report__micro-pct">
-              {pct}% av anbefalt (RI)
-              {row.upper !== null ? ` · ${Math.round((row.value / row.upper) * 100)}% av UL` : ""}
-            </span>
-          </div>
-        );
+          row.upper && row.upper > 0 ? Math.min(100, Math.round((row.value / row.upper) * 100)) : pct;
+        return {
+          key: row.key,
+          label: row.label,
+          statusTone: row.statusTone,
+          statusLabel: row.statusLabel,
+          valueText: formatMicronutrientWithUnit(row.value, row.decimals, row.unit),
+          refText: formatMicronutrientReferenceLine(row),
+          barPct,
+          percentText: `${pct}% av anbefalt (RI)${
+            row.upper !== null ? ` · ${Math.round((row.value / row.upper) * 100)}% av UL` : ""
+          }`,
+        };
       })}
-    </div>
+    />
   );
 }
 

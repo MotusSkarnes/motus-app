@@ -2,8 +2,9 @@ import { cleanup, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it } from "vitest";
 import { useState } from "react";
+import { buildMacroDisplayRows, buildWaterReportRows } from "../../app/nutritionReportDisplay";
+import { EMPTY_FOOD_LOG_NUTRITION, filterMicronutrientReportRows } from "../../app/quickFoodLogNutrition";
 import type { MicronutrientDailyRow, MicronutrientReportFilterMode } from "../../app/quickFoodLogNutrition";
-import { filterMicronutrientReportRows } from "../../app/quickFoodLogNutrition";
 import { NutritionReportStackedBody } from "./NutritionReportTables";
 
 afterEach(() => {
@@ -34,8 +35,8 @@ function ReportHarness({ rows }: { rows: MicronutrientDailyRow[] }) {
   const [filter, setFilter] = useState<MicronutrientReportFilterMode>("all");
   return (
     <NutritionReportStackedBody
-      waterRows={[{ label: "Vann (totalt)", value: 2, unit: "L", target: 2.5, decimals: 1 }]}
-      macroRows={[{ label: "Protein", value: 120, unit: "g", target: 130, decimals: 0 }]}
+      waterRows={buildWaterReportRows(EMPTY_FOOD_LOG_NUTRITION)}
+      macroRows={buildMacroDisplayRows(EMPTY_FOOD_LOG_NUTRITION, null)}
       macroFootnote="Makro-fotnote"
       microRows={rows}
       visibleMicroRows={filterMicronutrientReportRows(rows, filter)}
@@ -64,6 +65,9 @@ describe("NutritionReportStackedBody", () => {
     expect(screen.queryByRole("tab")).toBeNull();
     expect(screen.getByText("AR 540 µg · RI 700 µg · UL 3000 µg")).toBeTruthy();
     expect(screen.getByText("AR 9 mg · RI 15 mg · UL 45 mg")).toBeTruthy();
+    expect(screen.getAllByText("Ingen referanse").length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/Min .+ g · Ref\. .+ g · Maks .+ g/).length).toBeGreaterThan(0);
+    expect(screen.getByText(/Maks 2300 mg/)).toBeTruthy();
   });
 
   it("can show only values within or outside AR/RI", async () => {

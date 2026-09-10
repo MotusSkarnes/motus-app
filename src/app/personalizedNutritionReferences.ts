@@ -1,7 +1,10 @@
 import type { FoodMicronutrientKey } from "./foodBankMicronutrients";
 import {
+  gramsFromEnergyPercent,
   HEALTH_DIRECTORATE_MICRONUTRIENT_DAILY,
   HEALTH_DIRECTORATE_OTHER_DAILY,
+  kcalFromMegajoule,
+  type HealthDirectorateOtherDaily,
 } from "./healthDirectorateNutritionReferences";
 import { parseMemberAgeYears } from "./memberAge";
 import type { MemberGender } from "./memberGender";
@@ -16,7 +19,7 @@ export type NutritionReferenceContext = {
   gender: MemberGender;
   profileLabel: string | null;
   micronutrientDaily: Record<FoodMicronutrientKey, number>;
-  otherDaily: typeof HEALTH_DIRECTORATE_OTHER_DAILY;
+  otherDaily: HealthDirectorateOtherDaily;
 };
 
 type AgeBand = "child" | "teen" | "adult" | "senior";
@@ -209,12 +212,39 @@ const MICRONUTRIENT_BY_BAND_SEX: Record<AgeBand, Record<SexKey, Record<FoodMicro
   },
 };
 
-const OTHER_BY_BAND: Record<AgeBand, typeof HEALTH_DIRECTORATE_OTHER_DAILY> = {
-  child: { fiber: 15, sodium: 2000, saturatedFat: 15 },
-  teen: { fiber: 21, sodium: 2200, saturatedFat: 18 },
-  adult: { ...HEALTH_DIRECTORATE_OTHER_DAILY },
-  senior: { fiber: 25, sodium: 2400, saturatedFat: 20 },
-};
+function otherDailyFor(band: AgeBand, sex: SexKey): HealthDirectorateOtherDaily {
+  if (band === "child") {
+    const kcalPal16 = kcalFromMegajoule(7.8);
+    return {
+      fiber: 15,
+      sodium: 1700,
+      saturatedFat: Math.round(gramsFromEnergyPercent(kcalPal16, 10, 9)),
+      waterLiters: 1.5,
+      kcalPal16,
+    };
+  }
+  if (band === "teen") {
+    const kcalPal16 = kcalFromMegajoule(sex === "female" ? 10.1 : 12.7);
+    return {
+      fiber: sex === "female" ? 25 : 30,
+      sodium: 2300,
+      saturatedFat: Math.round(gramsFromEnergyPercent(kcalPal16, 10, 9)),
+      waterLiters: sex === "female" ? 2 : 2.5,
+      kcalPal16,
+    };
+  }
+  const kcalPal16 =
+    band === "senior"
+      ? kcalFromMegajoule(sex === "female" ? 8.2 : 10.1)
+      : kcalFromMegajoule(sex === "female" ? 9.0 : 11.3);
+  return {
+    fiber: sex === "female" ? 25 : 35,
+    sodium: 2300,
+    saturatedFat: Math.round(gramsFromEnergyPercent(kcalPal16, 10, 9)),
+    waterLiters: sex === "female" ? 2 : 2.5,
+    kcalPal16,
+  };
+}
 
 function resolveSexKey(gender: MemberGender): SexKey | null {
   if (gender === "female" || gender === "male") return gender;
@@ -252,7 +282,7 @@ export function resolveNutritionReferenceContext(
     gender,
     profileLabel: `${memberGenderLabel(gender)}, ${ageYears} år`,
     micronutrientDaily: { ...MICRONUTRIENT_BY_BAND_SEX[band][sex] },
-    otherDaily: { ...OTHER_BY_BAND[band] },
+    otherDaily: otherDailyFor(band, sex),
   };
 }
 
@@ -268,7 +298,7 @@ export function nutritionReferenceWarningMessage(missingFields: NutritionReferen
 
 export function nutritionReferenceFootnote(context: NutritionReferenceContext): string {
   if (context.isPersonalized && context.profileLabel) {
-    return `Referanser basert på ${context.profileLabel} (nordiske anbefalinger for vitaminer og mineraler).`;
+    return `Referanser basert på ${context.profileLabel} (Helsedirektoratet / NNR 2023).`;
   }
-  return "Referanser er generelle daglige voksenverdier når alder eller kjønn mangler.";
+  return "Referanser er generelle daglige voksenverdier (Helsedirektoratet / NNR 2023) når alder eller kjønn mangler.";
 }

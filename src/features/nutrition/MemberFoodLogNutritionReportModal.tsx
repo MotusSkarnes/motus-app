@@ -19,7 +19,7 @@ import {
   EPA_DHA_DAILY_TARGET_G,
   OMEGA3_DAILY_TARGET_G,
 } from "../../app/nutritionReportFattyAcids";
-import { buildMacroDisplayRows, buildWaterReportRows, DEFAULT_DAILY_KCAL_TARGET } from "../../app/nutritionReportDisplay";
+import { buildMacroDisplayRows, buildWaterReportRows, nutritionMacroReportFootnote, resolveReportKcalTarget } from "../../app/nutritionReportDisplay";
 import {
   nutritionReferenceFootnote,
   nutritionReferenceWarningMessage,
@@ -109,14 +109,14 @@ export function MemberFoodLogNutritionReportModal({
   const referenceFootnote = useMemo(() => nutritionReferenceFootnote(referenceContext), [referenceContext]);
 
   const waterRows = useMemo(
-    () => (displayTotals ? buildWaterReportRows(displayTotals) : []),
-    [displayTotals],
+    () => (displayTotals ? buildWaterReportRows(displayTotals, referenceContext) : []),
+    [displayTotals, referenceContext],
   );
 
   const macroRows = useMemo(
     () => [
       ...buildMacroDisplayRows(displayTotals, mealPlanTargets, referenceContext),
-      ...buildExtraFatDisplayRows(displayTotals),
+      ...buildExtraFatDisplayRows(displayTotals, resolveReportKcalTarget(mealPlanTargets, referenceContext)),
     ],
     [displayTotals, mealPlanTargets, referenceContext],
   );
@@ -253,7 +253,7 @@ export function MemberFoodLogNutritionReportModal({
             <NutritionReportStackedBody
               waterRows={waterRows}
               macroRows={macroRows}
-              macroFootnote={`Kalorier og makro: daglige mål fra matplan der satt, ellers ${DEFAULT_DAILY_KCAL_TARGET} kcal. Fiber, mettet fett og natrium: ${referenceFootnote}`}
+              macroFootnote={nutritionMacroReportFootnote(referenceContext)}
               microRows={microRows}
               visibleMicroRows={visibleMicroRows}
               microFilter={microFilter}

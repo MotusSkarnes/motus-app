@@ -5259,9 +5259,13 @@
   background: #fffbeb;
 }
 
-.motus-nutrition-report__micro-row--ok {
-  border-color: #bbf7d0;
-  background: #f0fdf4;
+.motus-nutrition-report__micro-row--muted {
+  border-color: #e2e8f0;
+  background: #f8fafc;
+}
+
+.motus-nutrition-report__bar-fill--muted {
+  background: #cbd5e1;
 }
 
 .motus-nutrition-report__micro-row-head {
@@ -5339,6 +5343,10 @@
 
 .motus-nutrition-report__micro-row--ok .motus-nutrition-report__micro-pct {
   color: #047857;
+}
+
+.motus-nutrition-report__micro-row--muted .motus-nutrition-report__micro-pct {
+  color: #64748b;
 }
 
 .motus-nutrition-report__micro-row--warn .motus-nutrition-report__micro-pct {

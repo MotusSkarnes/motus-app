@@ -13,7 +13,8 @@ import {
 import {
   buildMacroDisplayRows,
   buildWaterReportRows,
-  DEFAULT_DAILY_KCAL_TARGET,
+  nutritionMacroReportFootnote,
+  resolveReportKcalTarget,
 } from "../../app/nutritionReportDisplay";
 import {
   nutritionReferenceFootnote,
@@ -106,12 +107,15 @@ export function MealPlanNutritionReportModal({
 
   const waterRows = useMemo(() => {
     if (!displayTotals) return [];
-    return buildWaterReportRows(displayTotals);
-  }, [displayTotals]);
+    return buildWaterReportRows(displayTotals, referenceContext);
+  }, [displayTotals, referenceContext]);
 
   const macroRows = useMemo(() => {
     if (!displayTotals) return [];
-    return [...buildMacroDisplayRows(displayTotals, plan.targets, referenceContext), ...buildExtraFatDisplayRows(displayTotals)];
+    return [
+      ...buildMacroDisplayRows(displayTotals, plan.targets, referenceContext),
+      ...buildExtraFatDisplayRows(displayTotals, resolveReportKcalTarget(plan.targets, referenceContext)),
+    ];
   }, [displayTotals, plan.targets, referenceContext]);
 
   const microRows = useMemo(() => {
@@ -223,7 +227,7 @@ export function MealPlanNutritionReportModal({
             <NutritionReportStackedBody
               waterRows={waterRows}
               macroRows={macroRows}
-              macroFootnote={`Kalorier og makro: daglige mål fra matplan der satt, ellers ${DEFAULT_DAILY_KCAL_TARGET} kcal. Fiber, mettet fett og natrium: ${referenceFootnote}`}
+              macroFootnote={nutritionMacroReportFootnote(referenceContext)}
               microRows={microRows}
               visibleMicroRows={visibleMicroRows}
               microFilter={microFilter}
