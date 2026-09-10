@@ -364,6 +364,9 @@ export function TrainerLayout({
                 trainerOwnerUserId={appState.currentUser?.id}
                 memberSearch={mealPlanMemberSearch}
                 onMemberSearchChange={setMealPlanMemberSearch}
+                onSavePersonalGoals={(memberId, personalGoals) => {
+                  updateMember({ memberId, changes: { personalGoals } });
+                }}
               />
             ) : trainerTab === "messages" ? (
               <TrainerMessagesHubView

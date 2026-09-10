@@ -2039,6 +2039,32 @@
   color: #94a3b8;
 }
 
+.motus-nutrition-targets {
+  border-radius: 0.75rem;
+  border: 1px solid #e2e8f0;
+  background: #f8fafc;
+  padding: 0.75rem;
+}
+
+.motus-nutrition-targets__title {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #334155;
+}
+
+.motus-nutrition-targets__sub {
+  margin-top: 0.2rem;
+  font-size: 0.6875rem;
+  line-height: 1.4;
+  color: #64748b;
+}
+
+.motus-nutrition-targets__weight {
+  margin-top: 0.55rem;
+  font-size: 0.6875rem;
+  color: #475569;
+}
+
 .motus-macro-split {
   border-radius: 0.75rem;
   border: 1px solid rgba(48, 227, 190, 0.25);

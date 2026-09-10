@@ -23,6 +23,7 @@ import {
   removeArchiveTombstone,
 } from "../app/memberArchiveTombstone";
 import { memberHasNutritionAccess } from "../app/memberNutritionAccess";
+import { resolveDailyNutritionTargets } from "../app/memberNutritionTargets";
 import { MEMBER_GOAL_OPTIONS } from "../app/memberGoals";
 import { getStatusClearDelayMs, useAutoClearStatus } from "../app/statusAutoClear";
 import { memberGenderLabel, normalizeMemberGender, type MemberGender } from "../app/memberGender";
@@ -7214,6 +7215,9 @@ function pickFirstName(value: unknown): string {
                   <div className="space-y-3">
                     <NutritionHub
                       mealPlanTabLabel="Ukeplan"
+                      mealPlanTargets={resolveDailyNutritionTargets(
+                        selectedMemberProfile?.personalGoals ?? selectedMember.personalGoals,
+                      )}
                       avoidances={
                         <MemberFoodAvoidancesPanel
                           memberId={selectedMember.id}
@@ -7232,7 +7236,14 @@ function pickFirstName(value: unknown): string {
                           memberPersonalGoals={selectedMemberProfile?.personalGoals ?? selectedMember.personalGoals ?? ""}
                           memberBirthDate={selectedMemberProfile?.birthDate ?? selectedMember.birthDate}
                           memberGender={selectedMemberProfile?.gender ?? selectedMember.gender}
+                          memberWeight={selectedMemberProfile?.weight ?? selectedMember.weight}
                           trainerOwnerUserId={currentTrainerOwnerUserId}
+                          onSavePersonalGoals={(personalGoals) => {
+                            updateMember({
+                              memberId: selectedMember.id,
+                              changes: { personalGoals },
+                            });
+                          }}
                         />
                       }
                     />
@@ -7241,6 +7252,9 @@ function pickFirstName(value: unknown): string {
                       memberName={selectedMemberProfile?.name ?? selectedMember.name}
                       memberBirthDate={selectedMemberProfile?.birthDate ?? selectedMember.birthDate}
                       memberGender={selectedMemberProfile?.gender ?? selectedMember.gender}
+                      mealPlanTargets={resolveDailyNutritionTargets(
+                        selectedMemberProfile?.personalGoals ?? selectedMember.personalGoals,
+                      )}
                     />
                             </div>
                 ) : null}

@@ -11,10 +11,16 @@ export type MealPlanTargets = {
   protein?: number;
   carbs?: number;
   fat?: number;
+  /** Proteinmål i gram per kg kroppsvekt. Gram regnes ut fra klientens vekt. */
+  proteinPerKg?: number;
+  /** Når true: kcal holdes fast, og karbo/fett fyller resten etter protein. */
+  kcalLocked?: boolean;
   /** Andel av daglige kalorier fra P/K/F (summerer til 100). */
   macroSplitPct?: MacroSplitPercent;
   /** Låste makroer (maks 2) — justeres ikke automatisk når andre endres. */
   macroSplitLocked?: Array<keyof MacroSplitPercent>;
+  /** Sist oppdatert (ms) — brukes når mål lagres utenom matplan. */
+  updatedAt?: number;
 };
 
 export type MealPlanFoodEntry = {

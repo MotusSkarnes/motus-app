@@ -6,6 +6,7 @@ import {
   persistMealPlan,
   readAllMealPlans,
 } from "./mealPlanStorage";
+import { parseMealPlanTargets } from "./mealPlanTargetBalance";
 import type { MealPlan, MealPlanDay, MealPlanFoodEntry, MealPlanMeal, MealPlanTargets } from "./mealPlanTypes";
 import { isSupabaseConfigured, supabaseClient } from "../services/supabaseClient";
 
@@ -23,32 +24,7 @@ function isMealPlanTableMissing(message: string): boolean {
 }
 
 function parseTargets(value: unknown): MealPlanTargets | undefined {
-  if (!value || typeof value !== "object") return undefined;
-  const row = value as Record<string, unknown>;
-  const targets: MealPlanTargets = {};
-  if (typeof row.kcal === "number") targets.kcal = row.kcal;
-  if (typeof row.protein === "number") targets.protein = row.protein;
-  if (typeof row.carbs === "number") targets.carbs = row.carbs;
-  if (typeof row.fat === "number") targets.fat = row.fat;
-  const split = row.macroSplitPct ?? row.macro_split_pct;
-  if (split && typeof split === "object") {
-    const s = split as Record<string, unknown>;
-    const protein = Number(s.protein);
-    const carbs = Number(s.carbs);
-    const fat = Number(s.fat);
-    if ([protein, carbs, fat].every((n) => Number.isFinite(n))) {
-      targets.macroSplitPct = { protein, carbs, fat };
-    }
-  }
-  const lockedRaw = row.macroSplitLocked ?? row.macro_split_locked;
-  if (Array.isArray(lockedRaw)) {
-    const allowed = new Set(["protein", "carbs", "fat"]);
-    const locked = lockedRaw
-      .map((v) => String(v))
-      .filter((v): v is "protein" | "carbs" | "fat" => allowed.has(v));
-    if (locked.length) targets.macroSplitLocked = locked.slice(0, 2);
-  }
-  return Object.keys(targets).length ? targets : undefined;
+  return parseMealPlanTargets(value);
 }
 
 function parseFoodEntry(value: unknown): MealPlanFoodEntry | null {

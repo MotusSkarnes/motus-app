@@ -10,8 +10,22 @@ import {
   toggleMacroSplitLock,
 } from "../app/mealPlanMacroSplit";
 import type { MacroSplitField } from "../app/mealPlanMacroSplit";
-import { balanceMealPlanTargets, describeTargetBalance } from "../app/mealPlanTargetBalance";
-import type { MacroTargetField } from "../app/mealPlanTargetBalance";
+import {
+  applyNutritionTargetEdit,
+  describeTargetBalance,
+  mealPlanTargetsHaveValues,
+  type MacroTargetField,
+  type NutritionTargetEditField,
+} from "../app/mealPlanTargetBalance";
+import {
+  patchNutritionTargetsInPersonalGoals,
+  readNutritionTargetsFromPersonalGoals,
+  resolveDailyNutritionTargets,
+  resolveMemberBodyWeight,
+  stampNutritionTargets,
+  syncProteinGramsFromPerKg,
+} from "../app/memberNutritionTargets";
+import { TrainerNutritionTargetsPanel } from "./nutrition/TrainerNutritionTargetsPanel";
 import { MacroSplitPercentControls } from "../components/MacroSplitPercentControls";
 import {
   BarChart3,
@@ -100,7 +114,9 @@ type TrainerMealPlanEditorProps = {
   memberPersonalGoals?: string;
   memberBirthDate?: string;
   memberGender?: string;
+  memberWeight?: string;
   trainerOwnerUserId?: string;
+  onSavePersonalGoals?: (personalGoals: string) => void;
 };
 
 type MealPickerTarget = {
@@ -121,7 +137,9 @@ export function TrainerMealPlanEditor({
   memberPersonalGoals = "",
   memberBirthDate = "",
   memberGender = "",
+  memberWeight = "",
   trainerOwnerUserId,
+  onSavePersonalGoals,
 }: TrainerMealPlanEditorProps) {
   const foodItems = useFoodBankItems();
   const foodItemsForMacros = useMemo(
@@ -149,6 +167,9 @@ export function TrainerMealPlanEditor({
   const [pickerSelectedFood, setPickerSelectedFood] = useState<FoodItem | null>(null);
   const [derivedTargetField, setDerivedTargetField] = useState<MacroTargetField | null>(null);
   const [targetBalanceWarning, setTargetBalanceWarning] = useState<string | null>(null);
+  const [standaloneTargets, setStandaloneTargets] = useState<MealPlanTargets>(
+    () => resolveDailyNutritionTargets(memberPersonalGoals) ?? {},
+  );
   const [copyMeal, setCopyMeal] = useState<{ dayId: string; mealId: string; mealName: string } | null>(null);
   const [copyTargetDayIds, setCopyTargetDayIds] = useState<string[]>([]);
   const [gridSelection, setGridSelection] = useState<MealGridSelection | null>(null);
@@ -163,6 +184,13 @@ export function TrainerMealPlanEditor({
   const memberEmailRef = useRef(memberEmail);
   const trackedMemberIdRef = useRef(memberId.trim());
   memberEmailRef.current = memberEmail;
+  const personalGoalsRef = useRef(memberPersonalGoals);
+  personalGoalsRef.current = memberPersonalGoals;
+  const standaloneTargetsRef = useRef(standaloneTargets);
+  standaloneTargetsRef.current = standaloneTargets;
+  const onSavePersonalGoalsRef = useRef(onSavePersonalGoals);
+  onSavePersonalGoalsRef.current = onSavePersonalGoals;
+  const profileSaveTimerRef = useRef<number | null>(null);
   const foodItemsForMacrosRef = useRef(foodItemsForMacros);
   foodItemsForMacrosRef.current = foodItemsForMacros;
   const recipesById = useMemo(() => new Map(recipeItems.map((recipe) => [recipe.id, recipe])), [recipeItems]);
@@ -258,8 +286,32 @@ export function TrainerMealPlanEditor({
         setPlanLoadStatus("none");
         return;
       }
+      const mergedTargets =
+        syncProteinGramsFromPerKg(
+          resolveDailyNutritionTargets(personalGoalsRef.current, loadedPlan.targets),
+          resolveMemberBodyWeight(memberWeight, personalGoalsRef.current)?.kg ?? null,
+        ) ?? resolveDailyNutritionTargets(personalGoalsRef.current, loadedPlan.targets);
+      if (
+        mealPlanTargetsHaveValues(mergedTargets) &&
+        !mealPlanTargetsHaveValues(readNutritionTargetsFromPersonalGoals(personalGoalsRef.current))
+      ) {
+        const stamped = stampNutritionTargets(mergedTargets);
+        const save = onSavePersonalGoalsRef.current;
+        if (save && stamped) {
+          const nextGoals = patchNutritionTargetsInPersonalGoals(personalGoalsRef.current, stamped);
+          personalGoalsRef.current = nextGoals;
+          save(nextGoals);
+        }
+      }
+      if (mealPlanTargetsHaveValues(mergedTargets)) {
+        setStandaloneTargets(mergedTargets);
+        standaloneTargetsRef.current = mergedTargets;
+      }
+      const planToApply = mealPlanTargetsHaveValues(mergedTargets)
+        ? { ...loadedPlan, targets: mergedTargets }
+        : loadedPlan;
       try {
-        const hydratedRaw = applyLoadedPlan(loadedPlan);
+        const hydratedRaw = applyLoadedPlan(planToApply);
         setPlanSource(result.status);
         setPlanLoadStatus("ready");
         if (!mealPlansEqual(hydratedRaw, loadedPlan)) {
@@ -284,7 +336,7 @@ export function TrainerMealPlanEditor({
         setLoading(false);
       }
     }
-  }, [memberId, trainerOwnerUserId, applyLoadedPlan]);
+  }, [memberId, trainerOwnerUserId, applyLoadedPlan, memberWeight]);
 
   const handleCreateMealPlan = useCallback(async () => {
     const trimmedMemberId = memberId.trim();
@@ -307,6 +359,8 @@ export function TrainerMealPlanEditor({
     setSaveStatus(null);
     try {
       const draft = createDefaultMealPlan(trimmedMemberId, { mealSlotIds });
+      const existingTargets = stampNutritionTargets(standaloneTargetsRef.current);
+      if (existingTargets) draft.targets = existingTargets;
       const hydrated = applyLoadedPlan(draft);
       flushSync(() => {
         setPlanSource("local");
@@ -452,6 +506,22 @@ export function TrainerMealPlanEditor({
   );
 
   useEffect(() => {
+    return () => {
+      if (profileSaveTimerRef.current) window.clearTimeout(profileSaveTimerRef.current);
+    };
+  }, []);
+
+  useEffect(() => {
+    const fromProps = resolveDailyNutritionTargets(memberPersonalGoals, plan?.targets);
+    const local = standaloneTargetsRef.current;
+    if ((fromProps?.updatedAt ?? 0) < (local?.updatedAt ?? 0)) return;
+    if (fromProps) {
+      setStandaloneTargets(fromProps);
+      standaloneTargetsRef.current = fromProps;
+    }
+  }, [memberPersonalGoals, plan?.targets]);
+
+  useEffect(() => {
     if (!plan?.days.length) return;
     const inferredWeeks = Math.max(1, Math.min(12, Math.round(plan.days.length / 7)));
     setPlanWeeks((prev) => (prev === inferredWeeks ? prev : inferredWeeks));
@@ -480,6 +550,12 @@ export function TrainerMealPlanEditor({
     () => resolveNutritionReferenceContext(memberBirthDate, memberGender),
     [memberBirthDate, memberGender],
   );
+  const resolvedWeight = useMemo(
+    () => resolveMemberBodyWeight(memberWeight, memberPersonalGoals),
+    [memberWeight, memberPersonalGoals],
+  );
+  const bodyWeightKg = resolvedWeight?.kg ?? null;
+  const displayTargets = mealPlanTargetsHaveValues(plan?.targets) ? (plan?.targets ?? {}) : standaloneTargets;
 
   const planNutritionAverages = useMemo(
     () => (plan ? buildMealPlanNutritionReport(plan, nutritionContext) : null),
@@ -834,21 +910,54 @@ export function TrainerMealPlanEditor({
     }
   }
 
-  const targetBalanceHint = useMemo(() => {
-    if (!plan?.targets) return null;
-    return describeTargetBalance(plan.targets, derivedTargetField);
-  }, [plan?.targets, derivedTargetField]);
+  function persistProfileTargets(targets: MealPlanTargets | undefined) {
+    const save = onSavePersonalGoalsRef.current;
+    if (!save) return;
+    const nextGoals = patchNutritionTargetsInPersonalGoals(personalGoalsRef.current, targets);
+    personalGoalsRef.current = nextGoals;
+    if (profileSaveTimerRef.current) window.clearTimeout(profileSaveTimerRef.current);
+    profileSaveTimerRef.current = window.setTimeout(() => {
+      save(nextGoals);
+    }, 400);
+  }
 
-  const macroSplit = useMemo(() => resolveMacroSplit(plan?.targets), [plan?.targets]);
+  function commitTargets(next: MealPlanTargets) {
+    const split = macroSplitFromTargets(next);
+    let finalTargets: MealPlanTargets = split ? { ...next, macroSplitPct: split } : { ...next };
+    finalTargets = syncProteinGramsFromPerKg(finalTargets, bodyWeightKg) ?? finalTargets;
+    const stamped = stampNutritionTargets(finalTargets);
+    setStandaloneTargets(stamped ?? {});
+    standaloneTargetsRef.current = stamped ?? {};
+    persistProfileTargets(stamped);
+    if (plan) {
+      updatePlan({
+        ...plan,
+        targets: stamped,
+      });
+    }
+  }
+
+  function handleNutritionTargetEdit(field: NutritionTargetEditField, value: string | boolean) {
+    const result = applyNutritionTargetEdit(displayTargets, field, value, bodyWeightKg);
+    setDerivedTargetField(result.derivedField);
+    setTargetBalanceWarning(result.warning);
+    commitTargets(result.targets);
+  }
+
+  const targetBalanceHint = useMemo(() => {
+    if (!mealPlanTargetsHaveValues(displayTargets)) return null;
+    return describeTargetBalance(displayTargets, derivedTargetField);
+  }, [displayTargets, derivedTargetField]);
+
+  const macroSplit = useMemo(() => resolveMacroSplit(displayTargets), [displayTargets]);
   const macroSplitLocked = useMemo(
-    () => normalizeMacroSplitLocks(plan?.targets?.macroSplitLocked),
-    [plan?.targets?.macroSplitLocked],
+    () => normalizeMacroSplitLocks(displayTargets.macroSplitLocked),
+    [displayTargets.macroSplitLocked],
   );
 
   function applyMacroSplitState(nextSplit: ReturnType<typeof resolveMacroSplit>, locks: MacroSplitField[]) {
-    if (!plan) return;
     const base: MealPlanTargets = {
-      ...(plan.targets ?? {}),
+      ...displayTargets,
       macroSplitPct: nextSplit,
       macroSplitLocked: locks.length ? locks : undefined,
     };
@@ -860,10 +969,7 @@ export function TrainerMealPlanEditor({
       setTargetBalanceWarning(null);
     }
 
-    updatePlan({
-      ...plan,
-      targets: Object.keys(nextTargets).length ? nextTargets : undefined,
-    });
+    commitTargets(nextTargets);
   }
 
   function updateMacroSplit(field: MacroSplitField, value: string) {
@@ -888,53 +994,6 @@ export function TrainerMealPlanEditor({
     const current = resolveMacroSplit(plan.targets);
     const normalized = normalizeMacroSplit(current, nextLocks);
     applyMacroSplitState(normalized, nextLocks);
-  }
-
-  function updateTargets(field: keyof MealPlanTargets, value: string) {
-    if (!plan) return;
-    const parsed = Number(value.replace(",", "."));
-    const nextTargets: MealPlanTargets = { ...(plan.targets ?? {}) };
-    if (!value.trim() || !Number.isFinite(parsed)) {
-      delete nextTargets[field];
-      if (field === derivedTargetField) setDerivedTargetField(null);
-    } else {
-      nextTargets[field] = field === "kcal" ? Math.round(parsed) : parsed;
-    }
-
-    const hasAny =
-      Object.keys(nextTargets).length > 0 &&
-      Object.values(nextTargets).some((v) => typeof v === "number" && Number.isFinite(v));
-
-    if (!hasAny) {
-      setDerivedTargetField(null);
-      setTargetBalanceWarning(null);
-      updatePlan({ ...plan, targets: undefined });
-      return;
-    }
-
-    const balanced = balanceMealPlanTargets(nextTargets, field);
-    let finalTargets = balanced.targets;
-    const hasKcal = typeof finalTargets.kcal === "number" && finalTargets.kcal > 0;
-
-    if (hasKcal && field === "kcal") {
-      const split = resolveMacroSplit(finalTargets);
-      finalTargets = applyMacroSplitToTargets({ ...finalTargets, macroSplitPct: split }, split);
-      setDerivedTargetField(null);
-      setTargetBalanceWarning(null);
-    } else if (hasKcal && (field === "protein" || field === "carbs" || field === "fat")) {
-      const split = macroSplitFromTargets(finalTargets);
-      if (split) finalTargets = { ...finalTargets, macroSplitPct: split };
-      setDerivedTargetField(balanced.derivedField);
-      setTargetBalanceWarning(balanced.warning);
-    } else {
-      setDerivedTargetField(balanced.derivedField);
-      setTargetBalanceWarning(balanced.warning);
-    }
-
-    updatePlan({
-      ...plan,
-      targets: Object.keys(finalTargets).length ? finalTargets : undefined,
-    });
   }
 
   function selectFoodForPicker(food: FoodItem) {
@@ -1153,14 +1212,25 @@ export function TrainerMealPlanEditor({
 
   if (planLoadStatus === "none") {
     return (
-      <TrainerMealPlanSlotSetup
-        memberName={memberName}
-        selectedSlotIds={draftMealSlotIds}
-        onToggleSlot={(slotId) => setDraftMealSlotIds((prev) => toggleMealPlanSlotId(prev, slotId))}
-        onCreate={() => void handleCreateMealPlan()}
-        creating={creatingPlan}
-        error={loadError}
-      />
+      <div className="space-y-4">
+        <TrainerNutritionTargetsPanel
+          targets={displayTargets}
+          bodyWeightKg={bodyWeightKg}
+          weightSource={resolvedWeight?.source}
+          derivedField={derivedTargetField}
+          warning={targetBalanceWarning}
+          hint={targetBalanceHint}
+          onEdit={handleNutritionTargetEdit}
+        />
+        <TrainerMealPlanSlotSetup
+          memberName={memberName}
+          selectedSlotIds={draftMealSlotIds}
+          onToggleSlot={(slotId) => setDraftMealSlotIds((prev) => toggleMealPlanSlotId(prev, slotId))}
+          onCreate={() => void handleCreateMealPlan()}
+          creating={creatingPlan}
+          error={loadError}
+        />
+      </div>
     );
   }
 
@@ -1453,53 +1523,31 @@ export function TrainerMealPlanEditor({
                 <div className="text-sm text-slate-600">{memberGoal.trim() || "Ingen mål satt"}</div>
               </div>
               <div className="motus-pt-planner-client-macros">
-                {plan.targets?.kcal ? <span>{formatMacro(plan.targets.kcal, 0)} kcal</span> : null}
-                {plan.targets?.protein ? <span>{formatMacro(plan.targets.protein, 0)} g protein</span> : null}
-                {plan.targets?.carbs ? <span>{formatMacro(plan.targets.carbs, 0)} g karbo</span> : null}
-                {plan.targets?.fat ? <span>{formatMacro(plan.targets.fat, 0)} g fett</span> : null}
+                {displayTargets.kcal ? <span>{formatMacro(displayTargets.kcal, 0)} kcal</span> : null}
+                {displayTargets.protein ? <span>{formatMacro(displayTargets.protein, 0)} g protein</span> : null}
+                {displayTargets.carbs ? <span>{formatMacro(displayTargets.carbs, 0)} g karbo</span> : null}
+                {displayTargets.fat ? <span>{formatMacro(displayTargets.fat, 0)} g fett</span> : null}
               </div>
             </div>
-            <div className="mt-3 rounded-xl border border-slate-200 bg-slate-50 p-3">
-              <div className="text-xs font-medium text-slate-700">Daglige makromål</div>
-              <div className="mt-2">
+            <div className="mt-3">
+              <TrainerNutritionTargetsPanel
+                targets={displayTargets}
+                bodyWeightKg={bodyWeightKg}
+                weightSource={resolvedWeight?.source}
+                derivedField={derivedTargetField}
+                warning={targetBalanceWarning}
+                hint={targetBalanceHint}
+                onEdit={handleNutritionTargetEdit}
+              />
+              <div className="mt-3">
                 <MacroSplitPercentControls
                   split={macroSplit}
                   locked={macroSplitLocked}
+                  disabled={displayTargets.kcalLocked === true}
                   onChange={updateMacroSplit}
                   onToggleLock={handleToggleMacroSplitLock}
                 />
               </div>
-              <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
-                {(
-                  [
-                    ["kcal", "Kalorier"],
-                    ["protein", "Protein (g)"],
-                    ["carbs", "Karbohydrater (g)"],
-                    ["fat", "Fett (g)"],
-                  ] as const
-                ).map(([field, label]) => {
-                  const isDerived = derivedTargetField === field;
-                  return (
-                    <label key={field} className="space-y-1 text-[11px] font-medium text-slate-600">
-                      <span>
-                        {label}
-                        {isDerived ? <span className="ml-1 font-normal text-teal-700">(beregnet)</span> : null}
-                      </span>
-                      <TextInput
-                        value={plan.targets?.[field] !== undefined ? String(plan.targets[field]) : ""}
-                        onChange={(e) => updateTargets(field, e.target.value)}
-                        inputMode="decimal"
-                        className={isDerived ? "border-teal-200 bg-teal-50/50" : undefined}
-                      />
-                    </label>
-                  );
-                })}
-              </div>
-              {targetBalanceWarning ? (
-                <p className="mt-2 text-[11px] font-medium text-rose-700">{targetBalanceWarning}</p>
-              ) : targetBalanceHint ? (
-                <p className="mt-2 text-[11px] text-slate-600">{targetBalanceHint}</p>
-              ) : null}
             </div>
           </section>
 
@@ -1612,12 +1660,12 @@ export function TrainerMealPlanEditor({
             <h3 className="motus-pt-planner-sidebar-title">Klientoversikt</h3>
             <div className="font-bold text-slate-900">{memberName}</div>
             <p className="mt-1 text-sm text-slate-600">{memberGoal.trim() || "Mål ikke angitt"}</p>
-            {plan.targets?.kcal ? (
+            {displayTargets.kcal ? (
               <ul className="mt-3 space-y-1 text-xs text-slate-600">
-                <li>Kalorier: {formatMacro(plan.targets.kcal, 0)}</li>
-                <li>Protein: {formatMacro(plan.targets.protein ?? 0, 0)} g</li>
-                <li>Karbohydrater: {formatMacro(plan.targets.carbs ?? 0, 0)} g</li>
-                <li>Fett: {formatMacro(plan.targets.fat ?? 0, 0)} g</li>
+                <li>Kalorier: {formatMacro(displayTargets.kcal, 0)}</li>
+                <li>Protein: {formatMacro(displayTargets.protein ?? 0, 0)} g</li>
+                <li>Karbohydrater: {formatMacro(displayTargets.carbs ?? 0, 0)} g</li>
+                <li>Fett: {formatMacro(displayTargets.fat ?? 0, 0)} g</li>
               </ul>
             ) : null}
           </div>

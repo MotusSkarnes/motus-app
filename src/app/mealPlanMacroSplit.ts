@@ -259,7 +259,16 @@ export function applyMacroSplitToTargets(
   const normalized = normalizeMacroSplit(split, locks);
   const next: MealPlanTargets = { ...targets, macroSplitPct: normalized };
   if (typeof targets.kcal === "number" && targets.kcal > 0) {
-    Object.assign(next, gramsFromKcalAndSplit(targets.kcal, normalized, locks));
+    if (targets.kcalLocked && typeof targets.protein === "number") {
+      const remainingKcal = Math.max(0, targets.kcal - targets.protein * KCAL_PER_G_PROTEIN);
+      const carbFat = normalized.carbs + normalized.fat;
+      const carbShare = carbFat > 0 ? normalized.carbs / carbFat : 0.6;
+      next.protein = targets.protein;
+      next.carbs = Math.round(((remainingKcal * carbShare) / KCAL_PER_G_CARB) * 10) / 10;
+      next.fat = Math.round(((remainingKcal * (1 - carbShare)) / KCAL_PER_G_FAT) * 10) / 10;
+    } else {
+      Object.assign(next, gramsFromKcalAndSplit(targets.kcal, normalized, locks));
+    }
   }
   return next;
 }

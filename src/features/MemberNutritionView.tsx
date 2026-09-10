@@ -10,6 +10,7 @@ import { MEAL_PLAN_CHANGED_EVENT } from "../app/mealPlanStorage";
 import type { MealPlan } from "../app/mealPlanTypes";
 import { Card } from "../app/ui";
 import { pickCanonicalMemberRowForProfile, resolveMemberPersonalGoals } from "../app/memberOnboarding";
+import { resolveDailyNutritionTargets } from "../app/memberNutritionTargets";
 import type { Member } from "../app/types";
 import { MemberFoodAvoidancesPanel } from "./nutrition/MemberFoodAvoidancesPanel";
 import { LogMealPanel } from "./nutrition/LogMealPanel";
@@ -118,6 +119,16 @@ export function MemberNutritionView({
     return () => window.removeEventListener(MEAL_PLAN_CHANGED_EVENT, handler);
   }, [reload]);
 
+  const profileMember = pickCanonicalMemberRowForProfile(member, members);
+  const resolvedPersonalGoals = useMemo(
+    () => resolveMemberPersonalGoals(profileMember, members),
+    [profileMember, members],
+  );
+  const dailyTargets = useMemo(
+    () => resolveDailyNutritionTargets(resolvedPersonalGoals, plan?.targets),
+    [resolvedPersonalGoals, plan?.targets],
+  );
+
   const mealPlanContent = useMemo(() => {
     if (loading && !hasLoadedOnceRef.current) {
       return <Card className="p-6 text-center text-sm text-slate-600">Laster din matplan …</Card>;
@@ -138,7 +149,7 @@ export function MemberNutritionView({
           )}
           <LogMealPanel
             memberId={memberId}
-            mealPlanTargets={plan?.targets}
+            mealPlanTargets={dailyTargets}
             onRefreshFoodBank={refreshMemberFoodBank}
             hasMealPlan={false}
           />
@@ -154,7 +165,7 @@ export function MemberNutritionView({
           </Card>
         ) : null}
         <MemberMealPlanDashboard
-          plan={plan!}
+          plan={{ ...plan!, targets: dailyTargets ?? plan!.targets }}
           memberId={memberId}
           memberName={memberName}
           onOpenAvoidances={() => setNutritionTab("avoidances")}
@@ -165,6 +176,7 @@ export function MemberNutritionView({
   }, [
     loading,
     plan,
+    dailyTargets,
     cloudSynced,
     noMealPlanInCloud,
     memberId,
@@ -173,12 +185,6 @@ export function MemberNutritionView({
     setNutritionTab,
     refreshMemberFoodBank,
   ]);
-
-  const profileMember = pickCanonicalMemberRowForProfile(member, members);
-  const resolvedPersonalGoals = useMemo(
-    () => resolveMemberPersonalGoals(profileMember, members),
-    [profileMember, members],
-  );
 
   return (
     <NutritionHub
@@ -190,7 +196,7 @@ export function MemberNutritionView({
           <MemberSubmitFoodPanel member={member} onRefreshFoodBank={refreshMemberFoodBank} />
         </>
       }
-      mealPlanTargets={plan?.targets}
+      mealPlanTargets={dailyTargets}
       avoidances={
         <MemberFoodAvoidancesPanel
           memberId={profileMember.id}

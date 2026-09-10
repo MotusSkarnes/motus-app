@@ -18,4 +18,16 @@ describe("mealPlanFromRow days parsing", () => {
     expect(plan.days).toHaveLength(1);
     expect(plan.days[0]?.meals[0]?.items[0]?.foodName).toBe("Egg");
   });
+
+  it("parses proteinPerKg and kcalLocked on targets", () => {
+    const plan = mealPlanFromRow("member-1", {
+      member_id: "member-1",
+      title: "Matplan",
+      days: JSON.stringify([]),
+      targets: { kcal: 1900, proteinPerKg: 1.6, protein: 120, kcalLocked: true },
+    });
+    expect(plan.targets?.kcalLocked).toBe(true);
+    expect(plan.targets?.proteinPerKg).toBe(1.6);
+    expect(plan.targets?.protein).toBe(120);
+  });
 });

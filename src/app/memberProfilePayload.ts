@@ -82,5 +82,8 @@ export function readProfileExtensions(personalGoals: string | undefined): Record
   if (typeof payload.profileDisplayName === "string" && payload.profileDisplayName.trim()) {
     extensions.profileDisplayName = payload.profileDisplayName.trim();
   }
+  if (payload.nutritionTargets && typeof payload.nutritionTargets === "object") {
+    extensions.nutritionTargets = payload.nutritionTargets;
+  }
   return extensions;
 }

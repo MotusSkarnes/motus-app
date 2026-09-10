@@ -16,6 +16,7 @@ type TrainerMealPlanHubViewProps = {
   trainerOwnerUserId?: string;
   memberSearch: string;
   onMemberSearchChange: (value: string) => void;
+  onSavePersonalGoals?: (memberId: string, personalGoals: string) => void;
 };
 
 type PlannerHubTab = "new" | "templates" | "history";
@@ -163,6 +164,7 @@ export function TrainerMealPlanHubView({
   trainerOwnerUserId,
   memberSearch,
   onMemberSearchChange,
+  onSavePersonalGoals,
 }: TrainerMealPlanHubViewProps) {
   const [hubTab, setHubTab] = useState<PlannerHubTab>("new");
   const [templates, setTemplates] = useState<MealPlanTemplateItem[]>([]);
@@ -625,7 +627,13 @@ export function TrainerMealPlanHubView({
                 memberName={selectedMember.name.trim() || selectedMember.email.trim() || "Kunde"}
                 memberGoal={selectedMember.goal}
                 memberPersonalGoals={selectedMember.personalGoals ?? ""}
+                memberWeight={selectedMember.weight}
                 trainerOwnerUserId={trainerOwnerUserId}
+                onSavePersonalGoals={
+                  onSavePersonalGoals
+                    ? (personalGoals) => onSavePersonalGoals(selectedMember.id, personalGoals)
+                    : undefined
+                }
               />
             ) : (
               <EmptyState
