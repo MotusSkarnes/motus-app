@@ -200,11 +200,38 @@ export function micronutrientRowsForReport(
   return micronutrientRowsFromLogTotals(totals, referenceContext);
 }
 
-/** Skjuler rader med status «innenfor anbefalt» (grønn). */
+export type MicronutrientReportFilterMode = "all" | "within" | "outside";
+
+export function micronutrientReportFilterCounts(rows: MicronutrientDailyRow[]): {
+  all: number;
+  within: number;
+  outside: number;
+} {
+  return {
+    all: rows.length,
+    within: rows.filter((row) => row.statusTone === "ok").length,
+    outside: rows.filter((row) => row.statusTone === "warn" || row.statusTone === "danger").length,
+  };
+}
+
 export function filterMicronutrientReportRows(
   rows: MicronutrientDailyRow[],
-  issuesOnly: boolean,
+  filter: MicronutrientReportFilterMode,
 ): MicronutrientDailyRow[] {
-  if (!issuesOnly) return rows;
-  return rows.filter((row) => row.statusTone !== "ok");
+  if (filter === "within") return rows.filter((row) => row.statusTone === "ok");
+  if (filter === "outside") return rows.filter((row) => row.statusTone === "warn" || row.statusTone === "danger");
+  return rows;
+}
+
+export function micronutrientReportEmptyMessage(
+  allRows: MicronutrientDailyRow[],
+  visibleRows: MicronutrientDailyRow[],
+  filter: MicronutrientReportFilterMode,
+  noDataFallback: string,
+): string | null {
+  if (visibleRows.length > 0) return null;
+  if (allRows.length === 0) return noDataFallback;
+  if (filter === "within") return "Ingen stoffer er innenfor AR og RI.";
+  if (filter === "outside") return "Ingen avvik — alle stoffer er innenfor AR og RI.";
+  return noDataFallback;
 }

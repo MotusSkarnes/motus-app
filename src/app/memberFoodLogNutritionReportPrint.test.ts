@@ -23,4 +23,31 @@ describe("buildNutritionReportPrintHtml", () => {
     expect(html).toContain("Vann (drikke)");
     expect(html).toContain("Vann (totalt)");
   });
+
+  it("puts unit after each AR, RI and UL value", () => {
+    const html = buildNutritionReportPrintHtml({
+      memberName: "Ola Nordmann",
+      periodSummary: "Valgt dag",
+      totals: EMPTY_FOOD_LOG_NUTRITION,
+      microRows: [
+        {
+          key: "vitaminA",
+          label: "Vitamin A",
+          unit: "µg",
+          decimals: 0,
+          value: 600,
+          target: 700,
+          coveragePct: 86,
+          lower: 540,
+          upper: 3000,
+          status: "adequate",
+          statusLabel: "OK",
+          statusTone: "ok",
+        },
+      ],
+    });
+    expect(html).toContain("AR 540 µg");
+    expect(html).toContain("RI 700 µg");
+    expect(html).toContain("UL 3000 µg");
+  });
 });

@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
   convertNutrientAmount,
+  formatMicronutrientReferenceLine,
+  formatMicronutrientWithUnit,
   micronutrientsFromMatvaretabellen,
   normalizeMicronutrients,
   parseMatvaretabellenConstituent,
@@ -34,6 +36,19 @@ describe("foodBankMicronutrients", () => {
   it("fills missing micronutrients with zero", () => {
     expect(normalizeMicronutrients({ vitaminC: 5 }).vitaminC).toBe(5);
     expect(normalizeMicronutrients({ vitaminC: 5 }).iron).toBe(0);
+  });
+
+  it("puts unit after each AR, RI and UL value", () => {
+    expect(formatMicronutrientWithUnit(540, 0, "µg")).toBe("540 µg");
+    expect(
+      formatMicronutrientReferenceLine({
+        lower: 540,
+        target: 700,
+        upper: 3000,
+        decimals: 0,
+        unit: "µg",
+      }),
+    ).toBe("AR 540 µg · RI 700 µg · UL 3000 µg");
   });
 });
 

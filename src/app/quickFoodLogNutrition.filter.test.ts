@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 import type { MicronutrientDailyRow } from "./quickFoodLogNutrition";
-import { filterMicronutrientReportRows } from "./quickFoodLogNutrition";
+import {
+  filterMicronutrientReportRows,
+  micronutrientReportEmptyMessage,
+  micronutrientReportFilterCounts,
+} from "./quickFoodLogNutrition";
 
 const row = (tone: MicronutrientDailyRow["statusTone"], key: string): MicronutrientDailyRow => ({
   key: key as MicronutrientDailyRow["key"],
@@ -18,10 +22,32 @@ const row = (tone: MicronutrientDailyRow["statusTone"], key: string): Micronutri
 });
 
 describe("filterMicronutrientReportRows", () => {
-  it("hides ok rows when issuesOnly is true", () => {
-    const rows = [row("ok", "vitaminC"), row("warn", "iron"), row("danger", "zinc")];
-    const filtered = filterMicronutrientReportRows(rows, true);
-    expect(filtered).toHaveLength(2);
-    expect(filtered.every((r) => r.statusTone !== "ok")).toBe(true);
+  const rows = [row("ok", "vitaminC"), row("warn", "iron"), row("danger", "zinc"), row("muted", "iodine")];
+
+  it("returns all rows by default", () => {
+    expect(filterMicronutrientReportRows(rows, "all")).toHaveLength(4);
+  });
+
+  it("keeps only values within AR/RI", () => {
+    const filtered = filterMicronutrientReportRows(rows, "within");
+    expect(filtered).toEqual([rows[0]]);
+  });
+
+  it("keeps only values outside AR/RI", () => {
+    const filtered = filterMicronutrientReportRows(rows, "outside");
+    expect(filtered.map((item) => item.key)).toEqual(["iron", "zinc"]);
+  });
+
+  it("counts within and outside separately", () => {
+    expect(micronutrientReportFilterCounts(rows)).toEqual({ all: 4, within: 1, outside: 2 });
+  });
+
+  it("explains empty filter results", () => {
+    expect(micronutrientReportEmptyMessage(rows, [], "within", "Ingen data")).toBe(
+      "Ingen stoffer er innenfor AR og RI.",
+    );
+    expect(micronutrientReportEmptyMessage(rows, [], "outside", "Ingen data")).toBe(
+      "Ingen avvik — alle stoffer er innenfor AR og RI.",
+    );
   });
 });

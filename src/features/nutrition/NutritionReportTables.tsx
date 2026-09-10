@@ -1,11 +1,13 @@
+import type { ReactNode } from "react";
 import { formatMacro } from "../../app/foodBankTypes";
-import { formatMicronutrientValue } from "../../app/foodBankMicronutrients";
+import { formatMicronutrientReferenceLine, formatMicronutrientWithUnit } from "../../app/foodBankMicronutrients";
 import {
   formatOmegaOverviewValue,
   type OmegaOverviewRow,
 } from "../../app/nutritionReportFattyAcids";
 import { macroCoveragePct, type MacroDisplayRow } from "../../app/nutritionReportDisplay";
-import type { MicronutrientDailyRow } from "../../app/quickFoodLogNutrition";
+import type { MicronutrientDailyRow, MicronutrientReportFilterMode } from "../../app/quickFoodLogNutrition";
+import { micronutrientReportEmptyMessage, micronutrientReportFilterCounts } from "../../app/quickFoodLogNutrition";
 
 function MacroReportCards({ rows }: { rows: MacroDisplayRow[] }) {
   return (
@@ -52,7 +54,7 @@ export function MacroReportTable({ rows }: { rows: MacroDisplayRow[] }) {
 
 export function WaterReportSection({ rows }: { rows: MacroDisplayRow[] }) {
   return (
-    <section className="motus-nutrition-report__water-section" aria-label="Vanninntak">
+    <section className="motus-nutrition-report-section" aria-label="Vanninntak">
       <h3 className="motus-nutrition-report-modal__subheading">Vanninntak</h3>
       <div className="motus-nutrition-report__water-grid">
         <MacroReportCards rows={rows} />
@@ -102,16 +104,8 @@ export function MicroReportTable({ rows }: { rows: MicronutrientDailyRow[] }) {
               </span>
             </div>
             <span className="motus-nutrition-report__micro-values">
-              {formatMicronutrientValue(row.value, row.decimals)} {row.unit}
-              <span className="motus-nutrition-report__micro-ref">
-                {" "}
-                · AR {formatMicronutrientValue(row.lower, row.decimals)} · RI{" "}
-                {formatMicronutrientValue(row.target, row.decimals)}
-                {row.upper !== null
-                  ? ` · UL ${formatMicronutrientValue(row.upper, row.decimals)}`
-                  : ""}{" "}
-                {row.unit}
-              </span>
+              {formatMicronutrientWithUnit(row.value, row.decimals, row.unit)}
+              <span className="motus-nutrition-report__micro-ref">{formatMicronutrientReferenceLine(row)}</span>
             </span>
             <div className="motus-nutrition-report__bar-track" aria-hidden>
               <div
@@ -131,37 +125,39 @@ export function MicroReportTable({ rows }: { rows: MicronutrientDailyRow[] }) {
 }
 
 type MicroReportFilterProps = {
-  issuesOnly: boolean;
-  onIssuesOnlyChange: (value: boolean) => void;
-  totalCount: number;
-  hiddenOkCount: number;
+  filter: MicronutrientReportFilterMode;
+  onFilterChange: (value: MicronutrientReportFilterMode) => void;
+  rows: MicronutrientDailyRow[];
 };
 
-export function MicroReportFilter({ issuesOnly, onIssuesOnlyChange, totalCount, hiddenOkCount }: MicroReportFilterProps) {
+export function MicroReportFilter({ filter, onFilterChange, rows }: MicroReportFilterProps) {
+  const counts = micronutrientReportFilterCounts(rows);
+  const options: { id: MicronutrientReportFilterMode; label: string; count: number }[] = [
+    { id: "all", label: "Alle", count: counts.all },
+    { id: "within", label: "Innenfor AR/RI", count: counts.within },
+    { id: "outside", label: "Utenfor AR/RI", count: counts.outside },
+  ];
+
   return (
     <div className="motus-nutrition-report__micro-filter motus-nutrition-report-no-print">
-      <div className="motus-nutrition-report-modal__chips">
-        <button
-          type="button"
-          className={`motus-nutrition-report-modal__chip ${issuesOnly ? "is-active" : ""}`}
-          onClick={() => onIssuesOnlyChange(!issuesOnly)}
-          aria-pressed={issuesOnly}
-        >
-          Vis bare avvik
-        </button>
-        {issuesOnly ? (
+      <div className="motus-nutrition-report-modal__chips" role="group" aria-label="Filtrer mikronæringsstoffer">
+        {options.map((option) => (
           <button
+            key={option.id}
             type="button"
-            className="motus-nutrition-report-modal__chip"
-            onClick={() => onIssuesOnlyChange(false)}
+            className={`motus-nutrition-report-modal__chip ${filter === option.id ? "is-active" : ""}`}
+            onClick={() => onFilterChange(option.id)}
+            aria-pressed={filter === option.id}
           >
-            Vis alle ({totalCount})
+            {option.label} ({option.count})
           </button>
-        ) : null}
+        ))}
       </div>
-      {issuesOnly && hiddenOkCount > 0 ? (
+      {filter !== "all" ? (
         <p className="motus-nutrition-report__micro-filter-hint">
-          Skjuler {hiddenOkCount} {hiddenOkCount === 1 ? "stoff" : "stoffer"} innenfor anbefalt område.
+          {filter === "within"
+            ? "Viser stoffer mellom RI og UL."
+            : "Viser stoffer under AR/RI eller nær/over UL."}
         </p>
       ) : null}
     </div>
@@ -184,5 +180,82 @@ export function MicroReportLegend() {
         AR = gjennomsnittsbehov, RI = anbefalt inntak, UL = øvre toleransegrense (NNR 2023).
       </p>
     </div>
+  );
+}
+
+type NutritionReportStackedBodyProps = {
+  waterRows: MacroDisplayRow[];
+  macroRows: MacroDisplayRow[];
+  macroFootnote: string;
+  microRows: MicronutrientDailyRow[];
+  visibleMicroRows: MicronutrientDailyRow[];
+  microFilter: MicronutrientReportFilterMode;
+  onMicroFilterChange: (value: MicronutrientReportFilterMode) => void;
+  microNoDataMessage: string;
+  referenceFootnote: string;
+  omegaRows: OmegaOverviewRow[];
+  omegaFootnote: string;
+  referenceWarning?: string | null;
+  dailyBreakdown?: ReactNode;
+};
+
+export function NutritionReportStackedBody({
+  waterRows,
+  macroRows,
+  macroFootnote,
+  microRows,
+  visibleMicroRows,
+  microFilter,
+  onMicroFilterChange,
+  microNoDataMessage,
+  referenceFootnote,
+  omegaRows,
+  omegaFootnote,
+  referenceWarning,
+  dailyBreakdown,
+}: NutritionReportStackedBodyProps) {
+  const microEmptyMessage = micronutrientReportEmptyMessage(
+    microRows,
+    visibleMicroRows,
+    microFilter,
+    microNoDataMessage,
+  );
+
+  return (
+    <>
+      <WaterReportSection rows={waterRows} />
+
+      <section className="motus-nutrition-report-section" aria-label="Makronæringsstoffer">
+        <h3 className="motus-nutrition-report-modal__subheading">Makronæringsstoffer</h3>
+        <MacroReportTable rows={macroRows} />
+        <p className="motus-nutrition-report-modal__footnote">{macroFootnote}</p>
+      </section>
+
+      <section className="motus-nutrition-report-section" aria-label="Mikronæringsstoffer">
+        <h3 className="motus-nutrition-report-modal__subheading">Mikronæringsstoffer</h3>
+        <MicroReportLegend />
+        <MicroReportFilter filter={microFilter} onFilterChange={onMicroFilterChange} rows={microRows} />
+        {microEmptyMessage ? (
+          <p className="text-sm text-slate-600">{microEmptyMessage}</p>
+        ) : (
+          <MicroReportTable rows={visibleMicroRows} />
+        )}
+        <p className="motus-nutrition-report-modal__footnote">{referenceFootnote}</p>
+      </section>
+
+      <section className="motus-nutrition-report-section" aria-label="Omega-fettsyrer">
+        <h3 className="motus-nutrition-report-modal__subheading">Omega-fettsyrer</h3>
+        <OmegaOverviewTable rows={omegaRows} />
+        <p className="motus-nutrition-report-modal__footnote">{omegaFootnote}</p>
+      </section>
+
+      {referenceWarning ? (
+        <p className="motus-nutrition-report-modal__profile-warning" role="status">
+          {referenceWarning}
+        </p>
+      ) : null}
+
+      {dailyBreakdown}
+    </>
   );
 }

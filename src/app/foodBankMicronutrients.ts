@@ -153,6 +153,29 @@ export function formatMicronutrientValue(value: number, decimals: number): strin
   return value.toFixed(decimals).replace(/\.?0+$/, "");
 }
 
+export function formatMicronutrientWithUnit(value: number, decimals: number, unit: string): string {
+  const formatted = formatMicronutrientValue(value, decimals);
+  if (formatted === "–") return "–";
+  return `${formatted} ${unit}`;
+}
+
+export function formatMicronutrientReferenceLine(input: {
+  lower: number;
+  target: number;
+  upper: number | null;
+  decimals: number;
+  unit: string;
+}): string {
+  const parts = [
+    `AR ${formatMicronutrientWithUnit(input.lower, input.decimals, input.unit)}`,
+    `RI ${formatMicronutrientWithUnit(input.target, input.decimals, input.unit)}`,
+  ];
+  if (input.upper !== null) {
+    parts.push(`UL ${formatMicronutrientWithUnit(input.upper, input.decimals, input.unit)}`);
+  }
+  return parts.join(" · ");
+}
+
 export function micronutrientCsvHeaderColumns(): string {
   return FOOD_MICRONUTRIENT_FIELDS.map((field) => CSV_COLUMN_BY_KEY[field.key]).join(";");
 }

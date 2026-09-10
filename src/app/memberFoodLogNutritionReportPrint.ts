@@ -1,4 +1,4 @@
-import { formatMicronutrientValue } from "./foodBankMicronutrients";
+import { formatMicronutrientReferenceLine, formatMicronutrientWithUnit } from "./foodBankMicronutrients";
 import {
   buildExtraFatDisplayRows,
   buildOmegaOverviewRows,
@@ -82,8 +82,8 @@ function microTableHtml(rows: MicronutrientDailyRow[]): string {
     .map(
       (row) => `<tr class="micro-status-${row.statusTone}">
         <td>${escapeHtml(row.label)}</td>
-        <td>${escapeHtml(formatMicronutrientValue(row.value, row.decimals))} ${escapeHtml(row.unit)}</td>
-        <td>${escapeHtml(formatMicronutrientValue(row.lower, row.decimals))} / ${escapeHtml(formatMicronutrientValue(row.target, row.decimals))}${row.upper !== null ? ` / ${escapeHtml(formatMicronutrientValue(row.upper, row.decimals))}` : ""} ${escapeHtml(row.unit)}</td>
+        <td>${escapeHtml(formatMicronutrientWithUnit(row.value, row.decimals, row.unit))}</td>
+        <td>${escapeHtml(formatMicronutrientReferenceLine(row))}</td>
         <td>${escapeHtml(row.statusLabel)}</td>
       </tr>`,
     )

@@ -25,13 +25,16 @@ import {
   nutritionReferenceWarningMessage,
   resolveNutritionReferenceContext,
 } from "../../app/personalizedNutritionReferences";
-import { filterMicronutrientReportRows, micronutrientRowsForReport } from "../../app/quickFoodLogNutrition";
+import {
+  filterMicronutrientReportRows,
+  micronutrientRowsForReport,
+  type MicronutrientReportFilterMode,
+} from "../../app/quickFoodLogNutrition";
 import type { MealPlanTargets } from "../../app/mealPlanTypes";
 import { GradientButton, OutlineButton } from "../../app/ui";
-import { MacroReportTable, MicroReportFilter, MicroReportLegend, MicroReportTable, OmegaOverviewTable, WaterReportSection } from "./NutritionReportTables";
+import { NutritionReportStackedBody } from "./NutritionReportTables";
 
 type PeriodPreset = "selected" | "7" | "14" | "30" | "custom";
-type ReportTab = "macro" | "micro";
 type AggregateMode = "average" | "sum";
 
 type MemberFoodLogNutritionReportModalProps = {
@@ -64,8 +67,7 @@ export function MemberFoodLogNutritionReportModal({
   const [customFrom, setCustomFrom] = useState(selectedDateKey);
   const [customTo, setCustomTo] = useState(selectedDateKey);
   const [aggregateMode, setAggregateMode] = useState<AggregateMode>("average");
-  const [tab, setTab] = useState<ReportTab>("macro");
-  const [microIssuesOnly, setMicroIssuesOnly] = useState(false);
+  const [microFilter, setMicroFilter] = useState<MicronutrientReportFilterMode>("all");
   const [printError, setPrintError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -74,8 +76,7 @@ export function MemberFoodLogNutritionReportModal({
     setCustomTo(selectedDateKey);
     setPeriodPreset("7");
     setAggregateMode("average");
-    setTab("macro");
-    setMicroIssuesOnly(false);
+    setMicroFilter("all");
     setPrintError(null);
   }, [open, selectedDateKey]);
 
@@ -123,10 +124,9 @@ export function MemberFoodLogNutritionReportModal({
     () => micronutrientRowsForReport(displayTotals, referenceContext),
     [displayTotals, referenceContext],
   );
-  const microOkCount = useMemo(() => microRows.filter((row) => row.statusTone === "ok").length, [microRows]);
   const visibleMicroRows = useMemo(
-    () => filterMicronutrientReportRows(microRows, microIssuesOnly),
-    [microRows, microIssuesOnly],
+    () => filterMicronutrientReportRows(microRows, microFilter),
+    [microRows, microFilter],
   );
   const omegaRows = useMemo(() => buildOmegaOverviewRows(displayTotals.fattyAcids), [displayTotals.fattyAcids]);
 
@@ -246,87 +246,40 @@ export function MemberFoodLogNutritionReportModal({
           <p className="motus-nutrition-report-modal__summary-text">{periodSummary}</p>
         </div>
 
-        <div className="motus-nutrition-report-modal__tabs motus-nutrition-report-no-print" role="tablist">
-          <button
-            type="button"
-            role="tab"
-            aria-selected={tab === "macro"}
-            className={`motus-nutrition-report-modal__tab ${tab === "macro" ? "is-active" : ""}`}
-            onClick={() => setTab("macro")}
-          >
-            Makronæringsstoffer
-          </button>
-          <button
-            type="button"
-            role="tab"
-            aria-selected={tab === "micro"}
-            className={`motus-nutrition-report-modal__tab ${tab === "micro" ? "is-active" : ""}`}
-            onClick={() => setTab("micro")}
-          >
-            Mikronæringsstoffer
-          </button>
-        </div>
-
         <div className="motus-nutrition-report-modal__body">
           {report.daysWithLogs === 0 ? (
             <p className="text-sm text-slate-600">Ingen matlogg i valgt periode.</p>
-          ) : tab === "macro" ? (
-            <section aria-label="Makronæringsstoffer">
-              <WaterReportSection rows={waterRows} />
-              <MacroReportTable rows={macroRows} />
-              <p className="motus-nutrition-report-modal__footnote">
-                Kalorier og makro: daglige mål fra matplan der satt, ellers {DEFAULT_DAILY_KCAL_TARGET} kcal. Fiber, mettet fett
-                og natrium: {referenceFootnote}
-              </p>
-            </section>
           ) : (
-            <section aria-label="Mikronæringsstoffer">
-              <MicroReportLegend />
-              <MicroReportFilter
-                issuesOnly={microIssuesOnly}
-                onIssuesOnlyChange={setMicroIssuesOnly}
-                totalCount={microRows.length}
-                hiddenOkCount={microOkCount}
-              />
-              {visibleMicroRows.length === 0 ? (
-                <p className="text-sm text-slate-600">
-                  {microIssuesOnly
-                    ? "Ingen avvik funnet — alle stoffer er innenfor anbefalt område."
-                    : "Ingen mikronæringsdata i valgt periode."}
-                </p>
-              ) : (
-                <MicroReportTable rows={visibleMicroRows} />
-              )}
-              <p className="motus-nutrition-report-modal__footnote">{referenceFootnote}</p>
-
-              <h3 className="motus-nutrition-report-modal__subheading">Omega-fettsyrer</h3>
-              <OmegaOverviewTable rows={omegaRows} />
-              <p className="motus-nutrition-report-modal__footnote">
-                Veiledende daglige referanser: omega-3 ca. {OMEGA3_DAILY_TARGET_G} g, EPA+DHA ca.{" "}
-                {EPA_DHA_DAILY_TARGET_G} g. Forhold omega-6:omega-3 under 5:1 regnes ofte gunstig.
-              </p>
-            </section>
+            <NutritionReportStackedBody
+              waterRows={waterRows}
+              macroRows={macroRows}
+              macroFootnote={`Kalorier og makro: daglige mål fra matplan der satt, ellers ${DEFAULT_DAILY_KCAL_TARGET} kcal. Fiber, mettet fett og natrium: ${referenceFootnote}`}
+              microRows={microRows}
+              visibleMicroRows={visibleMicroRows}
+              microFilter={microFilter}
+              onMicroFilterChange={setMicroFilter}
+              microNoDataMessage="Ingen mikronæringsdata i valgt periode."
+              referenceFootnote={referenceFootnote}
+              omegaRows={omegaRows}
+              omegaFootnote={`Veiledende daglige referanser: omega-3 ca. ${OMEGA3_DAILY_TARGET_G} g, EPA+DHA ca. ${EPA_DHA_DAILY_TARGET_G} g. Forhold omega-6:omega-3 under 5:1 regnes ofte gunstig.`}
+              referenceWarning={referenceWarning}
+              dailyBreakdown={
+                report.daysWithLogs > 1 ? (
+                  <details className="motus-nutrition-report-modal__daily-breakdown motus-nutrition-report-no-print">
+                    <summary>Dag-for-dag (kcal)</summary>
+                    <ul className="motus-nutrition-report-modal__daily-list">
+                      {report.dailyTotals.map(({ dateKey, totals }) => (
+                        <li key={dateKey}>
+                          <span>{formatShortDateKey(dateKey)}</span>
+                          <strong>{formatMacro(totals.kcal, 0)} kcal</strong>
+                        </li>
+                      ))}
+                    </ul>
+                  </details>
+                ) : null
+              }
+            />
           )}
-
-          {referenceWarning ? (
-            <p className="motus-nutrition-report-modal__profile-warning" role="status">
-              {referenceWarning}
-            </p>
-          ) : null}
-
-          {report.daysWithLogs > 1 && tab === "macro" ? (
-            <details className="motus-nutrition-report-modal__daily-breakdown motus-nutrition-report-no-print">
-              <summary>Dag-for-dag (kcal)</summary>
-              <ul className="motus-nutrition-report-modal__daily-list">
-                {report.dailyTotals.map(({ dateKey, totals }) => (
-                  <li key={dateKey}>
-                    <span>{formatShortDateKey(dateKey)}</span>
-                    <strong>{formatMacro(totals.kcal, 0)} kcal</strong>
-                  </li>
-                ))}
-              </ul>
-            </details>
-          ) : null}
         </div>
 
         <footer className="motus-nutrition-report-modal__footer motus-nutrition-report-no-print">
