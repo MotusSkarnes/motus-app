@@ -4,7 +4,9 @@ import { motusHaptic } from "../app/haptics";
 import { remainingSecondsUntilDeadline } from "../app/intervalTimerDeadline";
 import { useScreenWakeLock } from "../app/useScreenWakeLock";
 import { playWorkoutRestTone, primeWorkoutRestAudio } from "../app/workoutRestAudio";
+import { resolveWorkoutLoadUnit } from "../app/workoutResultUnits";
 import { WorkoutCompactSetTable } from "./LiveWorkoutCompactSets";
+import { WorkoutHoldStopwatch } from "./WorkoutHoldStopwatch";
 import { MOTUS } from "../app/data";
 import { EXERCISE_IMAGE_INSET_CLASS, EXERCISE_IMAGE_SMALL_CLASS } from "../app/exerciseIllustrations/constants";
 import { resolveExerciseImageSrc } from "../app/exerciseIllustrations";
@@ -226,6 +228,13 @@ export function LiveWorkoutSessionModal({
   const currentGroupCompletedSets = currentWorkoutGroup?.rows.filter((row) => row.completed).length ?? 0;
   const currentGroupTotalSets = currentWorkoutGroup?.rows.length ?? 0;
   const currentGroupIsComplete = currentGroupTotalSets > 0 && currentGroupCompletedSets >= currentGroupTotalSets;
+  const currentGroupUsesHoldStopwatch = Boolean(
+    currentWorkoutGroup &&
+      !showWorkoutReflection &&
+      currentWorkoutGroup.rows.some(
+        (row) => row.exerciseCategory !== "Kondisjon" && resolveWorkoutLoadUnit(row) === "sec",
+      ),
+  );
   const activeRestSeconds = useMemo(() => {
     if (!currentWorkoutGroup || !resolvedProgram) return 60;
     const programExerciseIds = new Set(currentWorkoutGroup.segments.map((segment) => segment.programExerciseId));
@@ -1228,6 +1237,22 @@ export function LiveWorkoutSessionModal({
                 ) : null}
               </div>
             </button>
+          ) : null}
+          {currentGroupUsesHoldStopwatch && !restCountdown ? (
+            <WorkoutHoldStopwatch
+              key={currentWorkoutGroupId}
+              onStopWithSeconds={(seconds) => {
+                if (!currentWorkoutGroup) return;
+                const row = currentWorkoutGroup.rows.find(
+                  (item) =>
+                    !item.completed &&
+                    item.exerciseCategory !== "Kondisjon" &&
+                    resolveWorkoutLoadUnit(item) === "sec",
+                );
+                if (!row) return;
+                updateWorkoutExerciseResult(row.exerciseId, "performedWeight", String(seconds));
+              }}
+            />
           ) : null}
           {restCountdown ? (
             <div
