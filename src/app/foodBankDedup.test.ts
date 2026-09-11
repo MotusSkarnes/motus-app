@@ -131,4 +131,42 @@ describe("foodBankDedup", () => {
     expect(result.items).toHaveLength(2);
     expect(foodNutritionSignature(empty)).toBe("0|0.0|0.0|0.0|0.0|0.0|0.0|0");
   });
+
+  it("beholder egen porsjon når samme navn finnes som 100 g-duplikat", () => {
+    const n: FoodNutrition = {
+      kcal: 350,
+      protein: 5,
+      carbs: 80,
+      fat: 1,
+      fiber: 0,
+      sugar: 70,
+      saturatedFat: 0,
+      sodium: 0,
+    };
+    const result = dedupeFoodBankItems([
+      item({
+        id: "food-old",
+        name: "Vitaminbamser",
+        category: "karbohydrater",
+        isCustom: true,
+        source: "egen",
+        portionLabel: "100 g",
+        portionGrams: 100,
+        nutritionPer100g: n,
+      }),
+      item({
+        id: "food-new",
+        name: "Vitaminbamser",
+        category: "karbohydrater",
+        isCustom: true,
+        source: "egen",
+        portionLabel: "1 stk",
+        portionGrams: 1,
+        nutritionPer100g: n,
+      }),
+    ]);
+    expect(result.items).toHaveLength(1);
+    expect(result.items[0]?.id).toBe("food-new");
+    expect(result.items[0]?.portionGrams).toBe(1);
+  });
 });

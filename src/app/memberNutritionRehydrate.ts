@@ -143,7 +143,7 @@ export function resolveNutritionFromFoodItems(
     const byId = items.find((item) => item.id === id);
     if (byId) {
       matched = true;
-      merged = mergeNutritionWithBank(merged, byId.nutritionPer100g);
+      merged = mergeNutritionWithBank(byId.nutritionPer100g, merged);
     }
   }
 

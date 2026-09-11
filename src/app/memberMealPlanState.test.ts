@@ -67,4 +67,35 @@ describe("mergeMemberMealPlanStates", () => {
     const merged = mergeMemberMealPlanStates(local, remote);
     expect(merged.quickFoodLogs["2026-06-02"]).toHaveLength(1);
   });
+
+  it("keeps a local delete when local state is newer than sky", () => {
+    const log = {
+      id: "log-1",
+      name: "Vitaminbamser",
+      grams: 100,
+      source: "food" as const,
+      loggedAt: "2026-06-02T09:00:00.000Z",
+      nutritionPer100g: {
+        kcal: 350,
+        protein: 5,
+        carbs: 80,
+        fat: 1,
+        fiber: 0,
+        sugar: 70,
+        saturatedFat: 0,
+        sodium: 0,
+      },
+    };
+    const local = makeState({
+      updatedAt: "2026-06-02T10:05:00.000Z",
+      quickFoodLogs: { "2026-06-02": [] },
+    });
+    const remote = makeState({
+      updatedAt: "2026-06-02T10:00:00.000Z",
+      quickFoodLogs: { "2026-06-02": [log] },
+    });
+
+    const merged = mergeMemberMealPlanStates(local, remote);
+    expect(merged.quickFoodLogs["2026-06-02"]).toBeUndefined();
+  });
 });

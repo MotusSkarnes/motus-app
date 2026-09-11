@@ -293,19 +293,23 @@ export function pctToward(current: number, target: number): number {
 function mergeQuickFoodLogsByDate(
   remote: MemberMealPlanState["quickFoodLogs"],
   local: MemberMealPlanState["quickFoodLogs"],
+  localMs: number,
+  remoteMs: number,
 ): MemberMealPlanState["quickFoodLogs"] {
   const dateKeys = new Set([...Object.keys(remote), ...Object.keys(local)]);
   const merged: MemberMealPlanState["quickFoodLogs"] = {};
+  const preferLocal = localMs >= remoteMs;
   for (const dateKey of dateKeys) {
-    const byId = new Map<string, MemberQuickFoodLogEntry>();
-    for (const entry of remote[dateKey] ?? []) byId.set(entry.id, entry);
-    for (const entry of local[dateKey] ?? []) {
-      const existing = byId.get(entry.id);
-      const entryMs = Date.parse(entry.loggedAt) || 0;
-      const existingMs = existing ? Date.parse(existing.loggedAt) || 0 : 0;
-      if (!existing || entryMs >= existingMs) byId.set(entry.id, entry);
-    }
-    if (byId.size > 0) merged[dateKey] = Array.from(byId.values());
+    const localHasDate = Object.prototype.hasOwnProperty.call(local, dateKey);
+    const remoteHasDate = Object.prototype.hasOwnProperty.call(remote, dateKey);
+    const entries = preferLocal
+      ? localHasDate
+        ? (local[dateKey] ?? [])
+        : (remote[dateKey] ?? [])
+      : remoteHasDate
+        ? (remote[dateKey] ?? [])
+        : (local[dateKey] ?? []);
+    if (entries.length > 0) merged[dateKey] = entries;
   }
   return merged;
 }
@@ -321,7 +325,7 @@ export function mergeMemberMealPlanStates(local: MemberMealPlanState, remote: Me
     checkedShopping: [...new Set([...remote.checkedShopping, ...local.checkedShopping])],
     recipePortions: { ...remote.recipePortions, ...local.recipePortions },
     mealSwaps: remoteMs >= localMs ? { ...local.mealSwaps, ...remote.mealSwaps } : { ...remote.mealSwaps, ...local.mealSwaps },
-    quickFoodLogs: mergeQuickFoodLogsByDate(remote.quickFoodLogs, local.quickFoodLogs),
+    quickFoodLogs: mergeQuickFoodLogsByDate(remote.quickFoodLogs, local.quickFoodLogs, localMs, remoteMs),
     skippedFoodIds:
       remoteMs >= localMs ? { ...local.skippedFoodIds, ...remote.skippedFoodIds } : { ...remote.skippedFoodIds, ...local.skippedFoodIds },
     savedMeals: mergeMemberSavedMeals(local.savedMeals ?? [], remote.savedMeals ?? []),

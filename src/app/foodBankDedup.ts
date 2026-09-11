@@ -1,4 +1,5 @@
 import { normalizeFoodBankNameKey } from "./foodBankNameKey";
+import { isGenericDefaultPortion } from "./foodPortionDefaults";
 import type { FoodItem, FoodNutrition } from "./foodBankTypes";
 
 export type FoodBankDedupResult = {
@@ -39,6 +40,7 @@ function canonicalScore(item: FoodItem): number {
   let score = 0;
   if (item.isEdited) score += 10_000;
   if (item.isCustom) score += 5_000;
+  if (!isGenericDefaultPortion(item)) score += 2_000;
   if (item.id.startsWith("food-seed-")) score += 1_000;
   const name = item.name.trim();
   if (!name.includes(",")) score += 50;

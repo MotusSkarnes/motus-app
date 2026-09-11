@@ -66,7 +66,7 @@ export function FoodLogFormFields({ onSubmit, submitLabel = "Logg", compact = fa
       const next = resolveSelectedFoodFromBank(foodItems, prev);
       if (prev && next && prev.id !== next.id) {
         // Same food, remapped id — don't treat as a new selection (preserve quantity).
-        lastConfiguredFoodIdRef.current = next.id;
+        lastConfiguredFoodIdRef.current = `${next.id}:${next.portionGrams}:${next.portionLabel}`;
       }
       return next;
     });
@@ -84,8 +84,9 @@ export function FoodLogFormFields({ onSubmit, submitLabel = "Logg", compact = fa
       lastConfiguredFoodIdRef.current = "";
       return;
     }
-    if (lastConfiguredFoodIdRef.current === selectedFood.id) return;
-    lastConfiguredFoodIdRef.current = selectedFood.id;
+    const configKey = `${selectedFood.id}:${selectedFood.portionGrams}:${selectedFood.portionLabel}`;
+    if (lastConfiguredFoodIdRef.current === configKey) return;
+    lastConfiguredFoodIdRef.current = configKey;
     const mode = defaultMeasureModeForFood(selectedFood);
     setMeasureMode(mode);
     setQuantityInput(mode === "portion" ? "1" : String(defaultPortionGramsForFood(selectedFood)));

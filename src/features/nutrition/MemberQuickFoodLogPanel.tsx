@@ -70,7 +70,7 @@ export function MemberQuickFoodLogPanel({ memberId, readOnly = false, onRefreshF
   useEffect(() => {
     if (!selectedFood) return;
     setGramsInput(String(defaultPortionGramsForFood(selectedFood)));
-  }, [selectedFood?.id]);
+  }, [selectedFood?.id, selectedFood?.portionGrams, selectedFood?.portionLabel]);
 
   const persist = useCallback(
     (nextLogs: MemberQuickFoodLogEntry[]) => {

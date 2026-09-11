@@ -312,10 +312,10 @@ export function MemberMealPlanDashboard({ plan, memberId, onOpenAvoidances, onRe
   }, [refreshState]);
 
   useEffect(() => {
-    const handler = () => void refreshState();
+    const handler = () => setTracking(loadMealPlanTracking(memberId));
     window.addEventListener(MEAL_PLAN_STATE_CHANGED_EVENT, handler);
     return () => window.removeEventListener(MEAL_PLAN_STATE_CHANGED_EVENT, handler);
-  }, [refreshState]);
+  }, [memberId]);
 
   const targets: MealPlanTargets = plan.targets ?? {};
   const targetKcal = targets.kcal ?? 1900;

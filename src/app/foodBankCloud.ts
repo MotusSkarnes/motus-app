@@ -1,6 +1,5 @@
 import { compressImageDataUrl, dataUrlToBlob } from "./imageCompress";
 import {
-  FOOD_BANK_CHANGED_EVENT,
   loadFavoriteFoodIds,
   loadFoodBankItems,
   loadRecentFoodIds,
@@ -13,7 +12,9 @@ import { appendMissingSeedFoodItems } from "./foodBankSeed";
 import { applyKnownPortionDefaults } from "./foodPortionDefaults";
 import { fetchApprovedFoodItemsForMember, fetchApprovedFoodItemsForTrainer } from "./memberFoodSubmissionsCloud";
 import { dedupeFoodBankItems, remapFoodIdList } from "./foodBankDedup";
-import { mergeNutritionWithBank } from "./memberNutritionRehydrate";
+import { mergeNutritionWithBank, rehydrateMemberMealPlanState } from "./memberNutritionRehydrate";
+import { loadMemberMealPlanState } from "./memberMealPlanState";
+import { persistMemberMealPlanStateLocalAndScheduleCloud } from "./memberMealPlanStateCloud";
 import { enrichFoodItem } from "./foodBankMicronutrientEnrichment";
 import { normalizeMicronutrients } from "./foodBankMicronutrients";
 import type { FoodItem } from "./foodBankTypes";
@@ -77,7 +78,7 @@ function foodBankItemsSignature(items: FoodItem[]): string {
   return items
     .map((item) => {
       const n = item.nutritionPer100g;
-      return `${item.id}\u0002${n.water ?? ""}\u0002${n.kcal ?? ""}`;
+      return `${item.id}\u0002${item.portionGrams}\u0002${item.portionLabel}\u0002${n.water ?? ""}\u0002${n.kcal ?? ""}\u0002${n.protein ?? ""}\u0002${n.carbs ?? ""}\u0002${n.fat ?? ""}`;
     })
     .sort()
     .join("\u0001");
@@ -107,7 +108,12 @@ function cacheTrainerFoodBankSnapshot(snapshot: TrainerFoodBankSnapshot): void {
   persistRecentFoodIds(deduped.recentIds);
 }
 
-function mergeFoodItems(preferred: FoodItem[], fallback: FoodItem[]): FoodItem[] {
+/**
+ * Merge food-bank lists. Preferred wins on the same id (portion, name, macros).
+ * Missing water/micro on the preferred row is filled from fallback.
+ * Fallback-only ids are kept (local extras the other side does not have).
+ */
+export function mergeFoodBankItems(preferred: FoodItem[], fallback: FoodItem[]): FoodItem[] {
   const byId = new Map<string, FoodItem>();
   for (const item of fallback) {
     const id = item.id?.trim();
@@ -123,8 +129,9 @@ function mergeFoodItems(preferred: FoodItem[], fallback: FoodItem[]): FoodItem[]
       continue;
     }
     byId.set(id, {
+      ...existing,
       ...item,
-      nutritionPer100g: mergeNutritionWithBank(existing.nutritionPer100g, item.nutritionPer100g),
+      nutritionPer100g: mergeNutritionWithBank(item.nutritionPer100g, existing.nutritionPer100g),
     });
   }
   return dedupeFoodBankItems(Array.from(byId.values())).items;
@@ -249,15 +256,19 @@ async function prepareItemsWithRemoteImages(items: FoodItem[]): Promise<FoodItem
   );
 }
 
+let cloudSaveTimer: ReturnType<typeof setTimeout> | null = null;
+let pendingCloudSave: { ownerUserId: string; snapshot: TrainerFoodBankSnapshot } | null = null;
+
 /** Hent matvarebank fra skyen, oppdater lokal cache, varsle lyttere. */
 export async function pullTrainerFoodBankFromRemote(ownerUserId: string): Promise<TrainerFoodBankSnapshot | null> {
   if (!isSupabaseConfigured || !ownerUserId.trim()) return null;
+  if (pendingCloudSave?.ownerUserId === ownerUserId) return pendingCloudSave.snapshot;
   const [sharedItems, snapshot] = await Promise.all([
     fetchSharedFoodItemsFromSupabase(),
     fetchTrainerFoodBankFromSupabase(ownerUserId),
   ]);
   if (!snapshot) return null;
-  const merged = { ...snapshot, items: mergeFoodItems(snapshot.items, sharedItems) };
+  const merged = { ...snapshot, items: mergeFoodBankItems(snapshot.items, sharedItems) };
   const previousItems = loadFoodBankItems();
   cacheTrainerFoodBankSnapshot(merged);
   notifyFoodBankChangedIfNeeded(previousItems, merged.items);
@@ -271,6 +282,7 @@ export async function syncTrainerFoodBankFromRemote(
   ownerUserId: string,
 ): Promise<{ ok: boolean; source: "remote" | "local" | "none" }> {
   if (!isSupabaseConfigured || !ownerUserId.trim()) return { ok: false, source: "none" };
+  if (pendingCloudSave?.ownerUserId === ownerUserId) return { ok: true, source: "local" };
 
   const [sharedItems, remote] = await Promise.all([
     fetchSharedFoodItemsFromSupabase(),
@@ -280,13 +292,13 @@ export async function syncTrainerFoodBankFromRemote(
 
   if (remote.items.length > 0) {
     const previousItems = loadFoodBankItems();
-    const merged = { ...remote, items: mergeFoodItems(remote.items, sharedItems) };
+    const merged = { ...remote, items: mergeFoodBankItems(remote.items, sharedItems) };
     cacheTrainerFoodBankSnapshot(merged);
     notifyFoodBankChangedIfNeeded(previousItems, merged.items);
     return { ok: true, source: "remote" };
   }
 
-  const localItems = mergeFoodItems(loadFoodBankItems(), sharedItems);
+  const localItems = mergeFoodBankItems(loadFoodBankItems(), sharedItems);
   const favoriteIds = loadFavoriteFoodIds();
   const recentIds = loadRecentFoodIds();
   if (!foodBankShouldUploadLocal(localItems, favoriteIds, recentIds)) {
@@ -320,9 +332,10 @@ export async function syncMemberFoodBankFromTrainer(
 
   const baseItems = loadFoodBankItems();
   const ptItems = remote?.items ?? [];
-  const mergedItems = mergeFoodItems(
-    mergeFoodItems(mergeFoodItems(baseItems, sharedItems), ptItems),
+  // PT bank is source of truth for shared ids. Stale member cache must not keep old portion/macros.
+  const mergedItems = mergeFoodBankItems(
     approvedItems,
+    mergeFoodBankItems(ptItems, mergeFoodBankItems(sharedItems, baseItems)),
   );
 
   cacheTrainerFoodBankSnapshot({
@@ -331,6 +344,15 @@ export async function syncMemberFoodBankFromTrainer(
     recentIds: loadRecentFoodIds(),
     updatedAt: Date.now(),
   });
+
+  const memberKey = memberId?.trim() ?? "";
+  if (memberKey) {
+    const state = loadMemberMealPlanState(memberKey);
+    const { next, updates } = rehydrateMemberMealPlanState(state, mergedItems);
+    if (updates > 0) {
+      persistMemberMealPlanStateLocalAndScheduleCloud(memberKey, next);
+    }
+  }
 
   return { ok: true };
 }
@@ -352,7 +374,7 @@ export function mergeFoodItemsIntoLocalCache(incoming: FoodItem[]): void {
   if (incoming.length === 0) return;
   clearTrainerFoodBankCloudSaveQueue();
   const previousItems = loadFoodBankItems();
-  const merged = mergeFoodItems(incoming, previousItems);
+  const merged = mergeFoodBankItems(incoming, previousItems);
   cacheTrainerFoodBankSnapshot({
     items: merged,
     favoriteIds: loadFavoriteFoodIds(),
@@ -380,9 +402,6 @@ export async function refreshTrainerFoodBankAfterApproval(ownerUserId: string): 
     mergeFoodItemsIntoLocalCache(approvedFromSubmissions);
   }
 }
-
-let cloudSaveTimer: ReturnType<typeof setTimeout> | null = null;
-let pendingCloudSave: { ownerUserId: string; snapshot: TrainerFoodBankSnapshot } | null = null;
 
 export function scheduleTrainerFoodBankCloudSave(ownerUserId: string, snapshot: TrainerFoodBankSnapshot): void {
   if (!ownerUserId.trim() || !isSupabaseConfigured) return;

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { foodMeasureOptionsForItem, resolveFoodLogGrams } from "./foodPortionMeasure";
+import { foodMeasureOptionsForItem, formatLoggedQuantityLabel, resolveFoodLogGrams } from "./foodPortionMeasure";
 import type { FoodItem } from "./foodBankTypes";
 
 function food(partial: Partial<FoodItem>): FoodItem {
@@ -28,5 +28,11 @@ describe("foodPortionMeasure", () => {
     const item = food({});
     const grams = resolveFoodLogGrams(item, "portion", 2, 100);
     expect(grams).toBe(200);
+  });
+
+  it("does not display a 100 g log as 100 pieces after portion is changed to 1 g", () => {
+    const item = food({ portionLabel: "1 stk", portionGrams: 1 });
+    expect(formatLoggedQuantityLabel(item, 100)).toBe("100 g");
+    expect(formatLoggedQuantityLabel(item, 1)).toBe("1 stk");
   });
 });

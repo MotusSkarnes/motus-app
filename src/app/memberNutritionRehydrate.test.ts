@@ -183,4 +183,29 @@ describe("memberNutritionRehydrate", () => {
     expect(resolved.water).toBe(100);
     expect(mergeNutritionWithBank(withMacros, bank.nutritionPer100g).water).toBe(100);
   });
+
+  it("updates logged macros from the food bank when foodId matches", () => {
+    const bank = food("Vitaminbamser");
+    bank.nutritionPer100g = {
+      ...bank.nutritionPer100g,
+      kcal: 4,
+      carbs: 0.8,
+      water: 1,
+    };
+    const stored = {
+      kcal: 350,
+      protein: 5,
+      carbs: 80,
+      fat: 1,
+      fiber: 0,
+      sugar: 70,
+      saturatedFat: 0,
+      sodium: 0,
+      water: 0,
+    };
+    const resolved = resolveNutritionFromFoodItems("Vitaminbamser", stored, [bank], bank.id);
+    expect(resolved.kcal).toBe(4);
+    expect(resolved.carbs).toBe(0.8);
+    expect(resolved.water).toBe(1);
+  });
 });

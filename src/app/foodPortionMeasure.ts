@@ -51,7 +51,7 @@ export function formatLoggedQuantityLabel(
   if (portionGrams > 0 && grams > 0 && grams % portionGrams === 0) {
     const count = grams / portionGrams;
     if (count === 1) return portionLabel;
-    if (Number.isInteger(count)) return `${count} × ${portionLabel}`;
+    if (Number.isInteger(count) && count <= 24) return `${count} × ${portionLabel}`;
   }
   return `${grams} g`;
 }
