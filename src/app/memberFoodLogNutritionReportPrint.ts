@@ -382,7 +382,7 @@ function buildClientPrintHtml(payload: NutritionReportPrintPayload): string {
 <html lang="nb">
 <head>
   <meta charset="utf-8" />
-  <title>Næringsrapport – ${escapeHtml(payload.memberName)}</title>
+  <title>Kostholdsanalyse – ${escapeHtml(payload.memberName)}</title>
   <style>
     ${sharedPrintCss()}
     @page { size: A4; margin: 8mm; }
@@ -538,7 +538,7 @@ function buildClientPrintHtml(payload: NutritionReportPrintPayload): string {
     <header class="header">
       <div>
         <p class="kicker">Motus</p>
-        <h1>Næringsrapport</h1>
+        <h1>Kostholdsanalyse</h1>
         <p class="name">${escapeHtml(payload.memberName)}</p>
         <p class="meta">${escapeHtml(payload.periodSummary)}</p>
       </div>

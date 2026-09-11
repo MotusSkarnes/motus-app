@@ -99,6 +99,8 @@ describe("buildNutritionReportPrintHtml", () => {
       audience: "client",
       logoUrl: "https://motus.example/logo.svg",
     });
+    expect(html).toContain("Kostholdsanalyse");
+    expect(html).not.toContain("Næringsrapport");
     expect(html).toContain("Ola Nordmann");
     expect(html).toContain("Snitt per dag · 7 dager");
     expect(html).not.toContain("Generert");
