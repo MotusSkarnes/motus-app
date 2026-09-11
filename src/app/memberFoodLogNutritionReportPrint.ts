@@ -309,18 +309,25 @@ function buildTrainerPrintHtml(payload: NutritionReportPrintPayload): string {
 </html>`;
 }
 
+function clientRowMeta(tone: NutritionReportStatusTone, extra = ""): string {
+  const parts = [clientStatusLabel(tone), extra].filter(Boolean);
+  return `<p class="row-meta"><span class="card-status card-status--${tone}">${escapeHtml(parts[0]!)}</span>${
+    parts[1] ? `<span class="card-ref">${escapeHtml(parts[1])}</span>` : ""
+  }</p>`;
+}
+
 function clientMacroCardsHtml(rows: ReturnType<typeof buildMacroDisplayRows>): string {
   return `<div class="card-grid">${rows
     .map((row) => {
       const status = classifyMacroDisplayStatus(row);
-      const target =
-        row.target > 0 ? `Anbefalt ${formatMacro(row.target, row.decimals)} ${row.unit}` : "";
-      return `<article class="card card--${status.tone}">
-        <p class="card-label">${escapeHtml(row.label)}</p>
-        <p class="card-value">${intakeHtml(formatMacroDisplayValue(row), status.tone)}</p>
+      const target = row.target > 0 ? `Anbefalt ${formatMacro(row.target, row.decimals)} ${row.unit}` : "";
+      return `<article class="card">
+        <div class="row-head">
+          <span class="card-label">${escapeHtml(row.label)}</span>
+          ${intakeHtml(formatMacroDisplayValue(row), status.tone)}
+        </div>
         ${clientBarHtml(status.barPct, status.tone)}
-        <p class="card-status card-status--${status.tone}">${escapeHtml(clientStatusLabel(status.tone))}</p>
-        ${target ? `<p class="card-ref">${escapeHtml(target)}</p>` : ""}
+        ${clientRowMeta(status.tone, target)}
       </article>`;
     })
     .join("")}</div>`;
@@ -330,20 +337,17 @@ function clientMicroCardsHtml(rows: MicronutrientDailyRow[]): string {
   if (!rows.length) {
     return `<p class="muted">Ingen mikronæringsdata i perioden.</p>`;
   }
-  return `<div class="micro-list">${rows
+  return `<div class="card-grid">${rows
     .map((row) => {
       const target =
         row.target > 0 ? `Anbefalt ${formatMicronutrientWithUnit(row.target, row.decimals, row.unit)}` : "";
-      return `<article class="micro-row micro-row--${row.statusTone}">
-        <div class="micro-main">
-          <span class="micro-name">${escapeHtml(row.label)}</span>
+      return `<article class="card">
+        <div class="row-head">
+          <span class="card-label">${escapeHtml(row.label)}</span>
           ${intakeHtml(formatMicronutrientWithUnit(row.value, row.decimals, row.unit), row.statusTone)}
         </div>
         ${clientBarHtml(row.coveragePct, row.statusTone)}
-        <div class="micro-foot">
-          <span class="card-status card-status--${row.statusTone}">${escapeHtml(clientStatusLabel(row.statusTone))}</span>
-          ${target ? `<span class="card-ref">${escapeHtml(target)}</span>` : ""}
-        </div>
+        ${clientRowMeta(row.statusTone, target)}
       </article>`;
     })
     .join("")}</div>`;
@@ -351,15 +355,14 @@ function clientMicroCardsHtml(rows: MicronutrientDailyRow[]): string {
 
 function clientOmegaHtml(totals: FoodLogNutritionTotals): string {
   const rows = buildOmegaOverviewRows(totals.fattyAcids);
-  return `<div class="micro-list">${rows
+  return `<div class="card-grid">${rows
     .map((row) => {
-      const hint = row.hint ? `<p class="card-ref">${escapeHtml(row.hint)}</p>` : "";
-      return `<article class="micro-row">
-        <div class="micro-main">
-          <span class="micro-name">${escapeHtml(row.label)}</span>
+      return `<article class="card">
+        <div class="row-head">
+          <span class="card-label">${escapeHtml(row.label)}</span>
           ${intakeHtml(formatOmegaOverviewValue(row), "muted")}
         </div>
-        ${hint}
+        ${row.hint ? `<p class="card-ref">${escapeHtml(row.hint)}</p>` : ""}
       </article>`;
     })
     .join("")}</div>`;
@@ -385,90 +388,103 @@ function buildClientPrintHtml(payload: NutritionReportPrintPayload): string {
   <title>Næringsrapport – ${escapeHtml(payload.memberName)}</title>
   <style>
     ${sharedPrintCss()}
+    @page { size: A4; margin: 8mm; }
     body {
       font-family: "Segoe UI", system-ui, sans-serif;
       color: #0f172a;
       margin: 0;
-      padding: 16px;
-      background: #f8fafc;
-      font-size: 13px;
-      line-height: 1.4;
+      padding: 0;
+      background: #fff;
+      font-size: 11px;
+      line-height: 1.25;
     }
-    .page { max-width: 860px; margin: 0 auto; }
+    .page .intake { padding: 0 6px; font-size: 11px; }
     .header {
       display: flex;
-      align-items: flex-start;
+      align-items: center;
       justify-content: space-between;
-      gap: 16px;
+      gap: 10px;
       background: #30E3BE;
       color: #0f172a;
-      border-radius: 16px;
-      padding: 16px 18px;
-      margin-bottom: 16px;
+      border-radius: 10px;
+      padding: 8px 12px;
+      margin-bottom: 8px;
     }
-    .header h1 { margin: 0 0 4px; font-size: 22px; line-height: 1.1; }
-    .header .name { margin: 0; font-size: 18px; font-weight: 700; }
-    .header .meta { margin: 4px 0 0; font-size: 12px; opacity: 0.85; }
-    .brand-logo { height: 52px; width: auto; max-width: 180px; object-fit: contain; display: block; }
-    .brand-wordmark { font-weight: 800; font-size: 20px; letter-spacing: 0.04em; }
+    .header h1 { margin: 0; font-size: 15px; line-height: 1.15; }
+    .header .name { margin: 1px 0 0; font-size: 13px; font-weight: 700; }
+    .header .meta { margin: 1px 0 0; font-size: 10px; opacity: 0.8; }
+    .brand-logo { height: 34px; width: auto; max-width: 120px; object-fit: contain; display: block; }
+    .brand-wordmark { font-weight: 800; font-size: 16px; letter-spacing: 0.04em; }
     .legend {
       display: flex;
       flex-wrap: wrap;
       gap: 8px;
-      margin: 0 0 16px;
+      margin: 0 0 8px;
     }
     .legend span {
       display: inline-flex;
       align-items: center;
-      gap: 6px;
-      font-size: 11px;
+      gap: 4px;
+      font-size: 10px;
       font-weight: 600;
       color: #475569;
     }
-    .swatch { width: 10px; height: 10px; border-radius: 999px; display: inline-block; }
+    .swatch { width: 8px; height: 8px; border-radius: 999px; display: inline-block; }
     .swatch--ok { background: #10b981; }
     .swatch--warn { background: #f59e0b; }
     .swatch--danger { background: #ef4444; }
     h2 {
-      margin: 18px 0 10px;
-      font-size: 13px;
+      margin: 8px 0 5px;
+      font-size: 10px;
       text-transform: uppercase;
       letter-spacing: 0.06em;
       color: #64748b;
     }
     .card-grid {
       display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 10px;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 5px;
     }
-    .card, .micro-row {
+    .card {
       background: #fff;
       border: 1px solid #e2e8f0;
-      border-radius: 14px;
-      padding: 12px;
+      border-radius: 8px;
+      padding: 5px 7px 6px;
       break-inside: avoid;
     }
-    .card-label, .micro-name {
-      margin: 0;
-      font-size: 11px;
+    .row-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 6px;
+      margin-bottom: 4px;
+    }
+    .card-label {
+      min-width: 0;
+      font-size: 9px;
       font-weight: 700;
-      letter-spacing: 0.04em;
+      letter-spacing: 0.03em;
       text-transform: uppercase;
       color: #64748b;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
     }
-    .card-value { margin: 8px 0 10px; font-size: 20px; }
-    .card-status {
-      margin: 8px 0 0;
-      font-size: 11px;
-      font-weight: 700;
+    .row-meta {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 6px;
+      margin: 3px 0 0;
     }
+    .card-status { font-size: 9px; font-weight: 700; }
     .card-status--ok { color: #047857; }
     .card-status--warn { color: #a16207; }
     .card-status--danger { color: #b91c1c; }
     .card-status--muted { color: #64748b; }
-    .card-ref { margin: 2px 0 0; font-size: 11px; color: #94a3b8; }
+    .card-ref { margin: 2px 0 0; font-size: 9px; color: #94a3b8; }
     .bar {
-      height: 7px;
+      height: 4px;
       background: #e2e8f0;
       border-radius: 99px;
       overflow: hidden;
@@ -478,34 +494,15 @@ function buildClientPrintHtml(payload: NutritionReportPrintPayload): string {
     .bar-fill--warn { background: #f59e0b; }
     .bar-fill--danger { background: #ef4444; }
     .bar-fill--muted { background: #cbd5e1; }
-    .micro-list {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 8px;
-    }
-    .micro-main {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 8px;
-      margin-bottom: 8px;
-    }
-    .micro-foot {
-      display: flex;
-      align-items: baseline;
-      justify-content: space-between;
-      gap: 8px;
-      margin-top: 6px;
-    }
     .footer {
-      margin-top: 22px;
-      font-size: 11px;
+      margin-top: 8px;
+      font-size: 9px;
       color: #94a3b8;
       text-align: center;
     }
     @media print {
-      body { background: #fff; padding: 8px; }
-      .header, .card, .micro-row { page-break-inside: avoid; }
+      body { background: #fff; }
+      .header, .card { break-inside: avoid; }
     }
   </style>
 </head>
@@ -521,16 +518,13 @@ function buildClientPrintHtml(payload: NutritionReportPrintPayload): string {
     </header>
 
     <p class="legend">
-      <span><i class="swatch swatch--ok"></i> Innenfor anbefaling</span>
+      <span><i class="swatch swatch--ok"></i> Innenfor</span>
       <span><i class="swatch swatch--warn"></i> Litt utenfor</span>
       <span><i class="swatch swatch--danger"></i> Utenfor</span>
     </p>
 
-    <h2>Energi og makro</h2>
-    ${clientMacroCardsHtml(macroRows)}
-
-    <h2>Vann</h2>
-    ${clientMacroCardsHtml(waterRows)}
+    <h2>Energi, makro og vann</h2>
+    ${clientMacroCardsHtml([...macroRows, ...waterRows])}
 
     <h2>Vitaminer og mineraler</h2>
     ${clientMicroCardsHtml(payload.microRows)}
@@ -538,7 +532,7 @@ function buildClientPrintHtml(payload: NutritionReportPrintPayload): string {
     <h2>Omega-fettsyrer</h2>
     ${clientOmegaHtml(payload.totals)}
 
-    <p class="footer">Motus · Personlig oversikt. Fargene viser om inntaket er innenfor anbefalingen.</p>
+    <p class="footer">Motus · Fargene viser om inntaket er innenfor anbefalingen.</p>
   </div>
 </body>
 </html>`;

@@ -99,7 +99,10 @@ describe("buildNutritionReportPrintHtml", () => {
     });
     expect(html).toContain("Ola Nordmann");
     expect(html).toContain("https://motus.example/logo.svg");
-    expect(html).toContain("Innenfor anbefaling");
+    expect(html).toContain("@page { size: A4;");
+    expect(html).toContain("grid-template-columns: 1fr 1fr 1fr");
+    expect(html).toContain("Energi, makro og vann");
+    expect(html).toContain("Innenfor");
     expect(html).toContain("Litt utenfor");
     expect(html).toContain("intake intake--warn");
     expect(html).not.toContain("Kjent");
