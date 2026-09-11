@@ -11,7 +11,7 @@ import { computeMacrosForGrams } from "./mealPlanMacros";
 import type { MealPlan } from "./mealPlanTypes";
 import type { MemberQuickFoodLogEntry } from "./memberMealPlanState";
 import { resolveNutritionFromFoodItems } from "./memberNutritionRehydrate";
-import { waterLitersFromFoodGrams, type FoodLogNutritionTotals } from "./quickFoodLogNutrition";
+import { waterLitersFromFoodNutrition, type FoodLogNutritionTotals } from "./quickFoodLogNutrition";
 
 export const DRINK_WATER_CONTRIBUTOR_NAME = "Logget drikke";
 export const OTHER_CONTRIBUTOR_NAME = "Øvrige";
@@ -120,7 +120,7 @@ function amountForNutrient(source: NutritionContributionSource, id: NutrientCont
       return (Number(n.sodium) || 0) * scale;
     case "waterFromFood":
     case "waterTotal":
-      return waterLitersFromFoodGrams(n.water, grams);
+      return waterLitersFromFoodNutrition(n, grams);
     case "drinkWater":
       return 0;
     case "monounsaturatedFat":

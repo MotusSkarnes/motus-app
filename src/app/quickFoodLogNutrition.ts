@@ -5,6 +5,8 @@ import {
   type FoodMicronutrientKey,
   type FoodMicronutrients,
 } from "./foodBankMicronutrients";
+import type { FoodNutrition } from "./foodBankTypes";
+import { foodWaterPer100g } from "./foodBankWater";
 import type { MemberQuickFoodLogEntry } from "./memberMealPlanState";
 import { computeMacrosForGrams, EMPTY_MACRO_TOTALS, type MacroTotals } from "./mealPlanMacros";
 import { HEALTH_DIRECTORATE_MICRONUTRIENT_DAILY } from "./healthDirectorateNutritionReferences";
@@ -45,6 +47,10 @@ export function waterLitersFromFoodGrams(waterPer100g: number | undefined, grams
   const water = Number(waterPer100g ?? 0);
   if (!Number.isFinite(water) || water <= 0 || !Number.isFinite(grams) || grams <= 0) return 0;
   return (water * grams) / 100 / 1000;
+}
+
+export function waterLitersFromFoodNutrition(nutrition: FoodNutrition | undefined, grams: number): number {
+  return waterLitersFromFoodGrams(foodWaterPer100g(nutrition), grams);
 }
 
 export type MicronutrientDailyRow = {
@@ -91,7 +97,7 @@ export function sumQuickFoodLogNutrition(logs: MemberQuickFoodLogEntry[] | undef
       sugar: acc.sugar + n.sugar * scale,
       saturatedFat: acc.saturatedFat + n.saturatedFat * scale,
       sodium: acc.sodium + n.sodium * scale,
-      waterLiters: acc.waterLiters + waterLitersFromFoodGrams(n.water, entry.grams),
+      waterLiters: acc.waterLiters + waterLitersFromFoodNutrition(n, entry.grams),
       fattyAcids: nextFa,
       micronutrients: nextMicros,
     };

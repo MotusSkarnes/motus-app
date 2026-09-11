@@ -76,4 +76,28 @@ describe("sumQuickFoodLogNutrition", () => {
     const totals = sumQuickFoodLogNutrition(logs);
     expect(totals.waterLiters).toBeCloseTo(0.19, 2);
   });
+
+  it("does not count Matvaretabellen salt water-by-difference as food water", () => {
+    const logs: MemberQuickFoodLogEntry[] = [
+      {
+        id: "salt",
+        name: "Havsalt",
+        grams: 100,
+        source: "food",
+        loggedAt: new Date().toISOString(),
+        nutritionPer100g: {
+          kcal: 0,
+          protein: 0,
+          carbs: 0,
+          fat: 0,
+          fiber: 0,
+          sugar: 0,
+          saturatedFat: 0,
+          sodium: 37600,
+          water: 100,
+        },
+      },
+    ];
+    expect(sumQuickFoodLogNutrition(logs).waterLiters).toBe(0);
+  });
 });

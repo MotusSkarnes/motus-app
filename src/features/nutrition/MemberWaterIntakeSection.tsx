@@ -10,6 +10,7 @@ import {
 import { syncMemberMealPlanState } from "../../app/memberMealPlanStateCloud";
 import { setWaterLiters, toIsoDateKey } from "../../app/memberMealPlanTracking";
 import { resolveNutritionFromFoodItems } from "../../app/memberNutritionRehydrate";
+import { foodWaterPer100g } from "../../app/foodBankWater";
 
 export const WATER_TARGET_L = 2.5;
 export const WATER_STEP_L = 0.2;
@@ -21,7 +22,7 @@ function todayKey(): string {
 export function sumWaterFromQuickLogs(entries: MemberQuickFoodLogEntry[], foodItems: FoodItem[]): number {
   const grams = entries.reduce((sum, entry) => {
     const resolvedNutrition = resolveNutritionFromFoodItems(entry.name, entry.nutritionPer100g, foodItems, entry.foodId);
-    const waterPer100g = resolvedNutrition.water ?? 0;
+    const waterPer100g = foodWaterPer100g(resolvedNutrition) ?? 0;
     if (!Number.isFinite(waterPer100g) || waterPer100g <= 0) return sum;
     const scale = entry.grams > 0 ? entry.grams / 100 : 0;
     return sum + waterPer100g * scale;

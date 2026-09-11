@@ -78,6 +78,7 @@ import { MacroProgressBar } from "./MacroProgressBar";
 import { MacroProgressRing } from "./MacroProgressRing";
 import { draftToQuickLogEntry, type MealDraftItem } from "../../app/mealDraft";
 import { resolveNutritionFromFoodItems } from "../../app/memberNutritionRehydrate";
+import { foodWaterPer100g } from "../../app/foodBankWater";
 import { LoggedQuickFoodEntryRow } from "./LoggedQuickFoodEntryRow";
 import { MealDraftComposer } from "./MealDraftComposer";
 import { LogMealPanel } from "./LogMealPanel";
@@ -435,7 +436,7 @@ export function MemberMealPlanDashboard({ plan, memberId, onOpenAvoidances, onRe
   const waterFromQuickLogsTodayLiters = useMemo(() => {
     const gramsFromQuickLogs = quickLogsToday.reduce((sum, entry) => {
       const resolvedNutrition = resolveNutritionFromFoodItems(entry.name, entry.nutritionPer100g, foodItems, entry.foodId);
-      const waterPer100g = resolvedNutrition.water ?? 0;
+      const waterPer100g = foodWaterPer100g(resolvedNutrition) ?? 0;
       if (!Number.isFinite(waterPer100g) || waterPer100g <= 0) return sum;
       const scale = entry.grams > 0 ? entry.grams / 100 : 0;
       return sum + waterPer100g * scale;

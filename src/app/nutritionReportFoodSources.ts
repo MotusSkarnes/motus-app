@@ -2,6 +2,7 @@ import { FOOD_MICRONUTRIENT_FIELDS, type FoodMicronutrientKey } from "./foodBank
 import { normalizeFoodBankNameKey } from "./foodBankNameKey";
 import type { FoodItem, FoodNutrition } from "./foodBankTypes";
 import { formatMacro } from "./foodBankTypes";
+import { foodWaterPer100g } from "./foodBankWater";
 import { hasKnownNutrientValue } from "./nutritionReportCoverage";
 import type { NutrientContributionId } from "./nutritionReportContributors";
 
@@ -108,7 +109,7 @@ export function amountPer100gForNutrient(nutrition: FoodNutrition, id: NutrientC
       return Number(nutrition.sodium) || 0;
     case "waterFromFood":
     case "waterTotal":
-      return Number(nutrition.water) || 0;
+      return foodWaterPer100g(nutrition) || 0;
     case "drinkWater":
       return 0;
     case "monounsaturatedFat":

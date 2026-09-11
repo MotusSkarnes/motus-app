@@ -92,4 +92,14 @@ describe("rankFoodBankSourcesForNutrient", () => {
     });
     expect(ranked.map((row) => row.name)).toEqual(["Svin indrefilet"]);
   });
+
+  it("does not rank salt as a water source when Matvaretabellen stored water-by-difference as 100 g", () => {
+    const items = [
+      food("Havsalt", nutrition({ water: 100, sodium: 37600 })),
+      food("Agurk", nutrition({ water: 95, sodium: 10, carbs: 2 })),
+      food("Vann, drikkevann", nutrition({ water: 100, sodium: 5 })),
+    ];
+    const ranked = rankFoodBankSourcesForNutrient(items, "waterTotal");
+    expect(ranked.map((row) => row.name)).toEqual(["Vann, drikkevann", "Agurk"]);
+  });
 });

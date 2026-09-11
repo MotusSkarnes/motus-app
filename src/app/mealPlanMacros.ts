@@ -1,6 +1,7 @@
 import type { FoodItem, FoodNutrition } from "./foodBankTypes";
 import { formatMacro } from "./foodBankTypes";
 import { resolveEntryNutrition } from "./mealPlanFoodNutrition";
+import { foodWaterPer100g } from "./foodBankWater";
 import type { MealPlanDay, MealPlanFoodEntry, MealPlanMeal, MealPlanTargets } from "./mealPlanTypes";
 
 export type MacroTotals = {
@@ -77,7 +78,7 @@ export function sumLoggedWaterLitersFromFoodItems(
     for (const item of meal.items) {
       if (!loggedFoodIds.has(item.id)) continue;
       const nutrition = resolveEntryNutrition(item, foodById, foodItems);
-      const waterPer100g = Number(nutrition.water ?? 0);
+      const waterPer100g = foodWaterPer100g(nutrition) ?? 0;
       if (!Number.isFinite(waterPer100g) || waterPer100g <= 0) continue;
       const grams = Number(item.grams);
       if (!Number.isFinite(grams) || grams <= 0) continue;
