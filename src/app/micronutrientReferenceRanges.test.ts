@@ -41,4 +41,11 @@ describe("micronutrientReferenceRanges", () => {
     expect(meta.code).toBe("low");
     expect(meta.tone).toBe("danger");
   });
+
+  it("keeps copper NNR bounds in mg to match Matvaretabellen", () => {
+    const bounds = resolveMicronutrientBounds("copper", adultFemale);
+    expect(bounds).toEqual({ lower: 0.7, recommended: 0.9, upper: 5 });
+    expect(classifyMicronutrientStatus(1.2, bounds)).toBe("adequate");
+    expect(classifyMicronutrientStatus(0.4, bounds)).toBe("low");
+  });
 });

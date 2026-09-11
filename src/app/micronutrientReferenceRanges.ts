@@ -36,7 +36,7 @@ const ADULT_UPPER: Partial<Record<FoodMicronutrientKey, number>> = {
   calcium: 2500,
   iron: 60,
   zinc: 25,
-  copper: 5000,
+  copper: 5,
   iodine: 600,
   selenium: 255,
   phosphorus: 3000,
@@ -66,7 +66,7 @@ const BOUNDS_25_50: Record<SexKey, Record<FoodMicronutrientKey, MicronutrientRef
     zinc: { lower: 8.1, recommended: 9.7, upper: 25 },
     selenium: { lower: 60, recommended: 75, upper: 255 },
     iodine: { lower: 120, recommended: 150, upper: 600 },
-    copper: { lower: 700, recommended: 900, upper: 5000 },
+    copper: { lower: 0.7, recommended: 0.9, upper: 5 },
   },
   male: {
     vitaminA: { lower: 630, recommended: 800, upper: 3000 },
@@ -87,7 +87,7 @@ const BOUNDS_25_50: Record<SexKey, Record<FoodMicronutrientKey, MicronutrientRef
     zinc: { lower: 10.6, recommended: 12.7, upper: 25 },
     selenium: { lower: 70, recommended: 90, upper: 255 },
     iodine: { lower: 120, recommended: 150, upper: 600 },
-    copper: { lower: 700, recommended: 900, upper: 5000 },
+    copper: { lower: 0.7, recommended: 0.9, upper: 5 },
   },
 };
 
