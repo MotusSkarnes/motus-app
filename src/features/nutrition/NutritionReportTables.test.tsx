@@ -1,7 +1,8 @@
 import { cleanup, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { useState } from "react";
+import type { FoodItem, FoodNutrition } from "../../app/foodBankTypes";
 import { buildMacroDisplayRows, buildWaterReportRows } from "../../app/nutritionReportDisplay";
 import { EMPTY_FATTY_ACIDS } from "../../app/foodBankFattyAcids";
 import { buildOmegaOverviewRows } from "../../app/nutritionReportFattyAcids";
@@ -9,10 +10,16 @@ import { EMPTY_FOOD_LOG_NUTRITION, filterMicronutrientReportRows } from "../../a
 import type { MicronutrientDailyRow, MicronutrientReportFilterMode } from "../../app/quickFoodLogNutrition";
 import { buildNutrientContributionLookup } from "../../app/nutritionReportContributors";
 import { buildNutrientCoverageLookup } from "../../app/nutritionReportCoverage";
+import { useFoodBankItems } from "../../app/useFoodBankItems";
 import { NutritionReportStackedBody } from "./NutritionReportTables";
+
+vi.mock("../../app/useFoodBankItems", () => ({
+  useFoodBankItems: vi.fn(() => []),
+}));
 
 afterEach(() => {
   cleanup();
+  vi.mocked(useFoodBankItems).mockReturnValue([]);
 });
 
 const microRow = (
@@ -157,5 +164,48 @@ describe("NutritionReportStackedBody", () => {
     expect(vitaminA?.querySelector(".motus-nutrition-report__data-coverage")?.getAttribute("title")).toMatch(
       /2 av 2 matvarer/,
     );
+  });
+
+  it("lists top food-bank sources for a nutrient from the current bank", async () => {
+    const nutrition = (vitaminA: number): FoodNutrition => ({
+      kcal: 0,
+      protein: 0,
+      carbs: 0,
+      fat: 0,
+      fiber: 0,
+      sugar: 0,
+      saturatedFat: 0,
+      sodium: 0,
+      micronutrients: { vitaminA },
+    });
+    const item = (name: string, vitaminA: number): FoodItem => ({
+      id: name,
+      name,
+      portionLabel: "100 g",
+      portionGrams: 100,
+      category: "proteinkilder",
+      origin: "Test",
+      source: "egen",
+      createdBy: "test",
+      createdAt: "2026-09-01T00:00:00.000Z",
+      nutritionPer100g: nutrition(vitaminA),
+    });
+    vi.mocked(useFoodBankItems).mockReturnValue([item("Svin", 10), item("Lever", 8000)]);
+    const user = userEvent.setup();
+    render(<ReportHarness rows={rows} />);
+    await user.click(screen.getByRole("button", { name: "Vis gode matkilder til Vitamin A" }));
+    expect(screen.getByText("Topp 10 i matbanken · mengde per 100 g")).toBeTruthy();
+    expect(screen.getByText("Lever")).toBeTruthy();
+    expect(screen.getByText("8000 µg / 100 g")).toBeTruthy();
+
+    await user.click(screen.getByRole("button", { name: "Vis gode matkilder til Vitamin A" }));
+    vi.mocked(useFoodBankItems).mockReturnValue([
+      item("Svin", 10),
+      item("Lever", 8000),
+      item("Fiskeolje", 9000),
+    ]);
+    await user.click(screen.getByRole("button", { name: "Vis gode matkilder til Vitamin A" }));
+    expect(screen.getByText("Fiskeolje")).toBeTruthy();
+    expect(screen.getByText("9000 µg / 100 g")).toBeTruthy();
   });
 });

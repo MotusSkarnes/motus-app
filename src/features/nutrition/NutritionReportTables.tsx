@@ -22,6 +22,12 @@ import {
   NUTRIENT_COVERAGE_FOOTNOTE,
   type NutrientCoverageLookup,
 } from "../../app/nutritionReportCoverage";
+import {
+  canSuggestFoodSources,
+  formatFoodSourceAmount,
+  rankFoodBankSourcesForNutrient,
+} from "../../app/nutritionReportFoodSources";
+import { useFoodBankItems } from "../../app/useFoodBankItems";
 import type { MicronutrientDailyRow, MicronutrientReportFilterMode } from "../../app/quickFoodLogNutrition";
 import { micronutrientReportEmptyMessage, micronutrientReportFilterCounts } from "../../app/quickFoodLogNutrition";
 
@@ -60,6 +66,36 @@ function ContributionList({
   );
 }
 
+function FoodSourceList({
+  nutrientId,
+  nutrientLabel,
+}: {
+  nutrientId: NutrientContributionId;
+  nutrientLabel: string;
+}) {
+  const foodItems = useFoodBankItems();
+  const sources = rankFoodBankSourcesForNutrient(foodItems, nutrientId);
+  return (
+    <div className="motus-nutrition-report__contrib-panel motus-nutrition-report-no-print" role="group" aria-label={`Gode matkilder til ${nutrientLabel}`}>
+      <p className="motus-nutrition-report__sources-lead">Topp 10 i matbanken · mengde per 100 g</p>
+      {sources.length ? (
+        <ol>
+          {sources.map((row, index) => (
+            <li key={`${row.id}-${index}`}>
+              <span className="motus-nutrition-report__contrib-name" title={row.name}>
+                {row.name}
+              </span>
+              <strong>{formatFoodSourceAmount(row.amountPer100g, nutrientId)}</strong>
+            </li>
+          ))}
+        </ol>
+      ) : (
+        <p className="motus-nutrition-report__sources-empty">Ingen matvarer med kjent verdi for dette stoffet.</p>
+      )}
+    </div>
+  );
+}
+
 function NutrientStatusRow({
   row,
   contributionLookup,
@@ -72,24 +108,41 @@ function NutrientStatusRow({
   const contributors = contributorsFor(contributionLookup, row.contributionId);
   const coverage = coverageFor(coverageLookup, row.contributionId);
   const coverageText = formatCoveragePercent(coverage);
+  const showSources = canSuggestFoodSources(row.contributionId);
   const [open, setOpen] = useState(false);
+  const [sourcesOpen, setSourcesOpen] = useState(false);
 
   return (
     <div className={`motus-nutrition-report__micro-row motus-nutrition-report__micro-row--${row.statusTone}`}>
       <div className="motus-nutrition-report__micro-row-head">
         <span className="motus-nutrition-report__micro-label">{row.label}</span>
-        {contributors.length ? (
+        {contributors.length || showSources ? (
           <div className="motus-nutrition-report__contrib-inline">
-            <span className="motus-nutrition-report__contrib-preview">{formatContributionPreview(contributors)}</span>
-            <button
-              type="button"
-              className={`motus-nutrition-report__contrib-btn${open ? " is-open" : ""}`}
-              aria-expanded={open}
-              aria-label={`Vis bidrag til ${row.label}`}
-              onClick={() => setOpen((value) => !value)}
-            >
-              Bidrag
-            </button>
+            {contributors.length ? (
+              <>
+                <span className="motus-nutrition-report__contrib-preview">{formatContributionPreview(contributors)}</span>
+                <button
+                  type="button"
+                  className={`motus-nutrition-report__contrib-btn${open ? " is-open" : ""}`}
+                  aria-expanded={open}
+                  aria-label={`Vis bidrag til ${row.label}`}
+                  onClick={() => setOpen((value) => !value)}
+                >
+                  Bidrag
+                </button>
+              </>
+            ) : null}
+            {showSources ? (
+              <button
+                type="button"
+                className={`motus-nutrition-report__contrib-btn motus-nutrition-report-no-print${sourcesOpen ? " is-open" : ""}`}
+                aria-expanded={sourcesOpen}
+                aria-label={`Vis gode matkilder til ${row.label}`}
+                onClick={() => setSourcesOpen((value) => !value)}
+              >
+                Gode matkilder
+              </button>
+            ) : null}
           </div>
         ) : null}
         <span
@@ -101,6 +154,9 @@ function NutrientStatusRow({
       </div>
       {open && contributors.length ? (
         <ContributionList nutrientLabel={row.label} contributors={contributors} />
+      ) : null}
+      {sourcesOpen && row.contributionId ? (
+        <FoodSourceList nutrientId={row.contributionId} nutrientLabel={row.label} />
       ) : null}
       <span className="motus-nutrition-report__micro-values">
         {row.valueText}
