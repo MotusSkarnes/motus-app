@@ -15,6 +15,30 @@ function makeState(partial?: Partial<MemberMealPlanState>): MemberMealPlanState 
   };
 }
 
+function foodLog(
+  id: string,
+  name: string,
+  loggedAt: string,
+): MemberMealPlanState["quickFoodLogs"][string][number] {
+  return {
+    id,
+    name,
+    grams: 100,
+    source: "food",
+    loggedAt,
+    nutritionPer100g: {
+      kcal: 100,
+      protein: 1,
+      carbs: 10,
+      fat: 1,
+      fiber: 0,
+      sugar: 0,
+      saturatedFat: 0,
+      sodium: 0,
+    },
+  };
+}
+
 describe("mergeMemberMealPlanStates", () => {
   it("beholder recipePortions når tidsstempel er likt", () => {
     const updatedAt = "2026-05-28T10:00:00.000Z";
@@ -97,5 +121,39 @@ describe("mergeMemberMealPlanStates", () => {
 
     const merged = mergeMemberMealPlanStates(local, remote);
     expect(merged.quickFoodLogs["2026-06-02"]).toBeUndefined();
+  });
+
+  it("keeps meals logged on both devices instead of dropping the older day's entries", () => {
+    const breakfast = foodLog("log-breakfast", "Havregrøt", "2026-06-02T08:00:00.000Z");
+    const lunch = foodLog("log-lunch", "Kylling", "2026-06-02T12:00:00.000Z");
+    const local = makeState({
+      updatedAt: "2026-06-02T12:05:00.000Z",
+      quickFoodLogs: { "2026-06-02": [lunch] },
+    });
+    const remote = makeState({
+      updatedAt: "2026-06-02T08:05:00.000Z",
+      quickFoodLogs: { "2026-06-02": [breakfast] },
+    });
+
+    const merged = mergeMemberMealPlanStates(local, remote);
+    const ids = (merged.quickFoodLogs["2026-06-02"] ?? []).map((entry) => entry.id).sort();
+    expect(ids).toEqual(["log-breakfast", "log-lunch"]);
+  });
+
+  it("does not let a newer stale snapshot wipe meals that only exist in the older cloud copy", () => {
+    const breakfast = foodLog("log-breakfast", "Havregrøt", "2026-06-02T08:00:00.000Z");
+    const lunch = foodLog("log-lunch", "Kylling", "2026-06-02T12:00:00.000Z");
+    const staleLocal = makeState({
+      updatedAt: "2026-06-02T13:00:00.000Z",
+      quickFoodLogs: { "2026-06-02": [breakfast] },
+    });
+    const cloud = makeState({
+      updatedAt: "2026-06-02T12:05:00.000Z",
+      quickFoodLogs: { "2026-06-02": [breakfast, lunch] },
+    });
+
+    const merged = mergeMemberMealPlanStates(staleLocal, cloud);
+    const ids = (merged.quickFoodLogs["2026-06-02"] ?? []).map((entry) => entry.id).sort();
+    expect(ids).toEqual(["log-breakfast", "log-lunch"]);
   });
 });

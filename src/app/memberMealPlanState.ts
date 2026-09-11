@@ -302,14 +302,22 @@ function mergeQuickFoodLogsByDate(
   for (const dateKey of dateKeys) {
     const localHasDate = Object.prototype.hasOwnProperty.call(local, dateKey);
     const remoteHasDate = Object.prototype.hasOwnProperty.call(remote, dateKey);
-    const entries = preferLocal
-      ? localHasDate
-        ? (local[dateKey] ?? [])
-        : (remote[dateKey] ?? [])
-      : remoteHasDate
-        ? (remote[dateKey] ?? [])
-        : (local[dateKey] ?? []);
-    if (entries.length > 0) merged[dateKey] = entries;
+    const localEntries = localHasDate ? (local[dateKey] ?? []) : null;
+    const remoteEntries = remoteHasDate ? (remote[dateKey] ?? []) : null;
+
+    // Newer side explicitly cleared this day — keep the delete.
+    if (preferLocal && localEntries && localEntries.length === 0) continue;
+    if (!preferLocal && remoteEntries && remoteEntries.length === 0) continue;
+
+    const byId = new Map<string, MemberQuickFoodLogEntry>();
+    for (const entry of remoteEntries ?? []) byId.set(entry.id, entry);
+    for (const entry of localEntries ?? []) {
+      const existing = byId.get(entry.id);
+      const entryMs = Date.parse(entry.loggedAt) || 0;
+      const existingMs = existing ? Date.parse(existing.loggedAt) || 0 : 0;
+      if (!existing || entryMs >= existingMs) byId.set(entry.id, entry);
+    }
+    if (byId.size > 0) merged[dateKey] = Array.from(byId.values());
   }
   return merged;
 }
