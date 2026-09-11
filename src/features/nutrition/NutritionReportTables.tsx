@@ -11,11 +11,19 @@ import {
   type MacroDisplayRow,
   type NutritionReportStatusTone,
 } from "../../app/nutritionReportDisplay";
+import {
+  contributorsFor,
+  formatContributionPreview,
+  type NutrientContributionId,
+  type NutrientContributionLookup,
+  type NutritionContributor,
+} from "../../app/nutritionReportContributors";
 import type { MicronutrientDailyRow, MicronutrientReportFilterMode } from "../../app/quickFoodLogNutrition";
 import { micronutrientReportEmptyMessage, micronutrientReportFilterCounts } from "../../app/quickFoodLogNutrition";
 
 type NutrientStatusRowView = {
   key: string;
+  contributionId?: NutrientContributionId;
   label: string;
   statusTone: NutritionReportStatusTone;
   statusLabel: string;
@@ -25,7 +33,43 @@ type NutrientStatusRowView = {
   percentText?: string;
 };
 
-function NutrientStatusList({ rows }: { rows: NutrientStatusRowView[] }) {
+function NutrientContributionDetails({
+  nutrientLabel,
+  contributors,
+}: {
+  nutrientLabel: string;
+  contributors: NutritionContributor[];
+}) {
+  if (!contributors.length) return null;
+  return (
+    <details className="motus-nutrition-report__contrib">
+      <summary className="motus-nutrition-report__contrib-summary">
+        <span className="motus-nutrition-report__contrib-preview">{formatContributionPreview(contributors)}</span>
+        <span className="motus-nutrition-report__contrib-btn">Bidrag</span>
+      </summary>
+      <div className="motus-nutrition-report__contrib-panel" role="group" aria-label={`Største bidrag til ${nutrientLabel}`}>
+        <ol>
+          {contributors.map((row, index) => (
+            <li key={`${row.name}-${index}`}>
+              <span className="motus-nutrition-report__contrib-name" title={row.name}>
+                {row.name}
+              </span>
+              <strong>{row.percent}%</strong>
+            </li>
+          ))}
+        </ol>
+      </div>
+    </details>
+  );
+}
+
+function NutrientStatusList({
+  rows,
+  contributionLookup,
+}: {
+  rows: NutrientStatusRowView[];
+  contributionLookup?: NutrientContributionLookup;
+}) {
   return (
     <div className="motus-nutrition-report__micro-list">
       {rows.map((row) => (
@@ -42,6 +86,10 @@ function NutrientStatusList({ rows }: { rows: NutrientStatusRowView[] }) {
               {row.statusLabel}
             </span>
           </div>
+          <NutrientContributionDetails
+            nutrientLabel={row.label}
+            contributors={contributorsFor(contributionLookup, row.contributionId)}
+          />
           <span className="motus-nutrition-report__micro-values">
             {row.valueText}
             <span className="motus-nutrition-report__micro-ref">{row.refText}</span>
@@ -61,13 +109,21 @@ function NutrientStatusList({ rows }: { rows: NutrientStatusRowView[] }) {
   );
 }
 
-export function MacroReportTable({ rows }: { rows: MacroDisplayRow[] }) {
+export function MacroReportTable({
+  rows,
+  contributionLookup,
+}: {
+  rows: MacroDisplayRow[];
+  contributionLookup?: NutrientContributionLookup;
+}) {
   return (
     <NutrientStatusList
+      contributionLookup={contributionLookup}
       rows={rows.map((row) => {
         const status = classifyMacroDisplayStatus(row);
         return {
           key: row.label,
+          contributionId: row.id,
           label: row.label,
           statusTone: status.tone,
           statusLabel: status.label,
@@ -81,13 +137,19 @@ export function MacroReportTable({ rows }: { rows: MacroDisplayRow[] }) {
   );
 }
 
-export function WaterReportSection({ rows }: { rows: MacroDisplayRow[] }) {
+export function WaterReportSection({
+  rows,
+  contributionLookup,
+}: {
+  rows: MacroDisplayRow[];
+  contributionLookup?: NutrientContributionLookup;
+}) {
   const totalRow = rows.find((row) => row.target > 0);
   const waterRef = totalRow ? formatMacroReferenceLine(totalRow) : "Helsedirektoratet / NNR 2023";
   return (
     <section className="motus-nutrition-report-section" aria-label="Vanninntak">
       <h3 className="motus-nutrition-report-modal__subheading">Vanninntak</h3>
-      <MacroReportTable rows={rows} />
+      <MacroReportTable rows={rows} contributionLookup={contributionLookup} />
       <p className="motus-nutrition-report-modal__footnote">
         Drikke = manuelt logget vann. Fra mat = vanninnhold i matvarer. Totalt: {waterRef} (Helsedirektoratet / NNR
         2023).
@@ -96,12 +158,22 @@ export function WaterReportSection({ rows }: { rows: MacroDisplayRow[] }) {
   );
 }
 
-export function OmegaOverviewTable({ rows }: { rows: OmegaOverviewRow[] }) {
+export function OmegaOverviewTable({
+  rows,
+  contributionLookup,
+}: {
+  rows: OmegaOverviewRow[];
+  contributionLookup?: NutrientContributionLookup;
+}) {
   return (
     <div className="motus-nutrition-report__omega-grid">
       {rows.map((row) => (
         <div key={row.label} className="motus-nutrition-report__omega-card">
           <div className="motus-nutrition-report__omega-label">{row.label}</div>
+          <NutrientContributionDetails
+            nutrientLabel={row.label}
+            contributors={contributorsFor(contributionLookup, row.id)}
+          />
           <div className="motus-nutrition-report__omega-value">{formatOmegaOverviewValue(row)}</div>
           {row.hint ? <p className="motus-nutrition-report__omega-hint">{row.hint}</p> : null}
         </div>
@@ -110,15 +182,23 @@ export function OmegaOverviewTable({ rows }: { rows: OmegaOverviewRow[] }) {
   );
 }
 
-export function MicroReportTable({ rows }: { rows: MicronutrientDailyRow[] }) {
+export function MicroReportTable({
+  rows,
+  contributionLookup,
+}: {
+  rows: MicronutrientDailyRow[];
+  contributionLookup?: NutrientContributionLookup;
+}) {
   return (
     <NutrientStatusList
+      contributionLookup={contributionLookup}
       rows={rows.map((row) => {
         const pct = Math.min(100, Math.round(row.coveragePct));
         const barPct =
           row.upper && row.upper > 0 ? Math.min(100, Math.round((row.value / row.upper) * 100)) : pct;
         return {
           key: row.key,
+          contributionId: row.key,
           label: row.label,
           statusTone: row.statusTone,
           statusLabel: row.statusLabel,
@@ -207,6 +287,7 @@ type NutritionReportStackedBodyProps = {
   omegaFootnote: string;
   referenceWarning?: string | null;
   dailyBreakdown?: ReactNode;
+  contributionLookup?: NutrientContributionLookup;
 };
 
 export function NutritionReportStackedBody({
@@ -223,6 +304,7 @@ export function NutritionReportStackedBody({
   omegaFootnote,
   referenceWarning,
   dailyBreakdown,
+  contributionLookup,
 }: NutritionReportStackedBodyProps) {
   const microEmptyMessage = micronutrientReportEmptyMessage(
     microRows,
@@ -233,11 +315,11 @@ export function NutritionReportStackedBody({
 
   return (
     <>
-      <WaterReportSection rows={waterRows} />
+      <WaterReportSection rows={waterRows} contributionLookup={contributionLookup} />
 
       <section className="motus-nutrition-report-section" aria-label="Makronæringsstoffer">
         <h3 className="motus-nutrition-report-modal__subheading">Makronæringsstoffer</h3>
-        <MacroReportTable rows={macroRows} />
+        <MacroReportTable rows={macroRows} contributionLookup={contributionLookup} />
         <p className="motus-nutrition-report-modal__footnote">{macroFootnote}</p>
       </section>
 
@@ -248,14 +330,14 @@ export function NutritionReportStackedBody({
         {microEmptyMessage ? (
           <p className="text-sm text-slate-600">{microEmptyMessage}</p>
         ) : (
-          <MicroReportTable rows={visibleMicroRows} />
+          <MicroReportTable rows={visibleMicroRows} contributionLookup={contributionLookup} />
         )}
         <p className="motus-nutrition-report-modal__footnote">{referenceFootnote}</p>
       </section>
 
       <section className="motus-nutrition-report-section" aria-label="Omega-fettsyrer">
         <h3 className="motus-nutrition-report-modal__subheading">Omega-fettsyrer</h3>
-        <OmegaOverviewTable rows={omegaRows} />
+        <OmegaOverviewTable rows={omegaRows} contributionLookup={contributionLookup} />
         <p className="motus-nutrition-report-modal__footnote">{omegaFootnote}</p>
       </section>
 

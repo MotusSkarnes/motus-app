@@ -4,10 +4,12 @@ import {
   gramsFromEnergyPercent,
   HEALTH_DIRECTORATE_MACRO_ENERGY_PERCENT,
 } from "./healthDirectorateNutritionReferences";
+import type { NutrientContributionId } from "./nutritionReportContributors";
 import type { MacroDisplayRow } from "./nutritionReportDisplay";
 import type { FoodLogNutritionTotals } from "./quickFoodLogNutrition";
 
 export type OmegaOverviewRow = {
+  id?: NutrientContributionId;
   label: string;
   value: number;
   unit: string;
@@ -27,6 +29,7 @@ export function buildExtraFatDisplayRows(totals: FoodLogNutritionTotals, kcalTar
   const pu = HEALTH_DIRECTORATE_MACRO_ENERGY_PERCENT.polyunsaturatedFat;
   return [
     {
+      id: "monounsaturatedFat",
       label: "Enumettet fett",
       value: fa.monounsaturatedFat,
       unit: "g",
@@ -37,6 +40,7 @@ export function buildExtraFatDisplayRows(totals: FoodLogNutritionTotals, kcalTar
       goal: kcalTarget > 0 ? "range" : undefined,
     },
     {
+      id: "polyunsaturatedFat",
       label: "Flerumettet fett",
       value: fa.polyunsaturatedFat,
       unit: "g",
@@ -55,12 +59,12 @@ export function buildOmegaOverviewRows(fattyAcids: FoodFattyAcids): OmegaOvervie
     fattyAcids.omega3 > 0 ? fattyAcids.omega6 / fattyAcids.omega3 : null;
 
   return [
-    { label: "Omega-3 totalt", value: fattyAcids.omega3, unit: "g", decimals: 2 },
-    { label: "Omega-6 totalt", value: fattyAcids.omega6, unit: "g", decimals: 2 },
-    { label: "EPA", value: fattyAcids.epa, unit: "g", decimals: 2 },
-    { label: "DHA", value: fattyAcids.dha, unit: "g", decimals: 2 },
-    { label: "ALA (alfa-linolensyre)", value: fattyAcids.ala, unit: "g", decimals: 2 },
-    { label: "EPA + DHA", value: epaDha, unit: "g", decimals: 2 },
+    { id: "omega3", label: "Omega-3 totalt", value: fattyAcids.omega3, unit: "g", decimals: 2 },
+    { id: "omega6", label: "Omega-6 totalt", value: fattyAcids.omega6, unit: "g", decimals: 2 },
+    { id: "epa", label: "EPA", value: fattyAcids.epa, unit: "g", decimals: 2 },
+    { id: "dha", label: "DHA", value: fattyAcids.dha, unit: "g", decimals: 2 },
+    { id: "ala", label: "ALA (alfa-linolensyre)", value: fattyAcids.ala, unit: "g", decimals: 2 },
+    { id: "epaDha", label: "EPA + DHA", value: epaDha, unit: "g", decimals: 2 },
     {
       label: "Forhold omega-6 : omega-3",
       value: ratio ?? 0,

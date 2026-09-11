@@ -22,6 +22,10 @@ import {
   resolveNutritionReferenceContext,
 } from "../../app/personalizedNutritionReferences";
 import { filterMicronutrientReportRows, micronutrientRowsForReport, type MicronutrientReportFilterMode } from "../../app/quickFoodLogNutrition";
+import {
+  buildNutrientContributionLookup,
+  contributionSourcesFromMealPlan,
+} from "../../app/nutritionReportContributors";
 import { GradientButton, OutlineButton } from "../../app/ui";
 import { NutritionReportStackedBody } from "./NutritionReportTables";
 
@@ -132,6 +136,16 @@ export function MealPlanNutritionReportModal({
     return buildOmegaOverviewRows(displayTotals.fattyAcids);
   }, [displayTotals]);
 
+  const contributionLookup = useMemo(() => {
+    const dayId = viewMode === "average" ? undefined : selectedDayId;
+    const sources = contributionSourcesFromMealPlan(plan, nutritionContext, dayId);
+    const totals =
+      viewMode === "average"
+        ? report.periodSum
+        : (report.dayTotals.find((row) => row.dayId === selectedDayId)?.totals ?? report.periodSum);
+    return buildNutrientContributionLookup(sources, { totals });
+  }, [nutritionContext, plan, report.dayTotals, report.periodSum, selectedDayId, viewMode]);
+
   const periodSummary = useMemo(() => {
     if (report.daysWithFood === 0) return "Ingen matvarer i matplanen ennå";
     if (viewMode === "average") {
@@ -150,6 +164,7 @@ export function MealPlanNutritionReportModal({
       mealPlanTargets: plan.targets,
       microRows: visibleMicroRows,
       referenceContext,
+      contributionLookup,
       dailyKcal:
         report.daysWithFood > 1
           ? report.dayTotals.map(({ label, totals }) => ({
@@ -163,7 +178,7 @@ export function MealPlanNutritionReportModal({
       return;
     }
     setPrintError(null);
-  }, [displayName, displayTotals, visibleMicroRows, periodSummary, plan.targets, referenceContext, report.dayTotals]);
+  }, [displayName, displayTotals, visibleMicroRows, periodSummary, plan.targets, referenceContext, report.dayTotals, contributionLookup]);
 
   if (!open) return null;
 
@@ -236,6 +251,7 @@ export function MealPlanNutritionReportModal({
               referenceFootnote={referenceFootnote}
               omegaRows={omegaRows}
               omegaFootnote={`Veiledende daglige referanser: omega-3 ca. ${OMEGA3_DAILY_TARGET_G} g, EPA+DHA ca. ${EPA_DHA_DAILY_TARGET_G} g. Forhold omega-6:omega-3 under 5:1 regnes ofte gunstig.`}
+              contributionLookup={contributionLookup}
               referenceWarning={referenceWarning}
               dailyBreakdown={
                 report.daysWithFood > 1 ? (

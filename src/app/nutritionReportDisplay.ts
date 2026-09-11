@@ -1,4 +1,5 @@
 import { formatMacro } from "./foodBankTypes";
+import type { NutrientContributionId } from "./nutritionReportContributors";
 import {
   gramsFromEnergyPercent,
   HEALTH_DIRECTORATE_MACRO_ENERGY_PERCENT,
@@ -32,6 +33,7 @@ export type NutritionReportStatusTone = "danger" | "warn" | "ok" | "muted";
 export type MacroDisplayGoal = "min" | "max" | "target" | "range";
 
 export type MacroDisplayRow = {
+  id?: NutrientContributionId;
   label: string;
   value: number;
   unit: string;
@@ -79,6 +81,7 @@ export function buildWaterReportRows(
   const normalized = normalizeFoodLogNutritionTotals(totals);
   return [
     {
+      id: "waterFromFood",
       label: "Vann (fra mat)",
       value: normalized.waterLiters,
       unit: "L",
@@ -86,6 +89,7 @@ export function buildWaterReportRows(
       decimals: 1,
     },
     {
+      id: "drinkWater",
       label: "Vann (drikke)",
       value: normalized.drinkWaterLiters,
       unit: "L",
@@ -93,6 +97,7 @@ export function buildWaterReportRows(
       decimals: 1,
     },
     {
+      id: "waterTotal",
       label: "Vann (totalt)",
       value: totalWaterLiters(normalized),
       unit: "L",
@@ -104,6 +109,7 @@ export function buildWaterReportRows(
 }
 
 function energyPercentRow(
+  id: NutrientContributionId,
   label: string,
   value: number,
   kcal: number,
@@ -112,6 +118,7 @@ function energyPercentRow(
 ): MacroDisplayRow {
   const hasPlan = Boolean(mealPlanGrams && mealPlanGrams > 0);
   return {
+    id,
     label,
     value,
     unit: "g",
@@ -134,8 +141,9 @@ export function buildMacroDisplayRows(
   const sugarMax = gramsFromEnergyPercent(kcalTarget, HEALTH_DIRECTORATE_MACRO_ENERGY_PERCENT.sugarMax, 4);
   const satFatMax = gramsFromEnergyPercent(kcalTarget, HEALTH_DIRECTORATE_MACRO_ENERGY_PERCENT.saturatedFatMax, 9);
   return [
-    { label: "Kalorier", value: normalized.kcal, unit: "kcal", target: kcalTarget, decimals: 0, goal: "target" },
+    { id: "kcal", label: "Kalorier", value: normalized.kcal, unit: "kcal", target: kcalTarget, decimals: 0, goal: "target" },
     energyPercentRow(
+      "protein",
       "Protein",
       normalized.protein,
       kcalTarget,
@@ -143,15 +151,17 @@ export function buildMacroDisplayRows(
       targets?.protein,
     ),
     energyPercentRow(
+      "carbs",
       "Karbohydrater",
       normalized.carbs,
       kcalTarget,
       HEALTH_DIRECTORATE_MACRO_ENERGY_PERCENT.carbs,
       targets?.carbs,
     ),
-    energyPercentRow("Fett", normalized.fat, kcalTarget, HEALTH_DIRECTORATE_MACRO_ENERGY_PERCENT.fat, targets?.fat),
-    { label: "Fiber", value: normalized.fiber, unit: "g", target: otherDaily.fiber, decimals: 1, goal: "min" },
+    energyPercentRow("fat", "Fett", normalized.fat, kcalTarget, HEALTH_DIRECTORATE_MACRO_ENERGY_PERCENT.fat, targets?.fat),
+    { id: "fiber", label: "Fiber", value: normalized.fiber, unit: "g", target: otherDaily.fiber, decimals: 1, goal: "min" },
     {
+      id: "sugar",
       label: "Sukker",
       value: normalized.sugar,
       unit: "g",
@@ -161,6 +171,7 @@ export function buildMacroDisplayRows(
       goal: "max",
     },
     {
+      id: "saturatedFat",
       label: "Mettet fett",
       value: normalized.saturatedFat,
       unit: "g",
@@ -170,6 +181,7 @@ export function buildMacroDisplayRows(
       goal: "max",
     },
     {
+      id: "sodium",
       label: "Natrium",
       value: normalized.sodium,
       unit: "mg",

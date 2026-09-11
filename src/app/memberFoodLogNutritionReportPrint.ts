@@ -16,6 +16,12 @@ import type { NutritionReferenceContext } from "./personalizedNutritionReference
 import { nutritionReferenceFootnote, nutritionReferenceWarningMessage } from "./personalizedNutritionReferences";
 import type { MicronutrientDailyRow } from "./quickFoodLogNutrition";
 import type { FoodLogNutritionTotals } from "./quickFoodLogNutrition";
+import {
+  contributorsFor,
+  formatContributionPrintLine,
+  type NutrientContributionId,
+  type NutrientContributionLookup,
+} from "./nutritionReportContributors";
 
 export type NutritionReportPrintPayload = {
   memberName: string;
@@ -26,6 +32,7 @@ export type NutritionReportPrintPayload = {
   microRows: MicronutrientDailyRow[];
   referenceContext?: NutritionReferenceContext;
   dailyKcal?: Array<{ dateLabel: string; kcal: number }>;
+  contributionLookup?: NutrientContributionLookup;
 };
 
 function escapeHtml(value: string): string {
@@ -36,12 +43,25 @@ function escapeHtml(value: string): string {
     .replace(/"/g, "&quot;");
 }
 
-function macroTableHtml(rows: ReturnType<typeof buildMacroDisplayRows>): string {
+function contributionHtml(
+  label: string,
+  id: NutrientContributionId | undefined,
+  lookup: NutrientContributionLookup | undefined,
+): string {
+  const rows = contributorsFor(lookup, id);
+  const extra = rows.length ? `<div class="contrib">${escapeHtml(formatContributionPrintLine(rows))}</div>` : "";
+  return `${escapeHtml(label)}${extra}`;
+}
+
+function macroTableHtml(
+  rows: ReturnType<typeof buildMacroDisplayRows>,
+  lookup?: NutrientContributionLookup,
+): string {
   const body = rows
     .map((row) => {
       const status = classifyMacroDisplayStatus(row);
       return `<tr class="micro-status-${status.tone}">
-        <td>${escapeHtml(row.label)}</td>
+        <td>${contributionHtml(row.label, row.id, lookup)}</td>
         <td><strong>${escapeHtml(formatMacroDisplayValue(row))}</strong></td>
         <td>${escapeHtml(status.referenceLine)}</td>
         <td>${escapeHtml(status.label)}</td>
@@ -54,12 +74,12 @@ function macroTableHtml(rows: ReturnType<typeof buildMacroDisplayRows>): string 
   </table>`;
 }
 
-function omegaTableHtml(totals: FoodLogNutritionTotals): string {
+function omegaTableHtml(totals: FoodLogNutritionTotals, lookup?: NutrientContributionLookup): string {
   const rows = buildOmegaOverviewRows(totals.fattyAcids);
   const body = rows
     .map(
       (row) => `<tr>
-        <td>${escapeHtml(row.label)}</td>
+        <td>${contributionHtml(row.label, row.id, lookup)}</td>
         <td><strong>${escapeHtml(formatOmegaOverviewValue(row))}</strong></td>
         <td>${escapeHtml(row.hint ?? "")}</td>
       </tr>`,
@@ -71,14 +91,14 @@ function omegaTableHtml(totals: FoodLogNutritionTotals): string {
   </table>`;
 }
 
-function microTableHtml(rows: MicronutrientDailyRow[]): string {
+function microTableHtml(rows: MicronutrientDailyRow[], lookup?: NutrientContributionLookup): string {
   if (!rows.length) {
     return "<p class=\"muted\">Ingen mikronæringsdata i perioden.</p>";
   }
   const body = rows
     .map(
       (row) => `<tr class="micro-status-${row.statusTone}">
-        <td>${escapeHtml(row.label)}</td>
+        <td>${contributionHtml(row.label, row.key, lookup)}</td>
         <td>${escapeHtml(formatMicronutrientWithUnit(row.value, row.decimals, row.unit))}</td>
         <td>${escapeHtml(formatMicronutrientReferenceLine(row))}</td>
         <td>${escapeHtml(row.statusLabel)}</td>
@@ -168,6 +188,7 @@ export function buildNutritionReportPrintHtml(payload: NutritionReportPrintPaylo
     .micro-status-warn td { background: #fffbeb; }
     .micro-status-ok td { background: #f0fdf4; }
     .micro-status-muted td { background: #f8fafc; color: #64748b; }
+    .contrib { margin-top: 3px; font-size: 11px; color: #0f766e; font-weight: 600; }
     @media print {
       body { padding: 12px; }
       h2 { page-break-after: avoid; }
@@ -181,18 +202,18 @@ export function buildNutritionReportPrintHtml(payload: NutritionReportPrintPaylo
   <p class="summary">${escapeHtml(payload.periodSummary)}</p>
 
   <h2>Makronæringsstoffer</h2>
-  ${macroTableHtml(macroRows)}
+  ${macroTableHtml(macroRows, payload.contributionLookup)}
 
   <h2>Vanninntak</h2>
   <p class="muted">Drikke = manuelt logget. Fra mat = vanninnhold i matvarer. Totalt: Helsedirektoratet / NNR 2023 (2,0 L kvinner / 2,5 L menn).</p>
-  ${macroTableHtml(waterRows)}
+  ${macroTableHtml(waterRows, payload.contributionLookup)}
 
   <h2>Mikronæringsstoffer</h2>
   <p class="muted">${escapeHtml(referenceNote)}</p>
-  ${microTableHtml(payload.microRows)}
+  ${microTableHtml(payload.microRows, payload.contributionLookup)}
 
   <h2>Omega-fettsyrer</h2>
-  ${omegaTableHtml(payload.totals)}
+  ${omegaTableHtml(payload.totals, payload.contributionLookup)}
 
   ${dailyKcalHtml(payload.dailyKcal)}
 

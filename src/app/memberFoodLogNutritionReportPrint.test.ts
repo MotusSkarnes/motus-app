@@ -50,4 +50,17 @@ describe("buildNutritionReportPrintHtml", () => {
     expect(html).toContain("RI 700 µg");
     expect(html).toContain("UL 3000 µg");
   });
+
+  it("prints top food contributions under the nutrient name", () => {
+    const html = buildNutritionReportPrintHtml({
+      memberName: "Ola Nordmann",
+      periodSummary: "Valgt dag",
+      totals: { ...EMPTY_FOOD_LOG_NUTRITION, protein: 30 },
+      microRows: [],
+      contributionLookup: {
+        protein: [{ name: "Laks, oppdrett, rå", amount: 30, percent: 100 }],
+      },
+    });
+    expect(html).toContain("Laks, oppdrett, rå 100%");
+  });
 });

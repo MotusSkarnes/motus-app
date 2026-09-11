@@ -12,7 +12,13 @@ import {
   lastNCalendarDayKeys,
   lastNDaysDateKeys,
 } from "../../app/memberFoodLogNutritionReport";
+import {
+  buildNutrientContributionLookup,
+  contributionSourcesFromFoodLogs,
+  resolveFoodLogsNutrition,
+} from "../../app/nutritionReportContributors";
 import type { MemberQuickFoodLogEntry } from "../../app/memberMealPlanState";
+import { useFoodBankItems } from "../../app/useFoodBankItems";
 import {
   buildExtraFatDisplayRows,
   buildOmegaOverviewRows,
@@ -61,6 +67,7 @@ export function MemberFoodLogNutritionReportModal({
   mealPlanTargets,
 }: MemberFoodLogNutritionReportModalProps) {
   const displayName = memberName.trim() || "Kunden";
+  const foodItems = useFoodBankItems();
   const loggedDateKeys = useMemo(() => dateKeysWithLogs(quickFoodLogs), [quickFoodLogs]);
 
   const [periodPreset, setPeriodPreset] = useState<PeriodPreset>("7");
@@ -88,9 +95,14 @@ export function MemberFoodLogNutritionReportModal({
     return calendarDayKeysInRange(customFrom, customTo);
   }, [customFrom, customTo, periodPreset, selectedDateKey]);
 
+  const resolvedLogs = useMemo(
+    () => resolveFoodLogsNutrition(quickFoodLogs, periodDateKeys, foodItems),
+    [foodItems, periodDateKeys, quickFoodLogs],
+  );
+
   const report = useMemo(
-    () => buildMemberFoodLogNutritionPeriodReport(quickFoodLogs, periodDateKeys, trackedWaterLiters),
-    [periodDateKeys, quickFoodLogs, trackedWaterLiters],
+    () => buildMemberFoodLogNutritionPeriodReport(resolvedLogs, periodDateKeys, trackedWaterLiters),
+    [periodDateKeys, resolvedLogs, trackedWaterLiters],
   );
 
   const displayTotals = useMemo(() => {
@@ -129,6 +141,14 @@ export function MemberFoodLogNutritionReportModal({
     [microRows, microFilter],
   );
   const omegaRows = useMemo(() => buildOmegaOverviewRows(displayTotals.fattyAcids), [displayTotals.fattyAcids]);
+  const contributionLookup = useMemo(
+    () =>
+      buildNutrientContributionLookup(contributionSourcesFromFoodLogs(resolvedLogs, report.dateKeys), {
+        drinkWaterLiters: report.periodSum.drinkWaterLiters,
+        totals: report.periodSum,
+      }),
+    [report.dateKeys, report.periodSum, resolvedLogs],
+  );
 
   const periodSummary =
     report.daysWithLogs === 0
@@ -147,6 +167,7 @@ export function MemberFoodLogNutritionReportModal({
       mealPlanTargets,
       microRows: visibleMicroRows,
       referenceContext,
+      contributionLookup,
       dailyKcal:
         report.daysWithLogs > 1
           ? report.dailyTotals.map(({ dateKey, totals: dayTotals }) => ({
@@ -160,7 +181,7 @@ export function MemberFoodLogNutritionReportModal({
       return;
     }
     setPrintError(null);
-  }, [displayName, displayTotals, mealPlanTargets, visibleMicroRows, periodSummary, referenceContext, report]);
+  }, [displayName, displayTotals, mealPlanTargets, visibleMicroRows, periodSummary, referenceContext, report, contributionLookup]);
 
   if (!open) return null;
 
@@ -262,6 +283,7 @@ export function MemberFoodLogNutritionReportModal({
               referenceFootnote={referenceFootnote}
               omegaRows={omegaRows}
               omegaFootnote={`Veiledende daglige referanser: omega-3 ca. ${OMEGA3_DAILY_TARGET_G} g, EPA+DHA ca. ${EPA_DHA_DAILY_TARGET_G} g. Forhold omega-6:omega-3 under 5:1 regnes ofte gunstig.`}
+              contributionLookup={contributionLookup}
               referenceWarning={referenceWarning}
               dailyBreakdown={
                 report.daysWithLogs > 1 ? (

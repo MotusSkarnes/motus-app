@@ -5,6 +5,8 @@ import { useState } from "react";
 import { buildMacroDisplayRows, buildWaterReportRows } from "../../app/nutritionReportDisplay";
 import { EMPTY_FOOD_LOG_NUTRITION, filterMicronutrientReportRows } from "../../app/quickFoodLogNutrition";
 import type { MicronutrientDailyRow, MicronutrientReportFilterMode } from "../../app/quickFoodLogNutrition";
+import { EMPTY_MICRONUTRIENTS } from "../../app/foodBankMicronutrients";
+import { buildNutrientContributionLookup } from "../../app/nutritionReportContributors";
 import { NutritionReportStackedBody } from "./NutritionReportTables";
 
 afterEach(() => {
@@ -33,6 +35,38 @@ const microRow = (
 
 function ReportHarness({ rows }: { rows: MicronutrientDailyRow[] }) {
   const [filter, setFilter] = useState<MicronutrientReportFilterMode>("all");
+  const contributionLookup = buildNutrientContributionLookup([
+    {
+      name: "Laks, oppdrett, rå",
+      grams: 150,
+      nutritionPer100g: {
+        kcal: 200,
+        protein: 20,
+        carbs: 0,
+        fat: 13,
+        fiber: 0,
+        sugar: 0,
+        saturatedFat: 2,
+        sodium: 50,
+        micronutrients: { ...EMPTY_MICRONUTRIENTS, vitaminA: 80, iron: 0.8, zinc: 0.6 },
+      },
+    },
+    {
+      name: "Egg",
+      grams: 100,
+      nutritionPer100g: {
+        kcal: 155,
+        protein: 13,
+        carbs: 1,
+        fat: 11,
+        fiber: 0,
+        sugar: 0,
+        saturatedFat: 3,
+        sodium: 120,
+        micronutrients: { ...EMPTY_MICRONUTRIENTS, vitaminA: 160, iron: 1.8, zinc: 1.1 },
+      },
+    },
+  ]);
   return (
     <NutritionReportStackedBody
       waterRows={buildWaterReportRows(EMPTY_FOOD_LOG_NUTRITION)}
@@ -44,8 +78,9 @@ function ReportHarness({ rows }: { rows: MicronutrientDailyRow[] }) {
       onMicroFilterChange={setFilter}
       microNoDataMessage="Ingen mikronæringsdata"
       referenceFootnote="NNR-fotnote"
-      omegaRows={[{ label: "Omega-3", value: 1.2, unit: "g", decimals: 1 }]}
+      omegaRows={[{ id: "omega3", label: "Omega-3 totalt", value: 1.2, unit: "g", decimals: 1 }]}
       omegaFootnote="Omega-fotnote"
+      contributionLookup={contributionLookup}
     />
   );
 }
@@ -83,5 +118,15 @@ describe("NutritionReportStackedBody", () => {
     expect(screen.queryByText("Vitamin A")).toBeNull();
     expect(screen.getByText("Jern")).toBeTruthy();
     expect(screen.getByText("Sink")).toBeTruthy();
+  });
+
+  it("shows top food contributions and expands full names from Bidrag", async () => {
+    const user = userEvent.setup();
+    render(<ReportHarness rows={rows} />);
+    expect(screen.getAllByText(/Laks \d+%/).length).toBeGreaterThan(0);
+    const bidrag = screen.getAllByText("Bidrag")[0];
+    expect(bidrag).toBeTruthy();
+    await user.click(bidrag);
+    expect(screen.getAllByText("Laks, oppdrett, rå").length).toBeGreaterThan(0);
   });
 });
