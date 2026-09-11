@@ -297,7 +297,9 @@ function clientMacroCardsHtml(rows: ReturnType<typeof buildMacroDisplayRows>): s
   return `<div class="card-grid">${rows
     .map((row) => {
       const status = classifyMacroDisplayStatus(row);
-      const target = row.target > 0 ? `Anbefalt ${formatMacro(row.target, row.decimals)} ${row.unit}` : "";
+      const target = row.target > 0
+        ? `Anbefalt ${formatMacro(row.target, row.decimals)} ${row.unit}${row.referenceSource ? ` · ${row.referenceSource}` : ""}`
+        : "";
       return `<article class="card card--${status.tone}">
         <div class="row-head">
           <span class="card-label">${escapeHtml(row.label)}</span>

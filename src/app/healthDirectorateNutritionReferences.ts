@@ -48,12 +48,14 @@ export const HEALTH_DIRECTORATE_MACRO_ENERGY_PERCENT = {
 } as const;
 
 /**
- * Omega-fettsyrer (Helsedirektoratet / NNR 2023 + EFSA AI for EPA+DHA).
- * NNR setter ikke egne voksenverdier for EPA, DHA eller omega-6 alene, og ikke for forholdet n-6:n-3.
+ * Omega-fettsyrer. NNR 2023 (også Sveriges offisielle verdier) + EFSA der NNR mangler eget tall.
+ * USA (DRI) har gramverdier for linolsyre og ALA, men ingen for EPA/DHA, og brukes ikke som stolpe-mål.
  */
 export const HEALTH_DIRECTORATE_OMEGA_REFERENCES = {
   omega3MinEnergyPercent: 1,
   alaMinEnergyPercent: 0.5,
+  /** EFSA AI for linolsyre (hoveddelen av omega-6). NNR har ikke eget omega-6-tall. */
+  omega6MinEnergyPercent: 4,
   epaDhaGrams: 0.25,
   kcalPerGram: 9,
 } as const;

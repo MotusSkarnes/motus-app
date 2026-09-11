@@ -7,7 +7,7 @@ import { buildOmegaOverviewRows, nutritionOmegaReportFootnote } from "./nutritio
 const KCAL = 2000;
 
 describe("buildOmegaOverviewRows", () => {
-  it("uses NNR min energy percent for omega-3 and ALA, and 0.25 g for EPA+DHA", () => {
+  it("uses NNR for omega-3 and ALA, EFSA for omega-6 and EPA+DHA, and labels the source", () => {
     const rows = buildOmegaOverviewRows(
       { ...EMPTY_FATTY_ACIDS, omega3: 3, ala: 1.2, epa: 0.2, dha: 0.1, omega6: 6 },
       KCAL,
@@ -21,11 +21,15 @@ describe("buildOmegaOverviewRows", () => {
 
     expect(omega3.target).toBeCloseTo(gramsFromEnergyPercent(KCAL, 1, 9));
     expect(ala.target).toBeCloseTo(gramsFromEnergyPercent(KCAL, 0.5, 9));
+    expect(omega6.target).toBeCloseTo(gramsFromEnergyPercent(KCAL, 4, 9));
     expect(epaDha.target).toBe(0.25);
     expect(epaDha.value).toBeCloseTo(0.3);
+    expect(classifyMacroDisplayStatus(omega3).referenceLine).toContain("NNR 2023");
+    expect(classifyMacroDisplayStatus(omega6).referenceLine).toContain("EFSA");
+    expect(classifyMacroDisplayStatus(epaDha).referenceLine).toContain("EFSA");
     expect(classifyMacroDisplayStatus(omega3).tone).toBe("ok");
     expect(classifyMacroDisplayStatus(epa).label).toBe("Ingen referanse");
-    expect(classifyMacroDisplayStatus(omega6).label).toBe("Ingen referanse");
+    expect(nutritionOmegaReportFootnote()).toContain("USA (DRI)");
     expect(ratio.value).toBe(2);
     expect(ratio.displayAsDash).toBeFalsy();
     expect(formatMacroDisplayValue(ratio)).toBe("2.0:1");

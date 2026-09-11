@@ -45,6 +45,8 @@ export type MacroDisplayRow = {
   goal?: MacroDisplayGoal;
   /** Vis «—» i stedet for tall (f.eks. når omega-forhold ikke kan beregnes). */
   displayAsDash?: boolean;
+  /** Kort kildemerke i referanselinjen, f.eks. «NNR 2023» eller «EFSA». */
+  referenceSource?: string;
 };
 
 export type MacroDisplayStatus = {
@@ -219,6 +221,7 @@ export function formatMacroReferenceLine(row: MacroDisplayRow): string {
     parts.push(`${prefix} ${fmt(row.target)}`);
   }
   if ((row.upper ?? 0) > 0 && row.upper !== row.target) parts.push(`Maks ${fmt(row.upper!)}`);
+  if (row.referenceSource && parts.length) parts.push(row.referenceSource);
   return parts.join(" · ") || "Ingen referanse";
 }
 

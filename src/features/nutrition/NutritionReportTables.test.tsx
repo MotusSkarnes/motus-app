@@ -102,7 +102,7 @@ describe("NutritionReportStackedBody", () => {
     expect(screen.getByRole("heading", { name: "Makronæringsstoffer" })).toBeTruthy();
     expect(screen.getByRole("heading", { name: "Mikronæringsstoffer" })).toBeTruthy();
     expect(screen.getByText("EPA + DHA")).toBeTruthy();
-    expect(screen.getByText("Ref. 0.25 g")).toBeTruthy();
+    expect(screen.getByText("Ref. 0.25 g · EFSA")).toBeTruthy();
     expect(screen.getByRole("heading", { name: "Omega-fettsyrer" })).toBeTruthy();
     expect(screen.queryByRole("tab")).toBeNull();
     expect(screen.getByText("AR 540 µg · RI 700 µg · UL 3000 µg")).toBeTruthy();

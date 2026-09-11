@@ -47,6 +47,7 @@ function minEnergyPercentRow(
   value: number,
   kcalTarget: number,
   energyPercent: number,
+  referenceSource: string,
 ): OmegaOverviewRow {
   const target = gramsFromEnergyPercent(kcalTarget, energyPercent, HEALTH_DIRECTORATE_OMEGA_REFERENCES.kcalPerGram);
   return {
@@ -57,8 +58,12 @@ function minEnergyPercentRow(
     decimals: 2,
     target,
     goal: target > 0 ? "min" : undefined,
+    referenceSource: target > 0 ? referenceSource : undefined,
   };
 }
+
+const SOURCE_NNR = "NNR 2023";
+const SOURCE_EFSA = "EFSA";
 
 export function buildOmegaOverviewRows(fattyAcids: FoodFattyAcids, kcalTarget = 0): OmegaOverviewRow[] {
   const epaDha = fattyAcids.epa + fattyAcids.dha;
@@ -66,15 +71,8 @@ export function buildOmegaOverviewRows(fattyAcids: FoodFattyAcids, kcalTarget = 
   const omega = HEALTH_DIRECTORATE_OMEGA_REFERENCES;
 
   return [
-    minEnergyPercentRow("omega3", "Omega-3 totalt", fattyAcids.omega3, kcalTarget, omega.omega3MinEnergyPercent),
-    {
-      id: "omega6",
-      label: "Omega-6 totalt",
-      value: fattyAcids.omega6,
-      unit: "g",
-      decimals: 2,
-      target: 0,
-    },
+    minEnergyPercentRow("omega3", "Omega-3 totalt", fattyAcids.omega3, kcalTarget, omega.omega3MinEnergyPercent, SOURCE_NNR),
+    minEnergyPercentRow("omega6", "Omega-6 totalt", fattyAcids.omega6, kcalTarget, omega.omega6MinEnergyPercent, SOURCE_EFSA),
     {
       id: "epa",
       label: "EPA",
@@ -91,7 +89,7 @@ export function buildOmegaOverviewRows(fattyAcids: FoodFattyAcids, kcalTarget = 
       decimals: 2,
       target: 0,
     },
-    minEnergyPercentRow("ala", "ALA (alfa-linolensyre)", fattyAcids.ala, kcalTarget, omega.alaMinEnergyPercent),
+    minEnergyPercentRow("ala", "ALA (alfa-linolensyre)", fattyAcids.ala, kcalTarget, omega.alaMinEnergyPercent, SOURCE_NNR),
     {
       id: "epaDha",
       label: "EPA + DHA",
@@ -100,6 +98,7 @@ export function buildOmegaOverviewRows(fattyAcids: FoodFattyAcids, kcalTarget = 
       decimals: 2,
       target: omega.epaDhaGrams,
       goal: "min",
+      referenceSource: SOURCE_EFSA,
     },
     {
       label: "Forhold omega-6 : omega-3",
@@ -113,5 +112,5 @@ export function buildOmegaOverviewRows(fattyAcids: FoodFattyAcids, kcalTarget = 
 }
 
 export function nutritionOmegaReportFootnote(): string {
-  return "Omega-3 minst 1 E% og ALA minst 0,5 E% (Helsedirektoratet / NNR 2023). EPA+DHA minst 0,25 g/dag (EFSA). EPA, DHA og omega-6 har ikke egne voksenanbefalinger. NNR setter ikke anbefaling for forholdet omega-6:omega-3.";
+  return "Omega-3 og ALA: Helsedirektoratet / NNR 2023 (samme verdier i Sverige). Omega-6 er EFSAs anbefaling for linolsyre. EPA+DHA: EFSA. EPA, DHA og forholdet omega-6:omega-3 har ikke egne voksenverdier i NNR, EFSA eller USA (DRI).";
 }
