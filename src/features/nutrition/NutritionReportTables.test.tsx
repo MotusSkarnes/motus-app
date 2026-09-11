@@ -250,4 +250,45 @@ describe("NutritionReportStackedBody", () => {
     expect(screen.getByText("Svin")).toBeTruthy();
     confirmSpy.mockRestore();
   });
+
+  it("can expand the good-sources list from top 10 to top 50", async () => {
+    const nutrition = (vitaminA: number): FoodNutrition => ({
+      kcal: 0,
+      protein: 0,
+      carbs: 0,
+      fat: 0,
+      fiber: 0,
+      sugar: 0,
+      saturatedFat: 0,
+      sodium: 0,
+      micronutrients: { vitaminA },
+    });
+    const item = (name: string, vitaminA: number): FoodItem => ({
+      id: name,
+      name,
+      portionLabel: "100 g",
+      portionGrams: 100,
+      category: "proteinkilder",
+      origin: "Test",
+      source: "egen",
+      createdBy: "test",
+      createdAt: "2026-09-01T00:00:00.000Z",
+      nutritionPer100g: nutrition(vitaminA),
+    });
+    vi.mocked(useFoodBankItems).mockReturnValue(
+      Array.from({ length: 12 }, (_, index) => item(`Kilde ${index + 1}`, index + 1)),
+    );
+    const user = userEvent.setup();
+    render(<ReportHarness rows={rows} />);
+    await user.click(screen.getByRole("button", { name: "Vis gode matkilder til Vitamin A" }));
+    expect(screen.getByText("Kilde 12")).toBeTruthy();
+    expect(screen.queryByText("Kilde 2")).toBeNull();
+    expect(screen.queryByRole("button", { name: "Vis topp 50" })).toBeTruthy();
+
+    await user.click(screen.getByRole("button", { name: "Vis topp 50" }));
+    expect(screen.getByText("Topp 50 i matbanken · mengde per 100 g. Fjern varer som ikke er praktiske kilder.")).toBeTruthy();
+    expect(screen.getByText("Kilde 2")).toBeTruthy();
+    await user.click(screen.getByRole("button", { name: "Vis topp 10" }));
+    expect(screen.queryByText("Kilde 2")).toBeNull();
+  });
 });

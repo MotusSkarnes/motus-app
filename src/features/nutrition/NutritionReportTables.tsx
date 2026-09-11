@@ -23,6 +23,8 @@ import {
   type NutrientCoverageLookup,
 } from "../../app/nutritionReportCoverage";
 import {
+  FOOD_SOURCE_EXPANDED_N,
+  FOOD_SOURCE_TOP_N,
   canSuggestFoodSources,
   formatFoodSourceAmount,
   rankFoodBankSourcesForNutrient,
@@ -78,9 +80,14 @@ function FoodSourceList({
 }) {
   const foodItems = useFoodBankItems();
   const hiddenSources = useHiddenFoodSources();
-  const sources = rankFoodBankSourcesForNutrient(foodItems, nutrientId, {
+  const [expanded, setExpanded] = useState(false);
+  const ranked = rankFoodBankSourcesForNutrient(foodItems, nutrientId, {
     hiddenNameKeys: hiddenSources.map((row) => row.nameKey),
+    limit: FOOD_SOURCE_EXPANDED_N,
   });
+  const sources = expanded ? ranked : ranked.slice(0, FOOD_SOURCE_TOP_N);
+  const canExpand = ranked.length > FOOD_SOURCE_TOP_N;
+  const topLabel = expanded ? FOOD_SOURCE_EXPANDED_N : FOOD_SOURCE_TOP_N;
 
   const hideSource = (row: { id: string; name: string }) => {
     const confirmed = window.confirm(`Vil du fjerne «${row.name}» fra listen over gode matkilder?`);
@@ -90,7 +97,9 @@ function FoodSourceList({
 
   return (
     <div className="motus-nutrition-report__contrib-panel motus-nutrition-report-no-print" role="group" aria-label={`Gode matkilder til ${nutrientLabel}`}>
-      <p className="motus-nutrition-report__sources-lead">Topp 10 i matbanken · mengde per 100 g. Fjern varer som ikke er praktiske kilder.</p>
+      <p className="motus-nutrition-report__sources-lead">
+        Topp {topLabel} i matbanken · mengde per 100 g. Fjern varer som ikke er praktiske kilder.
+      </p>
       {sources.length ? (
         <ol>
           {sources.map((row, index) => (
@@ -115,6 +124,16 @@ function FoodSourceList({
       ) : (
         <p className="motus-nutrition-report__sources-empty">Ingen matvarer med kjent verdi for dette stoffet.</p>
       )}
+      {canExpand ? (
+        <button
+          type="button"
+          className="motus-nutrition-report__sources-more"
+          aria-expanded={expanded}
+          onClick={() => setExpanded((value) => !value)}
+        >
+          {expanded ? "Vis topp 10" : "Vis topp 50"}
+        </button>
+      ) : null}
     </div>
   );
 }

@@ -75,6 +75,13 @@ describe("rankFoodBankSourcesForNutrient", () => {
     expect(ranked[0]).toMatchObject({ name: "Mat 12", amountPer100g: 99 });
   });
 
+  it("can return a longer top list when asked", () => {
+    const items = Array.from({ length: 60 }, (_, index) =>
+      food(`Mat ${index + 1}`, nutrition({ micronutrients: { iron: index + 1 } })),
+    );
+    expect(rankFoodBankSourcesForNutrient(items, "iron", { limit: 50 })).toHaveLength(50);
+  });
+
   it("does not suggest sources for nutrients where less is better", () => {
     expect(canSuggestFoodSources("vitaminB1")).toBe(true);
     expect(canSuggestFoodSources("protein")).toBe(true);

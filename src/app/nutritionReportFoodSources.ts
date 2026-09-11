@@ -7,6 +7,7 @@ import { hasKnownNutrientValue } from "./nutritionReportCoverage";
 import type { NutrientContributionId } from "./nutritionReportContributors";
 
 export const FOOD_SOURCE_TOP_N = 10;
+export const FOOD_SOURCE_EXPANDED_N = 50;
 
 export type FoodBankNutrientSource = {
   id: string;
