@@ -3,6 +3,7 @@ import { normalizeFoodBankNameKey } from "./foodBankNameKey";
 import type { FoodItem, FoodNutrition } from "./foodBankTypes";
 import { formatMacro } from "./foodBankTypes";
 import { foodWaterPer100g } from "./foodBankWater";
+import { foodSourceFamilyKey } from "./foodSourceFamily";
 import { isImpracticalHundredGramFoodSource } from "./foodSourcePracticality";
 import { hasKnownNutrientValue } from "./nutritionReportCoverage";
 import type { NutrientContributionId } from "./nutritionReportContributors";
@@ -44,9 +45,10 @@ export function rankFoodBankSourcesForNutrient(
     if (!hasKnownNutrientValue(source, id)) continue;
     const amountPer100g = amountPer100gForNutrient(item.nutritionPer100g, id);
     if (!(amountPer100g > 0)) continue;
-    const previous = best.get(key);
+    const family = foodSourceFamilyKey(name);
+    const previous = best.get(family);
     if (!previous || amountPer100g > previous.amountPer100g) {
-      best.set(key, { id: item.id, name, amountPer100g, nameKey: key });
+      best.set(family, { id: item.id, name, amountPer100g, nameKey: key });
     }
   }
   return [...best.values()]

@@ -112,6 +112,20 @@ describe("rankFoodBankSourcesForNutrient", () => {
     ]);
   });
 
+  it("keeps only the strongest liver among animal variants", () => {
+    const items = [
+      food("Lever, kylling, rå", nutrition({ micronutrients: { vitaminA: 8000 } })),
+      food("Lever, svin, rå", nutrition({ micronutrients: { vitaminA: 12000 } })),
+      food("Leverpostei, fersk", nutrition({ micronutrients: { vitaminA: 4000 } })),
+      food("Mandler", nutrition({ micronutrients: { vitaminA: 1 } })),
+    ];
+    expect(rankFoodBankSourcesForNutrient(items, "vitaminA").map((row) => row.name)).toEqual([
+      "Lever, svin, rå",
+      "Leverpostei, fersk",
+      "Mandler",
+    ]);
+  });
+
   it("does not rank salt as a water source when Matvaretabellen stored water-by-difference as 100 g", () => {
     const items = [
       food("Havsalt", nutrition({ water: 100, sodium: 37600 })),
