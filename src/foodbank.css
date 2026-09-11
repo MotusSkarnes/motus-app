@@ -5295,11 +5295,20 @@
 }
 
 .motus-nutrition-report__micro-row-head {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: start;
+  column-gap: 0.5rem;
+  margin-bottom: 0.2rem;
+}
+
+.motus-nutrition-report__contrib-inline {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: 0.5rem;
-  margin-bottom: 0.2rem;
+  gap: 0.4rem;
+  min-width: 0;
+  grid-column: 2;
 }
 
 .motus-nutrition-report__contrib {
@@ -5331,6 +5340,7 @@
 
 .motus-nutrition-report__contrib-btn {
   flex: 0 0 auto;
+  font-family: inherit;
   font-size: 0.625rem;
   font-weight: 700;
   letter-spacing: 0.02em;
@@ -5341,15 +5351,17 @@
   border-radius: 9999px;
   padding: 0.12rem 0.45rem;
   line-height: 1.2;
+  cursor: pointer;
 }
 
-.motus-nutrition-report__contrib[open] .motus-nutrition-report__contrib-btn {
+.motus-nutrition-report__contrib[open] .motus-nutrition-report__contrib-btn,
+.motus-nutrition-report__contrib-btn.is-open {
   background: #ccfbf1;
   border-color: #0d9488;
 }
 
 .motus-nutrition-report__contrib-panel {
-  margin-top: 0.35rem;
+  margin: 0.15rem 0 0.35rem;
   background: #f0fdfa;
   border: 1px solid #99f6e4;
   border-radius: 0.55rem;
@@ -5389,12 +5401,15 @@
 }
 
 .motus-nutrition-report__micro-label {
+  grid-column: 1;
   font-size: 0.8125rem;
   font-weight: 600;
   color: #334155;
 }
 
 .motus-nutrition-report__micro-status {
+  grid-column: 3;
+  justify-self: end;
   font-size: 0.625rem;
   font-weight: 700;
   padding: 0.1rem 0.4rem;

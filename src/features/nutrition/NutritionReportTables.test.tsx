@@ -120,6 +120,19 @@ describe("NutritionReportStackedBody", () => {
     expect(screen.getByText("Sink")).toBeTruthy();
   });
 
+  it("places contributions between the nutrient name and status", () => {
+    render(<ReportHarness rows={rows} />);
+    const name = screen.getByText("Vitamin A");
+    const row = name.closest(".motus-nutrition-report__micro-row");
+    expect(row).toBeTruthy();
+    const preview = row!.querySelector(".motus-nutrition-report__contrib-preview");
+    const status = row!.querySelector(".motus-nutrition-report__micro-status");
+    expect(preview?.textContent).toMatch(/Egg \d+%/);
+    expect(status?.textContent).toBe("OK");
+    expect(name.compareDocumentPosition(preview!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(preview!.compareDocumentPosition(status!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
   it("shows top food contributions and expands full names from Bidrag", async () => {
     const user = userEvent.setup();
     render(<ReportHarness rows={rows} />);

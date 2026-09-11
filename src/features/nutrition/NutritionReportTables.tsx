@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { formatMicronutrientReferenceLine, formatMicronutrientWithUnit } from "../../app/foodBankMicronutrients";
 import {
   formatOmegaOverviewValue,
@@ -33,6 +33,29 @@ type NutrientStatusRowView = {
   percentText?: string;
 };
 
+function ContributionList({
+  nutrientLabel,
+  contributors,
+}: {
+  nutrientLabel: string;
+  contributors: NutritionContributor[];
+}) {
+  return (
+    <div className="motus-nutrition-report__contrib-panel" role="group" aria-label={`Største bidrag til ${nutrientLabel}`}>
+      <ol>
+        {contributors.map((row, index) => (
+          <li key={`${row.name}-${index}`}>
+            <span className="motus-nutrition-report__contrib-name" title={row.name}>
+              {row.name}
+            </span>
+            <strong>{row.percent}%</strong>
+          </li>
+        ))}
+      </ol>
+    </div>
+  );
+}
+
 function NutrientContributionDetails({
   nutrientLabel,
   contributors,
@@ -47,19 +70,63 @@ function NutrientContributionDetails({
         <span className="motus-nutrition-report__contrib-preview">{formatContributionPreview(contributors)}</span>
         <span className="motus-nutrition-report__contrib-btn">Bidrag</span>
       </summary>
-      <div className="motus-nutrition-report__contrib-panel" role="group" aria-label={`Største bidrag til ${nutrientLabel}`}>
-        <ol>
-          {contributors.map((row, index) => (
-            <li key={`${row.name}-${index}`}>
-              <span className="motus-nutrition-report__contrib-name" title={row.name}>
-                {row.name}
-              </span>
-              <strong>{row.percent}%</strong>
-            </li>
-          ))}
-        </ol>
-      </div>
+      <ContributionList nutrientLabel={nutrientLabel} contributors={contributors} />
     </details>
+  );
+}
+
+function NutrientStatusRow({
+  row,
+  contributionLookup,
+}: {
+  row: NutrientStatusRowView;
+  contributionLookup?: NutrientContributionLookup;
+}) {
+  const contributors = contributorsFor(contributionLookup, row.contributionId);
+  const [open, setOpen] = useState(false);
+
+  return (
+    <div className={`motus-nutrition-report__micro-row motus-nutrition-report__micro-row--${row.statusTone}`}>
+      <div className="motus-nutrition-report__micro-row-head">
+        <span className="motus-nutrition-report__micro-label">{row.label}</span>
+        {contributors.length ? (
+          <div className="motus-nutrition-report__contrib-inline">
+            <span className="motus-nutrition-report__contrib-preview">{formatContributionPreview(contributors)}</span>
+            <button
+              type="button"
+              className={`motus-nutrition-report__contrib-btn${open ? " is-open" : ""}`}
+              aria-expanded={open}
+              aria-label={`Vis bidrag til ${row.label}`}
+              onClick={() => setOpen((value) => !value)}
+            >
+              Bidrag
+            </button>
+          </div>
+        ) : null}
+        <span
+          className={`motus-nutrition-report__micro-status motus-nutrition-report__micro-status--${row.statusTone}`}
+          title={row.statusLabel}
+        >
+          {row.statusLabel}
+        </span>
+      </div>
+      {open && contributors.length ? (
+        <ContributionList nutrientLabel={row.label} contributors={contributors} />
+      ) : null}
+      <span className="motus-nutrition-report__micro-values">
+        {row.valueText}
+        <span className="motus-nutrition-report__micro-ref">{row.refText}</span>
+      </span>
+      {row.barPct > 0 || row.statusTone !== "muted" ? (
+        <div className="motus-nutrition-report__bar-track" aria-hidden>
+          <div
+            className={`motus-nutrition-report__bar-fill motus-nutrition-report__bar-fill--${row.statusTone}`}
+            style={{ width: `${row.barPct}%` }}
+          />
+        </div>
+      ) : null}
+      {row.percentText ? <span className="motus-nutrition-report__micro-pct">{row.percentText}</span> : null}
+    </div>
   );
 }
 
@@ -73,37 +140,7 @@ function NutrientStatusList({
   return (
     <div className="motus-nutrition-report__micro-list">
       {rows.map((row) => (
-        <div
-          key={row.key}
-          className={`motus-nutrition-report__micro-row motus-nutrition-report__micro-row--${row.statusTone}`}
-        >
-          <div className="motus-nutrition-report__micro-row-head">
-            <span className="motus-nutrition-report__micro-label">{row.label}</span>
-            <span
-              className={`motus-nutrition-report__micro-status motus-nutrition-report__micro-status--${row.statusTone}`}
-              title={row.statusLabel}
-            >
-              {row.statusLabel}
-            </span>
-          </div>
-          <NutrientContributionDetails
-            nutrientLabel={row.label}
-            contributors={contributorsFor(contributionLookup, row.contributionId)}
-          />
-          <span className="motus-nutrition-report__micro-values">
-            {row.valueText}
-            <span className="motus-nutrition-report__micro-ref">{row.refText}</span>
-          </span>
-          {row.barPct > 0 || row.statusTone !== "muted" ? (
-            <div className="motus-nutrition-report__bar-track" aria-hidden>
-              <div
-                className={`motus-nutrition-report__bar-fill motus-nutrition-report__bar-fill--${row.statusTone}`}
-                style={{ width: `${row.barPct}%` }}
-              />
-            </div>
-          ) : null}
-          {row.percentText ? <span className="motus-nutrition-report__micro-pct">{row.percentText}</span> : null}
-        </div>
+        <NutrientStatusRow key={row.key} row={row} contributionLookup={contributionLookup} />
       ))}
     </div>
   );
