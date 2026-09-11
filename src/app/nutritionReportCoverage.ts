@@ -18,6 +18,8 @@ export type NutrientCoverage = {
   known: number;
   total: number;
   percent: number;
+  missingNames: string[];
+  detail?: string;
 };
 
 export type NutrientCoverageLookup = Partial<Record<NutrientContributionId, NutrientCoverage>>;
@@ -70,7 +72,7 @@ export function hasKnownNutrientValue(source: NutritionContributionSource, id: N
     case "waterTotal":
       return n.water != null && Number.isFinite(n.water);
     case "drinkWater":
-      return false;
+      return true;
     case "monounsaturatedFat":
     case "polyunsaturatedFat":
     case "omega3":
@@ -93,12 +95,26 @@ export function buildNutrientCoverageLookup(sources: NutritionContributionSource
 
   const lookup: NutrientCoverageLookup = {};
   for (const id of ALL_CONTRIBUTION_IDS) {
-    if (id === "drinkWater") continue;
-    const known = foods.filter((source) => hasKnownNutrientValue(source, id)).length;
+    if (id === "drinkWater") {
+      lookup.drinkWater = {
+        known: 1,
+        total: 1,
+        percent: 100,
+        missingNames: [],
+        detail: "Logget drikke er alltid kjent — du legger inn mengden selv.",
+      };
+      continue;
+    }
+    const missingNames = foods
+      .filter((source) => !hasKnownNutrientValue(source, id))
+      .map((source) => source.name.trim())
+      .filter(Boolean);
+    const known = total - missingNames.length;
     lookup[id] = {
       known,
       total,
       percent: Math.round((known / total) * 100),
+      missingNames,
     };
   }
   return lookup;
@@ -119,7 +135,14 @@ export function formatCoveragePercent(coverage: NutrientCoverage | undefined): s
 
 export function formatCoverageTitle(coverage: NutrientCoverage | undefined): string {
   if (!coverage || coverage.total <= 0) return "";
-  return `${coverage.known} av ${coverage.total} matvarer har kjent verdi (0 teller som kjent). Ukjent verdi telles ikke.`;
+  if (coverage.detail) return coverage.detail;
+  if (coverage.missingNames.length === 0) {
+    return `${coverage.known} av ${coverage.total} matvarer har kjent verdi (0 teller som kjent).`;
+  }
+  const shown = coverage.missingNames.slice(0, 4);
+  const extra = coverage.missingNames.length - shown.length;
+  const missingList = extra > 0 ? `${shown.join(", ")} og ${extra} flere` : shown.join(", ");
+  return `${coverage.known} av ${coverage.total} matvarer har kjent verdi. Mangler: ${missingList}.`;
 }
 
 export const NUTRIENT_COVERAGE_FOOTNOTE =

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { EMPTY_MICRONUTRIENTS } from "./foodBankMicronutrients";
 import type { FoodNutrition } from "./foodBankTypes";
-import { buildNutrientCoverageLookup, hasKnownNutrientValue } from "./nutritionReportCoverage";
+import { buildNutrientCoverageLookup, formatCoverageTitle, hasKnownNutrientValue } from "./nutritionReportCoverage";
 
 function nutrition(partial: Partial<FoodNutrition>): FoodNutrition {
   return {
@@ -32,8 +32,13 @@ describe("nutritionReportCoverage", () => {
       },
     ]);
 
-    expect(lookup.vitaminA).toEqual({ known: 2, total: 2, percent: 100 });
-    expect(lookup.copper).toEqual({ known: 1, total: 2, percent: 50 });
+    expect(lookup.vitaminA).toMatchObject({ known: 2, total: 2, percent: 100, missingNames: [] });
+    expect(lookup.copper).toMatchObject({
+      known: 1,
+      total: 2,
+      percent: 50,
+      missingNames: ["Vitaminbamser"],
+    });
   });
 
   it("does not treat empty micronutrient fill as known copper", () => {
@@ -66,7 +71,24 @@ describe("nutritionReportCoverage", () => {
         nutritionPer100g: nutrition({ micronutrients: { ...EMPTY_MICRONUTRIENTS, vitaminA: 800 } }),
       },
     ]);
-    expect(lookup.copper).toEqual({ known: 1, total: 1, percent: 100 });
-    expect(lookup.vitaminA).toEqual({ known: 1, total: 1, percent: 100 });
+    expect(lookup.copper).toMatchObject({ known: 1, total: 1, percent: 100 });
+    expect(lookup.vitaminA).toMatchObject({ known: 1, total: 1, percent: 100 });
+  });
+
+  it("treats logged drink as fully known and names foods missing water", () => {
+    const lookup = buildNutrientCoverageLookup([
+      { name: "Agurk", grams: 200, nutritionPer100g: nutrition({ water: 95 }) },
+      { name: "Vitaminbamser", grams: 1, nutritionPer100g: nutrition({ kcal: 4 }) },
+    ]);
+    expect(lookup.drinkWater).toMatchObject({ percent: 100 });
+    expect(lookup.waterFromFood).toMatchObject({
+      known: 1,
+      total: 2,
+      percent: 50,
+      missingNames: ["Vitaminbamser"],
+    });
+    expect(lookup.waterTotal?.missingNames).toEqual(["Vitaminbamser"]);
+    expect(formatCoverageTitle(lookup.waterFromFood)).toContain("Mangler: Vitaminbamser");
+    expect(formatCoverageTitle(lookup.drinkWater)).toContain("Logget drikke");
   });
 });
