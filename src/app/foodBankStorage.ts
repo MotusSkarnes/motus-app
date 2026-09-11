@@ -1,20 +1,14 @@
 import { enrichFoodItem } from "./foodBankMicronutrientEnrichment";
 import { applyKnownPortionDefaults } from "./foodPortionDefaults";
-import { compactMicronutrients } from "./foodBankMicronutrients";
+import { normalizeMicronutrients } from "./foodBankMicronutrients";
 import { dedupeFoodBankItems } from "./foodBankDedup";
 import { buildDefaultFoodBankItems, appendMissingSeedFoodItems } from "./foodBankSeed";
 import type { FoodItem, FoodNutrition } from "./foodBankTypes";
 
-function shouldDropUnknownZeros(item: Pick<FoodItem, "source" | "isCustom">): boolean {
-  return item.source === "egen" || item.isCustom === true;
-}
-
-function normalizeFoodNutrition(nutrition: FoodNutrition, item: Pick<FoodItem, "source" | "isCustom">): FoodNutrition {
+function normalizeFoodNutrition(nutrition: FoodNutrition): FoodNutrition {
   return {
     ...nutrition,
-    micronutrients: compactMicronutrients(nutrition.micronutrients, {
-      dropZeros: shouldDropUnknownZeros(item),
-    }),
+    micronutrients: normalizeMicronutrients(nutrition.micronutrients),
   };
 }
 
@@ -22,7 +16,7 @@ function normalizeFoodItem(item: FoodItem): FoodItem {
   return enrichFoodItem(
     applyKnownPortionDefaults({
       ...item,
-      nutritionPer100g: normalizeFoodNutrition(item.nutritionPer100g, item),
+      nutritionPer100g: normalizeFoodNutrition(item.nutritionPer100g),
     }),
   );
 }

@@ -58,15 +58,15 @@ describe("nutritionReportCoverage", () => {
     expect(hasKnownNutrientValue(source, "copper")).toBe(false);
   });
 
-  it("treats explicit copper 0 on a sparse food as known", () => {
+  it("treats explicit zeros on a fully filled custom food as known", () => {
     const lookup = buildNutrientCoverageLookup([
       {
         name: "Vitaminbamser",
         grams: 1,
-        nutritionPer100g: nutrition({ micronutrients: { vitaminA: 800, copper: 0 } }),
+        nutritionPer100g: nutrition({ micronutrients: { ...EMPTY_MICRONUTRIENTS, vitaminA: 800 } }),
       },
     ]);
     expect(lookup.copper).toEqual({ known: 1, total: 1, percent: 100 });
-    expect(lookup.iron).toEqual({ known: 0, total: 1, percent: 0 });
+    expect(lookup.vitaminA).toEqual({ known: 1, total: 1, percent: 100 });
   });
 });

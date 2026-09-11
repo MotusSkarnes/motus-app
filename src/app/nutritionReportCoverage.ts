@@ -45,8 +45,7 @@ function hasKnownFattyAcid(nutrition: NutritionContributionSource["nutritionPer1
 
 function shouldTreatDenseZerosAsUnknown(micros: FoodMicronutrients | undefined): boolean {
   if (!isDenseMicronutrientObject(micros)) return false;
-  const positive = FOOD_MICRONUTRIENT_FIELDS.filter((field) => Number(micros[field.key]) > 0).length;
-  return positive < 8;
+  return FOOD_MICRONUTRIENT_FIELDS.every((field) => Number(micros[field.key]) === 0);
 }
 
 function microsForCoverage(nutrition: NutritionContributionSource["nutritionPer100g"]): FoodMicronutrients | undefined {
