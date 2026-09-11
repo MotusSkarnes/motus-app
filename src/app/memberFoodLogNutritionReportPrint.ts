@@ -321,7 +321,7 @@ function clientMacroCardsHtml(rows: ReturnType<typeof buildMacroDisplayRows>): s
     .map((row) => {
       const status = classifyMacroDisplayStatus(row);
       const target = row.target > 0 ? `Anbefalt ${formatMacro(row.target, row.decimals)} ${row.unit}` : "";
-      return `<article class="card">
+      return `<article class="card card--${status.tone}">
         <div class="row-head">
           <span class="card-label">${escapeHtml(row.label)}</span>
           ${intakeHtml(formatMacroDisplayValue(row), status.tone)}
@@ -341,7 +341,7 @@ function clientMicroCardsHtml(rows: MicronutrientDailyRow[]): string {
     .map((row) => {
       const target =
         row.target > 0 ? `Anbefalt ${formatMicronutrientWithUnit(row.target, row.decimals, row.unit)}` : "";
-      return `<article class="card">
+      return `<article class="card card--${row.statusTone}">
         <div class="row-head">
           <span class="card-label">${escapeHtml(row.label)}</span>
           ${intakeHtml(formatMicronutrientWithUnit(row.value, row.decimals, row.unit), row.statusTone)}
@@ -357,7 +357,7 @@ function clientOmegaHtml(totals: FoodLogNutritionTotals): string {
   const rows = buildOmegaOverviewRows(totals.fattyAcids);
   return `<div class="card-grid">${rows
     .map((row) => {
-      return `<article class="card">
+      return `<article class="card card--muted">
         <div class="row-head">
           <span class="card-label">${escapeHtml(row.label)}</span>
           ${intakeHtml(formatOmegaOverviewValue(row), "muted")}
@@ -396,49 +396,73 @@ function buildClientPrintHtml(payload: NutritionReportPrintPayload): string {
       padding: 0;
       background: #fff;
       font-size: 11px;
-      line-height: 1.25;
+      line-height: 1.3;
     }
-    .page .intake { padding: 0 6px; font-size: 11px; }
+    .page .intake { padding: 1px 7px; font-size: 10.5px; }
     .header {
+      position: relative;
+      overflow: hidden;
       display: flex;
       align-items: center;
       justify-content: space-between;
-      gap: 10px;
-      background: #30E3BE;
-      color: #0f172a;
-      border-radius: 10px;
-      padding: 8px 12px;
+      gap: 12px;
+      background: linear-gradient(135deg, #f0fdfa 0%, #ffffff 58%, #fdf2f8 100%);
+      border: 1px solid rgba(48, 227, 190, 0.28);
+      border-radius: 14px;
+      padding: 10px 14px 10px;
       margin-bottom: 8px;
     }
-    .header h1 { margin: 0; font-size: 15px; line-height: 1.15; }
-    .header .name { margin: 1px 0 0; font-size: 13px; font-weight: 700; }
-    .header .meta { margin: 1px 0 0; font-size: 10px; opacity: 0.8; }
-    .brand-logo { height: 34px; width: auto; max-width: 120px; object-fit: contain; display: block; }
-    .brand-wordmark { font-weight: 800; font-size: 16px; letter-spacing: 0.04em; }
+    .header::before {
+      content: "";
+      position: absolute;
+      left: 0; right: 0; top: 0;
+      height: 4px;
+      background: linear-gradient(90deg, #30E3BE 0%, #D91278 100%);
+    }
+    .header h1 { margin: 0; font-size: 16px; line-height: 1.15; letter-spacing: -0.02em; }
+    .header .kicker {
+      margin: 0 0 1px;
+      font-size: 9px;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: #0d9488;
+    }
+    .header .name { margin: 2px 0 0; font-size: 13px; font-weight: 700; }
+    .header .meta { margin: 1px 0 0; font-size: 10px; color: #64748b; }
+    .brand-logo { height: 36px; width: auto; max-width: 128px; object-fit: contain; display: block; }
+    .brand-wordmark { font-weight: 800; font-size: 16px; letter-spacing: 0.04em; color: #0f172a; }
     .legend {
       display: flex;
       flex-wrap: wrap;
-      gap: 8px;
+      gap: 6px;
       margin: 0 0 8px;
     }
     .legend span {
       display: inline-flex;
       align-items: center;
-      gap: 4px;
-      font-size: 10px;
-      font-weight: 600;
+      gap: 5px;
+      font-size: 9px;
+      font-weight: 700;
       color: #475569;
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 999px;
+      padding: 2px 8px;
     }
     .swatch { width: 8px; height: 8px; border-radius: 999px; display: inline-block; }
     .swatch--ok { background: #10b981; }
     .swatch--warn { background: #f59e0b; }
     .swatch--danger { background: #ef4444; }
     h2 {
-      margin: 8px 0 5px;
+      margin: 9px 0 5px;
       font-size: 10px;
+      font-weight: 700;
       text-transform: uppercase;
-      letter-spacing: 0.06em;
-      color: #64748b;
+      letter-spacing: 0.08em;
+      color: #0d9488;
+      border-bottom: 1px solid rgba(48, 227, 190, 0.35);
+      padding-bottom: 3px;
     }
     .card-grid {
       display: grid;
@@ -447,11 +471,15 @@ function buildClientPrintHtml(payload: NutritionReportPrintPayload): string {
     }
     .card {
       background: #fff;
-      border: 1px solid #e2e8f0;
-      border-radius: 8px;
-      padding: 5px 7px 6px;
+      border: 1px solid rgba(15, 23, 42, 0.08);
+      border-radius: 10px;
+      padding: 6px 8px 7px;
       break-inside: avoid;
     }
+    .card--ok { background: #f0fdf4; border-color: #bbf7d0; }
+    .card--warn { background: #fffbeb; border-color: #fde68a; }
+    .card--danger { background: #fef2f2; border-color: #fecaca; }
+    .card--muted { background: #f8fafc; border-color: #e2e8f0; }
     .row-head {
       display: flex;
       align-items: center;
@@ -465,7 +493,7 @@ function buildClientPrintHtml(payload: NutritionReportPrintPayload): string {
       font-weight: 700;
       letter-spacing: 0.03em;
       text-transform: uppercase;
-      color: #64748b;
+      color: #334155;
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
@@ -484,18 +512,20 @@ function buildClientPrintHtml(payload: NutritionReportPrintPayload): string {
     .card-status--muted { color: #64748b; }
     .card-ref { margin: 2px 0 0; font-size: 9px; color: #94a3b8; }
     .bar {
-      height: 4px;
-      background: #e2e8f0;
+      height: 5px;
+      background: rgba(15, 23, 42, 0.08);
       border-radius: 99px;
       overflow: hidden;
     }
     .bar i { display: block; height: 100%; border-radius: 99px; }
-    .bar-fill--ok { background: #10b981; }
-    .bar-fill--warn { background: #f59e0b; }
-    .bar-fill--danger { background: #ef4444; }
+    .bar-fill--ok { background: linear-gradient(90deg, #34d399, #059669); }
+    .bar-fill--warn { background: linear-gradient(90deg, #fbbf24, #d97706); }
+    .bar-fill--danger { background: linear-gradient(90deg, #f87171, #dc2626); }
     .bar-fill--muted { background: #cbd5e1; }
     .footer {
-      margin-top: 8px;
+      margin-top: 10px;
+      padding-top: 6px;
+      border-top: 1px solid rgba(48, 227, 190, 0.28);
       font-size: 9px;
       color: #94a3b8;
       text-align: center;
@@ -510,6 +540,7 @@ function buildClientPrintHtml(payload: NutritionReportPrintPayload): string {
   <div class="page">
     <header class="header">
       <div>
+        <p class="kicker">Motus</p>
         <h1>Næringsrapport</h1>
         <p class="name">${escapeHtml(payload.memberName)}</p>
         <p class="meta">${escapeHtml(payload.periodSummary)} · ${escapeHtml(generated)}</p>
