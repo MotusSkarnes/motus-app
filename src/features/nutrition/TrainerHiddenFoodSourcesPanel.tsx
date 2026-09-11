@@ -1,6 +1,6 @@
-import { restoreHiddenFoodSource } from "../app/foodSourceHiddenStorage";
-import { useHiddenFoodSources } from "../app/useHiddenFoodSources";
-import { OutlineButton } from "../app/ui";
+import { restoreHiddenFoodSource } from "../../app/foodSourceHiddenStorage";
+import { useHiddenFoodSources } from "../../app/useHiddenFoodSources";
+import { OutlineButton } from "../../app/ui";
 
 export function TrainerHiddenFoodSourcesPanel() {
   const hidden = useHiddenFoodSources();

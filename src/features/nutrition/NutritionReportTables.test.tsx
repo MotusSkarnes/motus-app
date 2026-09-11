@@ -196,7 +196,7 @@ describe("NutritionReportStackedBody", () => {
     const user = userEvent.setup();
     render(<ReportHarness rows={rows} />);
     await user.click(screen.getByRole("button", { name: "Vis gode matkilder til Vitamin A" }));
-    expect(screen.getByText("Topp 10 i matbanken · mengde per 100 g")).toBeTruthy();
+    expect(screen.getByText("Topp 10 i matbanken · mengde per 100 g. Fjern varer som ikke er praktiske kilder.")).toBeTruthy();
     expect(screen.getByText("Lever")).toBeTruthy();
     expect(screen.getByText("8000 µg / 100 g")).toBeTruthy();
 
