@@ -1,3 +1,4 @@
+import { mergeMicronutrientsPreferKnown } from "./foodBankMicronutrients";
 import type { FoodItem, FoodNutrition } from "./foodBankTypes";
 import type { MemberMealPlanState, MemberQuickFoodLogEntry } from "./memberMealPlanState";
 
@@ -87,9 +88,7 @@ export function mergeNutritionWithBank(stored: FoodNutrition, bank: FoodNutritio
   const merged = cloneNutritionSnapshot(stored);
   const bankClone = cloneNutritionSnapshot(bank);
   if ((bankClone.water ?? 0) > (merged.water ?? 0)) merged.water = bankClone.water;
-  const storedMicroKeys = Object.keys(merged.micronutrients ?? {}).length;
-  const bankMicroKeys = Object.keys(bankClone.micronutrients ?? {}).length;
-  if (bankMicroKeys > storedMicroKeys) merged.micronutrients = bankClone.micronutrients;
+  merged.micronutrients = mergeMicronutrientsPreferKnown(merged.micronutrients, bankClone.micronutrients);
   if (!merged.fattyAcids && bankClone.fattyAcids) merged.fattyAcids = bankClone.fattyAcids;
   return merged;
 }

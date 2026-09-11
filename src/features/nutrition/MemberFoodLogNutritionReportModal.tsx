@@ -17,6 +17,7 @@ import {
   contributionSourcesFromFoodLogs,
   resolveFoodLogsNutrition,
 } from "../../app/nutritionReportContributors";
+import { buildNutrientCoverageLookup } from "../../app/nutritionReportCoverage";
 import type { MemberQuickFoodLogEntry } from "../../app/memberMealPlanState";
 import { useFoodBankItems } from "../../app/useFoodBankItems";
 import {
@@ -141,13 +142,21 @@ export function MemberFoodLogNutritionReportModal({
     [microRows, microFilter],
   );
   const omegaRows = useMemo(() => buildOmegaOverviewRows(displayTotals.fattyAcids), [displayTotals.fattyAcids]);
+  const contributionSources = useMemo(
+    () => contributionSourcesFromFoodLogs(resolvedLogs, report.dateKeys),
+    [report.dateKeys, resolvedLogs],
+  );
   const contributionLookup = useMemo(
     () =>
-      buildNutrientContributionLookup(contributionSourcesFromFoodLogs(resolvedLogs, report.dateKeys), {
+      buildNutrientContributionLookup(contributionSources, {
         drinkWaterLiters: report.periodSum.drinkWaterLiters,
         totals: report.periodSum,
       }),
-    [report.dateKeys, report.periodSum, resolvedLogs],
+    [contributionSources, report.periodSum],
+  );
+  const coverageLookup = useMemo(
+    () => buildNutrientCoverageLookup(contributionSources),
+    [contributionSources],
   );
 
   const periodSummary =
@@ -168,6 +177,7 @@ export function MemberFoodLogNutritionReportModal({
       microRows: visibleMicroRows,
       referenceContext,
       contributionLookup,
+      coverageLookup,
       dailyKcal:
         report.daysWithLogs > 1
           ? report.dailyTotals.map(({ dateKey, totals: dayTotals }) => ({
@@ -181,7 +191,7 @@ export function MemberFoodLogNutritionReportModal({
       return;
     }
     setPrintError(null);
-  }, [displayName, displayTotals, mealPlanTargets, visibleMicroRows, periodSummary, referenceContext, report, contributionLookup]);
+  }, [displayName, displayTotals, mealPlanTargets, visibleMicroRows, periodSummary, referenceContext, report, contributionLookup, coverageLookup]);
 
   if (!open) return null;
 
@@ -284,6 +294,7 @@ export function MemberFoodLogNutritionReportModal({
               omegaRows={omegaRows}
               omegaFootnote={`Veiledende daglige referanser: omega-3 ca. ${OMEGA3_DAILY_TARGET_G} g, EPA+DHA ca. ${EPA_DHA_DAILY_TARGET_G} g. Forhold omega-6:omega-3 under 5:1 regnes ofte gunstig.`}
               contributionLookup={contributionLookup}
+              coverageLookup={coverageLookup}
               referenceWarning={referenceWarning}
               dailyBreakdown={
                 report.daysWithLogs > 1 ? (

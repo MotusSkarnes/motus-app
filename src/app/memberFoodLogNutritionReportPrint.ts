@@ -22,6 +22,12 @@ import {
   type NutrientContributionId,
   type NutrientContributionLookup,
 } from "./nutritionReportContributors";
+import {
+  coverageFor,
+  formatCoveragePercent,
+  NUTRIENT_COVERAGE_FOOTNOTE,
+  type NutrientCoverageLookup,
+} from "./nutritionReportCoverage";
 
 export type NutritionReportPrintPayload = {
   memberName: string;
@@ -33,6 +39,7 @@ export type NutritionReportPrintPayload = {
   referenceContext?: NutritionReferenceContext;
   dailyKcal?: Array<{ dateLabel: string; kcal: number }>;
   contributionLookup?: NutrientContributionLookup;
+  coverageLookup?: NutrientCoverageLookup;
 };
 
 function escapeHtml(value: string): string {
@@ -41,6 +48,11 @@ function escapeHtml(value: string): string {
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;");
+}
+
+function coverageCell(id: NutrientContributionId | undefined, lookup: NutrientCoverageLookup | undefined): string {
+  const text = formatCoveragePercent(coverageFor(lookup, id));
+  return text ? escapeHtml(text) : "–";
 }
 
 function contributionHtml(
@@ -56,6 +68,7 @@ function contributionHtml(
 function macroTableHtml(
   rows: ReturnType<typeof buildMacroDisplayRows>,
   lookup?: NutrientContributionLookup,
+  coverageLookup?: NutrientCoverageLookup,
 ): string {
   const body = rows
     .map((row) => {
@@ -65,16 +78,21 @@ function macroTableHtml(
         <td><strong>${escapeHtml(formatMacroDisplayValue(row))}</strong></td>
         <td>${escapeHtml(status.referenceLine)}</td>
         <td>${escapeHtml(status.label)}</td>
+        <td>${coverageCell(row.id, coverageLookup)}</td>
       </tr>`;
     })
     .join("");
   return `<table class="report-table">
-    <thead><tr><th>Næringsstoff</th><th>Inntatt</th><th>Referanse</th><th>Status</th></tr></thead>
+    <thead><tr><th>Næringsstoff</th><th>Inntatt</th><th>Referanse</th><th>Status</th><th>Kjent</th></tr></thead>
     <tbody>${body}</tbody>
   </table>`;
 }
 
-function omegaTableHtml(totals: FoodLogNutritionTotals, lookup?: NutrientContributionLookup): string {
+function omegaTableHtml(
+  totals: FoodLogNutritionTotals,
+  lookup?: NutrientContributionLookup,
+  coverageLookup?: NutrientCoverageLookup,
+): string {
   const rows = buildOmegaOverviewRows(totals.fattyAcids);
   const body = rows
     .map(
@@ -82,16 +100,21 @@ function omegaTableHtml(totals: FoodLogNutritionTotals, lookup?: NutrientContrib
         <td>${contributionHtml(row.label, row.id, lookup)}</td>
         <td><strong>${escapeHtml(formatOmegaOverviewValue(row))}</strong></td>
         <td>${escapeHtml(row.hint ?? "")}</td>
+        <td>${coverageCell(row.id, coverageLookup)}</td>
       </tr>`,
     )
     .join("");
   return `<table class="report-table">
-    <thead><tr><th>Omega / fettsyre</th><th>Inntatt</th><th>Merknad</th></tr></thead>
+    <thead><tr><th>Omega / fettsyre</th><th>Inntatt</th><th>Merknad</th><th>Kjent</th></tr></thead>
     <tbody>${body}</tbody>
   </table>`;
 }
 
-function microTableHtml(rows: MicronutrientDailyRow[], lookup?: NutrientContributionLookup): string {
+function microTableHtml(
+  rows: MicronutrientDailyRow[],
+  lookup?: NutrientContributionLookup,
+  coverageLookup?: NutrientCoverageLookup,
+): string {
   if (!rows.length) {
     return "<p class=\"muted\">Ingen mikronæringsdata i perioden.</p>";
   }
@@ -102,11 +125,12 @@ function microTableHtml(rows: MicronutrientDailyRow[], lookup?: NutrientContribu
         <td>${escapeHtml(formatMicronutrientWithUnit(row.value, row.decimals, row.unit))}</td>
         <td>${escapeHtml(formatMicronutrientReferenceLine(row))}</td>
         <td>${escapeHtml(row.statusLabel)}</td>
+        <td>${coverageCell(row.key, coverageLookup)}</td>
       </tr>`,
     )
     .join("");
   return `<table class="report-table">
-    <thead><tr><th>Stoff</th><th>Inntatt</th><th>AR / RI / UL</th><th>Status</th></tr></thead>
+    <thead><tr><th>Stoff</th><th>Inntatt</th><th>AR / RI / UL</th><th>Status</th><th>Kjent</th></tr></thead>
     <tbody>${body}</tbody>
   </table>`;
 }
@@ -202,24 +226,24 @@ export function buildNutritionReportPrintHtml(payload: NutritionReportPrintPaylo
   <p class="summary">${escapeHtml(payload.periodSummary)}</p>
 
   <h2>Makronæringsstoffer</h2>
-  ${macroTableHtml(macroRows, payload.contributionLookup)}
+  ${macroTableHtml(macroRows, payload.contributionLookup, payload.coverageLookup)}
 
   <h2>Vanninntak</h2>
   <p class="muted">Drikke = manuelt logget. Fra mat = vanninnhold i matvarer. Totalt: Helsedirektoratet / NNR 2023 (2,0 L kvinner / 2,5 L menn).</p>
-  ${macroTableHtml(waterRows, payload.contributionLookup)}
+  ${macroTableHtml(waterRows, payload.contributionLookup, payload.coverageLookup)}
 
   <h2>Mikronæringsstoffer</h2>
   <p class="muted">${escapeHtml(referenceNote)}</p>
-  ${microTableHtml(payload.microRows, payload.contributionLookup)}
+  ${microTableHtml(payload.microRows, payload.contributionLookup, payload.coverageLookup)}
 
   <h2>Omega-fettsyrer</h2>
-  ${omegaTableHtml(payload.totals, payload.contributionLookup)}
+  ${omegaTableHtml(payload.totals, payload.contributionLookup, payload.coverageLookup)}
 
   ${dailyKcalHtml(payload.dailyKcal)}
 
   ${profileWarning ? `<p class="warning">${escapeHtml(profileWarning)}</p>` : ""}
 
-  <p class="footnote">Motus · Manglende data i matvarer telles som 0.</p>
+  <p class="footnote">Motus · ${escapeHtml(NUTRIENT_COVERAGE_FOOTNOTE)}</p>
 </body>
 </html>`;
 }

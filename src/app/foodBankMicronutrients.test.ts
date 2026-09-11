@@ -25,6 +25,8 @@ describe("foodBankMicronutrients", () => {
     expect(micro.calcium).toBe(45);
     expect(micro.iron).toBe(2.1);
     expect(micro.iodine).toBe(30);
+    expect(micro.copper).toBeUndefined();
+    expect(micro.vitaminA).toBeUndefined();
   });
 
   it("parses sodium in mg from matvaretabellen", () => {
@@ -33,9 +35,14 @@ describe("foodBankMicronutrients", () => {
     ).toBe(74);
   });
 
-  it("fills missing micronutrients with zero", () => {
+  it("omits missing micronutrients instead of filling zero", () => {
     expect(normalizeMicronutrients({ vitaminC: 5 }).vitaminC).toBe(5);
-    expect(normalizeMicronutrients({ vitaminC: 5 }).iron).toBe(0);
+    expect(normalizeMicronutrients({ vitaminC: 5 }).iron).toBeUndefined();
+  });
+
+  it("keeps measured zero distinct from unknown", () => {
+    expect(normalizeMicronutrients({ copper: 0 }).copper).toBe(0);
+    expect(normalizeMicronutrients({ vitaminC: 5 }).copper).toBeUndefined();
   });
 
   it("puts unit after each AR, RI and UL value", () => {

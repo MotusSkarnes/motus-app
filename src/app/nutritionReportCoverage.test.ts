@@ -1,0 +1,72 @@
+import { describe, expect, it } from "vitest";
+import { EMPTY_MICRONUTRIENTS } from "./foodBankMicronutrients";
+import type { FoodNutrition } from "./foodBankTypes";
+import { buildNutrientCoverageLookup, hasKnownNutrientValue } from "./nutritionReportCoverage";
+
+function nutrition(partial: Partial<FoodNutrition>): FoodNutrition {
+  return {
+    kcal: 0,
+    protein: 0,
+    carbs: 0,
+    fat: 0,
+    fiber: 0,
+    sugar: 0,
+    saturatedFat: 0,
+    sodium: 0,
+    ...partial,
+  };
+}
+
+describe("nutritionReportCoverage", () => {
+  it("counts measured zero as known and omitted copper as unknown", () => {
+    const lookup = buildNutrientCoverageLookup([
+      {
+        name: "Vitaminbamser",
+        grams: 1,
+        nutritionPer100g: nutrition({ micronutrients: { vitaminA: 800 } }),
+      },
+      {
+        name: "Egg",
+        grams: 100,
+        nutritionPer100g: nutrition({ micronutrients: { vitaminA: 160, copper: 0 } }),
+      },
+    ]);
+
+    expect(lookup.vitaminA).toEqual({ known: 2, total: 2, percent: 100 });
+    expect(lookup.copper).toEqual({ known: 1, total: 2, percent: 50 });
+  });
+
+  it("does not treat empty micronutrient fill as known copper", () => {
+    const source = {
+      name: "Vitaminbamser",
+      grams: 1,
+      nutritionPer100g: nutrition({ micronutrients: { vitaminA: 800 } }),
+    };
+    expect(hasKnownNutrientValue(source, "vitaminA")).toBe(true);
+    expect(hasKnownNutrientValue(source, "copper")).toBe(false);
+    expect(hasKnownNutrientValue({ ...source, nutritionPer100g: nutrition({ micronutrients: { copper: 0 } }) }, "copper")).toBe(
+      true,
+    );
+  });
+
+  it("does not treat dense empty zeros as known values", () => {
+    const source = {
+      name: "Ukjent snacks",
+      grams: 20,
+      nutritionPer100g: nutrition({ micronutrients: { ...EMPTY_MICRONUTRIENTS } }),
+    };
+    expect(hasKnownNutrientValue(source, "copper")).toBe(false);
+  });
+
+  it("treats explicit copper 0 on a sparse food as known", () => {
+    const lookup = buildNutrientCoverageLookup([
+      {
+        name: "Vitaminbamser",
+        grams: 1,
+        nutritionPer100g: nutrition({ micronutrients: { vitaminA: 800, copper: 0 } }),
+      },
+    ]);
+    expect(lookup.copper).toEqual({ known: 1, total: 1, percent: 100 });
+    expect(lookup.iron).toEqual({ known: 0, total: 1, percent: 0 });
+  });
+});

@@ -26,6 +26,7 @@ import {
   buildNutrientContributionLookup,
   contributionSourcesFromMealPlan,
 } from "../../app/nutritionReportContributors";
+import { buildNutrientCoverageLookup } from "../../app/nutritionReportCoverage";
 import { GradientButton, OutlineButton } from "../../app/ui";
 import { NutritionReportStackedBody } from "./NutritionReportTables";
 
@@ -146,6 +147,11 @@ export function MealPlanNutritionReportModal({
     return buildNutrientContributionLookup(sources, { totals });
   }, [nutritionContext, plan, report.dayTotals, report.periodSum, selectedDayId, viewMode]);
 
+  const coverageLookup = useMemo(() => {
+    const dayId = viewMode === "average" ? undefined : selectedDayId;
+    return buildNutrientCoverageLookup(contributionSourcesFromMealPlan(plan, nutritionContext, dayId));
+  }, [nutritionContext, plan, selectedDayId, viewMode]);
+
   const periodSummary = useMemo(() => {
     if (report.daysWithFood === 0) return "Ingen matvarer i matplanen ennå";
     if (viewMode === "average") {
@@ -165,6 +171,7 @@ export function MealPlanNutritionReportModal({
       microRows: visibleMicroRows,
       referenceContext,
       contributionLookup,
+      coverageLookup,
       dailyKcal:
         report.daysWithFood > 1
           ? report.dayTotals.map(({ label, totals }) => ({
@@ -178,7 +185,7 @@ export function MealPlanNutritionReportModal({
       return;
     }
     setPrintError(null);
-  }, [displayName, displayTotals, visibleMicroRows, periodSummary, plan.targets, referenceContext, report.dayTotals, contributionLookup]);
+  }, [displayName, displayTotals, visibleMicroRows, periodSummary, plan.targets, referenceContext, report.dayTotals, contributionLookup, coverageLookup]);
 
   if (!open) return null;
 
@@ -252,6 +259,7 @@ export function MealPlanNutritionReportModal({
               omegaRows={omegaRows}
               omegaFootnote={`Veiledende daglige referanser: omega-3 ca. ${OMEGA3_DAILY_TARGET_G} g, EPA+DHA ca. ${EPA_DHA_DAILY_TARGET_G} g. Forhold omega-6:omega-3 under 5:1 regnes ofte gunstig.`}
               contributionLookup={contributionLookup}
+              coverageLookup={coverageLookup}
               referenceWarning={referenceWarning}
               dailyBreakdown={
                 report.daysWithFood > 1 ? (

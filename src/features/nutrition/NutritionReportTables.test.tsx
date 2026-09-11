@@ -5,8 +5,8 @@ import { useState } from "react";
 import { buildMacroDisplayRows, buildWaterReportRows } from "../../app/nutritionReportDisplay";
 import { EMPTY_FOOD_LOG_NUTRITION, filterMicronutrientReportRows } from "../../app/quickFoodLogNutrition";
 import type { MicronutrientDailyRow, MicronutrientReportFilterMode } from "../../app/quickFoodLogNutrition";
-import { EMPTY_MICRONUTRIENTS } from "../../app/foodBankMicronutrients";
 import { buildNutrientContributionLookup } from "../../app/nutritionReportContributors";
+import { buildNutrientCoverageLookup } from "../../app/nutritionReportCoverage";
 import { NutritionReportStackedBody } from "./NutritionReportTables";
 
 afterEach(() => {
@@ -35,7 +35,7 @@ const microRow = (
 
 function ReportHarness({ rows }: { rows: MicronutrientDailyRow[] }) {
   const [filter, setFilter] = useState<MicronutrientReportFilterMode>("all");
-  const contributionLookup = buildNutrientContributionLookup([
+  const sources = [
     {
       name: "Laks, oppdrett, rå",
       grams: 150,
@@ -48,7 +48,7 @@ function ReportHarness({ rows }: { rows: MicronutrientDailyRow[] }) {
         sugar: 0,
         saturatedFat: 2,
         sodium: 50,
-        micronutrients: { ...EMPTY_MICRONUTRIENTS, vitaminA: 80, iron: 0.8, zinc: 0.6 },
+        micronutrients: { vitaminA: 80, iron: 0.8, zinc: 0.6 },
       },
     },
     {
@@ -63,10 +63,12 @@ function ReportHarness({ rows }: { rows: MicronutrientDailyRow[] }) {
         sugar: 0,
         saturatedFat: 3,
         sodium: 120,
-        micronutrients: { ...EMPTY_MICRONUTRIENTS, vitaminA: 160, iron: 1.8, zinc: 1.1 },
+        micronutrients: { vitaminA: 160, iron: 1.8, zinc: 1.1, copper: 0 },
       },
     },
-  ]);
+  ];
+  const contributionLookup = buildNutrientContributionLookup(sources);
+  const coverageLookup = buildNutrientCoverageLookup(sources);
   return (
     <NutritionReportStackedBody
       waterRows={buildWaterReportRows(EMPTY_FOOD_LOG_NUTRITION)}
@@ -81,6 +83,7 @@ function ReportHarness({ rows }: { rows: MicronutrientDailyRow[] }) {
       omegaRows={[{ id: "omega3", label: "Omega-3 totalt", value: 1.2, unit: "g", decimals: 1 }]}
       omegaFootnote="Omega-fotnote"
       contributionLookup={contributionLookup}
+      coverageLookup={coverageLookup}
     />
   );
 }
@@ -141,5 +144,14 @@ describe("NutritionReportStackedBody", () => {
     expect(bidrag).toBeTruthy();
     await user.click(bidrag);
     expect(screen.getAllByText("Laks, oppdrett, rå").length).toBeGreaterThan(0);
+  });
+
+  it("shows known-value coverage at the bottom right of each nutrient", () => {
+    render(<ReportHarness rows={rows} />);
+    const vitaminA = screen.getByText("Vitamin A").closest(".motus-nutrition-report__micro-row");
+    expect(vitaminA?.querySelector(".motus-nutrition-report__data-coverage")?.textContent).toBe("100%");
+    expect(vitaminA?.querySelector(".motus-nutrition-report__data-coverage")?.getAttribute("title")).toMatch(
+      /2 av 2 matvarer/,
+    );
   });
 });

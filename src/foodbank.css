@@ -5203,6 +5203,7 @@
   border-radius: 0.75rem;
   background: #f8fafc;
   padding: 0.5rem 0.65rem;
+  position: relative;
 }
 
 .motus-nutrition-report__omega-label {
@@ -5471,6 +5472,28 @@
   font-size: 0.625rem;
   font-weight: 600;
   color: #64748b;
+}
+
+.motus-nutrition-report__micro-foot {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-top: 0.12rem;
+}
+
+.motus-nutrition-report__data-coverage {
+  margin-left: auto;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  color: #475569;
+  font-variant-numeric: tabular-nums;
+}
+
+.motus-nutrition-report__omega-card .motus-nutrition-report__data-coverage {
+  display: block;
+  text-align: right;
+  margin-top: 0.35rem;
 }
 
 .motus-nutrition-report__micro-row--ok .motus-nutrition-report__micro-pct {

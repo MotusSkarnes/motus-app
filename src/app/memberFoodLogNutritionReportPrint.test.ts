@@ -21,7 +21,8 @@ describe("buildNutritionReportPrintHtml", () => {
     expect(html).toContain("2000");
     expect(html).toContain("Vanninntak");
     expect(html).toContain("Vann (drikke)");
-    expect(html).toContain("Vann (totalt)");
+    expect(html).toContain("Kjent");
+    expect(html).toContain("andel matvarer med kjent verdi");
   });
 
   it("puts unit after each AR, RI and UL value", () => {

@@ -78,14 +78,14 @@ const FATTY_IDS = [
 
 const WATER_IDS = ["waterFromFood", "drinkWater", "waterTotal"] as const satisfies NutrientContributionId[];
 
-const ALL_CONTRIBUTION_IDS: NutrientContributionId[] = [
+export const ALL_CONTRIBUTION_IDS: NutrientContributionId[] = [
   ...MACRO_IDS,
   ...WATER_IDS,
   ...FATTY_IDS,
   ...FOOD_MICRONUTRIENT_FIELDS.map((field) => field.key),
 ];
 
-function sourceGroupKey(source: NutritionContributionSource): string {
+export function sourceGroupKey(source: NutritionContributionSource): string {
   const nameKey = normalizeFoodBankNameKey(source.name);
   if (nameKey) return `name:${nameKey}`;
   const id = source.id?.trim();

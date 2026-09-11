@@ -3,6 +3,7 @@ import {
   formatMicronutrientValue,
   hasMicronutrientData,
   normalizeMicronutrients,
+  readMicronutrientValue,
   type FoodMicronutrientKey,
   type FoodMicronutrients,
 } from "../app/foodBankMicronutrients";
@@ -44,7 +45,7 @@ function MicronutrientGroup({
   fields: typeof FOOD_MICRONUTRIENT_FIELDS;
   micronutrients: FoodMicronutrients;
 }) {
-  const visible = fields.filter((field) => micronutrients[field.key] > 0);
+  const visible = fields.filter((field) => readMicronutrientValue(micronutrients, field.key) !== undefined);
   if (!visible.length) return null;
   return (
     <div>
@@ -54,7 +55,10 @@ function MicronutrientGroup({
           <div key={field.key}>
             <dt>{field.label}</dt>
             <dd>
-              {formatMicronutrientValue(micronutrients[field.key], field.decimals)} {field.unit}
+              {(() => {
+                const amount = readMicronutrientValue(micronutrients, field.key) ?? 0;
+                return `${amount === 0 ? "0" : formatMicronutrientValue(amount, field.decimals)} ${field.unit}`;
+              })()}
             </dd>
           </div>
         ))}
@@ -73,7 +77,8 @@ export function FoodMicronutrientFormFields({ values, onChange }: FoodMicronutri
     <details className="motus-foodbank-form-span-all rounded-xl border border-slate-200/80 bg-slate-50/80 p-3">
       <summary className="cursor-pointer text-sm font-semibold text-slate-800">Mikronæringsstoffer (per 100 g)</summary>
       <p className="mt-2 text-xs text-slate-500">
-        Valgfritt. Fylles automatisk ved import fra Matvaretabellen. La stå 0 hvis ukjent.
+        Valgfritt. Fylles automatisk ved import fra Matvaretabellen. La feltet stå tomt hvis verdien er ukjent. Skriv 0
+        hvis næringsstoffet er målt til 0.
       </p>
       <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {FOOD_MICRONUTRIENT_FIELDS.map((field) => (
@@ -84,7 +89,7 @@ export function FoodMicronutrientFormFields({ values, onChange }: FoodMicronutri
             <TextInput
               value={values[field.key]}
               onChange={(event) => onChange(field.key, event.target.value)}
-              placeholder="0"
+              placeholder=""
             />
           </label>
         ))}
@@ -94,7 +99,7 @@ export function FoodMicronutrientFormFields({ values, onChange }: FoodMicronutri
 }
 
 export function micronutrientFormDefaults(): Record<FoodMicronutrientKey, string> {
-  return Object.fromEntries(FOOD_MICRONUTRIENT_FIELDS.map((field) => [field.key, "0"])) as Record<
+  return Object.fromEntries(FOOD_MICRONUTRIENT_FIELDS.map((field) => [field.key, ""])) as Record<
     FoodMicronutrientKey,
     string
   >;
@@ -103,16 +108,20 @@ export function micronutrientFormDefaults(): Record<FoodMicronutrientKey, string
 export function micronutrientFormFromNutrition(nutrition: FoodNutrition): Record<FoodMicronutrientKey, string> {
   const normalized = normalizeMicronutrients(nutrition.micronutrients);
   return Object.fromEntries(
-    FOOD_MICRONUTRIENT_FIELDS.map((field) => [field.key, String(normalized[field.key])]),
+    FOOD_MICRONUTRIENT_FIELDS.map((field) => {
+      const amount = readMicronutrientValue(normalized, field.key);
+      return [field.key, amount === undefined ? "" : String(amount)];
+    }),
   ) as Record<FoodMicronutrientKey, string>;
 }
 
 export function parseMicronutrientForm(values: Record<FoodMicronutrientKey, string>): FoodMicronutrients {
-  const parsed: Partial<FoodMicronutrients> = {};
+  const parsed: FoodMicronutrients = {};
   for (const field of FOOD_MICRONUTRIENT_FIELDS) {
     const raw = values[field.key]?.trim().replace(",", ".") ?? "";
-    const amount = raw === "" ? 0 : Number(raw);
-    parsed[field.key] = Number.isFinite(amount) ? amount : 0;
+    if (raw === "") continue;
+    const amount = Number(raw);
+    if (Number.isFinite(amount)) parsed[field.key] = amount;
   }
-  return normalizeMicronutrients(parsed);
+  return parsed;
 }

@@ -19,7 +19,8 @@ export type FoodMicronutrientKey =
   | "iodine"
   | "copper";
 
-export type FoodMicronutrients = Record<FoodMicronutrientKey, number>;
+/** Kun nøkler med kjent verdi. Mangler nøkkel = ukjent; 0 = målt til 0. */
+export type FoodMicronutrients = Partial<Record<FoodMicronutrientKey, number>>;
 
 export type FoodMicronutrientMeta = {
   key: FoodMicronutrientKey;
@@ -102,24 +103,33 @@ export function parseMatvaretabellenConstituent(
   nutrientId: string,
   targetUnit: string,
 ): number {
+  return parseMatvaretabellenConstituentOptional(constituents, nutrientId, targetUnit) ?? 0;
+}
+
+export function parseMatvaretabellenConstituentOptional(
+  constituents: MatvaretabellenConstituent[] | undefined,
+  nutrientId: string,
+  targetUnit: string,
+): number | undefined {
   const row = constituents?.find((entry) => entry.nutrientId === nutrientId);
-  if (!row || row.quantity === undefined || !Number.isFinite(row.quantity)) return 0;
+  if (!row || row.quantity === undefined || !Number.isFinite(row.quantity)) return undefined;
   return convertNutrientAmount(row.quantity, row.unit ?? targetUnit, targetUnit);
 }
 
 export function micronutrientsFromMatvaretabellen(
   constituents: MatvaretabellenConstituent[] | undefined,
 ): FoodMicronutrients {
-  const result = { ...EMPTY_MICRONUTRIENTS };
+  const result: FoodMicronutrients = {};
   for (const field of FOOD_MICRONUTRIENT_FIELDS) {
     const unit = field.unit === "µg" ? "ug" : field.unit;
-    result[field.key] = parseMatvaretabellenConstituent(constituents, field.matvaretabellId, unit);
+    const amount = parseMatvaretabellenConstituentOptional(constituents, field.matvaretabellId, unit);
+    if (amount !== undefined) result[field.key] = amount;
   }
   return result;
 }
 
 export function micronutrientsFromCsvRow(row: Record<string, string>): FoodMicronutrients {
-  const result = { ...EMPTY_MICRONUTRIENTS };
+  const result: FoodMicronutrients = {};
   for (const field of FOOD_MICRONUTRIENT_FIELDS) {
     const column = CSV_COLUMN_BY_KEY[field.key];
     const raw = row[column];
@@ -130,21 +140,61 @@ export function micronutrientsFromCsvRow(row: Record<string, string>): FoodMicro
   return result;
 }
 
-export function normalizeMicronutrients(value: Partial<FoodMicronutrients> | undefined): FoodMicronutrients {
-  const result = { ...EMPTY_MICRONUTRIENTS };
+export function isDenseMicronutrientObject(value: FoodMicronutrients | undefined): boolean {
+  if (!value) return false;
+  return FOOD_MICRONUTRIENT_FIELDS.every((field) => Object.prototype.hasOwnProperty.call(value, field.key));
+}
+
+/** Les kjent verdi. Ukjent (mangler nøkkel) → undefined. Målt 0 → 0. */
+export function readMicronutrientValue(
+  micronutrients: FoodMicronutrients | undefined,
+  key: FoodMicronutrientKey,
+): number | undefined {
+  if (!micronutrients || !Object.prototype.hasOwnProperty.call(micronutrients, key)) return undefined;
+  const amount = micronutrients[key];
+  if (typeof amount !== "number" || !Number.isFinite(amount)) return undefined;
+  return amount;
+}
+
+export function compactMicronutrients(
+  value: Partial<FoodMicronutrients> | undefined,
+  options?: { dropZeros?: boolean },
+): FoodMicronutrients {
+  const result: FoodMicronutrients = {};
   if (!value) return result;
   for (const field of FOOD_MICRONUTRIENT_FIELDS) {
     const amount = value[field.key];
-    if (typeof amount === "number" && Number.isFinite(amount)) {
-      result[field.key] = amount;
-    }
+    if (typeof amount !== "number" || !Number.isFinite(amount)) continue;
+    if (options?.dropZeros && amount === 0) continue;
+    result[field.key] = amount;
+  }
+  return result;
+}
+
+export function normalizeMicronutrients(value: Partial<FoodMicronutrients> | undefined): FoodMicronutrients {
+  return compactMicronutrients(value);
+}
+
+export function mergeMicronutrientsPreferKnown(
+  primary: FoodMicronutrients | undefined,
+  fill: FoodMicronutrients | undefined,
+): FoodMicronutrients {
+  const result = compactMicronutrients(primary);
+  const fillCompact = compactMicronutrients(fill);
+  const skipFillZeros = !isDenseMicronutrientObject(primary) && isDenseMicronutrientObject(fill);
+  for (const field of FOOD_MICRONUTRIENT_FIELDS) {
+    if (readMicronutrientValue(result, field.key) !== undefined) continue;
+    const amount = readMicronutrientValue(fillCompact, field.key);
+    if (amount === undefined) continue;
+    if (skipFillZeros && amount === 0) continue;
+    result[field.key] = amount;
   }
   return result;
 }
 
 export function hasMicronutrientData(micronutrients: FoodMicronutrients | undefined): boolean {
   if (!micronutrients) return false;
-  return FOOD_MICRONUTRIENT_FIELDS.some((field) => micronutrients[field.key] > 0);
+  return FOOD_MICRONUTRIENT_FIELDS.some((field) => readMicronutrientValue(micronutrients, field.key) !== undefined);
 }
 
 export function formatMicronutrientValue(value: number, decimals: number): string {

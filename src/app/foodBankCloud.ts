@@ -16,7 +16,7 @@ import { mergeNutritionWithBank, rehydrateMemberMealPlanState } from "./memberNu
 import { loadMemberMealPlanState } from "./memberMealPlanState";
 import { persistMemberMealPlanStateLocalAndScheduleCloud } from "./memberMealPlanStateCloud";
 import { enrichFoodItem } from "./foodBankMicronutrientEnrichment";
-import { normalizeMicronutrients } from "./foodBankMicronutrients";
+import { compactMicronutrients } from "./foodBankMicronutrients";
 import type { FoodItem } from "./foodBankTypes";
 import { isSupabaseConfigured, supabaseClient } from "../services/supabaseClient";
 
@@ -60,7 +60,9 @@ export function parseFoodItems(value: unknown): FoodItem[] {
         ...item,
         nutritionPer100g: {
           ...item.nutritionPer100g,
-          micronutrients: normalizeMicronutrients(item.nutritionPer100g.micronutrients),
+          micronutrients: compactMicronutrients(item.nutritionPer100g.micronutrients, {
+            dropZeros: item.source === "egen" || item.isCustom === true,
+          }),
         },
       }),
     ),
