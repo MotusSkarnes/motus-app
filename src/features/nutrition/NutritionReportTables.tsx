@@ -95,20 +95,20 @@ function FoodSourceList({
         <ol>
           {sources.map((row, index) => (
             <li key={`${row.id}-${index}`} className="motus-nutrition-report__sources-row">
-              <div className="motus-nutrition-report__sources-main">
-                <span className="motus-nutrition-report__contrib-name" title={row.name}>
-                  {row.name}
-                </span>
+              <span className="motus-nutrition-report__contrib-name" title={row.name}>
+                {row.name}
+              </span>
+              <div className="motus-nutrition-report__sources-meta">
                 <strong>{formatFoodSourceAmount(row.amountPer100g, nutrientId)}</strong>
+                <button
+                  type="button"
+                  className="motus-nutrition-report__sources-hide"
+                  aria-label={`Fjern ${row.name} fra listen`}
+                  onClick={() => hideSource(row)}
+                >
+                  Fjern
+                </button>
               </div>
-              <button
-                type="button"
-                className="motus-nutrition-report__sources-hide"
-                aria-label={`Fjern ${row.name} fra listen`}
-                onClick={() => hideSource(row)}
-              >
-                Fjern fra listen
-              </button>
             </li>
           ))}
         </ol>
