@@ -11,8 +11,7 @@ import type { MealPlan } from "../../app/mealPlanTypes";
 import {
   buildExtraFatDisplayRows,
   buildOmegaOverviewRows,
-  EPA_DHA_DAILY_TARGET_G,
-  OMEGA3_DAILY_TARGET_G,
+  nutritionOmegaReportFootnote,
 } from "../../app/nutritionReportFattyAcids";
 import {
   buildMacroDisplayRows,
@@ -138,8 +137,8 @@ export function MealPlanNutritionReportModal({
 
   const omegaRows = useMemo(() => {
     if (!displayTotals) return [];
-    return buildOmegaOverviewRows(displayTotals.fattyAcids);
-  }, [displayTotals]);
+    return buildOmegaOverviewRows(displayTotals.fattyAcids, resolveReportKcalTarget(plan.targets, referenceContext));
+  }, [displayTotals, plan.targets, referenceContext]);
 
   const contributionLookup = useMemo(() => {
     const dayId = viewMode === "average" ? undefined : selectedDayId;
@@ -278,7 +277,7 @@ export function MealPlanNutritionReportModal({
               microNoDataMessage="Ingen mikronæringsdata i planen."
               referenceFootnote={referenceFootnote}
               omegaRows={omegaRows}
-              omegaFootnote={`Veiledende daglige referanser: omega-3 ca. ${OMEGA3_DAILY_TARGET_G} g, EPA+DHA ca. ${EPA_DHA_DAILY_TARGET_G} g. Forhold omega-6:omega-3 under 5:1 regnes ofte gunstig.`}
+              omegaFootnote={nutritionOmegaReportFootnote()}
               contributionLookup={contributionLookup}
               coverageLookup={coverageLookup}
               referenceWarning={referenceWarning}

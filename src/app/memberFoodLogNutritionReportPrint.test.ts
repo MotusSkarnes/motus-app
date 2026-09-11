@@ -17,6 +17,9 @@ describe("buildNutritionReportPrintHtml", () => {
     expect(html).toContain("Makronæringsstoffer");
     expect(html).toContain("Mikronæringsstoffer");
     expect(html).toContain("Omega-fettsyrer");
+    expect(html).toContain("EPA + DHA");
+    expect(html).toContain("Ref. 0.25 g");
+    expect(html).toContain("ALA (alfa-linolensyre)");
     expect(html).toContain("Vitamin D");
     expect(html).toContain("2000");
     expect(html).toContain("Vanninntak");
@@ -112,7 +115,8 @@ describe("buildNutritionReportPrintHtml", () => {
     expect(html).toContain("linear-gradient(90deg, #30E3BE 0%, #D91278 100%)");
     expect(html).toContain("card--warn");
     expect(html).toContain("Innenfor");
-    expect(html).toContain("Litt utenfor");
+    expect(html).toContain("EPA + DHA");
+    expect(html).toContain("Anbefalt 0.25 g");
     expect(html).toContain("intake intake--warn");
     expect(html).not.toContain("Kjent");
     expect(html).not.toContain("Laks, oppdrett, rå 100%");

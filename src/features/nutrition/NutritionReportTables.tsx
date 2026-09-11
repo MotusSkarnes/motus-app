@@ -1,9 +1,6 @@
 import { useState, type ReactNode } from "react";
 import { formatMicronutrientReferenceLine, formatMicronutrientWithUnit } from "../../app/foodBankMicronutrients";
-import {
-  formatOmegaOverviewValue,
-  type OmegaOverviewRow,
-} from "../../app/nutritionReportFattyAcids";
+import type { OmegaOverviewRow } from "../../app/nutritionReportFattyAcids";
 import {
   classifyMacroDisplayStatus,
   formatMacroDisplayValue,
@@ -60,25 +57,6 @@ function ContributionList({
         ))}
       </ol>
     </div>
-  );
-}
-
-function NutrientContributionDetails({
-  nutrientLabel,
-  contributors,
-}: {
-  nutrientLabel: string;
-  contributors: NutritionContributor[];
-}) {
-  if (!contributors.length) return null;
-  return (
-    <details className="motus-nutrition-report__contrib">
-      <summary className="motus-nutrition-report__contrib-summary">
-        <span className="motus-nutrition-report__contrib-preview">{formatContributionPreview(contributors)}</span>
-        <span className="motus-nutrition-report__contrib-btn">Bidrag</span>
-      </summary>
-      <ContributionList nutrientLabel={nutrientLabel} contributors={contributors} />
-    </details>
   );
 }
 
@@ -236,30 +214,7 @@ export function OmegaOverviewTable({
   contributionLookup?: NutrientContributionLookup;
   coverageLookup?: NutrientCoverageLookup;
 }) {
-  return (
-    <div className="motus-nutrition-report__omega-grid">
-      {rows.map((row) => {
-        const coverage = coverageFor(coverageLookup, row.id);
-        const coverageText = formatCoveragePercent(coverage);
-        return (
-          <div key={row.label} className="motus-nutrition-report__omega-card">
-            <div className="motus-nutrition-report__omega-label">{row.label}</div>
-            <NutrientContributionDetails
-              nutrientLabel={row.label}
-              contributors={contributorsFor(contributionLookup, row.id)}
-            />
-            <div className="motus-nutrition-report__omega-value">{formatOmegaOverviewValue(row)}</div>
-            {row.hint ? <p className="motus-nutrition-report__omega-hint">{row.hint}</p> : null}
-            {coverageText ? (
-              <span className="motus-nutrition-report__data-coverage" title={formatCoverageTitle(coverage)}>
-                {coverageText}
-              </span>
-            ) : null}
-          </div>
-        );
-      })}
-    </div>
-  );
+  return <MacroReportTable rows={rows} contributionLookup={contributionLookup} coverageLookup={coverageLookup} />;
 }
 
 export function MicroReportTable({

@@ -47,6 +47,17 @@ export const HEALTH_DIRECTORATE_MACRO_ENERGY_PERCENT = {
   sugarMax: 10,
 } as const;
 
+/**
+ * Omega-fettsyrer (Helsedirektoratet / NNR 2023 + EFSA AI for EPA+DHA).
+ * NNR setter ikke egne voksenverdier for EPA, DHA eller omega-6 alene, og ikke for forholdet n-6:n-3.
+ */
+export const HEALTH_DIRECTORATE_OMEGA_REFERENCES = {
+  omega3MinEnergyPercent: 1,
+  alaMinEnergyPercent: 0.5,
+  epaDhaGrams: 0.25,
+  kcalPerGram: 9,
+} as const;
+
 export type HealthDirectorateOtherDaily = {
   /** Kostfiber, minst g/dag. Kvinner 25 g, menn 35 g. */
   fiber: number;

@@ -1,27 +1,15 @@
-import { formatMacro } from "./foodBankTypes";
 import type { FoodFattyAcids } from "./foodBankFattyAcids";
 import {
   gramsFromEnergyPercent,
   HEALTH_DIRECTORATE_MACRO_ENERGY_PERCENT,
+  HEALTH_DIRECTORATE_OMEGA_REFERENCES,
 } from "./healthDirectorateNutritionReferences";
-import type { NutrientContributionId } from "./nutritionReportContributors";
-import type { MacroDisplayRow } from "./nutritionReportDisplay";
+import {
+  type MacroDisplayRow,
+} from "./nutritionReportDisplay";
 import type { FoodLogNutritionTotals } from "./quickFoodLogNutrition";
 
-export type OmegaOverviewRow = {
-  id?: NutrientContributionId;
-  label: string;
-  value: number;
-  unit: string;
-  decimals: number;
-  hint?: string;
-  /** Vis «—» i stedet for tall (f.eks. når forhold ikke kan beregnes). */
-  displayAsDash?: boolean;
-};
-
-/** Daglige referanser (veiledende for voksne). */
-export const OMEGA3_DAILY_TARGET_G = 2;
-export const EPA_DHA_DAILY_TARGET_G = 0.25;
+export type OmegaOverviewRow = MacroDisplayRow;
 
 export function buildExtraFatDisplayRows(totals: FoodLogNutritionTotals, kcalTarget = 0): MacroDisplayRow[] {
   const fa = totals.fattyAcids;
@@ -53,36 +41,77 @@ export function buildExtraFatDisplayRows(totals: FoodLogNutritionTotals, kcalTar
   ];
 }
 
-export function buildOmegaOverviewRows(fattyAcids: FoodFattyAcids): OmegaOverviewRow[] {
+function minEnergyPercentRow(
+  id: MacroDisplayRow["id"],
+  label: string,
+  value: number,
+  kcalTarget: number,
+  energyPercent: number,
+): OmegaOverviewRow {
+  const target = gramsFromEnergyPercent(kcalTarget, energyPercent, HEALTH_DIRECTORATE_OMEGA_REFERENCES.kcalPerGram);
+  return {
+    id,
+    label,
+    value,
+    unit: "g",
+    decimals: 2,
+    target,
+    goal: target > 0 ? "min" : undefined,
+  };
+}
+
+export function buildOmegaOverviewRows(fattyAcids: FoodFattyAcids, kcalTarget = 0): OmegaOverviewRow[] {
   const epaDha = fattyAcids.epa + fattyAcids.dha;
-  const ratio =
-    fattyAcids.omega3 > 0 ? fattyAcids.omega6 / fattyAcids.omega3 : null;
+  const ratio = fattyAcids.omega3 > 0 ? fattyAcids.omega6 / fattyAcids.omega3 : null;
+  const omega = HEALTH_DIRECTORATE_OMEGA_REFERENCES;
 
   return [
-    { id: "omega3", label: "Omega-3 totalt", value: fattyAcids.omega3, unit: "g", decimals: 2 },
-    { id: "omega6", label: "Omega-6 totalt", value: fattyAcids.omega6, unit: "g", decimals: 2 },
-    { id: "epa", label: "EPA", value: fattyAcids.epa, unit: "g", decimals: 2 },
-    { id: "dha", label: "DHA", value: fattyAcids.dha, unit: "g", decimals: 2 },
-    { id: "ala", label: "ALA (alfa-linolensyre)", value: fattyAcids.ala, unit: "g", decimals: 2 },
-    { id: "epaDha", label: "EPA + DHA", value: epaDha, unit: "g", decimals: 2 },
+    minEnergyPercentRow("omega3", "Omega-3 totalt", fattyAcids.omega3, kcalTarget, omega.omega3MinEnergyPercent),
+    {
+      id: "omega6",
+      label: "Omega-6 totalt",
+      value: fattyAcids.omega6,
+      unit: "g",
+      decimals: 2,
+      target: 0,
+    },
+    {
+      id: "epa",
+      label: "EPA",
+      value: fattyAcids.epa,
+      unit: "g",
+      decimals: 2,
+      target: 0,
+    },
+    {
+      id: "dha",
+      label: "DHA",
+      value: fattyAcids.dha,
+      unit: "g",
+      decimals: 2,
+      target: 0,
+    },
+    minEnergyPercentRow("ala", "ALA (alfa-linolensyre)", fattyAcids.ala, kcalTarget, omega.alaMinEnergyPercent),
+    {
+      id: "epaDha",
+      label: "EPA + DHA",
+      value: epaDha,
+      unit: "g",
+      decimals: 2,
+      target: omega.epaDhaGrams,
+      goal: "min",
+    },
     {
       label: "Forhold omega-6 : omega-3",
       value: ratio ?? 0,
       unit: ":1",
       decimals: 1,
+      target: 0,
       displayAsDash: ratio === null,
-      hint:
-        ratio === null
-          ? "Kan ikke beregnes uten omega-3"
-          : ratio <= 5
-            ? "Under 5:1 regnes ofte gunstig"
-            : "Høyt forhold — mer omega-3 kan være gunstig",
     },
   ];
 }
 
-export function formatOmegaOverviewValue(row: OmegaOverviewRow): string {
-  if (row.displayAsDash) return "—";
-  if (row.unit === ":1") return `${formatMacro(row.value, row.decimals)}${row.unit}`;
-  return `${formatMacro(row.value, row.decimals)} ${row.unit}`;
+export function nutritionOmegaReportFootnote(): string {
+  return "Omega-3 minst 1 E% og ALA minst 0,5 E% (Helsedirektoratet / NNR 2023). EPA+DHA minst 0,25 g/dag (EFSA). EPA, DHA og omega-6 har ikke egne voksenanbefalinger. NNR setter ikke anbefaling for forholdet omega-6:omega-3.";
 }

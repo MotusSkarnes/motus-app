@@ -27,8 +27,7 @@ import { useFoodBankItems } from "../../app/useFoodBankItems";
 import {
   buildExtraFatDisplayRows,
   buildOmegaOverviewRows,
-  EPA_DHA_DAILY_TARGET_G,
-  OMEGA3_DAILY_TARGET_G,
+  nutritionOmegaReportFootnote,
 } from "../../app/nutritionReportFattyAcids";
 import { buildMacroDisplayRows, buildWaterReportRows, nutritionMacroReportFootnote, resolveReportKcalTarget } from "../../app/nutritionReportDisplay";
 import {
@@ -145,7 +144,10 @@ export function MemberFoodLogNutritionReportModal({
     () => filterMicronutrientReportRows(microRows, microFilter),
     [microRows, microFilter],
   );
-  const omegaRows = useMemo(() => buildOmegaOverviewRows(displayTotals.fattyAcids), [displayTotals.fattyAcids]);
+  const omegaRows = useMemo(
+    () => buildOmegaOverviewRows(displayTotals.fattyAcids, resolveReportKcalTarget(mealPlanTargets, referenceContext)),
+    [displayTotals.fattyAcids, mealPlanTargets, referenceContext],
+  );
   const contributionSources = useMemo(
     () => contributionSourcesFromFoodLogs(resolvedLogs, report.dateKeys),
     [report.dateKeys, resolvedLogs],
@@ -312,7 +314,7 @@ export function MemberFoodLogNutritionReportModal({
               microNoDataMessage="Ingen mikronæringsdata i valgt periode."
               referenceFootnote={referenceFootnote}
               omegaRows={omegaRows}
-              omegaFootnote={`Veiledende daglige referanser: omega-3 ca. ${OMEGA3_DAILY_TARGET_G} g, EPA+DHA ca. ${EPA_DHA_DAILY_TARGET_G} g. Forhold omega-6:omega-3 under 5:1 regnes ofte gunstig.`}
+              omegaFootnote={nutritionOmegaReportFootnote()}
               contributionLookup={contributionLookup}
               coverageLookup={coverageLookup}
               referenceWarning={referenceWarning}

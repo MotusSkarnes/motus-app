@@ -3,7 +3,7 @@ import { formatMacro } from "./foodBankTypes";
 import {
   buildExtraFatDisplayRows,
   buildOmegaOverviewRows,
-  formatOmegaOverviewValue,
+  nutritionOmegaReportFootnote,
 } from "./nutritionReportFattyAcids";
 import {
   buildMacroDisplayRows,
@@ -121,28 +121,6 @@ function macroTableHtml(
     .join("");
   return `<table class="report-table">
     <thead><tr><th>Næringsstoff</th><th>Inntatt</th><th>Referanse</th><th>Status</th><th>Kjent</th></tr></thead>
-    <tbody>${body}</tbody>
-  </table>`;
-}
-
-function omegaTableHtml(
-  totals: FoodLogNutritionTotals,
-  lookup?: NutrientContributionLookup,
-  coverageLookup?: NutrientCoverageLookup,
-): string {
-  const rows = buildOmegaOverviewRows(totals.fattyAcids);
-  const body = rows
-    .map(
-      (row) => `<tr>
-        <td>${contributionHtml(row.label, row.id, lookup)}</td>
-        <td class="intake-cell">${intakeHtml(formatOmegaOverviewValue(row), "muted")}</td>
-        <td>${escapeHtml(row.hint ?? "")}</td>
-        <td>${coverageCell(row.id, coverageLookup)}</td>
-      </tr>`,
-    )
-    .join("");
-  return `<table class="report-table">
-    <thead><tr><th>Omega / fettsyre</th><th>Inntatt</th><th>Merknad</th><th>Kjent</th></tr></thead>
     <tbody>${body}</tbody>
   </table>`;
 }
@@ -296,7 +274,8 @@ function buildTrainerPrintHtml(payload: NutritionReportPrintPayload): string {
   ${microTableHtml(payload.microRows, payload.contributionLookup, payload.coverageLookup)}
 
   <h2>Omega-fettsyrer</h2>
-  ${omegaTableHtml(payload.totals, payload.contributionLookup, payload.coverageLookup)}
+  <p class="muted">${escapeHtml(nutritionOmegaReportFootnote())}</p>
+  ${macroTableHtml(buildOmegaOverviewRows(payload.totals.fattyAcids, kcalTarget), payload.contributionLookup, payload.coverageLookup)}
 
   ${dailyKcalHtml(payload.dailyKcal)}
 
@@ -346,21 +325,6 @@ function clientMicroCardsHtml(rows: MicronutrientDailyRow[]): string {
         </div>
         ${clientBarHtml(row.coveragePct, row.statusTone)}
         ${clientRowMeta(row.statusTone, target)}
-      </article>`;
-    })
-    .join("")}</div>`;
-}
-
-function clientOmegaHtml(totals: FoodLogNutritionTotals): string {
-  const rows = buildOmegaOverviewRows(totals.fattyAcids);
-  return `<div class="card-grid">${rows
-    .map((row) => {
-      return `<article class="card card--muted">
-        <div class="row-head">
-          <span class="card-label">${escapeHtml(row.label)}</span>
-          ${intakeHtml(formatOmegaOverviewValue(row), "muted")}
-        </div>
-        ${row.hint ? `<p class="card-ref">${escapeHtml(row.hint)}</p>` : ""}
       </article>`;
     })
     .join("")}</div>`;
@@ -558,7 +522,7 @@ function buildClientPrintHtml(payload: NutritionReportPrintPayload): string {
     ${clientMicroCardsHtml(payload.microRows)}
 
     <h2>Omega-fettsyrer</h2>
-    ${clientOmegaHtml(payload.totals)}
+    ${clientMacroCardsHtml(buildOmegaOverviewRows(payload.totals.fattyAcids, kcalTarget))}
 
     <p class="footer">Motus · Fargene viser om inntaket er innenfor anbefalingen.</p>
   </div>

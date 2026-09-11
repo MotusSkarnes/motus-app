@@ -3,6 +3,8 @@ import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it } from "vitest";
 import { useState } from "react";
 import { buildMacroDisplayRows, buildWaterReportRows } from "../../app/nutritionReportDisplay";
+import { EMPTY_FATTY_ACIDS } from "../../app/foodBankFattyAcids";
+import { buildOmegaOverviewRows } from "../../app/nutritionReportFattyAcids";
 import { EMPTY_FOOD_LOG_NUTRITION, filterMicronutrientReportRows } from "../../app/quickFoodLogNutrition";
 import type { MicronutrientDailyRow, MicronutrientReportFilterMode } from "../../app/quickFoodLogNutrition";
 import { buildNutrientContributionLookup } from "../../app/nutritionReportContributors";
@@ -80,7 +82,7 @@ function ReportHarness({ rows }: { rows: MicronutrientDailyRow[] }) {
       onMicroFilterChange={setFilter}
       microNoDataMessage="Ingen mikronæringsdata"
       referenceFootnote="NNR-fotnote"
-      omegaRows={[{ id: "omega3", label: "Omega-3 totalt", value: 1.2, unit: "g", decimals: 1 }]}
+      omegaRows={buildOmegaOverviewRows({ ...EMPTY_FATTY_ACIDS, omega3: 3, ala: 1.2, epa: 0.2, dha: 0.15 }, 2000)}
       omegaFootnote="Omega-fotnote"
       contributionLookup={contributionLookup}
       coverageLookup={coverageLookup}
@@ -99,6 +101,8 @@ describe("NutritionReportStackedBody", () => {
     render(<ReportHarness rows={rows} />);
     expect(screen.getByRole("heading", { name: "Makronæringsstoffer" })).toBeTruthy();
     expect(screen.getByRole("heading", { name: "Mikronæringsstoffer" })).toBeTruthy();
+    expect(screen.getByText("EPA + DHA")).toBeTruthy();
+    expect(screen.getByText("Ref. 0.25 g")).toBeTruthy();
     expect(screen.getByRole("heading", { name: "Omega-fettsyrer" })).toBeTruthy();
     expect(screen.queryByRole("tab")).toBeNull();
     expect(screen.getByText("AR 540 µg · RI 700 µg · UL 3000 µg")).toBeTruthy();

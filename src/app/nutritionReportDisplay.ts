@@ -43,6 +43,8 @@ export type MacroDisplayRow = {
   upper?: number | null;
   lowerIsBetter?: boolean;
   goal?: MacroDisplayGoal;
+  /** Vis «—» i stedet for tall (f.eks. når omega-forhold ikke kan beregnes). */
+  displayAsDash?: boolean;
 };
 
 export type MacroDisplayStatus = {
@@ -203,6 +205,8 @@ export function macroCoveragePct(value: number, target: number, lowerIsBetter?: 
 }
 
 export function formatMacroDisplayValue(row: MacroDisplayRow): string {
+  if (row.displayAsDash) return "—";
+  if (row.unit === ":1") return `${formatMacro(row.value, row.decimals)}:1`;
   return `${formatMacro(row.value, row.decimals)} ${row.unit}`;
 }
 
