@@ -32,6 +32,7 @@ import { useFoodBankItems } from "../../app/useFoodBankItems";
 import { useHiddenFoodSources } from "../../app/useHiddenFoodSources";
 import type { MicronutrientDailyRow, MicronutrientReportFilterMode } from "../../app/quickFoodLogNutrition";
 import { micronutrientReportEmptyMessage, micronutrientReportFilterCounts } from "../../app/quickFoodLogNutrition";
+import "../../foodbank.css";
 
 type NutrientStatusRowView = {
   key: string;
@@ -93,19 +94,21 @@ function FoodSourceList({
       {sources.length ? (
         <ol>
           {sources.map((row, index) => (
-            <li key={`${row.id}-${index}`}>
+            <li key={`${row.id}-${index}`} className="motus-nutrition-report__sources-row">
               <span className="motus-nutrition-report__contrib-name" title={row.name}>
                 {row.name}
               </span>
-              <strong>{formatFoodSourceAmount(row.amountPer100g, nutrientId)}</strong>
-              <button
-                type="button"
-                className="motus-nutrition-report__sources-hide"
-                aria-label={`Fjern ${row.name} fra listen`}
-                onClick={() => hideSource(row)}
-              >
-                Fjern
-              </button>
+              <div className="motus-nutrition-report__sources-meta">
+                <strong>{formatFoodSourceAmount(row.amountPer100g, nutrientId)}</strong>
+                <button
+                  type="button"
+                  className="motus-nutrition-report__sources-hide"
+                  aria-label={`Fjern ${row.name} fra listen`}
+                  onClick={() => hideSource(row)}
+                >
+                  Fjern
+                </button>
+              </div>
             </li>
           ))}
         </ol>
