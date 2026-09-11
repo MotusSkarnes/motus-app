@@ -30,6 +30,8 @@ const GENERIC_SEGMENTS = new Set([
   "stekt",
   "ovnsbakt",
   "fryst",
+  "frossen",
+  "fersk",
   "hermetisk",
   "tørket",
   "røkt",
@@ -37,6 +39,8 @@ const GENERIC_SEGMENTS = new Set([
   "grillet",
   "norsk",
   "importert",
+  "dansk",
+  "svensk",
   "uspesifisert",
   "kjøpt",
   "hjemmelaget",
@@ -55,12 +59,22 @@ const GENERIC_SEGMENTS = new Set([
   "atlantisk",
   "lett",
   "mager",
+  "grov",
+  "grovt",
+  "fin",
+  "fint",
   "avrent",
   "uten skinn",
   "med skinn",
   "uten skall",
   "med skall",
 ]);
+
+const GENERIC_SEGMENT_PATTERN = [
+  /^\d+\s*%(\s*fett)?$/,
+  /^(uten|med)\s+(salt|vann|melk|sukker|jod|skinn|skall)\b/,
+  /salt tilsatt jod/,
+];
 
 function restSegments(rest: string): string[] {
   return rest
@@ -71,25 +85,35 @@ function restSegments(rest: string): string[] {
 
 function isGenericSegment(segment: string): boolean {
   if (GENERIC_SEGMENTS.has(segment)) return true;
+  if (GENERIC_SEGMENT_PATTERN.some((pattern) => pattern.test(segment))) return true;
   const words = segment.split(" ").filter(Boolean);
   return words.length > 0 && words.every((word) => GENERIC_SEGMENTS.has(word));
 }
 
+function productTypeFamily(head: string, nameKey: string): string | null {
+  if (head.endsWith("leverpostei") || nameKey.endsWith("leverpostei")) return "leverpostei";
+  return null;
+}
+
 /**
  * Groups near-duplicate food-bank rows so Gode matkilder keeps the strongest
- * variant: livers across animals, or the same food with only color/prep changes.
- * Distinct foods (bryst vs lår, norvegia vs jarlsberg) stay separate.
+ * variant: livers across animals, pâté styles, or the same food with only
+ * color/prep/origin changes. Distinct foods (bryst vs lår, norvegia vs jarlsberg) stay separate.
  */
 export function foodSourceFamilyKey(name: string): string {
   const trimmed = name.trim();
   const exact = normalizeFoodBankNameKey(trimmed) || trimmed.toLowerCase();
   if (!trimmed) return exact;
   const lower = trimmed.toLowerCase();
-  if (isOrganProductException(lower)) return exact;
-
   const head = nameHead(lower);
-  const organ = organFamily(head, exact);
-  if (organ) return organ;
+
+  if (!isOrganProductException(lower)) {
+    const organ = organFamily(head, exact);
+    if (organ) return organ;
+  }
+
+  const product = productTypeFamily(head, exact);
+  if (product) return product;
 
   const meaningful = restSegments(nameRest(lower)).filter((segment) => !isGenericSegment(segment));
   if (!meaningful.length) return normalizeFoodBankNameKey(head) || exact;

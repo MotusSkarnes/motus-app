@@ -117,11 +117,12 @@ describe("rankFoodBankSourcesForNutrient", () => {
       food("Lever, kylling, rå", nutrition({ micronutrients: { vitaminA: 8000 } })),
       food("Lever, svin, rå", nutrition({ micronutrients: { vitaminA: 12000 } })),
       food("Leverpostei, fersk", nutrition({ micronutrients: { vitaminA: 4000 } })),
+      food("Leverpostei, grov, dansk", nutrition({ micronutrients: { vitaminA: 5500 } })),
       food("Mandler", nutrition({ micronutrients: { vitaminA: 1 } })),
     ];
     expect(rankFoodBankSourcesForNutrient(items, "vitaminA").map((row) => row.name)).toEqual([
       "Lever, svin, rå",
-      "Leverpostei, fersk",
+      "Leverpostei, grov, dansk",
       "Mandler",
     ]);
   });
