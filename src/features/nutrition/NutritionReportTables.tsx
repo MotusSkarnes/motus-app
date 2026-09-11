@@ -98,7 +98,7 @@ function FoodSourceList({
   return (
     <div className="motus-nutrition-report__contrib-panel motus-nutrition-report-no-print" role="group" aria-label={`Gode matkilder til ${nutrientLabel}`}>
       <p className="motus-nutrition-report__sources-lead">
-        Topp {topLabel} i matbanken · mengde per 100 g. Fjern varer som ikke er praktiske kilder.
+        Topp {topLabel} i matbanken · mengde per 100 g. Krydder, salt og bakegjær er utelatt. Fjern varer som likevel ikke er praktiske kilder.
       </p>
       {sources.length ? (
         <ol>

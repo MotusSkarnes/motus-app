@@ -60,9 +60,9 @@ describe("rankFoodBankSourcesForNutrient", () => {
 
     const withNew = [
       ...base,
-      food("Gjær, tørr", nutrition({ micronutrients: { vitaminB1: 12 } })),
+      food("Svinlever", nutrition({ micronutrients: { vitaminB1: 12 } })),
     ];
-    expect(rankFoodBankSourcesForNutrient(withNew, "vitaminB1")[0]?.name).toBe("Gjær, tørr");
+    expect(rankFoodBankSourcesForNutrient(withNew, "vitaminB1")[0]?.name).toBe("Svinlever");
   });
 
   it("keeps only the strongest duplicate name and caps at top 10", () => {
@@ -91,13 +91,25 @@ describe("rankFoodBankSourcesForNutrient", () => {
 
   it("skips foods that are hidden from the suggestion list", () => {
     const items = [
-      food("Gjær, tørr", nutrition({ micronutrients: { vitaminB1: 12 } })),
+      food("Svinlever", nutrition({ micronutrients: { vitaminB1: 12 } })),
       food("Svin indrefilet", nutrition({ micronutrients: { vitaminB1: 0.9 } })),
     ];
     const ranked = rankFoodBankSourcesForNutrient(items, "vitaminB1", {
-      hiddenNameKeys: [normalizeFoodBankNameKey("Gjær, tørr")],
+      hiddenNameKeys: [normalizeFoodBankNameKey("Svinlever")],
     });
     expect(ranked.map((row) => row.name)).toEqual(["Svin indrefilet"]);
+  });
+
+  it("skips spices that are not realistic to eat 100 g of", () => {
+    const items = [
+      food("Paprikapulver", nutrition({ micronutrients: { vitaminE: 30 } })),
+      food("Paprika, rød, rå", nutrition({ micronutrients: { vitaminE: 1.5 } })),
+      food("Mandler", nutrition({ micronutrients: { vitaminE: 25 } })),
+    ];
+    expect(rankFoodBankSourcesForNutrient(items, "vitaminE").map((row) => row.name)).toEqual([
+      "Mandler",
+      "Paprika, rød, rå",
+    ]);
   });
 
   it("does not rank salt as a water source when Matvaretabellen stored water-by-difference as 100 g", () => {
