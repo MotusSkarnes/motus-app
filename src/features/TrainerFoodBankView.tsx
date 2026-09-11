@@ -14,6 +14,7 @@ import {
   Upload,
   UserRound,
   X,
+  EyeOff,
 } from "lucide-react";
 import { filterFoodBankItems, sortFoodBankItems } from "../app/foodBankFilter";
 import { defaultPortionGramsForFood } from "../app/foodPortionDefaults";
@@ -75,9 +76,10 @@ import type { FoodLabelScanResult } from "../app/foodLabelScanTypes";
 import type { FoodMicronutrientKey } from "../app/foodBankMicronutrients";
 import type { Member } from "../app/types";
 import { TrainerRecipesPanel } from "./nutrition/TrainerRecipesPanel";
+import { TrainerHiddenFoodSourcesPanel } from "./nutrition/TrainerHiddenFoodSourcesPanel";
 import "../foodbank.css";
 
-type NutritionSection = "foods" | "recipes";
+type NutritionSection = "foods" | "recipes" | "hidden-sources";
 
 const MAX_FOOD_IMAGE_BYTES = 5 * 1024 * 1024;
 
@@ -612,7 +614,9 @@ export function TrainerFoodBankView({
           <p className="motus-foodbank-subtitle">
             {section === "foods"
               ? "Din database med matvarer og næringsinnhold."
-              : "Oppskrifter for medlemmer og matplan — ikke i Utforsk."}
+              : section === "recipes"
+                ? "Oppskrifter for medlemmer og matplan — ikke i Utforsk."
+                : "Matvarer fjernet fra listen Gode matkilder i næringsrapporten."}
           </p>
         </div>
         {section === "foods" ? (
@@ -665,11 +669,23 @@ export function TrainerFoodBankView({
           <BookOpen className="h-3.5 w-3.5" aria-hidden />
           Oppskrifter
         </button>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={section === "hidden-sources"}
+          className={`motus-foodbank-chip ${section === "hidden-sources" ? "is-active" : ""}`}
+          onClick={() => setSection("hidden-sources")}
+        >
+          <EyeOff className="h-3.5 w-3.5" aria-hidden />
+          Skjulte matkilder
+        </button>
       </div>
 
       {section === "recipes" ? (
         <TrainerRecipesPanel members={recipeMembers} authorName={trainerName} />
       ) : null}
+
+      {section === "hidden-sources" ? <TrainerHiddenFoodSourcesPanel /> : null}
 
       {section !== "foods" ? null : (
         <>

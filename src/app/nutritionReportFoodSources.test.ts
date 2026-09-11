@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { FoodItem, FoodNutrition } from "./foodBankTypes";
+import { normalizeFoodBankNameKey } from "./foodBankNameKey";
 import {
   FOOD_SOURCE_TOP_N,
   canSuggestFoodSources,
@@ -79,5 +80,16 @@ describe("rankFoodBankSourcesForNutrient", () => {
     expect(canSuggestFoodSources("protein")).toBe(true);
     expect(canSuggestFoodSources("sugar")).toBe(false);
     expect(canSuggestFoodSources("sodium")).toBe(false);
+  });
+
+  it("skips foods that are hidden from the suggestion list", () => {
+    const items = [
+      food("Gjær, tørr", nutrition({ micronutrients: { vitaminB1: 12 } })),
+      food("Svin indrefilet", nutrition({ micronutrients: { vitaminB1: 0.9 } })),
+    ];
+    const ranked = rankFoodBankSourcesForNutrient(items, "vitaminB1", {
+      hiddenNameKeys: [normalizeFoodBankNameKey("Gjær, tørr")],
+    });
+    expect(ranked.map((row) => row.name)).toEqual(["Svin indrefilet"]);
   });
 });

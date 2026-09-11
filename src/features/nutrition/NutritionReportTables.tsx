@@ -27,7 +27,9 @@ import {
   formatFoodSourceAmount,
   rankFoodBankSourcesForNutrient,
 } from "../../app/nutritionReportFoodSources";
+import { hideFoodSourceFromSuggestions } from "../../app/foodSourceHiddenStorage";
 import { useFoodBankItems } from "../../app/useFoodBankItems";
+import { useHiddenFoodSources } from "../../app/useHiddenFoodSources";
 import type { MicronutrientDailyRow, MicronutrientReportFilterMode } from "../../app/quickFoodLogNutrition";
 import { micronutrientReportEmptyMessage, micronutrientReportFilterCounts } from "../../app/quickFoodLogNutrition";
 
@@ -74,7 +76,17 @@ function FoodSourceList({
   nutrientLabel: string;
 }) {
   const foodItems = useFoodBankItems();
-  const sources = rankFoodBankSourcesForNutrient(foodItems, nutrientId);
+  const hiddenSources = useHiddenFoodSources();
+  const sources = rankFoodBankSourcesForNutrient(foodItems, nutrientId, {
+    hiddenNameKeys: hiddenSources.map((row) => row.nameKey),
+  });
+
+  const hideSource = (row: { id: string; name: string }) => {
+    const confirmed = window.confirm(`Vil du fjerne «${row.name}» fra listen over gode matkilder?`);
+    if (!confirmed) return;
+    hideFoodSourceFromSuggestions(row);
+  };
+
   return (
     <div className="motus-nutrition-report__contrib-panel motus-nutrition-report-no-print" role="group" aria-label={`Gode matkilder til ${nutrientLabel}`}>
       <p className="motus-nutrition-report__sources-lead">Topp 10 i matbanken · mengde per 100 g</p>
@@ -86,6 +98,14 @@ function FoodSourceList({
                 {row.name}
               </span>
               <strong>{formatFoodSourceAmount(row.amountPer100g, nutrientId)}</strong>
+              <button
+                type="button"
+                className="motus-nutrition-report__sources-hide"
+                aria-label={`Fjern ${row.name} fra listen`}
+                onClick={() => hideSource(row)}
+              >
+                Fjern
+              </button>
             </li>
           ))}
         </ol>

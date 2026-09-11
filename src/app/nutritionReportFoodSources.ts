@@ -7,6 +7,13 @@ import type { NutrientContributionId } from "./nutritionReportContributors";
 
 export const FOOD_SOURCE_TOP_N = 10;
 
+export type FoodBankNutrientSource = {
+  id: string;
+  name: string;
+  nameKey: string;
+  amountPer100g: number;
+};
+
 const SKIP_SOURCE_IDS = new Set<NutrientContributionId>([
   "kcal",
   "sugar",
@@ -16,11 +23,32 @@ const SKIP_SOURCE_IDS = new Set<NutrientContributionId>([
   "waterFromFood",
 ]);
 
-export type FoodBankNutrientSource = {
-  id: string;
-  name: string;
-  amountPer100g: number;
-};
+export function rankFoodBankSourcesForNutrient(
+  items: FoodItem[],
+  id: NutrientContributionId,
+  options: { limit?: number; hiddenNameKeys?: Iterable<string> } = {},
+): FoodBankNutrientSource[] {
+  const limit = options.limit ?? FOOD_SOURCE_TOP_N;
+  const hidden = new Set(options.hiddenNameKeys ?? []);
+  const best = new Map<string, FoodBankNutrientSource>();
+  for (const item of items) {
+    const name = item.name.trim();
+    if (!name) continue;
+    const key = normalizeFoodBankNameKey(name) || item.id;
+    if (hidden.has(key)) continue;
+    const source = { id: item.id, name, grams: 100, nutritionPer100g: item.nutritionPer100g };
+    if (!hasKnownNutrientValue(source, id)) continue;
+    const amountPer100g = amountPer100gForNutrient(item.nutritionPer100g, id);
+    if (!(amountPer100g > 0)) continue;
+    const previous = best.get(key);
+    if (!previous || amountPer100g > previous.amountPer100g) {
+      best.set(key, { id: item.id, name, amountPer100g, nameKey: key });
+    }
+  }
+  return [...best.values()]
+    .sort((a, b) => b.amountPer100g - a.amountPer100g || a.name.localeCompare(b.name, "nb"))
+    .slice(0, limit);
+}
 
 export function canSuggestFoodSources(id: NutrientContributionId | undefined): boolean {
   return Boolean(id) && !SKIP_SOURCE_IDS.has(id);
@@ -107,28 +135,4 @@ export function amountPer100gForNutrient(nutrition: FoodNutrition, id: NutrientC
 export function formatFoodSourceAmount(amount: number, id: NutrientContributionId): string {
   const { unit, decimals } = nutrientAmountMeta(id);
   return `${formatMacro(amount, decimals)} ${unit} / 100 g`;
-}
-
-export function rankFoodBankSourcesForNutrient(
-  items: FoodItem[],
-  id: NutrientContributionId,
-  limit = FOOD_SOURCE_TOP_N,
-): FoodBankNutrientSource[] {
-  const best = new Map<string, FoodBankNutrientSource>();
-  for (const item of items) {
-    const name = item.name.trim();
-    if (!name) continue;
-    const source = { id: item.id, name, grams: 100, nutritionPer100g: item.nutritionPer100g };
-    if (!hasKnownNutrientValue(source, id)) continue;
-    const amountPer100g = amountPer100gForNutrient(item.nutritionPer100g, id);
-    if (!(amountPer100g > 0)) continue;
-    const key = normalizeFoodBankNameKey(name) || item.id;
-    const previous = best.get(key);
-    if (!previous || amountPer100g > previous.amountPer100g) {
-      best.set(key, { id: item.id, name, amountPer100g });
-    }
-  }
-  return [...best.values()]
-    .sort((a, b) => b.amountPer100g - a.amountPer100g || a.name.localeCompare(b.name, "nb"))
-    .slice(0, limit);
 }

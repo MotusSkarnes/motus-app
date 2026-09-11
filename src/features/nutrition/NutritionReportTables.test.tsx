@@ -11,6 +11,7 @@ import type { MicronutrientDailyRow, MicronutrientReportFilterMode } from "../..
 import { buildNutrientContributionLookup } from "../../app/nutritionReportContributors";
 import { buildNutrientCoverageLookup } from "../../app/nutritionReportCoverage";
 import { useFoodBankItems } from "../../app/useFoodBankItems";
+import { FOOD_SOURCE_HIDDEN_KEY } from "../../app/foodSourceHiddenStorage";
 import { NutritionReportStackedBody } from "./NutritionReportTables";
 
 vi.mock("../../app/useFoodBankItems", () => ({
@@ -20,6 +21,7 @@ vi.mock("../../app/useFoodBankItems", () => ({
 afterEach(() => {
   cleanup();
   vi.mocked(useFoodBankItems).mockReturnValue([]);
+  localStorage.removeItem(FOOD_SOURCE_HIDDEN_KEY);
 });
 
 const microRow = (
@@ -207,5 +209,45 @@ describe("NutritionReportStackedBody", () => {
     await user.click(screen.getByRole("button", { name: "Vis gode matkilder til Vitamin A" }));
     expect(screen.getByText("Fiskeolje")).toBeTruthy();
     expect(screen.getByText("9000 µg / 100 g")).toBeTruthy();
+  });
+
+  it("asks before removing a food from the good-sources list", async () => {
+    const nutrition = (vitaminA: number): FoodNutrition => ({
+      kcal: 0,
+      protein: 0,
+      carbs: 0,
+      fat: 0,
+      fiber: 0,
+      sugar: 0,
+      saturatedFat: 0,
+      sodium: 0,
+      micronutrients: { vitaminA },
+    });
+    const item = (name: string, vitaminA: number): FoodItem => ({
+      id: name,
+      name,
+      portionLabel: "100 g",
+      portionGrams: 100,
+      category: "proteinkilder",
+      origin: "Test",
+      source: "egen",
+      createdBy: "test",
+      createdAt: "2026-09-01T00:00:00.000Z",
+      nutritionPer100g: nutrition(vitaminA),
+    });
+    vi.mocked(useFoodBankItems).mockReturnValue([item("Svin", 10), item("Lever", 8000)]);
+    const user = userEvent.setup();
+    const confirmSpy = vi.spyOn(window, "confirm").mockReturnValue(false);
+    render(<ReportHarness rows={rows} />);
+    await user.click(screen.getByRole("button", { name: "Vis gode matkilder til Vitamin A" }));
+    await user.click(screen.getByRole("button", { name: "Fjern Lever fra listen" }));
+    expect(confirmSpy).toHaveBeenCalledWith("Vil du fjerne «Lever» fra listen over gode matkilder?");
+    expect(screen.getByText("Lever")).toBeTruthy();
+
+    confirmSpy.mockReturnValue(true);
+    await user.click(screen.getByRole("button", { name: "Fjern Lever fra listen" }));
+    expect(screen.queryByText("Lever")).toBeNull();
+    expect(screen.getByText("Svin")).toBeTruthy();
+    confirmSpy.mockRestore();
   });
 });
