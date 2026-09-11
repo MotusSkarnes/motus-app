@@ -213,7 +213,7 @@ function buildTrainerPrintHtml(payload: NutritionReportPrintPayload): string {
       line-height: 1.45;
     }
     h1 { margin: 0 0 4px; font-size: 22px; }
-    h2 { margin: 24px 0 10px; font-size: 15px; border-bottom: 2px solid #0d9488; padding-bottom: 4px; }
+    h2 { margin: 16px 0 6px; font-size: 15px; border-bottom: 2px solid #0d9488; padding-bottom: 4px; }
     .meta { color: #64748b; margin: 0 0 16px; font-size: 12px; }
     .summary {
       background: #f0fdfa;
@@ -234,7 +234,7 @@ function buildTrainerPrintHtml(payload: NutritionReportPrintPayload): string {
     .report-table th { background: #f8fafc; font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; }
     .report-table--compact td { padding: 6px 10px; }
     .intake-cell { white-space: nowrap; }
-    .muted { color: #64748b; font-size: 12px; }
+    .muted { color: #64748b; font-size: 12px; margin: 4px 0 8px; }
     .footnote { margin-top: 20px; font-size: 11px; color: #94a3b8; }
     .warning {
       margin-top: 16px;
@@ -252,8 +252,18 @@ function buildTrainerPrintHtml(payload: NutritionReportPrintPayload): string {
     .contrib { margin-top: 3px; font-size: 11px; color: #0f766e; font-weight: 600; }
     @media print {
       body { padding: 12px; }
-      h2 { page-break-after: avoid; }
-      .report-table { page-break-inside: avoid; }
+      h2, h2 + table, .report-table thead {
+        break-after: avoid;
+        page-break-after: avoid;
+      }
+      .report-table {
+        break-inside: auto;
+        page-break-inside: auto;
+      }
+      .report-table tr {
+        break-inside: avoid;
+        page-break-inside: avoid;
+      }
     }
   </style>
 </head>
@@ -266,16 +276,16 @@ function buildTrainerPrintHtml(payload: NutritionReportPrintPayload): string {
   ${macroTableHtml(macroRows, payload.contributionLookup, payload.coverageLookup)}
 
   <h2>Vanninntak</h2>
-  <p class="muted">Drikke = manuelt logget. Fra mat = vanninnhold i matvarer. Totalt: Helsedirektoratet / NNR 2023 (2,0 L kvinner / 2,5 L menn).</p>
   ${macroTableHtml(waterRows, payload.contributionLookup, payload.coverageLookup)}
+  <p class="muted">Drikke = manuelt logget. Fra mat = vanninnhold i matvarer. Totalt: Helsedirektoratet / NNR 2023 (2,0 L kvinner / 2,5 L menn).</p>
 
   <h2>Mikronæringsstoffer</h2>
-  <p class="muted">${escapeHtml(referenceNote)}</p>
   ${microTableHtml(payload.microRows, payload.contributionLookup, payload.coverageLookup)}
+  <p class="muted">${escapeHtml(referenceNote)}</p>
 
   <h2>Omega-fettsyrer</h2>
-  <p class="muted">${escapeHtml(nutritionOmegaReportFootnote())}</p>
   ${macroTableHtml(buildOmegaOverviewRows(payload.totals.fattyAcids, kcalTarget), payload.contributionLookup, payload.coverageLookup)}
+  <p class="muted">${escapeHtml(nutritionOmegaReportFootnote())}</p>
 
   ${dailyKcalHtml(payload.dailyKcal)}
 

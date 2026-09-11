@@ -30,6 +30,8 @@ describe("buildNutritionReportPrintHtml", () => {
     expect(html).toContain("intake intake--");
     expect(html).toContain("Trenerutskrift");
     expect(html).not.toContain("Generert");
+    expect(html).toMatch(/<h2>Mikronæringsstoffer<\/h2>\s*<table/);
+    expect(html).toMatch(/<h2>Omega-fettsyrer<\/h2>\s*<table/);
   });
 
   it("puts unit after each AR, RI and UL value", () => {
