@@ -46,3 +46,21 @@ describe("food bank micronutrient zeros", () => {
     expect(loaded?.nutritionPer100g.micronutrients?.iron).toBeUndefined();
   });
 });
+
+describe("food bank water", () => {
+  it("keeps measured water 0 on a custom food after save and reload", () => {
+    persistFoodBankItems([
+      vitaminbamser({
+        nutritionPer100g: { ...vitaminbamser().nutritionPer100g, water: 0 },
+      }),
+    ]);
+    const loaded = loadFoodBankItems().find((item) => item.id === "food-vitaminbamser");
+    expect(loaded?.nutritionPer100g.water).toBe(0);
+  });
+
+  it("keeps omitted water as unknown after save and reload", () => {
+    persistFoodBankItems([vitaminbamser()]);
+    const loaded = loadFoodBankItems().find((item) => item.id === "food-vitaminbamser");
+    expect(loaded?.nutritionPer100g.water).toBeUndefined();
+  });
+});

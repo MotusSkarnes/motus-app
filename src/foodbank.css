@@ -575,6 +575,12 @@
   color: #64748b;
 }
 
+.motus-foodbank-field-hint {
+  font-size: 0.75rem;
+  line-height: 1.35;
+  color: #64748b;
+}
+
 .motus-foodbank-check {
   display: inline-flex;
   align-items: center;

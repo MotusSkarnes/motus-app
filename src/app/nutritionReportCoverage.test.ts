@@ -91,4 +91,19 @@ describe("nutritionReportCoverage", () => {
     expect(formatCoverageTitle(lookup.waterFromFood)).toContain("Mangler: Vitaminbamser");
     expect(formatCoverageTitle(lookup.drinkWater)).toContain("Logget drikke");
   });
+
+  it("treats water 0 as known and omitted water as unknown", () => {
+    const dry = {
+      name: "Vitaminbamser",
+      grams: 1,
+      nutritionPer100g: nutrition({ water: 0 }),
+    };
+    const unknown = {
+      name: "Vitamin D",
+      grams: 1,
+      nutritionPer100g: nutrition({ kcal: 4 }),
+    };
+    expect(hasKnownNutrientValue(dry, "waterFromFood")).toBe(true);
+    expect(hasKnownNutrientValue(unknown, "waterFromFood")).toBe(false);
+  });
 });

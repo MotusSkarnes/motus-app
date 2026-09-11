@@ -125,6 +125,7 @@ type FoodFormState = {
   sugar: string;
   saturatedFat: string;
   sodium: string;
+  water: string;
   micronutrients: Record<FoodMicronutrientKey, string>;
 };
 
@@ -147,6 +148,7 @@ function emptyForm(): FoodFormState {
     sugar: "0",
     saturatedFat: "0",
     sodium: "0",
+    water: "",
     micronutrients: micronutrientFormDefaults(),
   };
 }
@@ -170,6 +172,10 @@ function formFromFood(item: FoodItem): FoodFormState {
     sugar: String(item.nutritionPer100g.sugar),
     saturatedFat: String(item.nutritionPer100g.saturatedFat),
     sodium: String(item.nutritionPer100g.sodium),
+    water:
+      item.nutritionPer100g.water == null || !Number.isFinite(item.nutritionPer100g.water)
+        ? ""
+        : String(item.nutritionPer100g.water),
     micronutrients: micronutrientFormFromNutrition(item.nutritionPer100g),
   };
 }
@@ -177,6 +183,13 @@ function formFromFood(item: FoodItem): FoodFormState {
 function parseNumber(value: string): number {
   const parsed = Number(value.trim().replace(",", "."));
   return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function parseOptionalNumber(value: string): number | undefined {
+  const raw = value.trim().replace(",", ".");
+  if (!raw) return undefined;
+  const parsed = Number(raw);
+  return Number.isFinite(parsed) ? parsed : undefined;
 }
 
 function snapshotFoodForm(form: FoodFormState): string {
@@ -503,6 +516,8 @@ export function TrainerFoodBankView({
         sugar: parseNumber(form.sugar),
         saturatedFat: parseNumber(form.saturatedFat),
         sodium: parseNumber(form.sodium),
+        water: parseOptionalNumber(form.water),
+        fattyAcids: existing?.nutritionPer100g.fattyAcids,
         micronutrients: parseMicronutrientForm(form.micronutrients),
       },
     };
@@ -823,7 +838,15 @@ export function TrainerFoodBankView({
                 <div className="is-nested"><dt>Mettet fett</dt><dd>{formatMacro(selectedItem.nutritionPer100g.saturatedFat, 1)} g</dd></div>
                 <div><dt>Kostfiber</dt><dd>{formatMacro(selectedItem.nutritionPer100g.fiber, 1)} g</dd></div>
                 <div><dt>Natrium</dt><dd>{formatMacro(selectedItem.nutritionPer100g.sodium)} mg</dd></div>
-                <div><dt>Vann</dt><dd>{formatMacro(selectedItem.nutritionPer100g.water ?? 0, 1)} g</dd></div>
+                <div>
+                  <dt>Vann</dt>
+                  <dd>
+                    {selectedItem.nutritionPer100g.water == null ||
+                    !Number.isFinite(selectedItem.nutritionPer100g.water)
+                      ? "–"
+                      : `${formatMacro(selectedItem.nutritionPer100g.water, 1)} g`}
+                  </dd>
+                </div>
               </dl>
               <p className="motus-foodbank-detail-note">Verdier per 100 g</p>
             </section>
@@ -1141,6 +1164,17 @@ export function TrainerFoodBankView({
               <label className="motus-foodbank-field">
                 <span className="motus-foodbank-field-label">Natrium (mg)</span>
                 <TextInput value={form.sodium} onChange={(event) => setForm((current) => ({ ...current, sodium: event.target.value }))} />
+              </label>
+              <label className="motus-foodbank-field">
+                <span className="motus-foodbank-field-label">Vann (g per 100 g)</span>
+                <TextInput
+                  value={form.water}
+                  onChange={(event) => setForm((current) => ({ ...current, water: event.target.value }))}
+                  placeholder="Ukjent"
+                />
+                <span className="motus-foodbank-field-hint">
+                  La stå tomt hvis ukjent. Skriv 0 hvis matvaren er tørr og uten vann.
+                </span>
               </label>
               <FoodMicronutrientFormFields
                 values={form.micronutrients}
