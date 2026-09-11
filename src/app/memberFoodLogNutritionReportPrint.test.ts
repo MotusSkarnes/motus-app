@@ -23,6 +23,8 @@ describe("buildNutritionReportPrintHtml", () => {
     expect(html).toContain("Vann (drikke)");
     expect(html).toContain("Kjent");
     expect(html).toContain("andel matvarer med kjent verdi");
+    expect(html).toContain("print-color-adjust: exact");
+    expect(html).toContain("intake intake--");
   });
 
   it("puts unit after each AR, RI and UL value", () => {
@@ -63,5 +65,46 @@ describe("buildNutritionReportPrintHtml", () => {
       },
     });
     expect(html).toContain("Laks, oppdrett, rå 100%");
+  });
+
+  it("builds a simpler client print with logo and name, without trainer extras", () => {
+    const html = buildNutritionReportPrintHtml({
+      memberName: "Ola Nordmann",
+      periodSummary: "Snitt per dag · 7 dager",
+      totals: { ...EMPTY_FOOD_LOG_NUTRITION, protein: 30, kcal: 1800 },
+      microRows: [
+        {
+          key: "vitaminA",
+          label: "Vitamin A",
+          unit: "µg",
+          decimals: 0,
+          value: 600,
+          target: 700,
+          coveragePct: 86,
+          lower: 540,
+          upper: 3000,
+          status: "below_recommended",
+          statusLabel: "Under anbefalt (RI)",
+          statusTone: "warn",
+        },
+      ],
+      contributionLookup: {
+        protein: [{ name: "Laks, oppdrett, rå", amount: 30, percent: 100 }],
+      },
+      coverageLookup: {
+        protein: { known: 1, total: 2, percent: 50, missingNames: ["Vitaminbamser"] },
+      },
+      audience: "client",
+      logoUrl: "https://motus.example/logo.svg",
+    });
+    expect(html).toContain("Ola Nordmann");
+    expect(html).toContain("https://motus.example/logo.svg");
+    expect(html).toContain("Innenfor anbefaling");
+    expect(html).toContain("Litt utenfor");
+    expect(html).toContain("intake intake--warn");
+    expect(html).not.toContain("Kjent");
+    expect(html).not.toContain("Laks, oppdrett, rå 100%");
+    expect(html).not.toContain("AR 540");
+    expect(html).not.toContain("andel matvarer med kjent verdi");
   });
 });

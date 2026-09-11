@@ -1,7 +1,11 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Printer, X } from "lucide-react";
+import motusLogo from "../../assets/motus-logo-transparent.svg";
 import { formatMacro } from "../../app/foodBankTypes";
-import { openNutritionReportPrintWindow } from "../../app/memberFoodLogNutritionReportPrint";
+import {
+  openNutritionReportPrintWindow,
+  type NutritionReportPrintAudience,
+} from "../../app/memberFoodLogNutritionReportPrint";
 import {
   buildMemberFoodLogNutritionPeriodReport,
   dateKeysWithLogs,
@@ -168,30 +172,46 @@ export function MemberFoodLogNutritionReportModal({
           ? `Snitt per dag · ${report.daysWithLogs} dager (${formatPeriodLabel(report.dateKeys)})`
           : `Sum for perioden · ${report.daysWithLogs} dager (${formatPeriodLabel(report.dateKeys)})`;
 
-  const handlePrint = useCallback(() => {
-    const ok = openNutritionReportPrintWindow({
-      memberName: displayName,
-      periodSummary,
-      totals: displayTotals,
+  const handlePrint = useCallback(
+    (audience: NutritionReportPrintAudience) => {
+      const ok = openNutritionReportPrintWindow({
+        memberName: displayName,
+        periodSummary,
+        totals: displayTotals,
+        mealPlanTargets,
+        microRows: audience === "client" ? microRows : visibleMicroRows,
+        referenceContext,
+        contributionLookup: audience === "trainer" ? contributionLookup : undefined,
+        coverageLookup: audience === "trainer" ? coverageLookup : undefined,
+        dailyKcal:
+          audience === "trainer" && report.daysWithLogs > 1
+            ? report.dailyTotals.map(({ dateKey, totals: dayTotals }) => ({
+                dateLabel: formatShortDateKey(dateKey),
+                kcal: dayTotals.kcal,
+              }))
+            : undefined,
+        audience,
+        logoUrl: motusLogo,
+      });
+      if (!ok) {
+        setPrintError("Kunne ikke åpne utskrift. Tillat popup-vinduer for Motus i nettleseren.");
+        return;
+      }
+      setPrintError(null);
+    },
+    [
+      displayName,
+      displayTotals,
       mealPlanTargets,
-      microRows: visibleMicroRows,
+      microRows,
+      visibleMicroRows,
+      periodSummary,
       referenceContext,
+      report,
       contributionLookup,
       coverageLookup,
-      dailyKcal:
-        report.daysWithLogs > 1
-          ? report.dailyTotals.map(({ dateKey, totals: dayTotals }) => ({
-              dateLabel: formatShortDateKey(dateKey),
-              kcal: dayTotals.kcal,
-            }))
-          : undefined,
-    });
-    if (!ok) {
-      setPrintError("Kunne ikke åpne utskrift. Tillat popup-vinduer for Motus i nettleseren.");
-      return;
-    }
-    setPrintError(null);
-  }, [displayName, displayTotals, mealPlanTargets, visibleMicroRows, periodSummary, referenceContext, report, contributionLookup, coverageLookup]);
+    ],
+  );
 
   if (!open) return null;
 
@@ -317,9 +337,23 @@ export function MemberFoodLogNutritionReportModal({
 
         <footer className="motus-nutrition-report-modal__footer motus-nutrition-report-no-print">
           {printError ? <p className="w-full text-xs text-rose-700">{printError}</p> : null}
-          <OutlineButton type="button" className="gap-1.5" onClick={handlePrint} disabled={report.daysWithLogs === 0}>
+          <OutlineButton
+            type="button"
+            className="gap-1.5"
+            onClick={() => handlePrint("trainer")}
+            disabled={report.daysWithLogs === 0}
+          >
             <Printer className="h-4 w-4" aria-hidden />
-            Skriv ut / PDF
+            Utskrift til trener
+          </OutlineButton>
+          <OutlineButton
+            type="button"
+            className="gap-1.5"
+            onClick={() => handlePrint("client")}
+            disabled={report.daysWithLogs === 0}
+          >
+            <Printer className="h-4 w-4" aria-hidden />
+            Utskrift til kunde
           </OutlineButton>
           <GradientButton type="button" onClick={onClose}>
             Lukk

@@ -1,6 +1,10 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Printer, X } from "lucide-react";
-import { openNutritionReportPrintWindow } from "../../app/memberFoodLogNutritionReportPrint";
+import motusLogo from "../../assets/motus-logo-transparent.svg";
+import {
+  openNutritionReportPrintWindow,
+  type NutritionReportPrintAudience,
+} from "../../app/memberFoodLogNutritionReportPrint";
 import type { MealPlanNutritionContext } from "../../app/mealPlanFoodNutrition";
 import { buildMealPlanNutritionReport } from "../../app/mealPlanNutritionTotals";
 import type { MealPlan } from "../../app/mealPlanTypes";
@@ -161,31 +165,48 @@ export function MealPlanNutritionReportModal({
     return `Planlagt inntak · ${label}`;
   }, [report, selectedDayId, viewMode]);
 
-  const handlePrint = useCallback(() => {
-    if (!displayTotals) return;
-    const ok = openNutritionReportPrintWindow({
-      memberName: displayName,
-      periodSummary: `Matplan · ${periodSummary}`,
-      totals: displayTotals,
-      mealPlanTargets: plan.targets,
-      microRows: visibleMicroRows,
+  const handlePrint = useCallback(
+    (audience: NutritionReportPrintAudience) => {
+      if (!displayTotals) return;
+      const ok = openNutritionReportPrintWindow({
+        memberName: displayName,
+        periodSummary: `Matplan · ${periodSummary}`,
+        totals: displayTotals,
+        mealPlanTargets: plan.targets,
+        microRows: audience === "client" ? microRows : visibleMicroRows,
+        referenceContext,
+        contributionLookup: audience === "trainer" ? contributionLookup : undefined,
+        coverageLookup: audience === "trainer" ? coverageLookup : undefined,
+        dailyKcal:
+          audience === "trainer" && report.daysWithFood > 1
+            ? report.dayTotals.map(({ label, totals }) => ({
+                dateLabel: label,
+                kcal: totals.kcal,
+              }))
+            : undefined,
+        audience,
+        logoUrl: motusLogo,
+      });
+      if (!ok) {
+        setPrintError("Kunne ikke åpne utskrift. Tillat popup-vinduer for Motus i nettleseren.");
+        return;
+      }
+      setPrintError(null);
+    },
+    [
+      displayName,
+      displayTotals,
+      microRows,
+      visibleMicroRows,
+      periodSummary,
+      plan.targets,
       referenceContext,
+      report.dayTotals,
+      report.daysWithFood,
       contributionLookup,
       coverageLookup,
-      dailyKcal:
-        report.daysWithFood > 1
-          ? report.dayTotals.map(({ label, totals }) => ({
-              dateLabel: label,
-              kcal: totals.kcal,
-            }))
-          : undefined,
-    });
-    if (!ok) {
-      setPrintError("Kunne ikke åpne utskrift. Tillat popup-vinduer for Motus i nettleseren.");
-      return;
-    }
-    setPrintError(null);
-  }, [displayName, displayTotals, visibleMicroRows, periodSummary, plan.targets, referenceContext, report.dayTotals, contributionLookup, coverageLookup]);
+    ],
+  );
 
   if (!open) return null;
 
@@ -282,9 +303,23 @@ export function MealPlanNutritionReportModal({
 
         <footer className="motus-nutrition-report-modal__footer motus-nutrition-report-no-print">
           {printError ? <p className="w-full text-xs text-rose-700">{printError}</p> : null}
-          <OutlineButton type="button" className="gap-1.5" onClick={handlePrint} disabled={report.daysWithFood === 0}>
+          <OutlineButton
+            type="button"
+            className="gap-1.5"
+            onClick={() => handlePrint("trainer")}
+            disabled={report.daysWithFood === 0}
+          >
             <Printer className="h-4 w-4" aria-hidden />
-            Skriv ut / PDF
+            Utskrift til trener
+          </OutlineButton>
+          <OutlineButton
+            type="button"
+            className="gap-1.5"
+            onClick={() => handlePrint("client")}
+            disabled={report.daysWithFood === 0}
+          >
+            <Printer className="h-4 w-4" aria-hidden />
+            Utskrift til kunde
           </OutlineButton>
           <GradientButton type="button" onClick={onClose}>
             Lukk
