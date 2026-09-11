@@ -99,6 +99,40 @@ describe("memberNutritionRehydrate", () => {
     expect(next.savedMeals[0]!.items[0]!.nutritionPer100g.water).toBe(95);
   });
 
+  it("does not bump meal-plan state updatedAt when only nutrition snapshots change", () => {
+    const updatedAt = "2026-06-02T08:00:00.000Z";
+    const state = {
+      ...EMPTY_MEMBER_MEAL_PLAN_STATE,
+      updatedAt,
+      quickFoodLogs: {
+        "2026-06-02": [
+          {
+            id: "log-1",
+            name: "Agurk",
+            grams: 200,
+            source: "food" as const,
+            loggedAt: "2026-06-02T08:00:00.000Z",
+            nutritionPer100g: {
+              kcal: 10,
+              protein: 1,
+              carbs: 2,
+              fat: 0,
+              fiber: 0,
+              sugar: 0,
+              saturatedFat: 0,
+              sodium: 0,
+              water: 0,
+            },
+          },
+        ],
+      },
+    };
+    const { next, updates } = rehydrateMemberMealPlanState(state, [food("Agurk", 95)]);
+    expect(updates).toBe(1);
+    expect(next.updatedAt).toBe(updatedAt);
+    expect(next.quickFoodLogs["2026-06-02"]![0]!.nutritionPer100g.water).toBe(95);
+  });
+
   it("resolves nutrition when loading saved meal items", () => {
     const lookup = buildNutritionLookupByFoodName([food("Melon", 90)]);
     const resolved = resolveNutritionFromLookup(

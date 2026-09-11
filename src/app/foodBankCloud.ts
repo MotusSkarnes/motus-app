@@ -13,8 +13,7 @@ import { applyKnownPortionDefaults } from "./foodPortionDefaults";
 import { fetchApprovedFoodItemsForMember, fetchApprovedFoodItemsForTrainer } from "./memberFoodSubmissionsCloud";
 import { dedupeFoodBankItems, remapFoodIdList } from "./foodBankDedup";
 import { mergeNutritionWithBank, rehydrateMemberMealPlanState } from "./memberNutritionRehydrate";
-import { loadMemberMealPlanState } from "./memberMealPlanState";
-import { persistMemberMealPlanStateLocalAndScheduleCloud } from "./memberMealPlanStateCloud";
+import { loadMemberMealPlanState, saveMemberMealPlanState } from "./memberMealPlanState";
 import { enrichFoodItem } from "./foodBankMicronutrientEnrichment";
 import { normalizeMicronutrients } from "./foodBankMicronutrients";
 import type { FoodItem } from "./foodBankTypes";
@@ -350,7 +349,8 @@ export async function syncMemberFoodBankFromTrainer(
     const state = loadMemberMealPlanState(memberKey);
     const { next, updates } = rehydrateMemberMealPlanState(state, mergedItems);
     if (updates > 0) {
-      persistMemberMealPlanStateLocalAndScheduleCloud(memberKey, next);
+      // Local only: a cloud write would stamp updatedAt and can overwrite meals logged on another device.
+      saveMemberMealPlanState(memberKey, next);
     }
   }
 

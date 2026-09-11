@@ -187,7 +187,6 @@ export function rehydrateMemberMealPlanState(
       ...state,
       quickFoodLogs,
       savedMeals,
-      updatedAt: updates > 0 ? new Date().toISOString() : state.updatedAt,
     },
     updates,
   };
