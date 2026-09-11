@@ -25,6 +25,8 @@ describe("buildNutritionReportPrintHtml", () => {
     expect(html).toContain("andel matvarer med kjent verdi");
     expect(html).toContain("print-color-adjust: exact");
     expect(html).toContain("intake intake--");
+    expect(html).toContain("Trenerutskrift");
+    expect(html).not.toContain("Generert");
   });
 
   it("puts unit after each AR, RI and UL value", () => {
@@ -98,6 +100,8 @@ describe("buildNutritionReportPrintHtml", () => {
       logoUrl: "https://motus.example/logo.svg",
     });
     expect(html).toContain("Ola Nordmann");
+    expect(html).toContain("Snitt per dag · 7 dager");
+    expect(html).not.toContain("Generert");
     expect(html).toContain("https://motus.example/logo.svg");
     expect(html).toContain("@page { size: A4;");
     expect(html).toContain("grid-template-columns: 1fr 1fr 1fr");

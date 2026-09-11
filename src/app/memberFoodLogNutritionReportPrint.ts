@@ -37,7 +37,6 @@ export type NutritionReportPrintAudience = "trainer" | "client";
 export type NutritionReportPrintPayload = {
   memberName: string;
   periodSummary: string;
-  generatedAt?: string;
   totals: FoodLogNutritionTotals;
   mealPlanTargets?: MealPlanTargets | null;
   microRows: MicronutrientDailyRow[];
@@ -213,7 +212,6 @@ function buildTrainerPrintHtml(payload: NutritionReportPrintPayload): string {
     ...buildExtraFatDisplayRows(payload.totals, kcalTarget),
   ];
   const waterRows = buildWaterReportRows(payload.totals, payload.referenceContext);
-  const generated = payload.generatedAt ?? new Date().toLocaleString("nb-NO");
   const referenceNote = payload.referenceContext
     ? nutritionReferenceFootnote(payload.referenceContext)
     : "Referanser er generelle daglige voksenverdier.";
@@ -283,7 +281,7 @@ function buildTrainerPrintHtml(payload: NutritionReportPrintPayload): string {
 </head>
 <body>
   <h1>Næringsrapport</h1>
-  <p class="meta">${escapeHtml(payload.memberName)} · Trenerutskrift · Generert ${escapeHtml(generated)}</p>
+  <p class="meta">${escapeHtml(payload.memberName)} · Trenerutskrift</p>
   <p class="summary">${escapeHtml(payload.periodSummary)}</p>
 
   <h2>Makronæringsstoffer</h2>
@@ -375,7 +373,6 @@ function buildClientPrintHtml(payload: NutritionReportPrintPayload): string {
     ...buildExtraFatDisplayRows(payload.totals, kcalTarget),
   ];
   const waterRows = buildWaterReportRows(payload.totals, payload.referenceContext);
-  const generated = payload.generatedAt ?? new Date().toLocaleString("nb-NO");
   const logoUrl = resolveLogoUrl(payload.logoUrl);
   const logoHtml = logoUrl
     ? `<div class="brand-logo-frame"><img src="${escapeHtml(logoUrl)}" alt="Motus" class="brand-logo" /></div>`
@@ -543,7 +540,7 @@ function buildClientPrintHtml(payload: NutritionReportPrintPayload): string {
         <p class="kicker">Motus</p>
         <h1>Næringsrapport</h1>
         <p class="name">${escapeHtml(payload.memberName)}</p>
-        <p class="meta">${escapeHtml(payload.periodSummary)} · ${escapeHtml(generated)}</p>
+        <p class="meta">${escapeHtml(payload.periodSummary)}</p>
       </div>
       ${logoHtml}
     </header>
