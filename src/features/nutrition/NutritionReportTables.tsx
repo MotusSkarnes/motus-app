@@ -30,6 +30,7 @@ import {
   rankFoodBankSourcesForNutrient,
 } from "../../app/nutritionReportFoodSources";
 import { hideFoodSourceFromSuggestions } from "../../app/foodSourceHiddenStorage";
+import { printFoodSourceList } from "../../app/foodSourceListPrint";
 import { useFoodBankItems } from "../../app/useFoodBankItems";
 import { useHiddenFoodSources } from "../../app/useHiddenFoodSources";
 import type { MicronutrientDailyRow, MicronutrientReportFilterMode } from "../../app/quickFoodLogNutrition";
@@ -124,15 +125,34 @@ function FoodSourceList({
       ) : (
         <p className="motus-nutrition-report__sources-empty">Ingen matvarer med kjent verdi for dette stoffet.</p>
       )}
-      {canExpand ? (
-        <button
-          type="button"
-          className="motus-nutrition-report__sources-more"
-          aria-expanded={expanded}
-          onClick={() => setExpanded((value) => !value)}
-        >
-          {expanded ? "Vis topp 10" : "Vis topp 50"}
-        </button>
+      {canExpand || ranked.length ? (
+        <div className="motus-nutrition-report__sources-actions">
+          {canExpand ? (
+            <button
+              type="button"
+              className="motus-nutrition-report__sources-more"
+              aria-expanded={expanded}
+              onClick={() => setExpanded((value) => !value)}
+            >
+              {expanded ? "Vis topp 10" : "Vis topp 50"}
+            </button>
+          ) : null}
+          {expanded && ranked.length ? (
+            <button
+              type="button"
+              className="motus-nutrition-report__sources-more"
+              onClick={() =>
+                printFoodSourceList({
+                  nutrientLabel,
+                  nutrientId,
+                  sources: ranked,
+                })
+              }
+            >
+              Skriv ut
+            </button>
+          ) : null}
+        </div>
       ) : null}
     </div>
   );

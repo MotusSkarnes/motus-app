@@ -5484,8 +5484,16 @@
   font-weight: 500;
 }
 
+.motus-nutrition-report__sources-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+  margin-top: 0.45rem;
+}
+
 .motus-nutrition-report__sources-more {
-  margin: 0.45rem 0 0;
+  margin: 0;
   font-family: inherit;
   font-size: 0.6875rem;
   font-weight: 700;

@@ -12,10 +12,15 @@ import { buildNutrientContributionLookup } from "../../app/nutritionReportContri
 import { buildNutrientCoverageLookup } from "../../app/nutritionReportCoverage";
 import { useFoodBankItems } from "../../app/useFoodBankItems";
 import { FOOD_SOURCE_HIDDEN_KEY } from "../../app/foodSourceHiddenStorage";
+import { printFoodSourceList } from "../../app/foodSourceListPrint";
 import { NutritionReportStackedBody } from "./NutritionReportTables";
 
 vi.mock("../../app/useFoodBankItems", () => ({
   useFoodBankItems: vi.fn(() => []),
+}));
+
+vi.mock("../../app/foodSourceListPrint", () => ({
+  printFoodSourceList: vi.fn(() => ({ ok: true, method: "iframe" })),
 }));
 
 afterEach(() => {
@@ -296,7 +301,16 @@ describe("NutritionReportStackedBody", () => {
       ),
     ).toBeTruthy();
     expect(screen.getByText("Kilde 2")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Skriv ut" })).toBeTruthy();
+    await user.click(screen.getByRole("button", { name: "Skriv ut" }));
+    expect(printFoodSourceList).toHaveBeenCalledWith(
+      expect.objectContaining({
+        nutrientLabel: "Vitamin A",
+        sources: expect.arrayContaining([expect.objectContaining({ name: "Kilde 2" })]),
+      }),
+    );
     await user.click(screen.getByRole("button", { name: "Vis topp 10" }));
+    expect(screen.queryByRole("button", { name: "Skriv ut" })).toBeNull();
     expect(screen.queryByText("Kilde 2")).toBeNull();
   });
 });
