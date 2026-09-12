@@ -76,6 +76,21 @@ export function patchNutritionTargetsInPersonalGoals(
   });
 }
 
+/** Prefer the newest daily targets when duplicate member rows have diverged. */
+export function pickPreferredNutritionTargets(
+  candidates: Array<string | undefined | null>,
+): MealPlanTargets | undefined {
+  let best: MealPlanTargets | undefined;
+  for (const value of candidates) {
+    const targets = readNutritionTargetsFromPersonalGoals(value);
+    if (!mealPlanTargetsHaveValues(targets) || !targets) continue;
+    if (!best || (targets.updatedAt ?? 0) >= (best.updatedAt ?? 0)) {
+      best = targets;
+    }
+  }
+  return best;
+}
+
 export function stampNutritionTargets(targets: MealPlanTargets | undefined): MealPlanTargets | undefined {
   if (!mealPlanTargetsHaveValues(targets)) return undefined;
   return { ...targets, updatedAt: Date.now() };

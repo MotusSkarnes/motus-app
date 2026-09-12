@@ -20,6 +20,7 @@ import {
   resolveMemberOnboarding,
 } from "./memberOnboarding";
 import { patchMemberAppUiStateInPersonalGoals } from "./memberAppUiState";
+import { readNutritionTargetsFromPersonalGoals } from "./memberNutritionTargets";
 import { getStopGoalsFromPersonalGoals } from "./memberStopGoal";
 import type { Member } from "./types";
 
@@ -287,6 +288,27 @@ describe("memberOnboarding", () => {
     })}`;
     const merged = mergePersonalGoalsFromCandidates([notificationOnly, withStop]);
     expect(getStopGoalsFromPersonalGoals(merged).map((goal) => goal.target)).toEqual(["Godteri"]);
+  });
+
+  it("mergePersonalGoalsFromCandidates keeps daily nutrition targets when best blob lacks them", () => {
+    const withTargets = `MOTUS_PROFILE_V1:${JSON.stringify({
+      nutritionTargets: { kcal: 2000, protein: 140, carbs: 200, fat: 70, updatedAt: 200 },
+    })}`;
+    const onboardingRich = `MOTUS_PROFILE_V1:${JSON.stringify({
+      notificationPreferences: { seenHiddenBadgeIds: ["badge-1"], openedMemberAlertIds: ["alert-1"] },
+      memberAppUi: { welcomeSeenAt: "2026-09-01T10:00:00.000Z" },
+      onboardingCompletedAt: "2026-05-16T12:00:00.000Z",
+      onboarding: {
+        version: 1,
+        completedAt: "2026-05-16T12:00:00.000Z",
+        trainingGoals: ["Styrke"],
+        motivations: ["Helse"],
+      },
+    })}`;
+    const merged = mergePersonalGoalsFromCandidates([onboardingRich, withTargets]);
+    expect(isOnboardingCompleted(merged)).toBe(true);
+    expect(readNutritionTargetsFromPersonalGoals(merged)?.kcal).toBe(2000);
+    expect(readNutritionTargetsFromPersonalGoals(merged)?.protein).toBe(140);
   });
 
   it("keeps stop goals when onboarding is merged into an existing profile", () => {

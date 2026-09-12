@@ -10,6 +10,10 @@ import {
   readProfileExtensions,
 } from "./memberProfilePayload";
 import { pickBestPersonalGoals } from "./memberProfileGoals";
+import {
+  patchNutritionTargetsInPersonalGoals,
+  pickPreferredNutritionTargets,
+} from "./memberNutritionTargets";
 import { mergeRosterFieldsFromMemberCandidates } from "../services/memberAccessRules";
 import { supabaseClient } from "../services/supabaseClient";
 import type { Level, Member } from "./types";
@@ -363,10 +367,14 @@ export function mergePersonalGoalsFromCandidates(candidates: Array<string | unde
   if (!values.length) return "";
   const mergedAvoidances = mergeFoodAvoidancesAcrossCandidates(values);
   const mergedStopGoals = mergeStopGoalsAcrossCandidates(values);
+  const keepNutritionTargets = (blob: string) => {
+    const targets = pickPreferredNutritionTargets(values);
+    return targets ? patchNutritionTargetsInPersonalGoals(blob, targets) : blob;
+  };
   let merged = pickBestPersonalGoals(values);
   if (onboardingAnswersAreSubstantive(getOnboardingFromPersonalGoals(merged))) {
     merged = mergeFoodAvoidancesIntoPersonalGoals(merged, mergedAvoidances);
-    return mergeStopGoalsIntoPersonalGoals(merged, mergedStopGoals);
+    return keepNutritionTargets(mergeStopGoalsIntoPersonalGoals(merged, mergedStopGoals));
   }
   for (const value of values) {
     const onboarding = getOnboardingFromPersonalGoals(value);
@@ -376,7 +384,7 @@ export function mergePersonalGoalsFromCandidates(candidates: Array<string | unde
     }
   }
   merged = mergeFoodAvoidancesIntoPersonalGoals(merged, mergedAvoidances);
-  return mergeStopGoalsIntoPersonalGoals(merged, mergedStopGoals);
+  return keepNutritionTargets(mergeStopGoalsIntoPersonalGoals(merged, mergedStopGoals));
 }
 
 export function resolveMemberPersonalGoals(
