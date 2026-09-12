@@ -140,6 +140,7 @@ function scorePersonalGoalsBlob(value: string): number {
   else if (raw.includes('"onboarding"')) score += 80;
   if (raw.includes('"monthlyCheckIns"')) score += 50;
   if (raw.includes('"stopGoals"') || raw.includes('"stopGoal"')) score += 90;
+  if (raw.includes('"nutritionTargets"')) score += 90;
   if (raw.includes('"foodAvoidances"')) score += 100;
   if (raw.includes('"notificationPreferences"')) score += 120;
   if (raw.includes('"periodPlanCompletion"')) score += 140;
@@ -189,6 +190,21 @@ function collectStopGoalsFromBlob(parsed: Record<string, unknown>): unknown[] {
   return [];
 }
 
+function nutritionTargetsUpdatedAt(value: unknown): number {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return 0;
+  const at = Number((value as Record<string, unknown>).updatedAt);
+  return Number.isFinite(at) ? at : 0;
+}
+
+function hasNutritionTargets(value: unknown): boolean {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return false;
+  const row = value as Record<string, unknown>;
+  return ["kcal", "protein", "carbs", "fat", "proteinPerKg"].some((key) => {
+    const amount = Number(row[key]);
+    return Number.isFinite(amount) && amount > 0;
+  });
+}
+
 /** Keep stop goals (and similar unique blobs) when duplicate rows have diverged. */
 function mergePersonalGoalsFromRows(rows: Array<Record<string, unknown>>): string {
   const values = rows.map((row) => String(row.personal_goals ?? "").trim()).filter(Boolean);
@@ -196,10 +212,19 @@ function mergePersonalGoalsFromRows(rows: Array<Record<string, unknown>>): strin
   const best = pickBestPersonalGoalsFromRows(rows);
   const merged = { ...(parseProfileBlob(best) ?? {}) };
   const stopGoals: unknown[] = [];
+  let nutritionTargets = hasNutritionTargets(merged.nutritionTargets) ? merged.nutritionTargets : undefined;
+  let nutritionTargetsAt = nutritionTargetsUpdatedAt(nutritionTargets);
   for (const value of values) {
     const parsed = parseProfileBlob(value);
     if (!parsed) continue;
     stopGoals.push(...collectStopGoalsFromBlob(parsed));
+    if (hasNutritionTargets(parsed.nutritionTargets)) {
+      const at = nutritionTargetsUpdatedAt(parsed.nutritionTargets);
+      if (!nutritionTargets || at >= nutritionTargetsAt) {
+        nutritionTargets = parsed.nutritionTargets;
+        nutritionTargetsAt = at;
+      }
+    }
     if (!merged.foodAvoidances && parsed.foodAvoidances) merged.foodAvoidances = parsed.foodAvoidances;
     if (!merged.memberAppUi && parsed.memberAppUi) merged.memberAppUi = parsed.memberAppUi;
     if (!merged.onboarding && parsed.onboarding) {
@@ -211,6 +236,7 @@ function mergePersonalGoalsFromRows(rows: Array<Record<string, unknown>>): strin
     merged.stopGoals = stopGoals;
     merged.stopGoal = stopGoals[0];
   }
+  if (nutritionTargets) merged.nutritionTargets = nutritionTargets;
   if (!Object.keys(merged).length) return best;
   return `${PROFILE_METRICS_PREFIX}${JSON.stringify(merged)}`;
 }
