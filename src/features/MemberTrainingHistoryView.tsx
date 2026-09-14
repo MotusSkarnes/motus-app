@@ -379,6 +379,15 @@ export function MemberTrainingHistoryView({
                 Du har en streak på {streakLabel}! Utrolig innsats – fortsett sånn! 💪
               </p>
             </div>
+          ) : completedLogs.length > 0 ? (
+            <div className="motus-member-history-consistency-banner">
+              <span className="motus-member-history-consistency-banner-icon" aria-hidden>
+                <Flame className="h-5 w-5" strokeWidth={2.25} />
+              </span>
+              <p className="motus-member-history-consistency-banner-text">
+                Det er en stund siden sist økt. Én økt er nok til å starte på nytt — du klarer det! 💪
+              </p>
+            </div>
           ) : null}
 
           <div className="motus-member-history-heatmap">

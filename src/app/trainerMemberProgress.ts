@@ -181,7 +181,7 @@ export function buildTrainerMemberProgressSnapshot(input: {
     previousAverageSessionsPerWeek,
     weeklyBars,
     weeklyInsight: computeTrainerWeeklyInsight(averageSessionsPerWeek, previousAverageSessionsPerWeek),
-    streakWeeks: computeStreakWeeks(trainingWeekKeys),
+    streakWeeks: computeStreakWeeks(trainingWeekKeys, new Date(nowTimestamp)),
     heatmapMonths: computeConsistencyHeatmap(completedLogs, 4, nowTimestamp),
     strengthLifts: buildTrainerMemberStrengthLifts(completedLogs, input.exercises),
     trainingTimeLabel: formatTrainingDuration(periodStats.trainingMinutes),

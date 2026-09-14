@@ -12,6 +12,7 @@ import {
 import { MOTUS } from "../app/data";
 import { resolveProgressExerciseDisplayName } from "../app/progressImagery";
 import type { HistoryPeriodWeeks } from "../app/memberTrainingHistory";
+import { buildComebackStreakMessage } from "../app/memberProgressGamification";
 import { buildTrainerMemberProgressSnapshot } from "../app/trainerMemberProgress";
 import type { Exercise, WorkoutLog } from "../app/types";
 import { EmptyState } from "../app/ui";
@@ -78,6 +79,7 @@ export function TrainerMemberProgressView({
   const maxWeekly = Math.max(1, ...snapshot.weeklyBars.map((bar) => bar.count));
   const openLift = snapshot.strengthLifts.find((lift) => lift.name === openExerciseName) ?? null;
   const firstName = memberName.trim().split(/\s+/)[0] || "kunden";
+  const hasCompletedWorkouts = logs.some((log) => log.status === "Fullført");
 
   return (
     <div className="motus-member-history motus-trainer-progress motus-fade-in-up">
@@ -250,6 +252,15 @@ export function TrainerMemberProgressView({
             </span>
             <p className="motus-member-history-consistency-banner-text">
               {firstName} har streak på {snapshot.streakWeeks} {snapshot.streakWeeks === 1 ? "uke" : "uker"}.
+            </p>
+          </div>
+        ) : hasCompletedWorkouts ? (
+          <div className="motus-member-history-consistency-banner">
+            <span className="motus-member-history-consistency-banner-icon" aria-hidden>
+              <Flame className="h-5 w-5" strokeWidth={2.25} />
+            </span>
+            <p className="motus-member-history-consistency-banner-text">
+              {buildComebackStreakMessage("trainer", firstName)}
             </p>
           </div>
         ) : null}

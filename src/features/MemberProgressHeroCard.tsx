@@ -36,6 +36,7 @@ function computeBestStreakWeeks(weeks: RecentStreakWeek[] = []): number {
 }
 
 function bestStreakSubline(streakWeeks: number, bestStreakWeeks: number): string {
+  if (streakWeeks <= 0) return "Én økt, så er du i gang igjen.";
   if (bestStreakWeeks <= 0) return "Din første streak er i gang.";
   if (streakWeeks >= bestStreakWeeks) return "Ny personlig rekord.";
   return `Din beste: ${bestStreakWeeks} uker`;

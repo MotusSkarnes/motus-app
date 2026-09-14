@@ -71,14 +71,25 @@ export function getLevelRequirements(level: number) {
   };
 }
 
-export function computeStreakWeeks(trainingWeekKeys: string[]): number {
+function previousWeekKey(weekKey: string): string {
+  const [year, week] = weekKey.split("-").map(Number);
+  const prevWeekDate = new Date(year, 0, 4 + (week - 2) * 7);
+  return getWeekKey(prevWeekDate);
+}
+
+function isLiveTrainingStreak(newestTrainingWeekKey: string | undefined, nowDate: Date): boolean {
+  if (!newestTrainingWeekKey) return false;
+  const currentWeek = getWeekKey(nowDate);
+  return newestTrainingWeekKey === currentWeek || newestTrainingWeekKey === previousWeekKey(currentWeek);
+}
+
+export function computeStreakWeeks(trainingWeekKeys: string[], nowDate: Date = new Date()): number {
   if (!trainingWeekKeys.length) return 0;
+  if (!isLiveTrainingStreak(trainingWeekKeys[0], nowDate)) return 0;
   let streak = 1;
   let current = trainingWeekKeys[0];
   for (let i = 1; i < trainingWeekKeys.length; i += 1) {
-    const [year, week] = current.split("-").map(Number);
-    const prevWeekDate = new Date(year, 0, 4 + (week - 2) * 7);
-    const expectedPrev = getWeekKey(prevWeekDate);
+    const expectedPrev = previousWeekKey(current);
     if (trainingWeekKeys[i] !== expectedPrev) break;
     streak += 1;
     current = trainingWeekKeys[i];
@@ -86,19 +97,25 @@ export function computeStreakWeeks(trainingWeekKeys: string[]): number {
   return streak;
 }
 
-export function computeActiveStreakWeekKeys(trainingWeekKeys: string[]): Set<string> {
-  if (!trainingWeekKeys.length) return new Set<string>();
+export function computeActiveStreakWeekKeys(trainingWeekKeys: string[], nowDate: Date = new Date()): Set<string> {
+  if (!trainingWeekKeys.length || !isLiveTrainingStreak(trainingWeekKeys[0], nowDate)) return new Set<string>();
   const keys = new Set<string>([trainingWeekKeys[0]]);
   let current = trainingWeekKeys[0];
   for (let i = 1; i < trainingWeekKeys.length; i += 1) {
-    const [year, week] = current.split("-").map(Number);
-    const prevWeekDate = new Date(year, 0, 4 + (week - 2) * 7);
-    const expectedPrev = getWeekKey(prevWeekDate);
+    const expectedPrev = previousWeekKey(current);
     if (trainingWeekKeys[i] !== expectedPrev) break;
     current = trainingWeekKeys[i];
     keys.add(current);
   }
   return keys;
+}
+
+export function buildComebackStreakMessage(audience: "member" | "trainer" = "member", name?: string): string {
+  if (audience === "trainer") {
+    const who = name?.trim() || "Kunden";
+    return `${who} har hatt en pause. Én økt denne uken er nok til å starte på nytt.`;
+  }
+  return "Det er en stund siden sist — én økt er nok til å komme i gang igjen.";
 }
 
 export function computeAchievedLevel(completedSessions: number, streakWeeks: number, uniqueTrainingDays: number): number {
@@ -193,6 +210,7 @@ export function buildStreakSubline(
   trainingWeekKeys: string[],
 ): string {
   if (streakWeeks === 0) {
+    if (trainingWeekKeys.length > 0) return buildComebackStreakMessage("member");
     return "Fullfør én økt denne uken — da starter streaken din.";
   }
   const trainedThisWeek = trainingWeekKeys.includes(getWeekKey(nowDate));
@@ -234,8 +252,8 @@ export function computeMemberProgressState(input: {
   sessionsPerWeekTarget: number;
 }): MemberProgressState {
   const trainingWeekKeys = Array.from(new Set(input.completedLogDates.map((date) => getWeekKey(date)))).sort().reverse();
-  const streakWeeks = computeStreakWeeks(trainingWeekKeys);
-  const activeStreakWeekKeys = computeActiveStreakWeekKeys(trainingWeekKeys);
+  const streakWeeks = computeStreakWeeks(trainingWeekKeys, input.nowDate);
+  const activeStreakWeekKeys = computeActiveStreakWeekKeys(trainingWeekKeys, input.nowDate);
   const completedSessions = input.completedLogDates.length;
   const uniqueTrainingDays = new Set(input.completedLogDates.map((date) => date.toDateString())).size;
   const achievedLevel = computeAchievedLevel(completedSessions, streakWeeks, uniqueTrainingDays);

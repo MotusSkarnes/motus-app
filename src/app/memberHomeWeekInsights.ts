@@ -168,10 +168,14 @@ export function buildHomeWeekInsight(completedLogDates: Date[], nowDate: Date): 
   };
 }
 
-export function buildHomeWeekFlow(streakWeeks: number, streakSubline: string): HomeWeekFlow {
+export function buildHomeWeekFlow(streakWeeks: number, streakSubline: string, hasPastTraining = false): HomeWeekFlow {
   const title = streakWeeks >= 4 ? "Sterk flyt" : streakWeeks > 0 ? "Stabil flyt" : "Bygg streak";
   const detail =
-    streakWeeks > 0 ? streakSubline.trim() || "Hold flyten gående!" : "Fullfør én økt denne uka for å starte.";
+    streakWeeks > 0
+      ? streakSubline.trim() || "Hold flyten gående!"
+      : hasPastTraining
+        ? "Det er en stund siden sist — én økt er nok til å komme i gang igjen."
+        : "Fullfør én økt denne uka for å starte.";
   const streakLabel =
     streakWeeks > 0 ? `${streakWeeks} ${streakWeeks === 1 ? "uke" : "uker"} på rad` : null;
 

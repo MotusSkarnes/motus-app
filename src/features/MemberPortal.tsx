@@ -5334,12 +5334,14 @@ export function MemberPortal(props: MemberPortalProps) {
     if (completed >= 2 || progressPct >= 50) return "Sterk uke så langt!";
     if (completed > 0) return "God start på uka!";
     if (streakWeeks > 0) return `${streakWeeks} uke${streakWeeks === 1 ? "" : "r"} på rad — fortsett!`;
+    if (completedLogs.length > 0) return "Klar for å komme i gang igjen?";
     return null;
   }, [
     homeWeeklySummary.completedThisWeek,
     homeWeeklySummary.plannedThisWeek,
     profileSessionsPerWeekTarget,
     streakWeeks,
+    completedLogs.length,
   ]);
   const homeDashboardSubline = useMemo(() => {
     if (homeLoggedOtherProgramToday) {
@@ -5363,7 +5365,11 @@ export function MemberPortal(props: MemberPortalProps) {
     return `${unit} igjen til badgen ${nextBadge.title}`;
   }, [homeLoggedOtherProgramToday, memberBadgeCollection.allBadges, memberProgressScores.momentum.subline]);
   const homeDashboardHeadline =
-    homeWeeklySummary.completedThisWeek > 0 || streakWeeks > 0 ? "Du er på vei!" : "Klar for en ny uke";
+    homeWeeklySummary.completedThisWeek > 0 || streakWeeks > 0
+      ? "Du er på vei!"
+      : completedLogs.length > 0
+        ? "Klar for å komme i gang igjen?"
+        : "Klar for en ny uke";
   const homeWorkoutSubtitle = useMemo(() => {
     const goal = homeWorkoutProgram?.goal?.trim();
     if (goal) return goal;

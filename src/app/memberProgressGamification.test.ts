@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   buildCelebrationCopy,
+  buildComebackStreakMessage,
   buildProgressGoals,
   buildStreakSubline,
   computeAchievedLevel,
@@ -11,9 +12,19 @@ import {
 } from "./memberProgressGamification";
 
 describe("memberProgressGamification", () => {
-  it("counts consecutive training weeks", () => {
+  it("counts consecutive training weeks while the streak is still live", () => {
     const keys = ["2026-20", "2026-19", "2026-18", "2026-16"];
-    expect(computeStreakWeeks(keys)).toBe(3);
+    expect(computeStreakWeeks(keys, new Date("2026-05-14T12:00:00"))).toBe(3);
+  });
+
+  it("keeps last week's streak alive until the current week ends", () => {
+    const keys = ["2026-20", "2026-19", "2026-18"];
+    expect(computeStreakWeeks(keys, new Date("2026-05-21T12:00:00"))).toBe(3);
+  });
+
+  it("resets the streak after a gap of more than one week", () => {
+    const keys = ["2026-20", "2026-19", "2026-18"];
+    expect(computeStreakWeeks(keys, new Date("2026-06-15T12:00:00"))).toBe(0);
   });
 
   it("builds three clear goals for the working level", () => {
@@ -35,10 +46,17 @@ describe("memberProgressGamification", () => {
 
   it("nudges when current week is missing from streak", () => {
     const now = new Date("2026-05-16T12:00:00");
-    const lastWeek = new Date("2026-05-02T12:00:00");
+    const lastWeek = new Date("2026-05-10T12:00:00");
     const trainingWeekKeys = [getWeekKey(lastWeek)];
     const subline = buildStreakSubline(2, 4, 2, now, trainingWeekKeys);
     expect(subline.toLowerCase()).toContain("denne uken");
+  });
+
+  it("encourages a restart when the streak has lapsed", () => {
+    const now = new Date("2026-06-15T12:00:00");
+    const oldWeek = getWeekKey(new Date("2026-05-04T12:00:00"));
+    const subline = buildStreakSubline(0, 4, 2, now, [oldWeek]);
+    expect(subline).toBe(buildComebackStreakMessage("member"));
   });
 
   it("aggregates member progress state", () => {
