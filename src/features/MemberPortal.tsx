@@ -257,6 +257,7 @@ import {
 import { computeWeekProgressPct } from "../app/memberHomeWeekInsights";
 import type { ChatReactionActor, ChatReactionEmoji } from "../app/chatReactions";
 import { MotusChat } from "./MotusChat";
+import { GroupChatPanel } from "./GroupChatPanel";
 import { buildTrainerVacationNotice, resolveMemberTrainerDisplayName } from "../app/trainerProfile";
 import { MemberPersonalRecordsSection } from "./MemberPersonalRecordsSection";
 import { WorkoutCelebrationModal } from "./WorkoutCelebrationModal";
@@ -427,6 +428,11 @@ type MemberPortalProps = {
   homeOverviewNotificationsPanel?: ReactNode;
   /** Trainer phone-frame preview — keep single-column mobile layout. */
   devicePreview?: boolean;
+  trainingGroups?: import("../app/trainingGroups").TrainingGroup[];
+  groupChatMessagesById?: Map<string, import("../app/trainingGroups").GroupChatMessage[]>;
+  onSendGroupChatMessage?: (groupId: string, text: string) => void;
+  trainerDisplayNameForGroups?: string;
+  trainingGroupNameByProgramId?: Record<string, string>;
 };
 
 const MEMBER_AVATAR_BUCKET = "exercise-images";
@@ -1180,7 +1186,13 @@ export function MemberPortal(props: MemberPortalProps) {
     homeOverviewHeaderActions,
     homeOverviewNotificationsPanel,
     devicePreview = false,
+    trainingGroups = [],
+    groupChatMessagesById = new Map(),
+    onSendGroupChatMessage,
+    trainerDisplayNameForGroups = "PT",
+    trainingGroupNameByProgramId = {},
   } = props;
+  const [messageThread, setMessageThread] = useState<"pt" | string>("pt");
   const [messageText, setMessageText] = useState("");
   const [memberChatSendStatus, setMemberChatSendStatus] = useState<string | null>(null);
   const isSendingMemberMessageRef = useRef(false);
@@ -7565,6 +7577,14 @@ export function MemberPortal(props: MemberPortalProps) {
 	                                  Periodeplan
 	                                </span>
 	                              ) : null}
+                                {trainingGroupNameByProgramId[program.id] ? (
+                                  <span
+                                    className="mt-1 inline-flex max-w-full items-center rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-700 ring-1 ring-slate-200"
+                                    title="Gruppeprogram. Vekter og logger er bare dine."
+                                  >
+                                    {trainingGroupNameByProgramId[program.id]}
+                                  </span>
+                                ) : null}
 	                            </div>
 	                            <div className="motus-member-program-stats">
 	                              <span className="motus-member-program-stat">
@@ -8382,7 +8402,50 @@ export function MemberPortal(props: MemberPortalProps) {
           ) : null}
 
           {!isMemberLimited && memberTab === "messages" ? (
-            <div className="motus-chat-page">
+            <div className="space-y-3">
+              {trainingGroups.length > 0 ? (
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    className={`motus-pressable rounded-full px-3 py-1.5 text-xs font-semibold ${
+                      messageThread === "pt" ? "bg-teal-700 text-white" : "bg-slate-100 text-slate-700"
+                    }`}
+                    onClick={() => setMessageThread("pt")}
+                  >
+                    PT
+                  </button>
+                  {trainingGroups.map((group) => (
+                    <button
+                      key={group.id}
+                      type="button"
+                      className={`motus-pressable rounded-full px-3 py-1.5 text-xs font-semibold ${
+                        messageThread === group.id ? "bg-teal-700 text-white" : "bg-slate-100 text-slate-700"
+                      }`}
+                      onClick={() => setMessageThread(group.id)}
+                    >
+                      {group.name}
+                    </button>
+                  ))}
+                </div>
+              ) : null}
+              {messageThread !== "pt" && onSendGroupChatMessage ? (
+                (() => {
+                  const group = trainingGroups.find((row) => row.id === messageThread);
+                  if (!group) return null;
+                  return (
+                    <GroupChatPanel
+                      group={group}
+                      messages={groupChatMessagesById.get(group.id) ?? []}
+                      viewerRole="member"
+                      viewerMemberId={activeMemberId}
+                      trainerName={trainerDisplayNameForGroups}
+                      members={members}
+                      onSend={(text) => onSendGroupChatMessage(group.id, text)}
+                    />
+                  );
+                })()
+              ) : (
+              <div className="motus-chat-page">
               <MotusChat
                 variant="member"
                 messages={memberMessages}
@@ -8411,6 +8474,8 @@ export function MemberPortal(props: MemberPortalProps) {
                     : undefined
                 }
               />
+            </div>
+              )}
             </div>
           ) : null}
 

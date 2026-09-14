@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { MessageSquare, Search } from "lucide-react";
+import { MessageSquare, Search, UsersRound } from "lucide-react";
 import type { ChatMessage, ChatReactionActor, ChatReactionEmoji, Member } from "../app/types";
 import {
   buildTrainerMessageInboxRows,
@@ -8,6 +8,9 @@ import {
   memberHasTrainerMessagingAccess,
 } from "../app/trainerMessagesInbox";
 import { MotusChat } from "./MotusChat";
+import { GroupChatPanel } from "./GroupChatPanel";
+import type { GroupChatMessage, TrainingGroup } from "../app/trainingGroups";
+import { parseChatCreatedAtMs } from "../app/chatFormat";
 
 type TrainerMessagesHubViewProps = {
   members: Member[];
@@ -20,6 +23,10 @@ type TrainerMessagesHubViewProps = {
   toggleChatMessageReaction: (messageId: string, emoji: ChatReactionEmoji, actor: ChatReactionActor) => void;
   markChatConversationRead: (memberId: string, reader: "trainer" | "member") => void;
   markTrainerMessagesReadForMember: (memberId: string) => void;
+  trainingGroups?: TrainingGroup[];
+  groupChatMessagesById?: Map<string, GroupChatMessage[]>;
+  trainerName?: string;
+  onSendGroupChatMessage?: (groupId: string, text: string) => void;
 };
 
 export function TrainerMessagesHubView({
@@ -33,12 +40,17 @@ export function TrainerMessagesHubView({
   toggleChatMessageReaction,
   markChatConversationRead,
   markTrainerMessagesReadForMember,
+  trainingGroups = [],
+  groupChatMessagesById = new Map(),
+  trainerName = "PT",
+  onSendGroupChatMessage,
 }: TrainerMessagesHubViewProps) {
   const [search, setSearch] = useState("");
   const [composeValue, setComposeValue] = useState("");
   const [sendStatus, setSendStatus] = useState<string | null>(null);
   const [isSending, setIsSending] = useState(false);
   const [mobileShowThread, setMobileShowThread] = useState(false);
+  const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null);
   const messagesContainerRef = useRef<HTMLDivElement | null>(null);
 
   const inboxRows = useMemo(
@@ -61,19 +73,31 @@ export function TrainerMessagesHubView({
     [inboxRows],
   );
 
-  const selectedMember =
-    members.find((member) => member.id === selectedMemberId) ??
-    filteredRows[0]?.member ??
-    inboxRows[0]?.member ??
-    null;
+  const filteredGroups = useMemo(() => {
+    const query = search.trim().toLowerCase();
+    if (!query) return trainingGroups;
+    return trainingGroups.filter((group) => group.name.trim().toLowerCase().includes(query));
+  }, [search, trainingGroups]);
+
+  const selectedGroup = selectedGroupId
+    ? trainingGroups.find((group) => group.id === selectedGroupId) ?? null
+    : null;
+
+  const selectedMember = selectedGroup
+    ? null
+    : members.find((member) => member.id === selectedMemberId) ??
+      filteredRows[0]?.member ??
+      inboxRows[0]?.member ??
+      null;
 
   const effectiveSelectedId = selectedMember?.id ?? "";
 
   useEffect(() => {
+    if (selectedGroup) return;
     if (effectiveSelectedId && selectedMemberId !== effectiveSelectedId) {
       onSelectMember(effectiveSelectedId);
     }
-  }, [effectiveSelectedId, onSelectMember, selectedMemberId]);
+  }, [effectiveSelectedId, onSelectMember, selectedGroup, selectedMemberId]);
 
   const selectedMessages = useMemo(
     () => (effectiveSelectedId ? filterMessagesForRosterMember(messages, members, effectiveSelectedId) : []),
@@ -91,13 +115,19 @@ export function TrainerMessagesHubView({
   }, [effectiveSelectedId]);
 
   useEffect(() => {
-    if (!effectiveSelectedId || messagingLocked) return;
+    if (selectedGroup || !effectiveSelectedId || messagingLocked) return;
     markChatConversationRead(effectiveSelectedId, "trainer");
     markTrainerMessagesReadForMember(effectiveSelectedId);
-  }, [effectiveSelectedId, markChatConversationRead, markTrainerMessagesReadForMember, messagingLocked]);
+  }, [effectiveSelectedId, markChatConversationRead, markTrainerMessagesReadForMember, messagingLocked, selectedGroup]);
 
   function handleSelectMember(memberId: string) {
+    setSelectedGroupId(null);
     onSelectMember(memberId);
+    setMobileShowThread(true);
+  }
+
+  function handleSelectGroup(groupId: string) {
+    setSelectedGroupId(groupId);
     setMobileShowThread(true);
   }
 
@@ -119,7 +149,7 @@ export function TrainerMessagesHubView({
       <div className="motus-messages-hub__list-head">
         <div className="motus-messages-hub__list-title-row">
           <h3 className="motus-messages-hub__list-title">Samtaler</h3>
-          <span className="motus-messages-hub__list-count">{filteredRows.length}</span>
+          <span className="motus-messages-hub__list-count">{filteredGroups.length + filteredRows.length}</span>
         </div>
         <label className="motus-messages-hub__search">
           <Search className="h-4 w-4 shrink-0" aria-hidden />
@@ -132,10 +162,41 @@ export function TrainerMessagesHubView({
         </label>
       </div>
       <div className="motus-messages-hub__list-body">
-        {filteredRows.length === 0 ? (
-          <div className="motus-messages-hub__empty-list">Ingen kunder matcher søket.</div>
+        {filteredGroups.length === 0 && filteredRows.length === 0 ? (
+          <div className="motus-messages-hub__empty-list">Ingen samtaler matcher søket.</div>
         ) : (
-          filteredRows.map((row) => {
+          <>
+            {filteredGroups.map((group) => {
+              const thread = groupChatMessagesById.get(group.id) ?? [];
+              const latest = thread[thread.length - 1];
+              const latestAtMs = latest ? parseChatCreatedAtMs(latest.createdAt) : 0;
+              const preview = latest?.text.trim().replace(/\s+/g, " ") || "Gruppechat · PT er alltid med";
+              const active = group.id === selectedGroupId;
+              return (
+                <button
+                  key={`group:${group.id}`}
+                  type="button"
+                  onClick={() => handleSelectGroup(group.id)}
+                  className={`motus-messages-hub__row motus-pressable ${active ? "motus-messages-hub__row--active" : ""}`}
+                >
+                  <div className="motus-messages-hub__avatar" aria-hidden>
+                    <UsersRound className="h-4 w-4" />
+                  </div>
+                  <div className="motus-messages-hub__row-main">
+                    <div className="motus-messages-hub__row-top">
+                      <span className="motus-messages-hub__row-name">{group.name}</span>
+                      {latestAtMs ? (
+                        <span className="motus-messages-hub__row-time">{formatInboxTimestamp(latestAtMs)}</span>
+                      ) : null}
+                    </div>
+                    <div className="motus-messages-hub__row-preview">
+                      {preview.length > 72 ? `${preview.slice(0, 71)}…` : preview}
+                    </div>
+                  </div>
+                </button>
+              );
+            })}
+            {filteredRows.map((row) => {
             const active = row.member.id === effectiveSelectedId;
             const rowAvatar = memberAvatarById[row.member.id] || row.member.avatarUrl || "";
             const initial = (row.member.name.trim().charAt(0) || "?").toUpperCase();
@@ -168,14 +229,25 @@ export function TrainerMessagesHubView({
                 </div>
               </button>
             );
-          })
+          })}
+          </>
         )}
       </div>
     </div>
   );
 
   const chatPane = (showBack: boolean) =>
-    selectedMember ? (
+    selectedGroup && onSendGroupChatMessage ? (
+      <GroupChatPanel
+        group={selectedGroup}
+        messages={groupChatMessagesById.get(selectedGroup.id) ?? []}
+        viewerRole="trainer"
+        trainerName={trainerName}
+        members={members}
+        onSend={(text) => onSendGroupChatMessage(selectedGroup.id, text)}
+        onBack={showBack ? () => setMobileShowThread(false) : undefined}
+      />
+    ) : selectedMember ? (
       <MotusChat
         variant="trainer"
         messages={selectedMessages}
@@ -192,7 +264,7 @@ export function TrainerMessagesHubView({
         onSend={() => void handleSend()}
         isSending={isSending}
         sendDisabled={!composeValue.trim() || messagingLocked}
-        composePlaceholder="Skriv melding…"
+        composePlaceholder="Skriv melding..."
         sendStatus={sendStatus}
         messagesContainerRef={messagesContainerRef}
         onToggleReaction={toggleChatMessageReaction}
@@ -242,7 +314,7 @@ export function TrainerMessagesHubView({
 
       <div className="motus-messages-hub__shell">
         <div className="lg:hidden">
-          {mobileShowThread && selectedMember ? (
+          {mobileShowThread && (selectedMember || selectedGroup) ? (
             <div className="motus-messages-hub__mobile-thread">{chatPane(true)}</div>
           ) : (
             <div className="motus-messages-hub__mobile-list">{memberList}</div>

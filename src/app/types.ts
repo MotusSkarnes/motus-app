@@ -19,7 +19,8 @@ export type TrainerTab =
   | "badges"
   | "statistics"
   | "settings"
-  | "messages";
+  | "messages"
+  | "groups";
 export type CustomerSubTab = "overview" | "profile" | "programs" | "workouts" | "messages" | "nutrition";
 
 /** Vist på klientfane-raden i trenervisning (Klienter → valgt kunde). */
@@ -246,8 +247,18 @@ export type TrainingProgram = {
   activityTemplateKind?: "group" | "activity" | "no-plan";
   /** Kondisjonsmal: intervalløkt med timer vs. logg etter økt (parsed fra notes). */
   conditioningDeliveryMode?: "interval" | "logAfter";
+  /** Treningsgruppe (parsed fra notes). Personlig kopi per medlem — ikke delt programrad. */
+  groupId?: string;
+  /** Masterprogrammet gruppen ble kopiert fra. */
+  groupMasterProgramId?: string;
   /** Not persisted; removed after økt fullføres eller avbrytes. */
   ephemeral?: boolean;
+};
+
+export type SaveProgramGroupFields = {
+  groupId?: string;
+  groupMasterProgramId?: string;
+  detachFromTrainingGroup?: boolean;
 };
 
 export type WorkoutLog = {

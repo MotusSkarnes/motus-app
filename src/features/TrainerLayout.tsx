@@ -14,6 +14,7 @@ import {
   Settings,
   ShieldCheck,
   Users,
+  UsersRound,
   UtensilsCrossed,
   type LucideIcon,
 } from "lucide-react";
@@ -27,6 +28,8 @@ import { TrainerMealPlanHubView } from "./TrainerMealPlanHubView";
 import { TrainerMessagesHubView } from "./TrainerMessagesHubView";
 import { InspirationHub } from "./InspirationHub";
 import { TrainerBadgeCatalog } from "./TrainerBadgeCatalog";
+import { TrainerGroupsView } from "./TrainerGroupsView";
+import { useTrainingGroupWorkspace } from "../app/useTrainingGroupWorkspace";
 
 type TrainerWorkoutBridge = Pick<
   ComponentProps<typeof MemberPortal>,
@@ -99,6 +102,7 @@ function buildTrainerMenuItems(messageBadgeCount: number, includeAdmin: boolean)
   const items: TrainerMenuItem[] = [
     { key: "dashboard", label: "Hjem", icon: Home },
     { key: "customers", label: "Klienter", icon: Users },
+    { key: "groups", label: "Grupper", icon: UsersRound },
     { key: "programs", label: "Programmer", icon: ClipboardList },
     { key: "exerciseBank", label: "Øvelsesbank", icon: Dumbbell },
     { key: "inspiration", label: "Innhold", icon: FileText },
@@ -125,6 +129,7 @@ const mobileTabs: Array<{ id: TrainerTab; label: string; icon: LucideIcon }> = [
 ];
 
 const mobileMoreTabs: Array<{ id: TrainerTab; label: string; icon: LucideIcon }> = [
+  { id: "groups", label: "Grupper", icon: UsersRound },
   { id: "exerciseBank", label: "Øvelser", icon: Dumbbell },
   { id: "calendar", label: "Kalender", icon: CalendarDays },
   { id: "nutrition", label: "Matvarebank", icon: Apple },
@@ -195,6 +200,11 @@ export function TrainerLayout({
   cancelWorkoutMode,
 }: TrainerLayoutProps) {
   const [moreMenuOpen, setMoreMenuOpen] = useState(false);
+  const trainingGroups = useTrainingGroupWorkspace({
+    role: "trainer",
+    ownerUserId: appState.currentUser?.id,
+    trainerDisplayName: appState.currentUser?.name ?? "PT",
+  });
   const canAccessAdminTools = true;
   const trainerMenuItems = buildTrainerMenuItems(messageBadgeCount, canAccessAdminTools);
   const visibleMobileTabs = mobileTabs;
@@ -380,6 +390,27 @@ export function TrainerLayout({
                 toggleChatMessageReaction={toggleChatMessageReaction}
                 markChatConversationRead={markChatConversationRead}
                 markTrainerMessagesReadForMember={markTrainerMessagesReadForMember ?? (() => undefined)}
+                trainingGroups={trainingGroups.groups}
+                groupChatMessagesById={trainingGroups.messagesByGroupId}
+                trainerName={appState.currentUser?.name ?? "PT"}
+                onSendGroupChatMessage={(groupId, text) => void trainingGroups.sendGroupMessage(groupId, text, "trainer")}
+              />
+            ) : trainerTab === "groups" ? (
+              <TrainerGroupsView
+                groups={trainingGroups.groups}
+                members={appState.members}
+                programs={appState.programs}
+                trainerName={appState.currentUser?.name ?? "PT"}
+                inProgressProgramIds={appState.workoutMode?.programId ? [appState.workoutMode.programId] : []}
+                cloudAvailable={trainingGroups.cloudAvailable}
+                status={trainingGroups.status}
+                messagesByGroupId={trainingGroups.messagesByGroupId}
+                onCreateGroup={trainingGroups.createGroup}
+                onUpdateMembers={trainingGroups.updateGroupMembers}
+                onSetMaster={trainingGroups.setGroupMaster}
+                onDeleteGroup={trainingGroups.deleteGroup}
+                onSaveProgram={saveProgramForMember}
+                onSendGroupMessage={(groupId, text) => void trainingGroups.sendGroupMessage(groupId, text, "trainer")}
               />
             ) : trainerTab === "badges" ? (
               <TrainerBadgeCatalog />

@@ -34,6 +34,7 @@ import { uid } from "../app/storage";
 import { toggleReactionInState, type ChatReactionActor, type ChatReactionEmoji } from "../app/chatReactions";
 import type {
   AppState,
+  SaveProgramGroupFields,
   ChatMessage,
   Exercise,
   Member,
@@ -79,7 +80,7 @@ export type SaveProgramInput = {
   programCreatedBy?: "member" | "trainer";
   programCreatedByName?: string;
   onPersisted?: (result: { ok: boolean; message?: string; ids?: string[] }) => void;
-};
+} & SaveProgramGroupFields;
 
 export type PersistResult = { ok: boolean; message?: string; ids?: string[] };
 
@@ -434,6 +435,19 @@ function mapProgramExercisesForSave(exercises: ProgramExercise[]): ProgramExerci
   }));
 }
 
+function trainingGroupFieldsForSave(
+  input: SaveProgramInput,
+  existing?: TrainingProgram,
+): Pick<TrainingProgram, "groupId" | "groupMasterProgramId"> {
+  if (input.detachFromTrainingGroup) {
+    return { groupId: undefined, groupMasterProgramId: undefined };
+  }
+  const groupId = input.groupId?.trim() || existing?.groupId?.trim() || undefined;
+  const groupMasterProgramId =
+    input.groupMasterProgramId?.trim() || existing?.groupMasterProgramId?.trim() || undefined;
+  return { groupId, groupMasterProgramId };
+}
+
 export function saveProgramInState(
   state: AppState,
   input: SaveProgramInput
@@ -442,6 +456,7 @@ export function saveProgramInState(
   if (input.id) {
     const existingProgram = state.programs.find((program) => program.id === input.id);
     if (existingProgram) {
+    const groupFields = trainingGroupFieldsForSave(input, existingProgram);
     return {
       ...state,
       programs: state.programs.map((program) =>
@@ -455,6 +470,7 @@ export function saveProgramInState(
               exercises,
               imageUrl:
                 input.imageUrl !== undefined ? input.imageUrl.trim() || undefined : program.imageUrl,
+              ...groupFields,
               ...(input.programCreatedBy
                 ? {
                     programCreatedBy: input.programCreatedBy,
@@ -468,6 +484,7 @@ export function saveProgramInState(
     }
   }
 
+  const groupFields = trainingGroupFieldsForSave(input);
   const newProgram = enrichTrainingProgram({
     id: input.id?.trim() || uid("program"),
     memberId: input.memberId,
@@ -477,6 +494,7 @@ export function saveProgramInState(
     createdAt: formatDateDdMmYyyy(new Date()),
     exercises,
     imageUrl: input.imageUrl?.trim() || undefined,
+    ...groupFields,
     ...(input.programCreatedBy
       ? {
           programCreatedBy: input.programCreatedBy,

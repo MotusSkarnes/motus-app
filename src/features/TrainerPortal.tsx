@@ -115,6 +115,7 @@ import type {
   CreateMemberResult,
   DeleteProgramContext,
   ReplaceWorkoutExerciseGroupInput,
+  SaveProgramInput,
   StartWorkoutModeOptions,
   UpdateMemberInput,
 } from "../services/appRepository";
@@ -366,17 +367,7 @@ type TrainerPortalProps = {
   restoreMissingTestData: () => Promise<{ ok: boolean; message: string }>;
   restoreMembersFromRosterBackup: () => Promise<{ ok: boolean; message: string }>;
   restoreOriginalExerciseBank: () => Promise<{ ok: boolean; message: string }>;
-  saveProgramForMember: (input: {
-    id?: string;
-    title: string;
-    goal: string;
-    notes: string;
-    memberId: string;
-    exercises: ProgramExercise[];
-    imageUrl?: string;
-    programCreatedBy?: "member" | "trainer";
-    programCreatedByName?: string;
-  }) => void;
+  saveProgramForMember: (input: SaveProgramInput) => void;
   deleteProgramById: (programId: string, context?: DeleteProgramContext) => void;
   sendTrainerMessage: (memberId: string, text: string) => void;
   toggleChatMessageReaction: (messageId: string, emoji: ChatReactionEmoji, actor: ChatReactionActor) => void;

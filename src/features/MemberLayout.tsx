@@ -43,6 +43,8 @@ import { MemberWelcomeModal } from "./MemberWelcomeModal";
 import { memberHasNutritionAccess } from "../app/memberNutritionAccess";
 import { MemberPortal } from "./MemberPortal";
 import { MemberFeatureGate } from "./MemberFeatureGate";
+import { useTrainingGroupWorkspace } from "../app/useTrainingGroupWorkspace";
+import { parseTrainingGroupTag } from "../app/trainingGroupProgram";
 import { MemberNutritionView } from "./MemberNutritionView";
 import { InspirationHub } from "./InspirationHub";
 import { MemberDesktopTabNav, MemberMobileTabNav } from "./MemberTabNavigation";
@@ -236,6 +238,24 @@ export function MemberLayout({
     if (!base) return null;
     return enrichMemberWithBestProfile(base, appState.members);
   }, [appState]);
+  const trainingGroups = useTrainingGroupWorkspace({
+    role: "member",
+    ownerUserId: activeMember?.ownerUserId,
+    memberId: activeMember?.id,
+    trainerDisplayName: activeMember?.assignedTrainerName?.trim() || "PT",
+    memberDisplayName: activeMember?.name,
+  });
+  const trainingGroupNameByProgramId = useMemo(() => {
+    const names = new Map(trainingGroups.groups.map((group) => [group.id, group.name]));
+    const result: Record<string, string> = {};
+    for (const program of appState.programs) {
+      const tag = parseTrainingGroupTag(program);
+      if (!tag) continue;
+      const name = names.get(tag.groupId);
+      if (name) result[program.id] = name;
+    }
+    return result;
+  }, [appState.programs, trainingGroups.groups]);
   const currentUserRole = appState.currentUser?.role;
   const onboardingIdentityKey = activeMember ? memberOnboardingIdentityKey(activeMember) : "";
   // Brukes bare for å trigge re-render etter at brukeren har skjult prompten manuelt
@@ -572,6 +592,11 @@ export function MemberLayout({
     memberNoPlanCoverImageUrl,
     isLocalDemoSession,
     refreshRemoteHydration,
+    trainingGroups: trainingGroups.groups,
+    groupChatMessagesById: trainingGroups.messagesByGroupId,
+    onSendGroupChatMessage: (groupId, text) => void trainingGroups.sendGroupMessage(groupId, text, "member"),
+    trainerDisplayNameForGroups: activeMember?.assignedTrainerName?.trim() || "PT",
+    trainingGroupNameByProgramId,
     onOpenMonthlyCheckIn: () => setMemberCheckInOverlayOpen(true),
     onOpenOnboarding: () => setOnboardingGateOpen(true),
     onDismissOnboardingHomePrompt: () => {

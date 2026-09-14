@@ -19,7 +19,7 @@ import {
   parseActivityTemplateKind,
   type ActivityTemplateKind,
 } from "../app/activityTemplate";
-import { serializeConditioningProgramNotes } from "../app/conditioningProgramMode";
+import { serializeTrainingGroupProgramNotes } from "../app/trainingGroupProgram";
 import { enrichTrainingProgram } from "../app/programEnrichment";
 import { normalizeProgramExercises } from "../app/normalizeProgramExercise";
 import { formatDateDdMmYyyy, formatDateTimeDdMmYyyy, normalizeStoredLogDate } from "../app/dateFormat";
@@ -1093,6 +1093,13 @@ async function persistProgram(
   const input: SaveProgramInput = {
     ...rawInput,
     exercises: normalizeLegacyIntervalCooldownExerciseNames(rawInput.exercises),
+    notes: serializeTrainingGroupProgramNotes({
+      notes: rawInput.notes,
+      exercises: rawInput.exercises,
+      groupId: rawInput.detachFromTrainingGroup ? undefined : rawInput.groupId,
+      groupMasterProgramId: rawInput.detachFromTrainingGroup ? undefined : rawInput.groupMasterProgramId,
+      detachFromTrainingGroup: rawInput.detachFromTrainingGroup,
+    }),
   };
   const {
     data: { session },
@@ -1383,7 +1390,7 @@ export async function syncMemberLocalCatalogToSupabase(state: AppState): Promise
       id: program.id,
       title: program.title,
       goal: program.goal,
-      notes: serializeConditioningProgramNotes(program),
+      notes: serializeTrainingGroupProgramNotes(program),
       memberId: canonicalMemberId,
       exercises: program.exercises,
       imageUrl: program.imageUrl,
@@ -4648,10 +4655,18 @@ export const supabaseAppRepository: AppRepository = {
       fallbackOwnerUserId: String(state.currentUser?.id ?? "").trim(),
       trainerSave: state.currentUser?.role === "trainer" || input.programCreatedBy === "trainer",
     };
-    const nextState = localAppRepository.saveProgram(state, input);
+    const existing = input.id ? state.programs.find((program) => program.id === input.id) : undefined;
+    const persistInput: SaveProgramInput = input.detachFromTrainingGroup
+      ? { ...input, groupId: undefined, groupMasterProgramId: undefined }
+      : {
+          ...input,
+          groupId: input.groupId ?? existing?.groupId,
+          groupMasterProgramId: input.groupMasterProgramId ?? existing?.groupMasterProgramId,
+        };
+    const nextState = localAppRepository.saveProgram(state, persistInput);
     void (async () => {
       try {
-        const result = await persistProgram(input, hints);
+        const result = await persistProgram(persistInput, hints);
         input.onPersisted?.(result);
       } catch (error) {
         const message = error instanceof Error ? error.message : "Ukjent feil under programlagring.";
@@ -4736,12 +4751,14 @@ export const supabaseAppRepository: AppRepository = {
             id: updatedProgram.id,
             title: updatedProgram.title,
             goal: updatedProgram.goal,
-            notes: updatedProgram.notes,
+            notes: serializeTrainingGroupProgramNotes(updatedProgram),
             memberId: updatedProgram.memberId,
             exercises: updatedProgram.exercises,
             imageUrl: updatedProgram.imageUrl,
             programCreatedBy: updatedProgram.programCreatedBy,
             programCreatedByName: updatedProgram.programCreatedByName,
+            groupId: updatedProgram.groupId,
+            groupMasterProgramId: updatedProgram.groupMasterProgramId,
           },
           hints,
         );
