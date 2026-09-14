@@ -1,20 +1,18 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Printer, X } from "lucide-react";
 import motusLogo from "../../assets/motus-logo-transparent.svg";
-import { formatMacro } from "../../app/foodBankTypes";
 import {
   openNutritionReportPrintWindow,
   type NutritionReportPrintAudience,
 } from "../../app/memberFoodLogNutritionReportPrint";
+import { buildDailyVariationTable, type DailyVariationGroupId } from "../../app/nutritionReportDailyVariation";
 import {
   buildMemberFoodLogNutritionPeriodReport,
   dateKeysWithLogs,
   calendarDayKeysInRange,
-  filterDateKeysInRange,
   formatPeriodLabel,
   formatShortDateKey,
   lastNCalendarDayKeys,
-  lastNDaysDateKeys,
 } from "../../app/memberFoodLogNutritionReport";
 import {
   buildNutrientContributionLookup,
@@ -42,10 +40,11 @@ import {
 } from "../../app/quickFoodLogNutrition";
 import type { MealPlanTargets } from "../../app/mealPlanTypes";
 import { GradientButton, OutlineButton } from "../../app/ui";
+import { NutritionReportDailyVariation } from "./NutritionReportDailyVariation";
 import { NutritionReportStackedBody } from "./NutritionReportTables";
 
 type PeriodPreset = "selected" | "7" | "14" | "30" | "custom";
-type AggregateMode = "average" | "sum";
+type ReportViewMode = "average" | "sum" | "variation";
 
 type MemberFoodLogNutritionReportModalProps = {
   open: boolean;
@@ -77,7 +76,8 @@ export function MemberFoodLogNutritionReportModal({
   const [periodPreset, setPeriodPreset] = useState<PeriodPreset>("7");
   const [customFrom, setCustomFrom] = useState(selectedDateKey);
   const [customTo, setCustomTo] = useState(selectedDateKey);
-  const [aggregateMode, setAggregateMode] = useState<AggregateMode>("average");
+  const [viewMode, setViewMode] = useState<ReportViewMode>("average");
+  const [variationGroup, setVariationGroup] = useState<DailyVariationGroupId>("macro");
   const [microFilter, setMicroFilter] = useState<MicronutrientReportFilterMode>("all");
   const [printError, setPrintError] = useState<string | null>(null);
 
@@ -86,7 +86,8 @@ export function MemberFoodLogNutritionReportModal({
     setCustomFrom(selectedDateKey);
     setCustomTo(selectedDateKey);
     setPeriodPreset("7");
-    setAggregateMode("average");
+    setViewMode("average");
+    setVariationGroup("macro");
     setMicroFilter("all");
     setPrintError(null);
   }, [open, selectedDateKey]);
@@ -111,8 +112,13 @@ export function MemberFoodLogNutritionReportModal({
 
   const displayTotals = useMemo(() => {
     if (report.daysWithLogs <= 1) return report.dailyTotals[0]?.totals ?? report.dailyAverage;
-    return aggregateMode === "average" ? report.dailyAverage : report.periodSum;
-  }, [aggregateMode, report]);
+    return viewMode === "sum" ? report.periodSum : report.dailyAverage;
+  }, [viewMode, report]);
+
+  const variationTable = useMemo(
+    () => buildDailyVariationTable(report.dailyTotals, report.dailyAverage, variationGroup),
+    [report.dailyAverage, report.dailyTotals, variationGroup],
+  );
 
   const referenceContext = useMemo(
     () => resolveNutritionReferenceContext(memberBirthDate, memberGender),
@@ -165,33 +171,32 @@ export function MemberFoodLogNutritionReportModal({
     [contributionSources],
   );
 
-  const periodSummary =
+  const aggregateSummary =
     report.daysWithLogs === 0
       ? "Ingen logger i valgt periode"
       : report.daysWithLogs === 1
         ? formatShortDateKey(report.dateKeys[0]!)
-        : aggregateMode === "average"
-          ? `Snitt per dag · ${report.daysWithLogs} dager (${formatPeriodLabel(report.dateKeys)})`
-          : `Sum for perioden · ${report.daysWithLogs} dager (${formatPeriodLabel(report.dateKeys)})`;
+        : viewMode === "sum"
+          ? `Sum for perioden · ${report.daysWithLogs} dager (${formatPeriodLabel(report.dateKeys)})`
+          : `Snitt per dag · ${report.daysWithLogs} dager (${formatPeriodLabel(report.dateKeys)})`;
+  const periodSummary =
+    report.daysWithLogs > 1 && viewMode === "variation"
+      ? `Dagsvariasjon · ${report.daysWithLogs} dager (${formatPeriodLabel(report.dateKeys)})`
+      : aggregateSummary;
 
   const handlePrint = useCallback(
     (audience: NutritionReportPrintAudience) => {
       const ok = openNutritionReportPrintWindow({
         memberName: displayName,
-        periodSummary,
+        periodSummary: viewMode === "variation" ? aggregateSummary : periodSummary,
         totals: displayTotals,
         mealPlanTargets,
         microRows: audience === "client" ? microRows : visibleMicroRows,
         referenceContext,
         contributionLookup: audience === "trainer" ? contributionLookup : undefined,
         coverageLookup: audience === "trainer" ? coverageLookup : undefined,
-        dailyKcal:
-          audience === "trainer" && report.daysWithLogs > 1
-            ? report.dailyTotals.map(({ dateKey, totals: dayTotals }) => ({
-                dateLabel: formatShortDateKey(dateKey),
-                kcal: dayTotals.kcal,
-              }))
-            : undefined,
+        dailyTotals: report.daysWithLogs > 1 ? report.dailyTotals : undefined,
+        dailyAverage: report.daysWithLogs > 1 ? report.dailyAverage : undefined,
         audience,
         logoUrl: motusLogo,
       });
@@ -208,6 +213,8 @@ export function MemberFoodLogNutritionReportModal({
       microRows,
       visibleMicroRows,
       periodSummary,
+      aggregateSummary,
+      viewMode,
       referenceContext,
       report,
       contributionLookup,
@@ -278,17 +285,24 @@ export function MemberFoodLogNutritionReportModal({
               <div className="motus-nutrition-report-modal__chips">
                 <button
                   type="button"
-                  className={`motus-nutrition-report-modal__chip ${aggregateMode === "average" ? "is-active" : ""}`}
-                  onClick={() => setAggregateMode("average")}
+                  className={`motus-nutrition-report-modal__chip ${viewMode === "average" ? "is-active" : ""}`}
+                  onClick={() => setViewMode("average")}
                 >
                   Snitt per dag
                 </button>
                 <button
                   type="button"
-                  className={`motus-nutrition-report-modal__chip ${aggregateMode === "sum" ? "is-active" : ""}`}
-                  onClick={() => setAggregateMode("sum")}
+                  className={`motus-nutrition-report-modal__chip ${viewMode === "sum" ? "is-active" : ""}`}
+                  onClick={() => setViewMode("sum")}
                 >
                   Sum totalt
+                </button>
+                <button
+                  type="button"
+                  className={`motus-nutrition-report-modal__chip ${viewMode === "variation" ? "is-active" : ""}`}
+                  onClick={() => setViewMode("variation")}
+                >
+                  Dagsvariasjon
                 </button>
               </div>
             </>
@@ -302,6 +316,12 @@ export function MemberFoodLogNutritionReportModal({
         <div className="motus-nutrition-report-modal__body">
           {report.daysWithLogs === 0 ? (
             <p className="text-sm text-slate-600">Ingen matlogg i valgt periode.</p>
+          ) : viewMode === "variation" && report.daysWithLogs > 1 ? (
+            <NutritionReportDailyVariation
+              table={variationTable}
+              group={variationGroup}
+              onGroupChange={setVariationGroup}
+            />
           ) : (
             <NutritionReportStackedBody
               waterRows={waterRows}
@@ -318,21 +338,6 @@ export function MemberFoodLogNutritionReportModal({
               contributionLookup={contributionLookup}
               coverageLookup={coverageLookup}
               referenceWarning={referenceWarning}
-              dailyBreakdown={
-                report.daysWithLogs > 1 ? (
-                  <details className="motus-nutrition-report-modal__daily-breakdown motus-nutrition-report-no-print">
-                    <summary>Dag-for-dag (kcal)</summary>
-                    <ul className="motus-nutrition-report-modal__daily-list">
-                      {report.dailyTotals.map(({ dateKey, totals }) => (
-                        <li key={dateKey}>
-                          <span>{formatShortDateKey(dateKey)}</span>
-                          <strong>{formatMacro(totals.kcal, 0)} kcal</strong>
-                        </li>
-                      ))}
-                    </ul>
-                  </details>
-                ) : null
-              }
             />
           )}
         </div>

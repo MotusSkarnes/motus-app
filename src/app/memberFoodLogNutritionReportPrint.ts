@@ -13,6 +13,10 @@ import {
   resolveReportKcalTarget,
   type NutritionReportStatusTone,
 } from "./nutritionReportDisplay";
+import {
+  buildDailyVariationTable,
+  type DailyVariationTable,
+} from "./nutritionReportDailyVariation";
 import type { MealPlanTargets } from "./mealPlanTypes";
 import type { NutritionReferenceContext } from "./personalizedNutritionReferences";
 import { nutritionReferenceFootnote, nutritionReferenceWarningMessage } from "./personalizedNutritionReferences";
@@ -42,6 +46,8 @@ export type NutritionReportPrintPayload = {
   microRows: MicronutrientDailyRow[];
   referenceContext?: NutritionReferenceContext;
   dailyKcal?: Array<{ dateLabel: string; kcal: number }>;
+  dailyTotals?: Array<{ dateKey: string; totals: FoodLogNutritionTotals }>;
+  dailyAverage?: FoodLogNutritionTotals;
   contributionLookup?: NutrientContributionLookup;
   coverageLookup?: NutrientCoverageLookup;
   audience?: NutritionReportPrintAudience;
@@ -161,6 +167,39 @@ function dailyKcalHtml(daily: NutritionReportPrintPayload["dailyKcal"]): string 
     </table>`;
 }
 
+function dailyVariationTableHtml(table: DailyVariationTable, title: string): string {
+  if (!table.rows.length) return "";
+  const head = table.columns
+    .map((column) => `<th title="${escapeHtml(`${column.label} (${column.unit})`)}">${escapeHtml(column.shortLabel)}</th>`)
+    .join("");
+  const body = table.rows
+    .map((row) => {
+      const cells = row.cells
+        .map((cell) => `<td class="var var--${cell.tone}">${escapeHtml(cell.display)}</td>`)
+        .join("");
+      return `<tr><td>${escapeHtml(row.dayLabel)}</td>${cells}</tr>`;
+    })
+    .join("");
+  const average = table.averageCells.map((cell) => `<td>${escapeHtml(cell.display)}</td>`).join("");
+  return `<h2>${escapeHtml(title)}</h2>
+    <p class="muted">Farge viser avvik fra periodens snitt, ikke mot anbefalingen.</p>
+    <table class="report-table report-table--compact report-table--variation">
+      <thead><tr><th>Dag</th>${head}</tr></thead>
+      <tbody>${body}</tbody>
+      <tfoot><tr><th>Snitt</th>${average}</tr></tfoot>
+    </table>`;
+}
+
+function dailyOverviewHtml(payload: NutritionReportPrintPayload): string {
+  if (payload.dailyTotals && payload.dailyTotals.length > 1 && payload.dailyAverage) {
+    const macro = buildDailyVariationTable(payload.dailyTotals, payload.dailyAverage, "macro");
+    const micro = buildDailyVariationTable(payload.dailyTotals, payload.dailyAverage, "micro");
+    return `${dailyVariationTableHtml(macro, "Dagsvariasjon")}
+      ${dailyVariationTableHtml(micro, "Dagsvariasjon – vitaminer og mineraler")}`;
+  }
+  return dailyKcalHtml(payload.dailyKcal);
+}
+
 function sharedPrintCss(): string {
   return `
     * { box-sizing: border-box; }
@@ -250,6 +289,13 @@ function buildTrainerPrintHtml(payload: NutritionReportPrintPayload): string {
     .micro-status-ok td { background: #f0fdf4; }
     .micro-status-muted td { background: #f8fafc; color: #64748b; }
     .contrib { margin-top: 3px; font-size: 11px; color: #0f766e; font-weight: 600; }
+    .report-table--variation th, .report-table--variation td { text-align: right; font-variant-numeric: tabular-nums; }
+    .report-table--variation th:first-child, .report-table--variation td:first-child { text-align: left; }
+    .report-table--variation tfoot td, .report-table--variation tfoot th { font-weight: 700; background: #f8fafc; }
+    .var--low { background: #fffbeb; }
+    .var--high { background: #fdf2f8; }
+    .var--near { background: #f0fdfa; }
+    .var--empty { color: #94a3b8; }
     @media print {
       body { padding: 12px; }
       h2, h2 + table, .report-table thead {
@@ -287,7 +333,7 @@ function buildTrainerPrintHtml(payload: NutritionReportPrintPayload): string {
   ${macroTableHtml(buildOmegaOverviewRows(payload.totals.fattyAcids, kcalTarget), payload.contributionLookup, payload.coverageLookup)}
   <p class="muted">${escapeHtml(nutritionOmegaReportFootnote())}</p>
 
-  ${dailyKcalHtml(payload.dailyKcal)}
+  ${dailyOverviewHtml(payload)}
 
   ${profileWarning ? `<p class="warning">${escapeHtml(profileWarning)}</p>` : ""}
 
@@ -503,6 +549,20 @@ function buildClientPrintHtml(payload: NutritionReportPrintPayload): string {
       color: #94a3b8;
       text-align: center;
     }
+    .report-table { width: 100%; border-collapse: collapse; margin: 0 0 8px; font-size: 9px; }
+    .report-table th, .report-table td {
+      border: 1px solid #e2e8f0;
+      padding: 3px 5px;
+      text-align: right;
+      font-variant-numeric: tabular-nums;
+    }
+    .report-table th:first-child, .report-table td:first-child { text-align: left; }
+    .report-table th { background: #f8fafc; font-size: 8px; text-transform: uppercase; letter-spacing: 0.04em; }
+    .report-table tfoot td, .report-table tfoot th { font-weight: 700; background: #f8fafc; }
+    .var--low { background: #fffbeb; }
+    .var--high { background: #fdf2f8; }
+    .var--near { background: #f0fdfa; }
+    .muted { color: #64748b; font-size: 8px; margin: 0 0 4px; }
     @media print {
       body { background: #fff; }
       .header, .card { break-inside: avoid; }
@@ -536,7 +596,9 @@ function buildClientPrintHtml(payload: NutritionReportPrintPayload): string {
     <h2>Omega-fettsyrer</h2>
     ${clientMacroCardsHtml(buildOmegaOverviewRows(payload.totals.fattyAcids, kcalTarget))}
 
-    <p class="footer">Motus · Fargene viser om inntaket er innenfor anbefalingen.</p>
+    ${dailyOverviewHtml(payload)}
+
+    <p class="footer">Motus · Kortfargene viser om inntaket er innenfor anbefalingen. Dagsvariasjon viser avvik fra periodens snitt.</p>
   </div>
 </body>
 </html>`;

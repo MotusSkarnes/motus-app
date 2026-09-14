@@ -125,4 +125,26 @@ describe("buildNutritionReportPrintHtml", () => {
     expect(html).not.toContain("AR 540");
     expect(html).not.toContain("andel matvarer med kjent verdi");
   });
+
+  it("prints day-by-day nutrient variation for a multi-day period", () => {
+    const low = { ...EMPTY_FOOD_LOG_NUTRITION, kcal: 1400, protein: 70 };
+    const high = { ...EMPTY_FOOD_LOG_NUTRITION, kcal: 2200, protein: 130 };
+    const html = buildNutritionReportPrintHtml({
+      memberName: "Ola Nordmann",
+      periodSummary: "Snitt per dag · 2 dager",
+      totals: { ...EMPTY_FOOD_LOG_NUTRITION, kcal: 1800, protein: 100 },
+      microRows: [],
+      dailyTotals: [
+        { dateKey: "2026-09-13", totals: low },
+        { dateKey: "2026-09-14", totals: high },
+      ],
+      dailyAverage: { ...EMPTY_FOOD_LOG_NUTRITION, kcal: 1800, protein: 100 },
+    });
+    expect(html).toContain("Dagsvariasjon");
+    expect(html).toContain("søn 13.09");
+    expect(html).toContain("man 14.09");
+    expect(html).toContain("var--low");
+    expect(html).toContain("var--high");
+    expect(html).toContain("Dagsvariasjon – vitaminer og mineraler");
+  });
 });
