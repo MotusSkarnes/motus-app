@@ -828,6 +828,8 @@ const INITIAL_SUPABASE_AUTH_FROM_URL = captureInitialSupabaseAuthUrl();
 
 export function useAppState() {
   const remoteHydrateRef = useRef<(() => Promise<void>) | null>(null);
+  const liveWorkoutActiveRef = useRef(false);
+  const wasLiveWorkoutRef = useRef(false);
   const exerciseBankPushInFlightRef = useRef(false);
   const rosterCloudSyncInFlightRef = useRef(false);
   const pinnedTrainerMembersRef = useRef(new Map<string, { member: Member; expiresAt: number }>());
@@ -856,6 +858,8 @@ export function useAppState() {
   const isDemoMode = import.meta.env.DEV || import.meta.env.VITE_ENABLE_DEMO_MODE === "true";
   const repository = isSupabaseConfigured ? supabaseAppRepository : localAppRepository;
   const [appState, setAppState] = useState<AppState>(() => loadState());
+  const liveWorkoutActive = Boolean(appState.workoutMode);
+  liveWorkoutActiveRef.current = liveWorkoutActive;
   const [loginEmail, setLoginEmail] = useState("");
   const [loginPassword, setLoginPassword] = useState("");
   const [loginError, setLoginError] = useState<string | null>(null);
@@ -1158,6 +1162,7 @@ export function useAppState() {
     let cancelled = false;
 
     async function hydrateRemoteData() {
+      if (liveWorkoutActiveRef.current) return;
       const {
         data: { session },
       } = supabaseClient ? await supabaseClient.auth.getSession() : { data: { session: null } };
@@ -1183,6 +1188,7 @@ export function useAppState() {
       const isTrainerSession = sessionRole === "trainer";
       const isMemberLikeSession = Boolean(sessionUser) && !isTrainerSession;
       function applyEarlyMemberHydrate(hydratedMember: HydratedMemberData | null, sessionEmail: string) {
+        if (liveWorkoutActiveRef.current) return;
         if (!hydratedMember || !sessionEmail || cancelled) return;
         const edgeMembers = hydratedMember.members ?? [];
         const edgePrograms = hydratedMember.programs ?? [];
@@ -1408,7 +1414,7 @@ export function useAppState() {
         const directExercises = await fetchExercisesFromSupabase();
         if (directExercises?.length) remoteExercises = directExercises;
       }
-      if (cancelled) return;
+      if (cancelled || liveWorkoutActiveRef.current) return;
 
       if (
         isMemberLikeSession &&
@@ -1697,11 +1703,14 @@ export function useAppState() {
 
     void hydrateRemoteData();
     const interval = window.setInterval(() => {
+      if (liveWorkoutActiveRef.current) return;
       void hydrateRemoteData();
     }, 8000);
 
     const onVisibility = () => {
-      if (document.visibilityState === "visible") void hydrateRemoteData();
+      if (document.visibilityState !== "visible") return;
+      if (liveWorkoutActiveRef.current) return;
+      void hydrateRemoteData();
     };
     document.addEventListener("visibilitychange", onVisibility);
 
@@ -1713,6 +1722,13 @@ export function useAppState() {
       document.removeEventListener("visibilitychange", onVisibility);
     };
   }, []);
+
+  useEffect(() => {
+    if (wasLiveWorkoutRef.current && !liveWorkoutActive) {
+      void remoteHydrateRef.current?.();
+    }
+    wasLiveWorkoutRef.current = liveWorkoutActive;
+  }, [liveWorkoutActive]);
 
   useEffect(() => {
     if (!isRecoveryMode) return;
