@@ -1,7 +1,12 @@
 import { useEffect, useRef, useState } from "react";
 import { ChevronLeft, Send, UsersRound } from "lucide-react";
 import { formatChatDateLabel, formatChatTime, chatDateKey } from "../app/chatFormat";
-import { groupChatParticipantSummary } from "../app/trainingGroups";
+import {
+  groupChatParticipantSummary,
+  trainingGroupLevelLabel,
+  trainingGroupLevelPreference,
+  trainingGroupMemberLevel,
+} from "../app/trainingGroups";
 import type { GroupChatMessage, TrainingGroup } from "../app/trainingGroups";
 
 type GroupChatPanelProps = {
@@ -29,6 +34,9 @@ export function GroupChatPanel({
   const [isSending, setIsSending] = useState(false);
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const summary = groupChatParticipantSummary(group, members, trainerName);
+  const viewerLevel =
+    viewerRole === "member" && viewerMemberId ? trainingGroupMemberLevel(group, viewerMemberId) : undefined;
+  const viewerPreference = viewerLevel ? trainingGroupLevelPreference(group, viewerLevel) : "";
 
   useEffect(() => {
     const node = scrollRef.current;
@@ -66,6 +74,12 @@ export function GroupChatPanel({
             </div>
             <h2 className="mt-2 truncate text-base font-bold text-slate-950">{group.name}</h2>
             <p className="truncate text-xs text-slate-500">{summary}</p>
+            {viewerLevel ? (
+              <p className="mt-1 text-xs font-medium text-teal-800">{trainingGroupLevelLabel(viewerLevel)}</p>
+            ) : null}
+            {viewerPreference ? (
+              <p className="mx-auto mt-1 max-w-sm text-xs leading-relaxed text-slate-600">{viewerPreference}</p>
+            ) : null}
           </div>
           <div className="w-9" aria-hidden />
         </div>

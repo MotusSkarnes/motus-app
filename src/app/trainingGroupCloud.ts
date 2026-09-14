@@ -1,5 +1,11 @@
 import { isSupabaseConfigured, supabaseClient } from "../services/supabaseClient";
-import type { GroupChatMessage, TrainingGroup } from "./trainingGroups";
+import {
+  type GroupChatMessage,
+  type TrainingGroup,
+  normalizeTrainingGroupMemberLevels,
+  parseTrainingGroupLevelSetup,
+  serializeTrainingGroupLevelSetup,
+} from "./trainingGroups";
 import { snapshotFromUnknown } from "./trainingGroupStorage";
 import { parseGroupMasterPeriodPlan, serializeGroupMasterPeriodPlan } from "./trainingGroupPeriodPlan";
 
@@ -21,13 +27,22 @@ function isMissingPeriodPlanColumnError(message: string): boolean {
   );
 }
 
+function isMissingLevelSetupColumnError(message: string): boolean {
+  return message.toLowerCase().includes("level_setup");
+}
+
 function parseGroupRow(row: Record<string, unknown>, memberIds: string[]): TrainingGroup {
   const periodPlan = parseGroupMasterPeriodPlan(row.master_period_plan);
+  const levelSetup = parseTrainingGroupLevelSetup(row.level_setup);
   return {
     id: String(row.id ?? "").trim(),
     ownerUserId: String(row.owner_user_id ?? "").trim(),
     name: String(row.name ?? "").trim() || "Gruppe",
     memberIds,
+    memberLevels: row.level_setup && typeof row.level_setup === "object"
+      ? normalizeTrainingGroupMemberLevels(memberIds, levelSetup.memberLevels)
+      : undefined,
+    levelPreferences: row.level_setup && typeof row.level_setup === "object" ? levelSetup.levelPreferences : undefined,
     sourceProgramId: String(row.source_program_id ?? "").trim() || undefined,
     masterSnapshot: snapshotFromUnknown(row.master_snapshot),
     sourcePeriodPlanId: String(row.source_period_plan_id ?? "").trim() || undefined,
@@ -155,8 +170,18 @@ export async function persistTrainingGroup(group: TrainingGroup): Promise<{ ok: 
     source_period_plan_id: group.sourcePeriodPlanId ?? null,
     master_period_plan: serializeGroupMasterPeriodPlan(group),
   };
+  const withLevelSetup = {
+    ...withPeriodPlan,
+    level_setup: serializeTrainingGroupLevelSetup(group),
+  };
   let periodPlanSqlNeeded = false;
-  let { error } = await supabaseClient.from("training_groups").upsert(withPeriodPlan, { onConflict: "id" });
+  let levelSetupSqlNeeded = false;
+  let { error } = await supabaseClient.from("training_groups").upsert(withLevelSetup, { onConflict: "id" });
+  if (error && isMissingLevelSetupColumnError(error.message)) {
+    const retry = await supabaseClient.from("training_groups").upsert(withPeriodPlan, { onConflict: "id" });
+    error = retry.error;
+    levelSetupSqlNeeded = !error;
+  }
   if (error && isMissingPeriodPlanColumnError(error.message)) {
     const retry = await supabaseClient.from("training_groups").upsert(baseRow, { onConflict: "id" });
     error = retry.error;
@@ -178,10 +203,10 @@ export async function persistTrainingGroup(group: TrainingGroup): Promise<{ ok: 
       return { ok: false, error: memberError.message, cloudAvailable: true };
     }
   }
-  if (periodPlanSqlNeeded) {
+  if (periodPlanSqlNeeded || levelSetupSqlNeeded) {
     return {
       ok: false,
-      error: "Kjør nyeste training_groups_schema.sql i Supabase for å lagre gruppeukeplan i skyen.",
+      error: "Kjør nyeste training_groups_schema.sql i Supabase for å lagre gruppeukeplan og nivåer i skyen.",
       cloudAvailable: true,
     };
   }

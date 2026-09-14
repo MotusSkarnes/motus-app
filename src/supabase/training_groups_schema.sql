@@ -163,3 +163,7 @@ alter table public.training_groups
 
 alter table public.training_groups
   add column if not exists master_period_plan jsonb;
+
+-- Nivå 1–3 og PT-preferanser per gruppe (kjør også alene hvis tabellen allerede finnes).
+alter table public.training_groups
+  add column if not exists level_setup jsonb;

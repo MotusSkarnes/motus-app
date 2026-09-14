@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { CalendarDays, Plus, RefreshCw, Trash2, UsersRound } from "lucide-react";
 import { memberRecordIsActive } from "../services/memberAccessRules";
 import type { SaveProgramInput } from "../services/appRepository";
@@ -23,9 +23,18 @@ import {
   planGroupPeriodPlanSync,
   upsertGroupPeriodPlanInLocalMap,
 } from "../app/trainingGroupPeriodPlan";
-import type { TrainingGroup } from "../app/trainingGroups";
+import {
+  TRAINING_GROUP_LEVELS,
+  countTrainingGroupMembersAtLevel,
+  parseTrainingGroupLevel,
+  trainingGroupLevelLabel,
+  trainingGroupMemberLevel,
+  type TrainingGroup,
+  type TrainingGroupLevel,
+  type TrainingGroupLevelPreferences,
+} from "../app/trainingGroups";
 import type { Member, PeriodSchedulePlan, TrainingProgram } from "../app/types";
-import { Card, GradientButton, MotusSectionIcon, OutlineButton } from "../app/ui";
+import { Card, GradientButton, MotusSectionIcon, OutlineButton, TextArea } from "../app/ui";
 import { GroupChatPanel } from "./GroupChatPanel";
 import type { GroupChatMessage } from "../app/trainingGroups";
 import { isSupabaseConfigured } from "../services/supabaseClient";
@@ -43,7 +52,12 @@ type TrainerGroupsViewProps = {
   messagesByGroupId: Map<string, GroupChatMessage[]>;
   remotePeriodPlansByMemberId?: Record<string, PeriodSchedulePlan[]>;
   onCreateGroup: (name: string) => Promise<TrainingGroup | null>;
-  onUpdateMembers: (groupId: string, memberIds: string[]) => Promise<unknown>;
+  onUpdateMembers: (
+    groupId: string,
+    memberIds: string[],
+    memberLevels?: Record<string, TrainingGroupLevel>,
+  ) => Promise<unknown>;
+  onUpdateLevelPreferences: (groupId: string, preferences: TrainingGroupLevelPreferences) => Promise<unknown>;
   onSetMaster: (
     groupId: string,
     sourceProgramId: string,
@@ -73,6 +87,7 @@ export function TrainerGroupsView({
   remotePeriodPlansByMemberId = {},
   onCreateGroup,
   onUpdateMembers,
+  onUpdateLevelPreferences,
   onSetMaster,
   onSetPeriodPlan,
   onDeleteGroup,
@@ -83,6 +98,8 @@ export function TrainerGroupsView({
   const [selectedGroupId, setSelectedGroupId] = useState(groups[0]?.id ?? "");
   const [syncStatus, setSyncStatus] = useState<string | null>(null);
   const [showChat, setShowChat] = useState(false);
+  const [preferenceDrafts, setPreferenceDrafts] = useState<TrainingGroupLevelPreferences>({});
+  const [preferenceGroupId, setPreferenceGroupId] = useState("");
 
   const activeMembers = useMemo(
     () =>
@@ -104,6 +121,13 @@ export function TrainerGroupsView({
 
   const selectedGroup = groups.find((group) => group.id === selectedGroupId) ?? groups[0] ?? null;
   const chatMessages = selectedGroup ? messagesByGroupId.get(selectedGroup.id) ?? [] : [];
+
+  useEffect(() => {
+    if (!selectedGroup) return;
+    if (preferenceGroupId === selectedGroup.id) return;
+    setPreferenceGroupId(selectedGroup.id);
+    setPreferenceDrafts(selectedGroup.levelPreferences ?? {});
+  }, [preferenceGroupId, selectedGroup]);
 
   const periodPlansByMemberId = useMemo(() => {
     const local = readPeriodPlansByMemberId();
@@ -139,10 +163,13 @@ export function TrainerGroupsView({
   function toggleMember(memberId: string) {
     if (!selectedGroup) return;
     const removing = selectedGroup.memberIds.includes(memberId);
-    const next = removing
+    const nextIds = removing
       ? selectedGroup.memberIds.filter((id) => id !== memberId)
       : [...selectedGroup.memberIds, memberId];
-    void onUpdateMembers(selectedGroup.id, next);
+    const nextLevels = { ...(selectedGroup.memberLevels ?? {}) };
+    if (removing) delete nextLevels[memberId];
+    else nextLevels[memberId] = 1;
+    void onUpdateMembers(selectedGroup.id, nextIds, nextLevels);
     if (!removing) return;
     for (const copy of listGroupProgramCopies(programs, selectedGroup.id, memberId)) {
       onSaveProgram({
@@ -158,6 +185,20 @@ export function TrainerGroupsView({
         detachFromTrainingGroup: true,
       });
     }
+  }
+
+  function setMemberLevel(memberId: string, level: TrainingGroupLevel) {
+    if (!selectedGroup || !selectedGroup.memberIds.includes(memberId)) return;
+    void onUpdateMembers(selectedGroup.id, selectedGroup.memberIds, {
+      ...(selectedGroup.memberLevels ?? {}),
+      [memberId]: level,
+    });
+  }
+
+  function saveLevelPreferences(next: TrainingGroupLevelPreferences) {
+    if (!selectedGroup) return;
+    setPreferenceDrafts(next);
+    void onUpdateLevelPreferences(selectedGroup.id, next);
   }
 
   function handleChooseProgram(programId: string) {
@@ -329,8 +370,9 @@ export function TrainerGroupsView({
             <h1 className="text-lg font-semibold text-slate-900 sm:text-xl">Treningsgrupper</h1>
             <p className="mt-1 text-sm leading-relaxed text-slate-600">
               Alle i gruppen får hver sin kopi av samme program og ukeplan. Personlige kilo og logger blir ikke delt.
-              Endringer synkes bare når du trykker <span className="font-semibold">Oppdater gruppen</span>. Du er alltid
-              med i gruppechatten.
+              Når du starter en gruppe, plasserer du folk på <span className="font-semibold">nivå 1–3</span> og skriver
+              preferanser under hvert nivå. Endringer synkes bare når du trykker{" "}
+              <span className="font-semibold">Oppdater gruppen</span>. Du er alltid med i gruppechatten.
             </p>
             {!cloudAvailable ? (
               <p className="mt-2 text-xs text-amber-800">
@@ -368,7 +410,9 @@ export function TrainerGroupsView({
                 key={group.id}
                 type="button"
                 onClick={() => {
+                  if (selectedGroup) void onUpdateLevelPreferences(selectedGroup.id, preferenceDrafts);
                   setSelectedGroupId(group.id);
+                  setPreferenceGroupId("");
                   setSyncStatus(null);
                   setShowChat(false);
                 }}
@@ -377,7 +421,13 @@ export function TrainerGroupsView({
                 }`}
               >
                 <div>{group.name}</div>
-                <div className="text-[11px] font-normal text-slate-500">{group.memberIds.length} medlemmer</div>
+                <div className="text-[11px] font-normal text-slate-500">
+                  {group.memberIds.length} medlemmer
+                  {TRAINING_GROUP_LEVELS.map((level) => {
+                    const count = countTrainingGroupMembersAtLevel(group, level);
+                    return count ? ` · ${trainingGroupLevelLabel(level)} ${count}` : "";
+                  }).join("")}
+                </div>
               </button>
             ))}
           </Card>
@@ -408,17 +458,72 @@ export function TrainerGroupsView({
                 </div>
 
                 <div>
-                  <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">Medlemmer</div>
+                  <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">Medlemmer og nivå</div>
+                  <p className="mb-3 text-xs text-slate-500">
+                    Huk av hvem som er med, og sett nivå 1, 2 eller 3 for hver person i denne gruppen.
+                  </p>
                   <div className="grid gap-2 sm:grid-cols-2">
                     {activeMembers.map((member) => {
                       const checked = selectedGroup.memberIds.includes(member.id);
+                      const level = trainingGroupMemberLevel(selectedGroup, member.id) ?? 1;
                       return (
                         <label key={member.id} className="flex items-center gap-2 rounded-xl border border-slate-200 px-3 py-2 text-sm">
                           <input type="checkbox" checked={checked} onChange={() => toggleMember(member.id)} />
-                          <span className="min-w-0 truncate">{member.name}</span>
+                          <span className="min-w-0 flex-1 truncate">{member.name}</span>
+                          <select
+                            className="h-8 shrink-0 rounded-lg border border-slate-200 bg-white px-1.5 text-xs disabled:text-slate-400"
+                            value={checked ? String(level) : ""}
+                            disabled={!checked}
+                            aria-label={`Nivå for ${member.name}`}
+                            onChange={(event) => {
+                              const nextLevel = parseTrainingGroupLevel(event.target.value);
+                              if (nextLevel) setMemberLevel(member.id, nextLevel);
+                            }}
+                          >
+                            {!checked ? <option value="">Nivå</option> : null}
+                            {TRAINING_GROUP_LEVELS.map((option) => (
+                              <option key={option} value={option}>
+                                {trainingGroupLevelLabel(option)}
+                              </option>
+                            ))}
+                          </select>
                         </label>
                       );
                     })}
+                  </div>
+                </div>
+
+                <div>
+                  <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                    Preferanser per nivå
+                  </div>
+                  <p className="mb-3 text-xs text-slate-500">
+                    Gjelder bare denne gruppen. Brukes f.eks. til fart, utstyr, skånsomme øvelser eller hva nivået skal
+                    holde.
+                  </p>
+                  <div className="grid gap-3 lg:grid-cols-3">
+                    {TRAINING_GROUP_LEVELS.map((level) => (
+                      <div key={level} className="rounded-xl border border-slate-200 p-3">
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="text-sm font-semibold text-slate-900">{trainingGroupLevelLabel(level)}</div>
+                          <div className="text-[11px] text-slate-500">
+                            {countTrainingGroupMembersAtLevel(selectedGroup, level)} pers.
+                          </div>
+                        </div>
+                        <TextArea
+                          rows={4}
+                          value={preferenceDrafts[level] ?? ""}
+                          onChange={(event) =>
+                            setPreferenceDrafts((prev) => ({ ...prev, [level]: event.target.value }))
+                          }
+                          onBlur={(event) =>
+                            saveLevelPreferences({ ...preferenceDrafts, [level]: event.target.value })
+                          }
+                          placeholder={`Preferanser for ${trainingGroupLevelLabel(level).toLowerCase()}…`}
+                          className="mt-2 !min-h-[6rem]"
+                        />
+                      </div>
+                    ))}
                   </div>
                 </div>
 

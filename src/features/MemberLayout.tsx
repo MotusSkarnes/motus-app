@@ -50,6 +50,7 @@ import { MemberPortal } from "./MemberPortal";
 import { MemberFeatureGate } from "./MemberFeatureGate";
 import { useTrainingGroupWorkspace } from "../app/useTrainingGroupWorkspace";
 import { parseTrainingGroupTag } from "../app/trainingGroupProgram";
+import { trainingGroupLevelLabel, trainingGroupMemberLevel } from "../app/trainingGroups";
 import { MemberNutritionView } from "./MemberNutritionView";
 import { InspirationHub } from "./InspirationHub";
 import { MemberDesktopTabNav, MemberMobileTabNav } from "./MemberTabNavigation";
@@ -251,16 +252,21 @@ export function MemberLayout({
     memberDisplayName: activeMember?.name,
   });
   const trainingGroupNameByProgramId = useMemo(() => {
-    const names = new Map(trainingGroups.groups.map((group) => [group.id, group.name]));
+    const groupsById = new Map(trainingGroups.groups.map((group) => [group.id, group]));
     const result: Record<string, string> = {};
+    const memberId = activeMember?.id ?? "";
     for (const program of appState.programs) {
       const tag = parseTrainingGroupTag(program);
       if (!tag) continue;
-      const name = names.get(tag.groupId);
-      if (name) result[program.id] = name;
+      const group = groupsById.get(tag.groupId);
+      if (!group) continue;
+      const level = memberId ? trainingGroupMemberLevel(group, memberId) : undefined;
+      result[program.id] = level
+        ? `${group.name} · ${trainingGroupLevelLabel(level)}`
+        : group.name;
     }
     return result;
-  }, [appState.programs, trainingGroups.groups]);
+  }, [activeMember?.id, appState.programs, trainingGroups.groups]);
   const currentUserRole = appState.currentUser?.role;
   const onboardingIdentityKey = activeMember ? memberOnboardingIdentityKey(activeMember) : "";
   // Brukes bare for å trigge re-render etter at brukeren har skjult prompten manuelt

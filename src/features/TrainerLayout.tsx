@@ -407,6 +407,7 @@ export function TrainerLayout({
                 messagesByGroupId={trainingGroups.messagesByGroupId}
                 onCreateGroup={trainingGroups.createGroup}
                 onUpdateMembers={trainingGroups.updateGroupMembers}
+                onUpdateLevelPreferences={trainingGroups.updateGroupLevelPreferences}
                 onSetMaster={trainingGroups.setGroupMaster}
                 onSetPeriodPlan={trainingGroups.setGroupPeriodPlan}
                 onDeleteGroup={trainingGroups.deleteGroup}

@@ -15,7 +15,8 @@ import {
   removeLocalTrainingGroup,
   upsertLocalTrainingGroup,
 } from "./trainingGroupStorage";
-import type { GroupChatMessage, TrainingGroup, TrainingGroupProgramSnapshot } from "./trainingGroups";
+import type { GroupChatMessage, TrainingGroup, TrainingGroupLevel, TrainingGroupLevelPreferences, TrainingGroupProgramSnapshot } from "./trainingGroups";
+import { normalizeTrainingGroupLevelPreferences, normalizeTrainingGroupMemberLevels } from "./trainingGroups";
 import type { PeriodSchedulePlan } from "./types";
 
 type WorkspaceRole = "trainer" | "member";
@@ -28,17 +29,18 @@ type UseTrainingGroupWorkspaceInput = {
   memberDisplayName?: string;
 };
 
-function mergeLocalGroupPeriodPlans(remote: TrainingGroup[], local: TrainingGroup[]): TrainingGroup[] {
+function mergeLocalGroupExtras(remote: TrainingGroup[], local: TrainingGroup[]): TrainingGroup[] {
   const localById = new Map(local.map((row) => [row.id, row]));
   return remote.map((group) => {
-    if (group.masterPeriodPlan) return group;
     const fromLocal = localById.get(group.id);
-    if (!fromLocal?.masterPeriodPlan) return group;
+    if (!fromLocal) return group;
     return {
       ...group,
-      sourcePeriodPlanId: fromLocal.sourcePeriodPlanId,
-      masterPeriodPlan: fromLocal.masterPeriodPlan,
-      masterPeriodPlanPrograms: fromLocal.masterPeriodPlanPrograms,
+      sourcePeriodPlanId: group.masterPeriodPlan ? group.sourcePeriodPlanId : fromLocal.sourcePeriodPlanId,
+      masterPeriodPlan: group.masterPeriodPlan ?? fromLocal.masterPeriodPlan,
+      masterPeriodPlanPrograms: group.masterPeriodPlanPrograms ?? fromLocal.masterPeriodPlanPrograms,
+      memberLevels: group.memberLevels ?? fromLocal.memberLevels,
+      levelPreferences: group.levelPreferences ?? fromLocal.levelPreferences,
     };
   });
 }
@@ -64,7 +66,7 @@ export function useTrainingGroupWorkspace({
       setCloudAvailable(remote.cloudAvailable);
       const localGroups = loadLocalTrainingGroups(resolvedOwnerId);
       const nextGroups = remote.cloudAvailable
-        ? mergeLocalGroupPeriodPlans(remote.groups, localGroups)
+        ? mergeLocalGroupExtras(remote.groups, localGroups)
         : localGroups;
       setGroups(nextGroups);
       const groupIds = nextGroups.map((group) => group.id);
@@ -120,10 +122,31 @@ export function useTrainingGroupWorkspace({
   );
 
   const updateGroupMembers = useCallback(
-    async (groupId: string, memberIds: string[]) => {
+    async (
+      groupId: string,
+      memberIds: string[],
+      memberLevels?: Record<string, TrainingGroupLevel>,
+    ) => {
       const group = groups.find((row) => row.id === groupId);
       if (!group) return null;
-      return saveGroup({ ...group, memberIds: Array.from(new Set(memberIds.map((id) => id.trim()).filter(Boolean))) });
+      const nextIds = Array.from(new Set(memberIds.map((id) => id.trim()).filter(Boolean)));
+      return saveGroup({
+        ...group,
+        memberIds: nextIds,
+        memberLevels: normalizeTrainingGroupMemberLevels(nextIds, memberLevels ?? group.memberLevels),
+      });
+    },
+    [groups, saveGroup],
+  );
+
+  const updateGroupLevelPreferences = useCallback(
+    async (groupId: string, levelPreferences: TrainingGroupLevelPreferences) => {
+      const group = groups.find((row) => row.id === groupId);
+      if (!group) return null;
+      return saveGroup({
+        ...group,
+        levelPreferences: normalizeTrainingGroupLevelPreferences(levelPreferences),
+      });
     },
     [groups, saveGroup],
   );
@@ -227,6 +250,7 @@ export function useTrainingGroupWorkspace({
     createGroup,
     saveGroup,
     updateGroupMembers,
+    updateGroupLevelPreferences,
     setGroupMaster,
     setGroupPeriodPlan,
     deleteGroup,
