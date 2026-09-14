@@ -170,7 +170,11 @@ function dailyKcalHtml(daily: NutritionReportPrintPayload["dailyKcal"]): string 
 function dailyVariationTableHtml(table: DailyVariationTable, title: string): string {
   if (!table.rows.length) return "";
   const head = table.columns
-    .map((column) => `<th title="${escapeHtml(`${column.label} (${column.unit})`)}">${escapeHtml(column.shortLabel)}</th>`)
+    .map((column) => {
+      const title = column.targetLabel ? `${column.label} (${column.targetLabel})` : column.label;
+      const target = column.targetLabel ? `<span class="col-ref">${escapeHtml(column.targetLabel)}</span>` : "";
+      return `<th title="${escapeHtml(title)}">${escapeHtml(column.label)}${target}</th>`;
+    })
     .join("");
   const body = table.rows
     .map((row) => {
@@ -182,7 +186,7 @@ function dailyVariationTableHtml(table: DailyVariationTable, title: string): str
     .join("");
   const average = table.averageCells.map((cell) => `<td>${escapeHtml(cell.display)}</td>`).join("");
   return `<h2>${escapeHtml(title)}</h2>
-    <p class="muted">Farge viser avvik fra periodens snitt, ikke mot anbefalingen.</p>
+    <p class="muted">Tallet under navnet er anbefalt dagsinntak. Farge viser avvik fra periodens snitt.</p>
     <table class="report-table report-table--compact report-table--variation">
       <thead><tr><th>Dag</th>${head}</tr></thead>
       <tbody>${body}</tbody>
@@ -192,8 +196,9 @@ function dailyVariationTableHtml(table: DailyVariationTable, title: string): str
 
 function dailyOverviewHtml(payload: NutritionReportPrintPayload): string {
   if (payload.dailyTotals && payload.dailyTotals.length > 1 && payload.dailyAverage) {
-    const macro = buildDailyVariationTable(payload.dailyTotals, payload.dailyAverage, "macro");
-    const micro = buildDailyVariationTable(payload.dailyTotals, payload.dailyAverage, "micro");
+    const refs = { mealPlanTargets: payload.mealPlanTargets, referenceContext: payload.referenceContext };
+    const macro = buildDailyVariationTable(payload.dailyTotals, payload.dailyAverage, "macro", refs);
+    const micro = buildDailyVariationTable(payload.dailyTotals, payload.dailyAverage, "micro", refs);
     return `${dailyVariationTableHtml(macro, "Dagsvariasjon")}
       ${dailyVariationTableHtml(micro, "Dagsvariasjon – vitaminer og mineraler")}`;
   }
@@ -290,6 +295,9 @@ function buildTrainerPrintHtml(payload: NutritionReportPrintPayload): string {
     .micro-status-muted td { background: #f8fafc; color: #64748b; }
     .contrib { margin-top: 3px; font-size: 11px; color: #0f766e; font-weight: 600; }
     .report-table--variation th, .report-table--variation td { text-align: right; font-variant-numeric: tabular-nums; }
+    .report-table--variation th:first-child, .report-table--variation td:first-child { text-align: left; }
+    .report-table--variation thead th { white-space: normal; line-height: 1.2; max-width: 5.5rem; }
+    .report-table--variation .col-ref { display: block; font-weight: 600; text-transform: none; letter-spacing: 0; color: #0f766e; margin-top: 2px; }
     .report-table--variation th:first-child, .report-table--variation td:first-child { text-align: left; }
     .report-table--variation tfoot td, .report-table--variation tfoot th { font-weight: 700; background: #f8fafc; }
     .var--low { background: #fffbeb; }
@@ -562,6 +570,8 @@ function buildClientPrintHtml(payload: NutritionReportPrintPayload): string {
     .var--low { background: #fffbeb; }
     .var--high { background: #fdf2f8; }
     .var--near { background: #f0fdfa; }
+    .report-table thead th { white-space: normal; line-height: 1.2; max-width: 5.2rem; }
+    .report-table .col-ref { display: block; font-weight: 600; text-transform: none; letter-spacing: 0; color: #0f766e; margin-top: 1px; }
     .muted { color: #64748b; font-size: 8px; margin: 0 0 4px; }
     @media print {
       body { background: #fff; }

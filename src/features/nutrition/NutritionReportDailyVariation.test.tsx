@@ -48,13 +48,14 @@ describe("NutritionReportDailyVariation", () => {
   it("shows weekday rows and switches to micronutrients", async () => {
     const user = userEvent.setup();
     render(<Harness />);
-    expect(screen.getByRole("columnheader", { name: "kcal" })).toBeTruthy();
+    expect(screen.getByRole("columnheader", { name: /Kalorier/ })).toBeTruthy();
     expect(screen.getByRole("rowheader", { name: "søn 13.09" })).toBeTruthy();
     expect(screen.getByText("1400")).toBeTruthy();
     expect(screen.getByText("2200")).toBeTruthy();
 
     await user.click(screen.getByRole("button", { name: "Vitaminer og mineraler" }));
-    expect(screen.getByRole("columnheader", { name: "D" })).toBeTruthy();
+    expect(screen.getByRole("columnheader", { name: /Vitamin D/ })).toBeTruthy();
+    expect(screen.getByText("10 µg")).toBeTruthy();
     expect(screen.getByText("2,0")).toBeTruthy();
     expect(screen.getByText("12,0")).toBeTruthy();
   });

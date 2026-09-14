@@ -15,7 +15,8 @@ export function NutritionReportDailyVariation({
     <section className="motus-nutrition-variation" aria-label="Dagsvariasjon">
       <h3 className="motus-nutrition-report-modal__subheading">Dagsvariasjon</h3>
       <p className="motus-nutrition-report-modal__footnote">
-        Enkel oversikt over dagene i perioden. Fargen viser avvik fra periodens snitt, ikke mot anbefalingen.
+        Enkel oversikt over dagene i perioden. Tallet under navnet er anbefalt dagsinntak. Fargen viser avvik fra
+        periodens snitt.
       </p>
       <div className="motus-nutrition-report-modal__chips" role="group" aria-label="Næringsstoffer i dagsvariasjon">
         <button
@@ -39,8 +40,15 @@ export function NutritionReportDailyVariation({
             <tr>
               <th scope="col">Dag</th>
               {table.columns.map((column) => (
-                <th key={column.id} scope="col" title={`${column.label} (${column.unit})`}>
-                  {column.shortLabel}
+                <th
+                  key={column.id}
+                  scope="col"
+                  title={column.targetLabel ? `${column.label} (${column.targetLabel})` : column.label}
+                >
+                  <span className="motus-nutrition-variation__col-name">{column.label}</span>
+                  {column.targetLabel ? (
+                    <span className="motus-nutrition-variation__col-ref">{column.targetLabel}</span>
+                  ) : null}
                 </th>
               ))}
             </tr>

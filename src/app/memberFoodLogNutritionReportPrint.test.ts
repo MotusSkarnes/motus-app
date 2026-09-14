@@ -146,5 +146,7 @@ describe("buildNutritionReportPrintHtml", () => {
     expect(html).toContain("var--low");
     expect(html).toContain("var--high");
     expect(html).toContain("Dagsvariasjon – vitaminer og mineraler");
+    expect(html).toContain("Vitamin D");
+    expect(html).toContain("10 µg");
   });
 });

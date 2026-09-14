@@ -40,5 +40,15 @@ describe("nutritionReportDailyVariation", () => {
     expect(kcal[1]?.tone).toBe("high");
     expect(kcal[0]?.display).toBe("1400");
     expect(table.averageCells.find((cell) => cell.columnId === "kcal")?.display).toBe("1800");
+    const vitaminD = buildDailyVariationTable(
+      [
+        { dateKey: "2026-09-13", totals: EMPTY_FOOD_LOG_NUTRITION },
+        { dateKey: "2026-09-14", totals: EMPTY_FOOD_LOG_NUTRITION },
+      ],
+      EMPTY_FOOD_LOG_NUTRITION,
+      "micro",
+    ).columns.find((column) => column.id === "vitaminD");
+    expect(vitaminD?.label).toBe("Vitamin D");
+    expect(vitaminD?.targetLabel).toBe("10 µg");
   });
 });

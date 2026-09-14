@@ -115,14 +115,17 @@ export function MemberFoodLogNutritionReportModal({
     return viewMode === "sum" ? report.periodSum : report.dailyAverage;
   }, [viewMode, report]);
 
-  const variationTable = useMemo(
-    () => buildDailyVariationTable(report.dailyTotals, report.dailyAverage, variationGroup),
-    [report.dailyAverage, report.dailyTotals, variationGroup],
-  );
-
   const referenceContext = useMemo(
     () => resolveNutritionReferenceContext(memberBirthDate, memberGender),
     [memberBirthDate, memberGender],
+  );
+  const variationTable = useMemo(
+    () =>
+      buildDailyVariationTable(report.dailyTotals, report.dailyAverage, variationGroup, {
+        mealPlanTargets,
+        referenceContext,
+      }),
+    [mealPlanTargets, referenceContext, report.dailyAverage, report.dailyTotals, variationGroup],
   );
   const referenceWarning = useMemo(
     () => nutritionReferenceWarningMessage(referenceContext.missingFields),

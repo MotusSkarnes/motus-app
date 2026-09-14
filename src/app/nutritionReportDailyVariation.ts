@@ -1,6 +1,15 @@
 import { formatMacro } from "./foodBankTypes";
-import { FOOD_MICRONUTRIENT_FIELDS, type FoodMicronutrientKey } from "./foodBankMicronutrients";
-import { totalWaterLiters } from "./nutritionReportDisplay";
+import { FOOD_MICRONUTRIENT_FIELDS, formatMicronutrientWithUnit, type FoodMicronutrientKey } from "./foodBankMicronutrients";
+import {
+  gramsFromEnergyPercent,
+  HEALTH_DIRECTORATE_MACRO_ENERGY_PERCENT,
+  HEALTH_DIRECTORATE_MICRONUTRIENT_DAILY,
+  HEALTH_DIRECTORATE_OTHER_DAILY,
+} from "./healthDirectorateNutritionReferences";
+import { resolveMicronutrientBounds } from "./micronutrientReferenceRanges";
+import type { MealPlanTargets } from "./mealPlanTypes";
+import { resolveReportKcalTarget, resolveReportWaterTarget, totalWaterLiters } from "./nutritionReportDisplay";
+import type { NutritionReferenceContext } from "./personalizedNutritionReferences";
 import type { FoodLogNutritionTotals } from "./quickFoodLogNutrition";
 
 export type DailyVariationGroupId = "macro" | "micro";
@@ -12,7 +21,14 @@ export type DailyVariationColumn = {
   label: string;
   unit: string;
   decimals: number;
+  /** Anbefalt dagsinntak, f.eks. «10 µg». */
+  targetLabel: string;
   read: (totals: FoodLogNutritionTotals) => number;
+};
+
+export type DailyVariationRefs = {
+  mealPlanTargets?: MealPlanTargets | null;
+  referenceContext?: NutritionReferenceContext;
 };
 
 const WEEKDAY_SHORT = ["søn", "man", "tir", "ons", "tor", "fre", "lør"] as const;
@@ -25,22 +41,24 @@ function micronutrientColumn(key: FoodMicronutrientKey, shortLabel: string): Dai
     label: field?.label ?? key,
     unit: field?.unit ?? "",
     decimals: field?.decimals ?? 0,
+    targetLabel: "",
     read: (totals) => Number(totals.micronutrients[key] ?? 0) || 0,
   };
 }
 
 export const DAILY_VARIATION_MACRO_COLUMNS: DailyVariationColumn[] = [
-  { id: "kcal", shortLabel: "kcal", label: "Kalorier", unit: "kcal", decimals: 0, read: (totals) => totals.kcal },
-  { id: "protein", shortLabel: "Prot.", label: "Protein", unit: "g", decimals: 0, read: (totals) => totals.protein },
-  { id: "carbs", shortLabel: "Karbo", label: "Karbohydrater", unit: "g", decimals: 0, read: (totals) => totals.carbs },
-  { id: "fat", shortLabel: "Fett", label: "Fett", unit: "g", decimals: 0, read: (totals) => totals.fat },
-  { id: "fiber", shortLabel: "Fiber", label: "Fiber", unit: "g", decimals: 0, read: (totals) => totals.fiber },
+  { id: "kcal", shortLabel: "kcal", label: "Kalorier", unit: "kcal", decimals: 0, targetLabel: "", read: (totals) => totals.kcal },
+  { id: "protein", shortLabel: "Prot.", label: "Protein", unit: "g", decimals: 0, targetLabel: "", read: (totals) => totals.protein },
+  { id: "carbs", shortLabel: "Karbo", label: "Karbohydrater", unit: "g", decimals: 0, targetLabel: "", read: (totals) => totals.carbs },
+  { id: "fat", shortLabel: "Fett", label: "Fett", unit: "g", decimals: 0, targetLabel: "", read: (totals) => totals.fat },
+  { id: "fiber", shortLabel: "Fiber", label: "Fiber", unit: "g", decimals: 0, targetLabel: "", read: (totals) => totals.fiber },
   {
     id: "waterTotal",
     shortLabel: "Vann",
     label: "Vann totalt",
     unit: "L",
     decimals: 1,
+    targetLabel: "",
     read: (totals) => totalWaterLiters(totals),
   },
 ];
@@ -58,6 +76,43 @@ export const DAILY_VARIATION_MICRO_COLUMNS: DailyVariationColumn[] = [
 
 export function dailyVariationColumns(group: DailyVariationGroupId): DailyVariationColumn[] {
   return group === "micro" ? DAILY_VARIATION_MICRO_COLUMNS : DAILY_VARIATION_MACRO_COLUMNS;
+}
+
+const MICRO_COLUMN_IDS = new Set(FOOD_MICRONUTRIENT_FIELDS.map((field) => field.key));
+
+function resolveColumnTarget(column: DailyVariationColumn, refs?: DailyVariationRefs): number {
+  const context = refs?.referenceContext;
+  const targets = refs?.mealPlanTargets;
+  if (column.id === "kcal") return resolveReportKcalTarget(targets, context);
+  if (column.id === "waterTotal") return resolveReportWaterTarget(context);
+  if (column.id === "fiber") return context?.otherDaily.fiber ?? HEALTH_DIRECTORATE_OTHER_DAILY.fiber;
+  if (column.id === "protein" || column.id === "carbs" || column.id === "fat") {
+    const planned = targets?.[column.id];
+    if (planned && planned > 0) return planned;
+    const spec = HEALTH_DIRECTORATE_MACRO_ENERGY_PERCENT[column.id];
+    return gramsFromEnergyPercent(resolveReportKcalTarget(targets, context), spec.recommended, spec.kcalPerGram);
+  }
+  if (MICRO_COLUMN_IDS.has(column.id as FoodMicronutrientKey)) {
+    const key = column.id as FoodMicronutrientKey;
+    if (context) return resolveMicronutrientBounds(key, context).recommended;
+    return HEALTH_DIRECTORATE_MICRONUTRIENT_DAILY[key] ?? 0;
+  }
+  return 0;
+}
+
+function formatColumnTarget(column: DailyVariationColumn, target: number): string {
+  if (!(target > 0)) return "";
+  if (MICRO_COLUMN_IDS.has(column.id as FoodMicronutrientKey)) {
+    return formatMicronutrientWithUnit(target, column.decimals, column.unit);
+  }
+  return `${formatDailyVariationValue(target, column.decimals)} ${column.unit}`;
+}
+
+function columnsWithTargets(group: DailyVariationGroupId, refs?: DailyVariationRefs): DailyVariationColumn[] {
+  return dailyVariationColumns(group).map((column) => ({
+    ...column,
+    targetLabel: formatColumnTarget(column, resolveColumnTarget(column, refs)),
+  }));
 }
 
 export function formatVariationDayLabel(dateKey: string): string {
@@ -124,9 +179,10 @@ export function buildDailyVariationTable(
   dailyTotals: Array<{ dateKey: string; totals: FoodLogNutritionTotals }>,
   average: FoodLogNutritionTotals,
   group: DailyVariationGroupId,
+  refs?: DailyVariationRefs,
   formatDayLabel: (dateKey: string) => string = formatVariationDayLabel,
 ): DailyVariationTable {
-  const columns = dailyVariationColumns(group);
+  const columns = columnsWithTargets(group, refs);
   const averageCells = columns.map((column) => cellFor(column, column.read(average), column.read(average)));
   const rows = dailyTotals.map(({ dateKey, totals }) => ({
     dateKey,

@@ -5681,9 +5681,28 @@
   background: #f8fafc;
   font-size: 0.62rem;
   font-weight: 700;
-  letter-spacing: 0.03em;
-  text-transform: uppercase;
   color: #64748b;
+  white-space: normal;
+  vertical-align: bottom;
+  min-width: 4.25rem;
+  line-height: 1.2;
+  text-align: right;
+}
+
+.motus-nutrition-variation__col-name {
+  display: block;
+  font-weight: 700;
+  color: #334155;
+}
+
+.motus-nutrition-variation__col-ref {
+  display: block;
+  margin-top: 0.15rem;
+  font-size: 0.62rem;
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
+  color: #0f766e;
 }
 
 .motus-nutrition-variation__table th:first-child,
