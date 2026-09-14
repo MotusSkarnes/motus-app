@@ -1,6 +1,10 @@
+import { useState } from "react";
 import { Lock, Unlock } from "lucide-react";
-import type { MacroTargetField } from "../../app/mealPlanTargetBalance";
-import type { NutritionTargetEditField } from "../../app/mealPlanTargetBalance";
+import {
+  isIncompleteDecimalString,
+  type MacroTargetField,
+  type NutritionTargetEditField,
+} from "../../app/mealPlanTargetBalance";
 import type { MealPlanTargets } from "../../app/mealPlanTypes";
 import type { MemberWeightSource } from "../../app/memberNutritionTargets";
 import { TextInput } from "../../app/ui";
@@ -15,9 +19,46 @@ type TrainerNutritionTargetsPanelProps = {
   onEdit: (field: NutritionTargetEditField, value: string | boolean) => void;
 };
 
-function fieldValue(targets: MealPlanTargets | undefined, field: keyof MealPlanTargets): string {
+function formatTargetNumber(value: number): string {
+  return String(value).replace(".", ",");
+}
+
+function targetFieldNumber(targets: MealPlanTargets | undefined, field: keyof MealPlanTargets): number | undefined {
   const value = targets?.[field];
-  return typeof value === "number" && Number.isFinite(value) ? String(value) : "";
+  return typeof value === "number" && Number.isFinite(value) ? value : undefined;
+}
+
+type TargetNumberInputProps = {
+  numericValue: number | undefined;
+  onCommit: (raw: string) => void;
+  className?: string;
+  placeholder?: string;
+};
+
+function TargetNumberInput({ numericValue, onCommit, className, placeholder }: TargetNumberInputProps) {
+  const [draft, setDraft] = useState<string | null>(null);
+  const display =
+    draft ?? (numericValue != null ? formatTargetNumber(numericValue) : "");
+
+  return (
+    <TextInput
+      value={display}
+      inputMode="decimal"
+      placeholder={placeholder}
+      className={className}
+      onChange={(e) => {
+        const raw = e.target.value;
+        setDraft(raw);
+        if (isIncompleteDecimalString(raw)) return;
+        onCommit(raw);
+      }}
+      onBlur={() => {
+        if (draft == null) return;
+        onCommit(draft.replace(/[.,]$/, "").trim());
+        setDraft(null);
+      }}
+    />
+  );
 }
 
 export function TrainerNutritionTargetsPanel({
@@ -73,20 +114,18 @@ export function TrainerNutritionTargetsPanel({
               {kcalLocked ? <Lock className="h-3.5 w-3.5" aria-hidden /> : <Unlock className="h-3.5 w-3.5" aria-hidden />}
             </button>
           </span>
-          <TextInput
-            value={fieldValue(targets, "kcal")}
-            onChange={(e) => onEdit("kcal", e.target.value)}
-            inputMode="decimal"
+          <TargetNumberInput
+            numericValue={targetFieldNumber(targets, "kcal")}
+            onCommit={(raw) => onEdit("kcal", raw)}
             className={kcalLocked ? "border-teal-200 bg-teal-50/50" : undefined}
           />
         </label>
 
         <label className="space-y-1 text-[11px] font-medium text-slate-600">
           <span>Protein (g/kg)</span>
-          <TextInput
-            value={fieldValue(targets, "proteinPerKg")}
-            onChange={(e) => onEdit("proteinPerKg", e.target.value)}
-            inputMode="decimal"
+          <TargetNumberInput
+            numericValue={targetFieldNumber(targets, "proteinPerKg")}
+            onCommit={(raw) => onEdit("proteinPerKg", raw)}
             placeholder={bodyWeightKg == null ? "Trenger vekt" : "f.eks. 1,6"}
           />
         </label>
@@ -96,10 +135,9 @@ export function TrainerNutritionTargetsPanel({
             Protein (g)
             {derivedField === "protein" ? <span className="ml-1 font-normal text-teal-700">(beregnet)</span> : null}
           </span>
-          <TextInput
-            value={fieldValue(targets, "protein")}
-            onChange={(e) => onEdit("protein", e.target.value)}
-            inputMode="decimal"
+          <TargetNumberInput
+            numericValue={targetFieldNumber(targets, "protein")}
+            onCommit={(raw) => onEdit("protein", raw)}
             className={derivedField === "protein" ? "border-teal-200 bg-teal-50/50" : undefined}
           />
         </label>
@@ -109,10 +147,9 @@ export function TrainerNutritionTargetsPanel({
             Karbohydrater (g)
             {derivedField === "carbs" ? <span className="ml-1 font-normal text-teal-700">(beregnet)</span> : null}
           </span>
-          <TextInput
-            value={fieldValue(targets, "carbs")}
-            onChange={(e) => onEdit("carbs", e.target.value)}
-            inputMode="decimal"
+          <TargetNumberInput
+            numericValue={targetFieldNumber(targets, "carbs")}
+            onCommit={(raw) => onEdit("carbs", raw)}
             className={derivedField === "carbs" ? "border-teal-200 bg-teal-50/50" : undefined}
           />
         </label>
@@ -122,10 +159,9 @@ export function TrainerNutritionTargetsPanel({
             Fett (g)
             {derivedField === "fat" ? <span className="ml-1 font-normal text-teal-700">(beregnet)</span> : null}
           </span>
-          <TextInput
-            value={fieldValue(targets, "fat")}
-            onChange={(e) => onEdit("fat", e.target.value)}
-            inputMode="decimal"
+          <TargetNumberInput
+            numericValue={targetFieldNumber(targets, "fat")}
+            onCommit={(raw) => onEdit("fat", raw)}
             className={derivedField === "fat" ? "border-teal-200 bg-teal-50/50" : undefined}
           />
         </label>

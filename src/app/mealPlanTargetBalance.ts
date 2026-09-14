@@ -262,9 +262,17 @@ export function redistributeCarbsAndFatForLockedKcal(targets: MealPlanTargets): 
   return { targets: next, derivedField: null, remainingKcal: 0, warning: null };
 }
 
+/** True while the user is mid-decimal, e.g. "1," or "1." — Number("1.") is 1 and would wipe the separator. */
+export function isIncompleteDecimalString(value: string): boolean {
+  const trimmed = value.trim();
+  if (!trimmed) return false;
+  return /^[+-]?\d*[.,]$/.test(trimmed);
+}
+
 function parseOptionalNumber(value: string): number | undefined | "invalid" {
   const trimmed = value.trim();
   if (!trimmed) return undefined;
+  if (isIncompleteDecimalString(trimmed)) return "invalid";
   const parsed = Number(trimmed.replace(",", "."));
   if (!Number.isFinite(parsed) || parsed < 0) return "invalid";
   return parsed;

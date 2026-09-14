@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   applyNutritionTargetEdit,
   deriveMacroGrams,
+  isIncompleteDecimalString,
   macrosToKcal,
   parseMealPlanTargets,
   proteinGramsFromPerKg,
@@ -84,6 +85,23 @@ describe("mealPlanTargetBalance", () => {
     const result = applyNutritionTargetEdit({}, "proteinPerKg", "1,8", 80);
     expect(result.targets.proteinPerKg).toBe(1.8);
     expect(result.targets.protein).toBe(144);
+  });
+
+  it("setter protein i gram med desimal", () => {
+    const result = applyNutritionTargetEdit({}, "protein", "120,5", 80);
+    expect(result.targets.protein).toBe(120.5);
+    expect(result.targets.proteinPerKg).toBe(1.51);
+  });
+
+  it("beholder forrige verdi mens desimaltegn skrives", () => {
+    const current = { proteinPerKg: 1.6, protein: 128 };
+    expect(isIncompleteDecimalString("1,")).toBe(true);
+    expect(isIncompleteDecimalString("1.")).toBe(true);
+    expect(isIncompleteDecimalString("1,8")).toBe(false);
+    const comma = applyNutritionTargetEdit(current, "proteinPerKg", "1,", 80);
+    expect(comma.targets.proteinPerKg).toBe(1.6);
+    const period = applyNutritionTargetEdit(current, "proteinPerKg", "1.", 80);
+    expect(period.targets.proteinPerKg).toBe(1.6);
   });
 
   it("parser kcal-lås og g/kg fra JSON", () => {
