@@ -99,14 +99,26 @@ export function formatNotificationTimestamp(timestampMs: number, nowMs = Date.no
  * Neste kommende kalendermandag (lokal tid). Er det allerede mandag — brukes i dag.
  * Brukes som standard «startdato» for periodeplan når trener ikke har valgt annet.
  */
+function toLocalIsoDate(date: Date): string {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
 export function getDefaultPeriodPlanStartMondayISO(now = new Date()): string {
   const d = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   const daysUntilMonday = (8 - d.getDay()) % 7;
   d.setDate(d.getDate() + daysUntilMonday);
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  return `${y}-${m}-${day}`;
+  return toLocalIsoDate(d);
+}
+
+/** Mandag i inneværende uke (kan være i dag eller tidligere denne uken). */
+export function getCurrentWeekMondayISO(now = new Date()): string {
+  const d = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const mondayOffset = (d.getDay() + 6) % 7;
+  d.setDate(d.getDate() - mondayOffset);
+  return toLocalIsoDate(d);
 }
 
 /** Normaliserer lagret startdato (dd.mm.yyyy eller ISO) til `type="date"`-input. */

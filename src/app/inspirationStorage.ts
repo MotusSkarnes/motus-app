@@ -120,13 +120,79 @@ export function cacheInspirationFeedSnapshot(snapshot: InspirationFeedSnapshot):
   });
 }
 
-/** Re-add built-in defaults unless the user/PT has explicitly deleted them. */
+function countFilledPeriodPlanDays(template: { weeklyPlans?: Array<{ days?: Record<string, unknown> }> } | undefined): number {
+  if (!Array.isArray(template?.weeklyPlans)) return 0;
+  let filled = 0;
+  for (const week of template.weeklyPlans) {
+    for (const value of Object.values(week?.days ?? {})) {
+      if (String(value ?? "").trim()) filled += 1;
+    }
+  }
+  return filled;
+}
+
+export function inspirationPeriodPlanFilledEntryCount(item: unknown): number {
+  if (!item || typeof item !== "object") return 0;
+  return countFilledPeriodPlanDays((item as { periodPlanTemplate?: { weeklyPlans?: Array<{ days?: Record<string, unknown> }> } }).periodPlanTemplate);
+}
+
+function inspirationPeriodPlanWeekCount(item: unknown): number {
+  if (!item || typeof item !== "object") return 0;
+  const template = (item as { periodPlanTemplate?: { weeklyPlans?: unknown } }).periodPlanTemplate;
+  return Array.isArray(template?.weeklyPlans) ? template.weeklyPlans.length : 0;
+}
+
+function inspirationBundledProgramCount(item: unknown): number {
+  if (!item || typeof item !== "object") return 0;
+  const bundled = (item as { bundledProgramTemplates?: unknown }).bundledProgramTemplates;
+  return Array.isArray(bundled) ? bundled.length : 0;
+}
+
+/** Re-add built-in defaults unless the user/PT has explicitly deleted them. Fyll også inn manglende ukeplan/programmer på lagrede stubber. */
 export function mergeDefaultInspirationItems<T extends { id: string }>(items: T[], defaultItems: T[]): T[] {
   const suppressed = loadSuppressedInspirationIds();
-  const existingIds = new Set(items.map((item) => item.id));
-  const missing = defaultItems.filter((item) => !existingIds.has(item.id) && !suppressed.has(item.id));
-  if (!missing.length) return items;
-  return [...items, ...missing];
+  const result = items.slice();
+  const indexById = new Map(result.map((item, index) => [item.id, index]));
+
+  for (const defaultItem of defaultItems) {
+    if (suppressed.has(defaultItem.id)) continue;
+    const existingIndex = indexById.get(defaultItem.id);
+    if (existingIndex === undefined) {
+      indexById.set(defaultItem.id, result.length);
+      result.push(defaultItem);
+      continue;
+    }
+
+    const existing = result[existingIndex];
+    if (!existing) continue;
+    const defaultWeeks = inspirationPeriodPlanWeekCount(defaultItem);
+    const defaultFilled = inspirationPeriodPlanFilledEntryCount(defaultItem);
+    const defaultBundled = inspirationBundledProgramCount(defaultItem);
+    if (defaultWeeks <= 0 && defaultFilled <= 0 && defaultBundled <= 0) continue;
+
+    const existingWeeks = inspirationPeriodPlanWeekCount(existing);
+    const existingFilled = inspirationPeriodPlanFilledEntryCount(existing);
+    const existingBundled = inspirationBundledProgramCount(existing);
+    if (existingWeeks >= defaultWeeks && existingFilled >= defaultFilled && existingBundled >= defaultBundled) continue;
+
+    const defaultRecord = defaultItem as T & {
+      kind?: string;
+      periodPlanTemplate?: unknown;
+      bundledProgramTemplates?: unknown;
+    };
+    const restorePlan = defaultFilled > existingFilled || defaultWeeks > existingWeeks;
+    result[existingIndex] = {
+      ...existing,
+      ...(restorePlan
+        ? {
+            kind: defaultRecord.kind ?? (existing as { kind?: string }).kind ?? "periodPlan",
+            periodPlanTemplate: defaultRecord.periodPlanTemplate,
+          }
+        : {}),
+      ...(defaultBundled > existingBundled ? { bundledProgramTemplates: defaultRecord.bundledProgramTemplates } : {}),
+    };
+  }
+  return result;
 }
 
 export function saveInspirationItemsToStorage(

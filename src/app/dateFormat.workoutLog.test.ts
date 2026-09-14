@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { formatDateTimeDdMmYyyy, resolveWorkoutLogDateTime } from "./dateFormat";
+import { formatDateTimeDdMmYyyy, getCurrentWeekMondayISO, resolveWorkoutLogDateTime } from "./dateFormat";
 
 describe("resolveWorkoutLogDateTime", () => {
   const reference = new Date(2026, 4, 15, 14, 35, 0);
@@ -18,5 +18,15 @@ describe("resolveWorkoutLogDateTime", () => {
 
   it("defaults to reference now when input is empty", () => {
     expect(resolveWorkoutLogDateTime("", reference)).toBe(formatDateTimeDdMmYyyy(reference));
+  });
+});
+
+describe("getCurrentWeekMondayISO", () => {
+  it("returns this week's Monday even when today is later in the week", () => {
+    expect(getCurrentWeekMondayISO(new Date(2026, 8, 16, 12, 0, 0))).toBe("2026-09-14");
+  });
+
+  it("returns today when today is Monday", () => {
+    expect(getCurrentWeekMondayISO(new Date(2026, 8, 14, 8, 0, 0))).toBe("2026-09-14");
   });
 });

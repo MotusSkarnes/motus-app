@@ -23,7 +23,12 @@ import {
   shouldShowMemberOnboarding,
   type MemberOnboardingAnswers,
 } from "../app/memberOnboarding";
-import { normalizePeriodSchedulePlan, readPeriodPlansByMemberId, writePeriodPlansByMemberId } from "../app/periodPlanMerge";
+import {
+  normalizePeriodSchedulePlan,
+  readPeriodPlansByMemberId,
+  writeActivePeriodPlanIdForMembers,
+  writePeriodPlansByMemberId,
+} from "../app/periodPlanMerge";
 import { isTrainerMemberPreview } from "../app/resolveLayoutRole";
 import type { AppState, Member, MemberTab, PeriodSchedulePlan } from "../app/types";
 import { applyFirstLoginStampToMembersByEmail } from "../app/memberInviteStatus";
@@ -642,28 +647,44 @@ export function MemberLayout({
 
   function addInspirationPeriodPlan(plan: PeriodSchedulePlan) {
     if (!inspirationMemberId || typeof window === "undefined") return;
-    const byMember = readPeriodPlansByMemberId();
-    const existing = byMember[inspirationMemberId] ?? [];
+    const memberRow =
+      appState.members.find((member) => member.id === inspirationMemberId) ??
+      appState.members.find(
+        (member) => member.email.trim().toLowerCase() === appState.currentUser?.email.trim().toLowerCase(),
+      );
+    const relatedIds = Array.from(
+      new Set(
+        [
+          inspirationMemberId,
+          ...(memberRow ? findMembersByEmail(memberRow, appState.members).map((row) => row.id) : []),
+          appState.currentUser?.memberId?.trim() ?? "",
+          appState.currentUser?.id ? `auth-${appState.currentUser.id}` : "",
+          appState.currentUser?.email?.trim().toLowerCase() ?? "",
+        ].filter(Boolean),
+      ),
+    );
     const memberPlan = normalizePeriodSchedulePlan({
       ...plan,
       id: `${plan.id}-${Date.now()}`,
-      createdAt: new Date().toISOString().slice(0, 10),
+      createdAt: new Date().toISOString(),
       periodPlanAddedBy: "member",
     });
-    byMember[inspirationMemberId] = [
-      memberPlan,
-      ...existing,
-    ];
+    const byMember = readPeriodPlansByMemberId();
+    for (const memberId of relatedIds) {
+      byMember[memberId] = [memberPlan, ...(byMember[memberId] ?? []).filter((existing) => existing.id !== memberPlan.id)];
+    }
     writePeriodPlansByMemberId(byMember);
-    void upsertMemberPeriodPlansForTrainer([inspirationMemberId], memberPlan, {
+    writeActivePeriodPlanIdForMembers(relatedIds, memberPlan.id);
+    void upsertMemberPeriodPlansForTrainer(relatedIds, memberPlan, {
       targetEmail: appState.currentUser?.email,
     }).then((result) => {
       if (result.ok) refreshRemoteHydration?.();
     });
-    if (typeof window !== "undefined") {
-      window.sessionStorage.setItem("motus.member.openPeriodPlanOnPrograms", "1");
-    }
+    window.sessionStorage.setItem("motus.member.openPeriodPlanOnPrograms", "1");
     setMemberTab("programs");
+    window.setTimeout(() => {
+      window.dispatchEvent(new Event("motus.member.openPeriodPlan"));
+    }, 0);
   }
 
   if (memberAccessBlocked) {
@@ -737,10 +758,10 @@ export function MemberLayout({
             exerciseBank={appState.exercises}
             focusItemId={memberFocusInspirationItemId}
             onFocusItemHandled={clearMemberFocusInspirationItemId}
-            onAddProgram={(program) => {
+            onAddProgram={(program, options) => {
               if (!inspirationMemberId) return;
               saveProgramForMember({ ...program, memberId: inspirationMemberId, programCreatedBy: "member", programCreatedByName: appState.currentUser?.name ?? "Medlem" });
-              setMemberTab("programs");
+              if (options?.openLibrary !== false) setMemberTab("programs");
             }}
             onAddPeriodPlan={addInspirationPeriodPlan}
           />

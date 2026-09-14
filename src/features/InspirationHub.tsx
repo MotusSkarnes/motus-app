@@ -49,12 +49,14 @@ import { getMedicalSketchFallbackDataUri, resolveExerciseImageSrc } from "../app
 import { compressImageDataUrl, compressImageFile } from "../app/imageCompress";
 import { imageObjectPositionFromSrc } from "../app/imageFocalPoint";
 import { uploadProgramCoverImageToSupabase } from "../app/programImageUpload";
+import { getCurrentWeekMondayISO } from "../app/dateFormat";
 import {
   fetchInspirationItemsForHub,
   filterSuppressedInspirationItems,
   INSPIRATION_CHANGED_EVENT,
   INSPIRATION_HERO_CHANGED_EVENT,
   INSPIRATION_STORAGE_KEY,
+  inspirationPeriodPlanFilledEntryCount,
   loadInspirationHeroFromLocalStorage,
   loadInspirationItemsFromLocalStorage,
   mergeDefaultInspirationItems,
@@ -626,6 +628,33 @@ const DEFAULT_ITEMS: InspirationItem[] = [
   ...RUNNING_INSPIRATION_ITEMS,
 ];
 
+function countPeriodPlanFilledDays(plan: PeriodSchedulePlan | undefined): number {
+  return inspirationPeriodPlanFilledEntryCount({ periodPlanTemplate: plan });
+}
+
+function resolveInspirationPeriodPlanTemplate(item: InspirationItem): PeriodSchedulePlan {
+  const fromItem = item.periodPlanTemplate;
+  const fromDefaults = DEFAULT_ITEMS.find((entry) => entry.id === item.id)?.periodPlanTemplate;
+  const itemFilled = countPeriodPlanFilledDays(fromItem);
+  const defaultFilled = countPeriodPlanFilledDays(fromDefaults);
+  if (fromDefaults && defaultFilled > itemFilled) return fromDefaults;
+  return fromItem ?? fromDefaults ?? createDefaultPeriodPlan(item.title, item.body);
+}
+
+function resolveInspirationBundledPrograms(item: InspirationItem): ProgramTemplateInput[] {
+  const fromItem = item.bundledProgramTemplates ?? [];
+  if (fromItem.length > 0) return fromItem;
+  return DEFAULT_ITEMS.find((entry) => entry.id === item.id)?.bundledProgramTemplates ?? [];
+}
+
+function isInspirationWeekPlanItem(item: InspirationItem): boolean {
+  if (item.kind === "periodPlan") return true;
+  if ((item.bundledProgramTemplates?.length ?? 0) > 0) return true;
+  if (countPeriodPlanFilledDays(item.periodPlanTemplate) > 0) return true;
+  const fromDefaults = DEFAULT_ITEMS.find((entry) => entry.id === item.id);
+  return Boolean(fromDefaults?.kind === "periodPlan" || (fromDefaults?.bundledProgramTemplates?.length ?? 0) > 0);
+}
+
 type InspirationPublishValidation = { ok: true } | { ok: false; message: string };
 
 function resolveComposerKind(categoryDraft: InspirationCategory, kindDraft: InspirationKind): InspirationKind {
@@ -730,7 +759,7 @@ type InspirationHubProps = {
   programTemplates?: Array<{ id: string; title: string }>;
   /** Felles øvelsesbank – påkrevd for treningsprogram under inspo. */
   exerciseBank?: Exercise[];
-  onAddProgram?: (program: ProgramTemplateInput) => void;
+  onAddProgram?: (program: ProgramTemplateInput, options?: { openLibrary?: boolean }) => void;
   onAddPeriodPlan?: (plan: PeriodSchedulePlan) => void;
   /** Åpne detalj for innlegg (f.eks. fra varsel). */
   focusItemId?: string | null;
@@ -1932,18 +1961,27 @@ export function InspirationHub({
   }
 
   function handleAddPeriodPlan(item: InspirationItem) {
-    const template = item.periodPlanTemplate ?? createDefaultPeriodPlan(item.title, item.body);
-    const bundled = item.bundledProgramTemplates ?? [];
+    const template = resolveInspirationPeriodPlanTemplate(item);
+    const bundled = resolveInspirationBundledPrograms(item);
     for (const programTemplate of bundled) {
-      onAddProgram?.({
-        ...programTemplate,
-        title: programTemplate.title.trim() || item.title,
-        imageUrl: programTemplate.imageUrl?.trim() || item.imageUrl?.trim() || undefined,
-        exercises: linkProgramExercisesToBank(programTemplate.exercises, exerciseBank),
-        programCreatedByName: memberName,
-      });
+      onAddProgram?.(
+        {
+          ...programTemplate,
+          title: programTemplate.title.trim() || item.title,
+          imageUrl: programTemplate.imageUrl?.trim() || item.imageUrl?.trim() || undefined,
+          exercises: linkProgramExercisesToBank(programTemplate.exercises, exerciseBank),
+          programCreatedByName: memberName,
+        },
+        { openLibrary: false },
+      );
     }
-    onAddPeriodPlan?.({ ...template, title: template.title || item.title });
+    onAddPeriodPlan?.(
+      normalizePeriodSchedulePlan({
+        ...template,
+        title: template.title.trim() || item.title,
+        startDate: getCurrentWeekMondayISO(),
+      }),
+    );
     const programNote =
       bundled.length > 0 ? ` ${bundled.length} treningsprogram er også lagt til under Mine programmer.` : "";
     setActionStatus(`${item.title} er lagt til under Trening → Periodeplan.${programNote}`);
@@ -2112,14 +2150,18 @@ export function InspirationHub({
       </div>
             ) : null}
 
-            {expandedItem.periodPlanTemplate ? (
+            {(() => {
+              const previewPlan = resolveInspirationPeriodPlanTemplate(expandedItem);
+              const previewDays = previewPlan.weeklyPlans[0]?.days;
+              if (!previewDays) return null;
+              return (
               <div className="mt-6 space-y-3">
                 <p className="text-xs font-medium text-slate-600">
-                  {expandedItem.periodPlanTemplate.weeks} uker · eksempel fra uke 1 (full plan legges til ved «Legg til periodeplan»)
+                  {previewPlan.weeks} uker · eksempel fra uke 1 (full plan legges til i ukeplanen)
                 </p>
                 <div className="grid gap-2 sm:grid-cols-2">
                   {WEEKDAY_PLAN_FIELDS.map((field) => {
-                    const entry = expandedItem.periodPlanTemplate?.weeklyPlans[0]?.days[field.key]?.trim() ?? "";
+                    const entry = previewDays[field.key]?.trim() ?? "";
                     return (
                       <div key={field.key} className="rounded-xl bg-slate-50 px-3 py-2.5 text-sm ring-1 ring-slate-100">
                         <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">{field.label}</div>
@@ -2129,19 +2171,20 @@ export function InspirationHub({
                   })}
                 </div>
               </div>
-            ) : null}
+              );
+            })()}
 
             <div className="mt-6 flex flex-col gap-2 sm:flex-row sm:flex-wrap">
-              {expandedItem.kind === "program" && onAddProgram ? (
+              {expandedItem.kind === "program" && !isInspirationWeekPlanItem(expandedItem) && onAddProgram ? (
                 <GradientButton onClick={() => handleAddProgram(expandedItem)} className="w-full sm:w-auto">
                   Legg til i mine programmer
                     </GradientButton>
               ) : null}
-              {expandedItem.kind === "periodPlan" && onAddPeriodPlan ? (
+              {isInspirationWeekPlanItem(expandedItem) && onAddPeriodPlan ? (
                 <GradientButton onClick={() => handleAddPeriodPlan(expandedItem)} className="w-full sm:w-auto">
-                  {expandedItem.bundledProgramTemplates?.length
-                    ? `Legg til plan + ${expandedItem.bundledProgramTemplates.length} programmer`
-                    : "Legg til periodeplan"}
+                  {resolveInspirationBundledPrograms(expandedItem).length
+                    ? `Legg til plan + ${resolveInspirationBundledPrograms(expandedItem).length} programmer`
+                    : "Legg til i ukeplanen"}
                 </GradientButton>
               ) : null}
               {canManage ? (

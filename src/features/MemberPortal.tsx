@@ -1197,7 +1197,12 @@ export function MemberPortal(props: MemberPortalProps) {
   const [memberChatSendStatus, setMemberChatSendStatus] = useState<string | null>(null);
   const isSendingMemberMessageRef = useRef(false);
   const [isSendingMemberMessage, setIsSendingMemberMessage] = useState(false);
-  const [trainingSection, setTrainingSection] = useState<"today" | "programs" | "custom" | "period" | "history">("today");
+  const [trainingSection, setTrainingSection] = useState<"today" | "programs" | "custom" | "period" | "history">(() => {
+    if (typeof window !== "undefined" && window.sessionStorage.getItem("motus.member.openPeriodPlanOnPrograms") === "1") {
+      return "period";
+    }
+    return "today";
+  });
   const previousMemberTabRef = useRef(memberTab);
   const pendingOpenPeriodPlanRef = useRef(false);
   useEffect(() => {
@@ -1223,12 +1228,25 @@ export function MemberPortal(props: MemberPortalProps) {
       setShowPeriodPlanPanel(true);
       setShowMemberWeekPlanBuilder(true);
     }
+    function openPeriodPlanFromInspiration() {
+      setTrainingSection("period");
+      setShowPeriodPlanPanel(true);
+      setPeriodPlanStorageRevision((value) => value + 1);
+      window.sessionStorage.removeItem("motus.member.openPeriodPlanOnPrograms");
+    }
     window.addEventListener("motus.member.openWeekPlanBuilder", openWeekPlanBuilder);
-    return () => window.removeEventListener("motus.member.openWeekPlanBuilder", openWeekPlanBuilder);
+    window.addEventListener("motus.member.openPeriodPlan", openPeriodPlanFromInspiration);
+    return () => {
+      window.removeEventListener("motus.member.openWeekPlanBuilder", openWeekPlanBuilder);
+      window.removeEventListener("motus.member.openPeriodPlan", openPeriodPlanFromInspiration);
+    };
   }, []);
   useEffect(() => {
     if (trainingHomeResetKey <= 0 || memberTab !== "programs") return;
     if (pendingOpenPeriodPlanRef.current) return;
+    if (typeof window !== "undefined" && window.sessionStorage.getItem("motus.member.openPeriodPlanOnPrograms") === "1") {
+      return;
+    }
     setTrainingSection("today");
   }, [trainingHomeResetKey, memberTab]);
   useEffect(() => {
@@ -4068,6 +4086,7 @@ export function MemberPortal(props: MemberPortalProps) {
     if (memberTab !== "programs" || typeof window === "undefined") return;
     if (window.sessionStorage.getItem("motus.member.openPeriodPlanOnPrograms") === "1") {
       window.sessionStorage.removeItem("motus.member.openPeriodPlanOnPrograms");
+      setTrainingSection("period");
       setShowPeriodPlanPanel(true);
     }
   }, [memberTab]);

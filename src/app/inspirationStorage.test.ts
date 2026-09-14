@@ -86,4 +86,62 @@ describe("suppressed inspiration items", () => {
     const merged = mergeDefaultInspirationItems([], [{ id: "default-tip-1", title: "Tips" }, { id: "default-tip-2", title: "Tips 2" }]);
     expect(merged.map((item) => item.id)).toEqual(["default-tip-2"]);
   });
+
+  it("restores missing period plan weeks and bundled programs on stored stubs", () => {
+    const stored = {
+      id: "default-period-sub45-10k",
+      kind: "periodPlan",
+      title: "SUB45 · 10 km på under 45 min",
+      bundledProgramTemplates: [{ title: "SUB45 · Rolig løp sone 2" }],
+    };
+    const builtin = {
+      id: "default-period-sub45-10k",
+      kind: "periodPlan",
+      title: "SUB45 · 10 km på under 45 min",
+      periodPlanTemplate: {
+        id: "inspo-period-sub45-10k",
+        weeklyPlans: Array.from({ length: 12 }, (_, index) => ({ weekNumber: index + 1 })),
+      },
+      bundledProgramTemplates: Array.from({ length: 7 }, (_, index) => ({ title: `Program ${index + 1}` })),
+    };
+    const merged = mergeDefaultInspirationItems([stored], [builtin]);
+    expect(merged).toHaveLength(1);
+    expect(merged[0]?.periodPlanTemplate?.weeklyPlans).toHaveLength(12);
+    expect(merged[0]?.bundledProgramTemplates).toHaveLength(7);
+  });
+
+  it("replaces an empty 12-week stub with the filled built-in week plan", () => {
+    const emptyDays = {
+      monday: "",
+      tuesday: "",
+      wednesday: "",
+      thursday: "",
+      friday: "",
+      saturday: "",
+      sunday: "",
+    };
+    const stored = {
+      id: "default-period-sub45-10k",
+      kind: "periodPlan",
+      periodPlanTemplate: {
+        weeklyPlans: Array.from({ length: 12 }, (_, index) => ({ weekNumber: index + 1, days: emptyDays })),
+      },
+      bundledProgramTemplates: Array.from({ length: 7 }, (_, index) => ({ title: `Program ${index + 1}` })),
+    };
+    const builtin = {
+      id: "default-period-sub45-10k",
+      kind: "periodPlan",
+      periodPlanTemplate: {
+        weeklyPlans: [
+          {
+            weekNumber: 1,
+            days: { ...emptyDays, monday: "SUB45 · Styrke løper", wednesday: "SUB45 · Intervall kort" },
+          },
+        ],
+      },
+      bundledProgramTemplates: stored.bundledProgramTemplates,
+    };
+    const merged = mergeDefaultInspirationItems([stored], [builtin]);
+    expect(merged[0]?.periodPlanTemplate?.weeklyPlans?.[0]?.days?.monday).toBe("SUB45 · Styrke løper");
+  });
 });
