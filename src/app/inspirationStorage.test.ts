@@ -144,4 +144,22 @@ describe("suppressed inspiration items", () => {
     const merged = mergeDefaultInspirationItems([stored], [builtin]);
     expect(merged[0]?.periodPlanTemplate?.weeklyPlans?.[0]?.days?.monday).toBe("SUB45 · Styrke løper");
   });
+
+  it("refreshes stored SUB45 body and bundled programs from the built-in copy", () => {
+    const stored = {
+      id: "default-period-sub45-10k",
+      kind: "periodPlan",
+      body: "Gammel rotete tekst med min/km og piler → overalt.",
+      bundledProgramTemplates: [{ title: "SUB45 · Rolig løp sone 2", notes: "Ca. 5:15 min/km", exercises: [{ exerciseName: "Nedjogg", notes: "Rolig løp" }] }],
+    };
+    const builtin = {
+      id: "default-period-sub45-10k",
+      kind: "periodPlan",
+      body: "Kort og ryddig.",
+      bundledProgramTemplates: [{ title: "SUB45 · Rolig løp sone 2", notes: "Lett nok til å snakke i setninger.", exercises: [{ exerciseName: "Rolig løp", notes: "" }] }],
+    };
+    const merged = mergeDefaultInspirationItems([stored], [builtin]);
+    expect(merged[0]?.body).toBe("Kort og ryddig.");
+    expect(merged[0]?.bundledProgramTemplates?.[0]?.exercises?.[0]?.exerciseName).toBe("Rolig løp");
+  });
 });

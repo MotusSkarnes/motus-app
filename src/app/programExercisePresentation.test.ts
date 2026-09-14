@@ -180,6 +180,35 @@ describe("formatWorkoutGroupPlanLabel", () => {
       "3 sett × 45 sek · 30s",
     );
   });
+
+  it("shows a single cardio step as time, speed and stigning without dummy rest", () => {
+    const treadmill = [
+      {
+        id: "e45",
+        name: "Nedjogg",
+        category: "Kondisjon" as const,
+        group: "Restitusjon",
+        equipment: "Tredemølle",
+        level: "Nybegynner" as const,
+        description: "",
+        imageUrl: "",
+      },
+    ];
+    const exercise = programExercise({
+      exerciseId: "e45",
+      exerciseName: "Rolig løp",
+      sets: "1",
+      reps: "",
+      weight: "",
+      durationMinutes: "38",
+      speed: "9.0",
+      incline: "1",
+      restSeconds: "0",
+    });
+    expect(formatProgramExercisePrescription(exercise, 0, [exercise], treadmill)).toBe(
+      "38 min · 9.0 km/t · 1% stigning",
+    );
+  });
 });
 
 describe("workout log labels", () => {
@@ -204,8 +233,8 @@ describe("workout log labels", () => {
       performedReps: "",
       performedWeight: "",
     });
-    expect(formatWorkoutResultSetPlanLabel(row, library)).toBe("4 min · 12 km/t · 2% incline");
-    expect(formatWorkoutResultPerformedLabel(row, library)).toBe("4 min · 11.5 km/t · 1% incline");
+    expect(formatWorkoutResultSetPlanLabel(row, library)).toBe("4 min · 12 km/t · 2% stigning");
+    expect(formatWorkoutResultPerformedLabel(row, library)).toBe("4 min · 11.5 km/t · 1% stigning");
   });
 
   it("formats strength hold as seconds without reps or kg", () => {

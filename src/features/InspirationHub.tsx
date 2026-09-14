@@ -373,10 +373,11 @@ function linkProgramExercisesToBank(exercises: ProgramExercise[], bank: Exercise
   const byId = new Map(bank.map((exercise) => [exercise.id, exercise]));
   const byName = new Map(bank.map((exercise) => [exercise.name.trim().toLowerCase(), exercise]));
   return exercises.map((row) => {
+    const customName = row.exerciseName.trim();
     const linked = byId.get(row.exerciseId);
-    if (linked) return { ...row, exerciseName: linked.name };
-    const match = byName.get(row.exerciseName.trim().toLowerCase());
-    if (match) return { ...row, exerciseId: match.id, exerciseName: match.name };
+    if (linked) return { ...row, exerciseName: customName || linked.name };
+    const match = byName.get(customName.toLowerCase());
+    if (match) return { ...row, exerciseId: match.id, exerciseName: customName || match.name };
     return row;
   });
 }
@@ -2118,7 +2119,9 @@ export function InspirationHub({
                             <div className="font-medium text-slate-900">
                               {resolveProgramExerciseName(programPreview.exercises, index)}
                             </div>
-                            {linked ? (
+                            {linked &&
+                            linked.name.trim().toLowerCase() ===
+                              resolveProgramExerciseName(programPreview.exercises, index).trim().toLowerCase() ? (
                               <div className="mt-0.5 text-xs text-slate-500">
                                 {linked.category} · {linked.group}
                               </div>
@@ -2126,7 +2129,7 @@ export function InspirationHub({
                             <div className="mt-1 text-sm text-slate-700">
                               {formatProgramExercisePrescription(exercise, index, programPreview.exercises, exerciseBank)}
                             </div>
-                            {exercise.restSeconds?.trim() ? (
+                            {Number(String(exercise.restSeconds ?? "").trim()) > 0 ? (
                               <div className="mt-0.5 text-xs text-slate-500">Hvile {exercise.restSeconds} sek</div>
                             ) : null}
                             {exercise.notes?.trim() ? (

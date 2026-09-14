@@ -148,6 +148,8 @@ function inspirationBundledProgramCount(item: unknown): number {
   return Array.isArray(bundled) ? bundled.length : 0;
 }
 
+const BUILTIN_RUNNING_PLAN_IDS = new Set(["default-period-sub60-10k", "default-period-sub45-10k"]);
+
 /** Re-add built-in defaults unless the user/PT has explicitly deleted them. Fyll også inn manglende ukeplan/programmer på lagrede stubber. */
 export function mergeDefaultInspirationItems<T extends { id: string }>(items: T[], defaultItems: T[]): T[] {
   const suppressed = loadSuppressedInspirationIds();
@@ -165,6 +167,24 @@ export function mergeDefaultInspirationItems<T extends { id: string }>(items: T[
 
     const existing = result[existingIndex];
     if (!existing) continue;
+    const defaultRecord = defaultItem as T & {
+      kind?: string;
+      description?: unknown;
+      body?: unknown;
+      periodPlanTemplate?: unknown;
+      bundledProgramTemplates?: unknown;
+    };
+    if (BUILTIN_RUNNING_PLAN_IDS.has(defaultItem.id)) {
+      result[existingIndex] = {
+        ...existing,
+        ...(typeof defaultRecord.description === "string" ? { description: defaultRecord.description } : {}),
+        ...(typeof defaultRecord.body === "string" ? { body: defaultRecord.body } : {}),
+        kind: defaultRecord.kind ?? (existing as { kind?: string }).kind ?? "periodPlan",
+        periodPlanTemplate: defaultRecord.periodPlanTemplate,
+        bundledProgramTemplates: defaultRecord.bundledProgramTemplates,
+      } as T;
+      continue;
+    }
     const defaultWeeks = inspirationPeriodPlanWeekCount(defaultItem);
     const defaultFilled = inspirationPeriodPlanFilledEntryCount(defaultItem);
     const defaultBundled = inspirationBundledProgramCount(defaultItem);
@@ -175,11 +195,6 @@ export function mergeDefaultInspirationItems<T extends { id: string }>(items: T[
     const existingBundled = inspirationBundledProgramCount(existing);
     if (existingWeeks >= defaultWeeks && existingFilled >= defaultFilled && existingBundled >= defaultBundled) continue;
 
-    const defaultRecord = defaultItem as T & {
-      kind?: string;
-      periodPlanTemplate?: unknown;
-      bundledProgramTemplates?: unknown;
-    };
     const restorePlan = defaultFilled > existingFilled || defaultWeeks > existingWeeks;
     result[existingIndex] = {
       ...existing,

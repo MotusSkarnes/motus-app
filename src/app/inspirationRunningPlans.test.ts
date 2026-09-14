@@ -8,7 +8,9 @@ import {
   SUB60_PROGRAM_TITLES,
   RUNNER_STRENGTH_COVER_IMAGE,
   RUNNER_MOBILITY_COVER_IMAGE,
+  tidyInspirationRunningProgram,
 } from "./inspirationRunningPlans";
+import type { TrainingProgram } from "./types";
 
 describe("inspirationRunningPlans", () => {
   it("exposes SUB60 and SUB45 period plans with 12 weeks", () => {
@@ -42,6 +44,15 @@ describe("inspirationRunningPlans", () => {
     const longRun = sub60.bundledProgramTemplates.find((program) => program.title === SUB60_PROGRAM_TITLES.long);
     expect(longRun?.imageUrl).toBe(SUB60_LONG_RUN_COVER_IMAGE);
 
+    const easy = sub60.bundledProgramTemplates.find((program) => program.title === SUB60_PROGRAM_TITLES.easy)!;
+    expect(easy.exercises[0]?.exerciseName).toBe("Rolig løp");
+    expect(easy.exercises[0]?.notes).toBe("");
+    expect(easy.notes).not.toMatch(/min\/km|→/);
+
+    const tempo = sub60.bundledProgramTemplates.find((program) => program.title === SUB60_PROGRAM_TITLES.tempo)!;
+    expect(tempo.exercises.map((exercise) => exercise.exerciseName)).toEqual(["Oppvarming", "Tempo", "Nedjogg"]);
+    expect(tempo.notes).not.toMatch(/min\/km|→/);
+
     const sub45 = RUNNING_INSPIRATION_ITEMS.find((item) => item.id === "default-period-sub45-10k")!;
     const sub45Titles = new Set(sub45.bundledProgramTemplates.map((program) => program.title));
     const lastWeek = sub45.periodPlanTemplate.weeklyPlans[sub45.periodPlanTemplate.weeklyPlans.length - 1];
@@ -68,5 +79,42 @@ describe("inspirationRunningPlans", () => {
         [],
       ),
     ).toBe("Mobilitet");
+  });
+
+  it("names interval steps as warmup, drags and cooldown", () => {
+    const interval = RUNNING_INSPIRATION_ITEMS[0]!.bundledProgramTemplates.find(
+      (program) => program.title === SUB60_PROGRAM_TITLES.interval,
+    )!;
+    expect(interval.exercises[0]?.exerciseName).toBe("Oppvarming");
+    expect(interval.exercises.some((exercise) => /^Drag \d+$/.test(exercise.exerciseName))).toBe(true);
+    expect(interval.exercises.at(-1)?.exerciseName).toBe("Nedjogg");
+    expect(interval.exercises.every((exercise) => exercise.notes === "")).toBe(true);
+  });
+
+  it("tidies already saved SUB60 copies so steps keep their labels", () => {
+    const messy: TrainingProgram = {
+      id: "saved-easy",
+      memberId: "m1",
+      title: SUB60_PROGRAM_TITLES.easy,
+      goal: "old",
+      notes: "Ca. 6:40 min/km → snakketempo",
+      createdAt: "",
+      exercises: [
+        {
+          id: "x1",
+          exerciseId: "e45",
+          exerciseName: "Nedjogg",
+          sets: "1",
+          reps: "",
+          weight: "",
+          durationMinutes: "38",
+          notes: "Rolig løp",
+        },
+      ],
+    };
+    const tidied = tidyInspirationRunningProgram(messy);
+    expect(tidied.exercises[0]?.exerciseName).toBe("Rolig løp");
+    expect(tidied.exercises[0]?.notes).toBe("");
+    expect(tidied.notes).not.toMatch(/min\/km|→/);
   });
 });

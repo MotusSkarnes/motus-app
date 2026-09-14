@@ -44,10 +44,59 @@ function appendCustomPrescriptionParts(row: ProgramExercise, bank?: Exercise): s
   return suffix;
 }
 
+function significantNumberText(value: string | undefined): string {
+  const raw = String(value ?? "").trim();
+  if (!raw) return "";
+  const numeric = Number(raw.replace(",", "."));
+  if (Number.isFinite(numeric) && numeric === 0) return "";
+  return raw;
+}
+
+function formatInclineLabel(value: string | undefined): string {
+  const raw = significantNumberText(value);
+  return raw ? `${raw}% stigning` : "";
+}
+
 function cardioTargetHrPrescriptionSuffix(targetHrPercent: string | undefined): string {
   const raw = String(targetHrPercent ?? "").trim();
   if (!raw) return "";
-  return ` · målpuls ca. ${raw}% av makspuls`;
+  return `målpuls ca. ${raw}% av makspuls`;
+}
+
+function formatCardioPrescriptionParts(input: {
+  exerciseName: string;
+  sets?: string;
+  durationMinutes?: string;
+  holdSeconds?: string;
+  speed?: string;
+  incline?: string;
+  restSeconds?: string;
+  targetHrPercent?: string;
+  includePauseLabel?: boolean;
+}): string[] {
+  const timeParts: string[] = [];
+  const minutes = String(input.durationMinutes ?? "").trim();
+  const seconds = String(input.holdSeconds ?? "").trim();
+  if (minutes) timeParts.push(`${minutes} min`);
+  if (seconds) timeParts.push(`${seconds} sek`);
+  const timeLabel = timeParts.length ? timeParts.join(" ") : "—";
+  const setCount = Number(String(input.sets ?? "").trim());
+  const isDrag = /^drag\b/i.test(input.exerciseName.trim());
+  const parts: string[] = [];
+  if (Number.isFinite(setCount) && setCount > 1) {
+    parts.push(`${setCount} ${isDrag ? "drag" : "runder"} × ${timeLabel}`);
+  } else {
+    parts.push(timeLabel);
+  }
+  const speed = String(input.speed ?? "").trim();
+  if (speed) parts.push(`${speed} km/t`);
+  const incline = formatInclineLabel(input.incline);
+  if (incline) parts.push(incline);
+  const rest = significantNumberText(input.restSeconds);
+  if (rest) parts.push(`${rest}s${input.includePauseLabel ? " pause" : ""}`);
+  const targetHr = cardioTargetHrPrescriptionSuffix(input.targetHrPercent);
+  if (targetHr) parts.push(targetHr);
+  return parts;
 }
 
 export function resolveProgramExerciseName(rows: ProgramExercise[], index: number): string {
@@ -77,18 +126,22 @@ export function formatProgramExercisePrescription(
   const linkedExercise = findLinkedExercise(exercise, exerciseName, exerciseLibrary);
   const category = linkedExercise?.category;
   const cardioMinutes = String(exercise.durationMinutes ?? "").trim();
-  const cardioSeconds = String(exercise.holdSeconds ?? "").trim();
   const restSeconds = String(exercise.restSeconds ?? "").trim() || "0";
   const pauseLabel = options?.includePauseLabel ? " pause" : "";
   const isCardio = options?.treatAsCardio ?? (category === "Kondisjon" || Boolean(cardioMinutes));
 
   if (isCardio) {
-    const dragLabel = /^drag\b/i.test(exerciseName.trim()) ? "drag" : "runder";
-    const timeParts: string[] = [];
-    if (cardioMinutes) timeParts.push(`${cardioMinutes} min`);
-    if (cardioSeconds) timeParts.push(`${cardioSeconds} sek`);
-    const timeLabel = timeParts.length ? timeParts.join(" ") : "—";
-    return `${exercise.sets || "-"} ${dragLabel} × ${timeLabel}${exercise.speed ? ` · ${exercise.speed} km/t` : ""}${exercise.incline ? ` · ${exercise.incline}% incline` : ""} · ${restSeconds}s${pauseLabel}${cardioTargetHrPrescriptionSuffix(exercise.targetHrPercent)}${appendCustomPrescriptionParts(exercise, linkedExercise)}`;
+    return `${formatCardioPrescriptionParts({
+      exerciseName,
+      sets: exercise.sets,
+      durationMinutes: exercise.durationMinutes,
+      holdSeconds: exercise.holdSeconds,
+      speed: exercise.speed,
+      incline: exercise.incline,
+      restSeconds: exercise.restSeconds,
+      targetHrPercent: exercise.targetHrPercent,
+      includePauseLabel: options?.includePauseLabel,
+    }).join(" · ")}${appendCustomPrescriptionParts(exercise, linkedExercise)}`;
   }
 
   const isHold = options?.treatAsHold ?? programExerciseUsesSecondsLoad(exercise, linkedExercise);
@@ -300,7 +353,8 @@ export function formatWorkoutResultSetPlanLabel(result: WorkoutExerciseResult, e
     const minutes = String(result.plannedDurationMinutes ?? "").trim();
     if (minutes) parts.push(`${minutes} min`);
     if (result.plannedSpeed?.trim()) parts.push(`${result.plannedSpeed} km/t`);
-    if (result.plannedIncline?.trim()) parts.push(`${result.plannedIncline}% incline`);
+    const plannedIncline = formatInclineLabel(result.plannedIncline);
+    if (plannedIncline) parts.push(plannedIncline);
     return parts.length ? parts.join(" · ") : "—";
   }
   if (resultIsHold(result, linked)) {
@@ -399,7 +453,8 @@ export function formatWorkoutResultPerformedLabel(result: WorkoutExerciseResult,
     if (minutes) parts.push(`${minutes} min`);
     else parts.push("—");
     if (result.performedSpeed?.trim()) parts.push(`${result.performedSpeed} km/t`);
-    if (result.performedIncline?.trim()) parts.push(`${result.performedIncline}% incline`);
+    const performedIncline = formatInclineLabel(result.performedIncline);
+    if (performedIncline) parts.push(performedIncline);
     return parts.join(" · ");
   }
   const loadUnit = resolveWorkoutLoadUnit(result);
