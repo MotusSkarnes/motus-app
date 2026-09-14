@@ -323,6 +323,10 @@ export type PeriodSchedulePlan = {
   memberPeriodPlanStatus?: "hidden";
   /** Sist lagret av trener (ISO) – brukes til varsler ved oppdatering. */
   trainerSavedAtIso?: string;
+  /** Treningsgruppe denne ukeplanen er synket fra. */
+  trainingGroupId?: string;
+  /** Master-plan-id hos gruppen (kildevalget), stabil på tvers av medlemmer. */
+  trainingGroupMasterPlanId?: string;
 };
 
 export type AppState = {

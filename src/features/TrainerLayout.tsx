@@ -408,8 +408,11 @@ export function TrainerLayout({
                 onCreateGroup={trainingGroups.createGroup}
                 onUpdateMembers={trainingGroups.updateGroupMembers}
                 onSetMaster={trainingGroups.setGroupMaster}
+                onSetPeriodPlan={trainingGroups.setGroupPeriodPlan}
                 onDeleteGroup={trainingGroups.deleteGroup}
                 onSaveProgram={saveProgramForMember}
+                isLocalDemoSession={isLocalDemoSession}
+                remotePeriodPlansByMemberId={remoteTrainerPeriodPlansByMemberId}
                 onSendGroupMessage={(groupId, text) => void trainingGroups.sendGroupMessage(groupId, text, "trainer")}
               />
             ) : trainerTab === "badges" ? (

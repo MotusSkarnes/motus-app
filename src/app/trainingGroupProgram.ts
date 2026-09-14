@@ -90,6 +90,7 @@ export function snapshotTrainingProgram(program: TrainingProgram): TrainingGroup
     imageUrl: program.imageUrl,
     conditioningDeliveryMode: program.conditioningDeliveryMode,
     activityTemplateKind: program.activityTemplateKind,
+    sourceProgramId: program.id.trim() || undefined,
   };
 }
 
@@ -119,11 +120,30 @@ export function findGroupProgramCopy(
   programs: TrainingProgram[],
   groupId: string,
   memberId: string,
+  masterProgramId?: string,
 ): TrainingProgram | undefined {
   const wantedGroup = groupId.trim();
   const wantedMember = memberId.trim();
+  const wantedMaster = masterProgramId?.trim() ?? "";
   if (!wantedGroup || !wantedMember) return undefined;
   return programs.find((program) => {
+    if (program.memberId.trim() !== wantedMember) return false;
+    const tag = parseTrainingGroupTag(program);
+    if (!tag || tag.groupId !== wantedGroup) return false;
+    if (wantedMaster) return tag.masterProgramId === wantedMaster;
+    return true;
+  });
+}
+
+export function listGroupProgramCopies(
+  programs: TrainingProgram[],
+  groupId: string,
+  memberId: string,
+): TrainingProgram[] {
+  const wantedGroup = groupId.trim();
+  const wantedMember = memberId.trim();
+  if (!wantedGroup || !wantedMember) return [];
+  return programs.filter((program) => {
     if (program.memberId.trim() !== wantedMember) return false;
     return parseTrainingGroupTag(program)?.groupId === wantedGroup;
   });
@@ -137,7 +157,7 @@ export type GroupProgramSyncPlan = {
 };
 
 export function planGroupProgramSync(input: {
-  group: Pick<TrainingGroup, "id" | "memberIds" | "masterSnapshot">;
+  group: Pick<TrainingGroup, "id" | "memberIds" | "masterSnapshot" | "sourceProgramId">;
   programs: TrainingProgram[];
   inProgressProgramIds?: Iterable<string>;
 }): GroupProgramSyncPlan {
@@ -153,8 +173,9 @@ export function planGroupProgramSync(input: {
   const toCreate: string[] = [];
   const toUpdate: TrainingProgram[] = [];
   const skippedInProgress: TrainingProgram[] = [];
+  const masterProgramId = input.group.sourceProgramId?.trim() || snapshot.sourceProgramId?.trim() || "";
   for (const memberId of input.group.memberIds) {
-    const copy = findGroupProgramCopy(input.programs, input.group.id, memberId);
+    const copy = findGroupProgramCopy(input.programs, input.group.id, memberId, masterProgramId || undefined);
     if (!copy) {
       toCreate.push(memberId);
       continue;

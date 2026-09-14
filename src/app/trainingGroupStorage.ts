@@ -97,5 +97,6 @@ export function snapshotFromUnknown(raw: unknown): TrainingGroupProgramSnapshot 
       row.activityTemplateKind === "no-plan"
         ? row.activityTemplateKind
         : undefined,
+    sourceProgramId: typeof row.sourceProgramId === "string" ? row.sourceProgramId.trim() || undefined : undefined,
   };
 }

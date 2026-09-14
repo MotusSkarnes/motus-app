@@ -156,3 +156,10 @@ create policy "group_chat_messages_insert"
       )
     )
   );
+
+-- Ukeplan per treningsgruppe (kjør også alene hvis tabellen allerede finnes).
+alter table public.training_groups
+  add column if not exists source_period_plan_id text;
+
+alter table public.training_groups
+  add column if not exists master_period_plan jsonb;

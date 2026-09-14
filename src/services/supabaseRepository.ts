@@ -456,6 +456,8 @@ export function parsePeriodSchedulePlan(value: unknown): PeriodSchedulePlan | nu
     periodPlanAddedBy,
     memberPeriodPlanStatus,
     trainerSavedAtIso: String(o.trainerSavedAtIso ?? "").trim() || undefined,
+    trainingGroupId: String(o.trainingGroupId ?? "").trim() || undefined,
+    trainingGroupMasterPlanId: String(o.trainingGroupMasterPlanId ?? "").trim() || undefined,
   };
 }
 

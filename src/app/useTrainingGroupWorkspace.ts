@@ -16,6 +16,7 @@ import {
   upsertLocalTrainingGroup,
 } from "./trainingGroupStorage";
 import type { GroupChatMessage, TrainingGroup, TrainingGroupProgramSnapshot } from "./trainingGroups";
+import type { PeriodSchedulePlan } from "./types";
 
 type WorkspaceRole = "trainer" | "member";
 
@@ -26,6 +27,21 @@ type UseTrainingGroupWorkspaceInput = {
   trainerDisplayName: string;
   memberDisplayName?: string;
 };
+
+function mergeLocalGroupPeriodPlans(remote: TrainingGroup[], local: TrainingGroup[]): TrainingGroup[] {
+  const localById = new Map(local.map((row) => [row.id, row]));
+  return remote.map((group) => {
+    if (group.masterPeriodPlan) return group;
+    const fromLocal = localById.get(group.id);
+    if (!fromLocal?.masterPeriodPlan) return group;
+    return {
+      ...group,
+      sourcePeriodPlanId: fromLocal.sourcePeriodPlanId,
+      masterPeriodPlan: fromLocal.masterPeriodPlan,
+      masterPeriodPlanPrograms: fromLocal.masterPeriodPlanPrograms,
+    };
+  });
+}
 
 export function useTrainingGroupWorkspace({
   role,
@@ -46,7 +62,10 @@ export function useTrainingGroupWorkspace({
     if (role === "trainer" && resolvedOwnerId) {
       const remote = await fetchTrainingGroupsForTrainer(resolvedOwnerId);
       setCloudAvailable(remote.cloudAvailable);
-      const nextGroups = remote.cloudAvailable ? remote.groups : loadLocalTrainingGroups(resolvedOwnerId);
+      const localGroups = loadLocalTrainingGroups(resolvedOwnerId);
+      const nextGroups = remote.cloudAvailable
+        ? mergeLocalGroupPeriodPlans(remote.groups, localGroups)
+        : localGroups;
       setGroups(nextGroups);
       const groupIds = nextGroups.map((group) => group.id);
       const remoteChat = await fetchGroupChatMessages(groupIds);
@@ -122,6 +141,33 @@ export function useTrainingGroupWorkspace({
     [groups, saveGroup],
   );
 
+  const setGroupPeriodPlan = useCallback(
+    async (
+      groupId: string,
+      sourcePeriodPlanId: string,
+      snapshot: PeriodSchedulePlan | null,
+      programs: TrainingGroupProgramSnapshot[] = [],
+    ) => {
+      const group = groups.find((row) => row.id === groupId);
+      if (!group) return null;
+      if (!sourcePeriodPlanId.trim() || !snapshot) {
+        return saveGroup({
+          ...group,
+          sourcePeriodPlanId: undefined,
+          masterPeriodPlan: undefined,
+          masterPeriodPlanPrograms: undefined,
+        });
+      }
+      return saveGroup({
+        ...group,
+        sourcePeriodPlanId,
+        masterPeriodPlan: snapshot,
+        masterPeriodPlanPrograms: programs,
+      });
+    },
+    [groups, saveGroup],
+  );
+
   const deleteGroup = useCallback(
     async (groupId: string) => {
       setGroups((prev) => prev.filter((group) => group.id !== groupId));
@@ -182,6 +228,7 @@ export function useTrainingGroupWorkspace({
     saveGroup,
     updateGroupMembers,
     setGroupMaster,
+    setGroupPeriodPlan,
     deleteGroup,
     sendGroupMessage,
   };

@@ -5,6 +5,7 @@ import {
   buildGroupCopySaveNotes,
   cloneProgramExercisesForGroupCopy,
   findGroupProgramCopy,
+  listGroupProgramCopies,
   parseTrainingGroupTag,
   planGroupProgramSync,
   serializeTrainingGroupProgramNotes,
@@ -106,6 +107,34 @@ describe("trainingGroupProgram", () => {
     expect(plan.toUpdate).toEqual([]);
     expect(plan.skippedInProgress.map((row) => row.id)).toEqual(["copy-m1"]);
     expect(findGroupProgramCopy([copy], "g1", "m1")?.id).toBe("copy-m1");
+  });
+
+  it("does not treat ukeplan-program copies as the group master program", () => {
+    const masterCopy = program({
+      id: "copy-master",
+      memberId: "m1",
+      notes: "__motusTrainingGroup=g1:p-master",
+    });
+    const weekCopy = program({
+      id: "copy-ukeplan",
+      memberId: "m1",
+      title: "SUB45 · Rolig løp sone 2",
+      notes: "__motusTrainingGroup=g1:inspo-sub45-easy",
+    });
+    const plan = planGroupProgramSync({
+      group: {
+        id: "g1",
+        memberIds: ["m1"],
+        sourceProgramId: "p-master",
+        masterSnapshot: snapshotTrainingProgram(program()),
+      },
+      programs: [weekCopy, masterCopy],
+    });
+    expect(plan.toUpdate.map((row) => row.id)).toEqual(["copy-master"]);
+    expect(listGroupProgramCopies([weekCopy, masterCopy], "g1", "m1").map((row) => row.id)).toEqual([
+      "copy-ukeplan",
+      "copy-master",
+    ]);
   });
 
   it("does not plan any copies until a master snapshot exists", () => {

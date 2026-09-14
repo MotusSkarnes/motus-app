@@ -1,21 +1,35 @@
 import { useMemo, useState } from "react";
-import { Plus, RefreshCw, Trash2, UsersRound } from "lucide-react";
+import { CalendarDays, Plus, RefreshCw, Trash2, UsersRound } from "lucide-react";
 import { memberRecordIsActive } from "../services/memberAccessRules";
 import type { SaveProgramInput } from "../services/appRepository";
+import { findMembersByEmail } from "../app/memberOnboarding";
+import {
+  readPeriodPlansByMemberId,
+  writeActivePeriodPlanIdForMembers,
+  writePeriodPlansByMemberId,
+} from "../app/periodPlanMerge";
 import { parseTrainingGroupTag } from "../app/trainingGroupProgram";
 import {
   buildGroupCopySaveNotes,
   cloneProgramExercisesForGroupCopy,
   findGroupProgramCopy,
+  listGroupProgramCopies,
   planGroupProgramSync,
   serializeTrainingGroupProgramNotes,
   snapshotTrainingProgram,
 } from "../app/trainingGroupProgram";
+import {
+  collectGroupPeriodPlanOptions,
+  planGroupPeriodPlanSync,
+  upsertGroupPeriodPlanInLocalMap,
+} from "../app/trainingGroupPeriodPlan";
 import type { TrainingGroup } from "../app/trainingGroups";
-import type { Member, TrainingProgram } from "../app/types";
+import type { Member, PeriodSchedulePlan, TrainingProgram } from "../app/types";
 import { Card, GradientButton, MotusSectionIcon, OutlineButton } from "../app/ui";
 import { GroupChatPanel } from "./GroupChatPanel";
 import type { GroupChatMessage } from "../app/trainingGroups";
+import { isSupabaseConfigured } from "../services/supabaseClient";
+import { upsertMemberPeriodPlansForTrainer } from "../services/supabaseRepository";
 
 type TrainerGroupsViewProps = {
   groups: TrainingGroup[];
@@ -24,14 +38,22 @@ type TrainerGroupsViewProps = {
   trainerName: string;
   inProgressProgramIds: string[];
   cloudAvailable: boolean;
+  isLocalDemoSession?: boolean;
   status: string | null;
   messagesByGroupId: Map<string, GroupChatMessage[]>;
+  remotePeriodPlansByMemberId?: Record<string, PeriodSchedulePlan[]>;
   onCreateGroup: (name: string) => Promise<TrainingGroup | null>;
   onUpdateMembers: (groupId: string, memberIds: string[]) => Promise<unknown>;
   onSetMaster: (
     groupId: string,
     sourceProgramId: string,
     snapshot: ReturnType<typeof snapshotTrainingProgram>,
+  ) => Promise<unknown>;
+  onSetPeriodPlan: (
+    groupId: string,
+    sourcePeriodPlanId: string,
+    snapshot: PeriodSchedulePlan | null,
+    programs: ReturnType<typeof snapshotTrainingProgram>[],
   ) => Promise<unknown>;
   onDeleteGroup: (groupId: string) => Promise<void>;
   onSaveProgram: (input: SaveProgramInput) => void;
@@ -45,11 +67,14 @@ export function TrainerGroupsView({
   trainerName,
   inProgressProgramIds,
   cloudAvailable,
+  isLocalDemoSession = false,
   status,
   messagesByGroupId,
+  remotePeriodPlansByMemberId = {},
   onCreateGroup,
   onUpdateMembers,
   onSetMaster,
+  onSetPeriodPlan,
   onDeleteGroup,
   onSaveProgram,
   onSendGroupMessage,
@@ -80,6 +105,29 @@ export function TrainerGroupsView({
   const selectedGroup = groups.find((group) => group.id === selectedGroupId) ?? groups[0] ?? null;
   const chatMessages = selectedGroup ? messagesByGroupId.get(selectedGroup.id) ?? [] : [];
 
+  const periodPlansByMemberId = useMemo(() => {
+    const local = readPeriodPlansByMemberId();
+    const remoteKeys = Object.keys(remotePeriodPlansByMemberId);
+    if (!remoteKeys.length) return local;
+    const merged = { ...local };
+    for (const memberId of remoteKeys) {
+      const combined = [...(local[memberId] ?? []), ...(remotePeriodPlansByMemberId[memberId] ?? [])];
+      const byId = new Map(combined.map((plan) => [plan.id, plan]));
+      merged[memberId] = Array.from(byId.values());
+    }
+    return merged;
+  }, [remotePeriodPlansByMemberId]);
+
+  const periodPlanOptions = useMemo(
+    () =>
+      collectGroupPeriodPlanOptions({
+        plansByMemberId: periodPlansByMemberId,
+        members: activeMembers,
+        programs,
+      }),
+    [periodPlansByMemberId, activeMembers, programs],
+  );
+
   async function handleCreate() {
     const created = await onCreateGroup(newName);
     if (created) {
@@ -96,20 +144,20 @@ export function TrainerGroupsView({
       : [...selectedGroup.memberIds, memberId];
     void onUpdateMembers(selectedGroup.id, next);
     if (!removing) return;
-    const copy = findGroupProgramCopy(programs, selectedGroup.id, memberId);
-    if (!copy) return;
-    onSaveProgram({
-      id: copy.id,
-      memberId: copy.memberId,
-      title: copy.title,
-      goal: copy.goal,
-      notes: serializeTrainingGroupProgramNotes({ ...copy, detachFromTrainingGroup: true }),
-      exercises: copy.exercises,
-      imageUrl: copy.imageUrl,
-      programCreatedBy: copy.programCreatedBy,
-      programCreatedByName: copy.programCreatedByName,
-      detachFromTrainingGroup: true,
-    });
+    for (const copy of listGroupProgramCopies(programs, selectedGroup.id, memberId)) {
+      onSaveProgram({
+        id: copy.id,
+        memberId: copy.memberId,
+        title: copy.title,
+        goal: copy.goal,
+        notes: serializeTrainingGroupProgramNotes({ ...copy, detachFromTrainingGroup: true }),
+        exercises: copy.exercises,
+        imageUrl: copy.imageUrl,
+        programCreatedBy: copy.programCreatedBy,
+        programCreatedByName: copy.programCreatedByName,
+        detachFromTrainingGroup: true,
+      });
+    }
   }
 
   function handleChooseProgram(programId: string) {
@@ -119,57 +167,140 @@ export function TrainerGroupsView({
     void onSetMaster(selectedGroup.id, program.id, snapshotTrainingProgram(program));
   }
 
-  function handleUpdateGroup() {
+  function handleChoosePeriodPlan(optionId: string) {
     if (!selectedGroup) return;
-    const snapshot = selectedGroup.masterSnapshot;
-    if (!snapshot) {
-      setSyncStatus("Velg et program først. Ingenting synkes før du trykker Oppdater gruppen.");
+    if (!optionId) {
+      void onSetPeriodPlan(selectedGroup.id, "", null, []);
       return;
     }
-    const plan = planGroupProgramSync({
-      group: selectedGroup,
-      programs,
-      inProgressProgramIds,
-    });
-    const tag = {
-      groupId: selectedGroup.id,
-      masterProgramId: selectedGroup.sourceProgramId ?? "",
-    };
-    for (const memberId of plan.toCreate) {
-      onSaveProgram({
-        memberId,
-        title: snapshot.title,
-        goal: snapshot.goal,
-        notes: buildGroupCopySaveNotes(snapshot, tag),
-        exercises: cloneProgramExercisesForGroupCopy(snapshot.exercises),
-        imageUrl: snapshot.imageUrl,
-        programCreatedBy: "trainer",
-        programCreatedByName: trainerName,
-        groupId: tag.groupId,
-        groupMasterProgramId: tag.masterProgramId,
-      });
+    const option = periodPlanOptions.find((row) => row.id === optionId);
+    if (!option) return;
+    void onSetPeriodPlan(selectedGroup.id, option.id, option.plan, option.programs);
+  }
+
+  async function handleUpdateGroup() {
+    if (!selectedGroup) return;
+    const snapshot = selectedGroup.masterSnapshot;
+    const hasProgram = Boolean(snapshot);
+    const hasPeriodPlan = Boolean(selectedGroup.masterPeriodPlan);
+    if (!hasProgram && !hasPeriodPlan) {
+      setSyncStatus("Velg et program eller en ukeplan først. Ingenting synkes før du trykker Oppdater gruppen.");
+      return;
     }
-    for (const copy of plan.toUpdate) {
-      onSaveProgram({
-        id: copy.id,
-        memberId: copy.memberId,
-        title: snapshot.title,
-        goal: snapshot.goal,
-        notes: buildGroupCopySaveNotes(snapshot, tag),
-        exercises: cloneProgramExercisesForGroupCopy(snapshot.exercises, copy.exercises),
-        imageUrl: snapshot.imageUrl,
-        programCreatedBy: "trainer",
-        programCreatedByName: trainerName,
-        groupId: tag.groupId,
-        groupMasterProgramId: tag.masterProgramId,
+
+    const parts: string[] = [];
+    let skipped = 0;
+
+    if (snapshot) {
+      const plan = planGroupProgramSync({
+        group: selectedGroup,
+        programs,
+        inProgressProgramIds,
       });
+      const tag = {
+        groupId: selectedGroup.id,
+        masterProgramId: selectedGroup.sourceProgramId ?? snapshot.sourceProgramId ?? "",
+      };
+      for (const memberId of plan.toCreate) {
+        onSaveProgram({
+          memberId,
+          title: snapshot.title,
+          goal: snapshot.goal,
+          notes: buildGroupCopySaveNotes(snapshot, tag),
+          exercises: cloneProgramExercisesForGroupCopy(snapshot.exercises),
+          imageUrl: snapshot.imageUrl,
+          programCreatedBy: "trainer",
+          programCreatedByName: trainerName,
+          groupId: tag.groupId,
+          groupMasterProgramId: tag.masterProgramId,
+        });
+      }
+      for (const copy of plan.toUpdate) {
+        onSaveProgram({
+          id: copy.id,
+          memberId: copy.memberId,
+          title: snapshot.title,
+          goal: snapshot.goal,
+          notes: buildGroupCopySaveNotes(snapshot, tag),
+          exercises: cloneProgramExercisesForGroupCopy(snapshot.exercises, copy.exercises),
+          imageUrl: snapshot.imageUrl,
+          programCreatedBy: "trainer",
+          programCreatedByName: trainerName,
+          groupId: tag.groupId,
+          groupMasterProgramId: tag.masterProgramId,
+        });
+      }
+      skipped += plan.skippedInProgress.length;
+      if (plan.toCreate.length) parts.push(`${plan.toCreate.length} nye programkopier`);
+      if (plan.toUpdate.length) parts.push(`${plan.toUpdate.length} program oppdatert`);
     }
-    const skipped = plan.skippedInProgress.length;
-    const parts = [
-      plan.toCreate.length ? `${plan.toCreate.length} nye kopier` : null,
-      plan.toUpdate.length ? `${plan.toUpdate.length} oppdatert` : null,
-      skipped ? `${skipped} hoppet over (pågående økt)` : null,
-    ].filter(Boolean);
+
+    const periodProgramSnapshots = selectedGroup.masterPeriodPlanPrograms ?? [];
+    let periodProgramsCreated = 0;
+    let periodProgramsUpdated = 0;
+    for (const programSnapshot of periodProgramSnapshots) {
+      const masterProgramId = programSnapshot.sourceProgramId?.trim() || `period:${programSnapshot.title}`;
+      if (snapshot && (selectedGroup.sourceProgramId === masterProgramId || snapshot.sourceProgramId === masterProgramId)) {
+        continue;
+      }
+      const tag = { groupId: selectedGroup.id, masterProgramId };
+      for (const memberId of selectedGroup.memberIds) {
+        const copy = findGroupProgramCopy(programs, selectedGroup.id, memberId, masterProgramId);
+        if (copy && inProgressProgramIds.includes(copy.id)) {
+          skipped += 1;
+          continue;
+        }
+        onSaveProgram({
+          id: copy?.id,
+          memberId,
+          title: programSnapshot.title,
+          goal: programSnapshot.goal,
+          notes: buildGroupCopySaveNotes(programSnapshot, tag),
+          exercises: cloneProgramExercisesForGroupCopy(programSnapshot.exercises, copy?.exercises),
+          imageUrl: programSnapshot.imageUrl,
+          programCreatedBy: "trainer",
+          programCreatedByName: trainerName,
+          groupId: tag.groupId,
+          groupMasterProgramId: tag.masterProgramId,
+        });
+        if (copy) periodProgramsUpdated += 1;
+        else periodProgramsCreated += 1;
+      }
+    }
+    if (periodProgramsCreated) parts.push(`${periodProgramsCreated} ukeplan-programmer`);
+    if (periodProgramsUpdated) parts.push(`${periodProgramsUpdated} ukeplan-programmer oppdatert`);
+
+    if (selectedGroup.masterPeriodPlan) {
+      const periodSync = planGroupPeriodPlanSync({
+        group: selectedGroup,
+        plansByMemberId: periodPlansByMemberId,
+      });
+      let localByMember = { ...periodPlansByMemberId };
+      for (const row of periodSync.copies) {
+        const member = members.find((item) => item.id === row.memberId);
+        const relatedIds = member
+          ? Array.from(new Set(findMembersByEmail(member, members).map((item) => item.id)))
+          : [row.memberId];
+        localByMember = upsertGroupPeriodPlanInLocalMap(localByMember, relatedIds, row.plan);
+        writeActivePeriodPlanIdForMembers(relatedIds, row.plan.id);
+        if (isSupabaseConfigured && !isLocalDemoSession) {
+          const persist = await upsertMemberPeriodPlansForTrainer(relatedIds, row.plan, {
+            targetEmail: member?.email,
+          });
+          if (!persist.ok) {
+            setSyncStatus(persist.message || "Kunne ikke lagre ukeplanen til alle i gruppen.");
+            writePeriodPlansByMemberId(localByMember);
+            return;
+          }
+        }
+      }
+      writePeriodPlansByMemberId(localByMember);
+      if (periodSync.copies.length) {
+        parts.push(`ukeplan til ${periodSync.copies.length} medlemmer`);
+      }
+    }
+
+    if (skipped) parts.push(`${skipped} hoppet over (pågående økt)`);
     setSyncStatus(parts.length ? `Gruppen er oppdatert: ${parts.join(", ")}.` : "Ingen endringer å synke.");
   }
 
@@ -197,9 +328,9 @@ export function TrainerGroupsView({
           <div className="min-w-0">
             <h1 className="text-lg font-semibold text-slate-900 sm:text-xl">Treningsgrupper</h1>
             <p className="mt-1 text-sm leading-relaxed text-slate-600">
-              Alle i gruppen får hver sin kopi av samme program. Personlige kilo og logger blir ikke delt. Programmet
-              synkes bare når du trykker <span className="font-semibold">Oppdater gruppen</span>. Du er alltid med i
-              gruppechatten.
+              Alle i gruppen får hver sin kopi av samme program og ukeplan. Personlige kilo og logger blir ikke delt.
+              Endringer synkes bare når du trykker <span className="font-semibold">Oppdater gruppen</span>. Du er alltid
+              med i gruppechatten.
             </p>
             {!cloudAvailable ? (
               <p className="mt-2 text-xs text-amber-800">
@@ -308,11 +439,41 @@ export function TrainerGroupsView({
                   <p className="mt-2 text-xs text-slate-500">
                     {selectedGroup.masterSnapshot
                       ? `Valgt: ${selectedGroup.masterSnapshot.title}. Endringer synkes ikke automatisk.`
-                      : "Ingen synk skjer før du trykker Oppdater gruppen."}
+                      : "Valgfritt hvis gruppen bare skal ha ukeplan."}
                   </p>
                 </div>
 
-                <GradientButton onClick={handleUpdateGroup}>
+                <div>
+                  <div className="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                    <CalendarDays className="h-3.5 w-3.5" />
+                    Gruppeukeplan
+                  </div>
+                  <select
+                    className="min-h-10 w-full rounded-xl border border-slate-200 px-3 text-sm"
+                    value={selectedGroup.sourcePeriodPlanId ?? ""}
+                    onChange={(event) => handleChoosePeriodPlan(event.target.value)}
+                  >
+                    <option value="">Velg ukeplan som skal deles med gruppen…</option>
+                    {selectedGroup.sourcePeriodPlanId &&
+                    !periodPlanOptions.some((option) => option.id === selectedGroup.sourcePeriodPlanId) ? (
+                      <option value={selectedGroup.sourcePeriodPlanId}>
+                        {selectedGroup.masterPeriodPlan?.title || "Valgt ukeplan"}
+                      </option>
+                    ) : null}
+                    {periodPlanOptions.map((option) => (
+                      <option key={option.id} value={option.id}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                  <p className="mt-2 text-xs text-slate-500">
+                    {selectedGroup.masterPeriodPlan
+                      ? `Valgt: ${selectedGroup.masterPeriodPlan.title}. Alle medlemmer får den i Trening → Plan når du oppdaterer gruppen.`
+                      : "Utforsk-planer og ukeplaner du allerede har laget til en klient kan kobles til hele gruppen."}
+                  </p>
+                </div>
+
+                <GradientButton onClick={() => void handleUpdateGroup()}>
                   <RefreshCw className="mr-1 h-4 w-4" />
                   Oppdater gruppen
                 </GradientButton>

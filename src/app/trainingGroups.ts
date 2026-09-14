@@ -1,4 +1,4 @@
-import type { ProgramExercise, TrainingProgram } from "./types";
+import type { PeriodSchedulePlan, ProgramExercise, TrainingProgram } from "./types";
 
 export type TrainingGroupProgramSnapshot = {
   title: string;
@@ -8,6 +8,8 @@ export type TrainingGroupProgramSnapshot = {
   imageUrl?: string;
   conditioningDeliveryMode?: TrainingProgram["conditioningDeliveryMode"];
   activityTemplateKind?: TrainingProgram["activityTemplateKind"];
+  /** Stabil kilde-id når flere programmer synkes fra samme gruppe (ukeplan). */
+  sourceProgramId?: string;
 };
 
 export type TrainingGroup = {
@@ -17,6 +19,9 @@ export type TrainingGroup = {
   memberIds: string[];
   sourceProgramId?: string;
   masterSnapshot?: TrainingGroupProgramSnapshot;
+  sourcePeriodPlanId?: string;
+  masterPeriodPlan?: PeriodSchedulePlan;
+  masterPeriodPlanPrograms?: TrainingGroupProgramSnapshot[];
   createdAt: string;
   updatedAt: string;
 };

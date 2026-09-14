@@ -1,6 +1,7 @@
 import { isSupabaseConfigured, supabaseClient } from "../services/supabaseClient";
 import type { GroupChatMessage, TrainingGroup } from "./trainingGroups";
 import { snapshotFromUnknown } from "./trainingGroupStorage";
+import { parseGroupMasterPeriodPlan, serializeGroupMasterPeriodPlan } from "./trainingGroupPeriodPlan";
 
 function isMissingTableError(message: string): boolean {
   const normalized = message.toLowerCase();
@@ -11,7 +12,17 @@ function isMissingTableError(message: string): boolean {
   );
 }
 
+function isMissingPeriodPlanColumnError(message: string): boolean {
+  const normalized = message.toLowerCase();
+  return (
+    normalized.includes("source_period_plan_id") ||
+    normalized.includes("master_period_plan") ||
+    (normalized.includes("schema cache") && normalized.includes("period_plan"))
+  );
+}
+
 function parseGroupRow(row: Record<string, unknown>, memberIds: string[]): TrainingGroup {
+  const periodPlan = parseGroupMasterPeriodPlan(row.master_period_plan);
   return {
     id: String(row.id ?? "").trim(),
     ownerUserId: String(row.owner_user_id ?? "").trim(),
@@ -19,6 +30,9 @@ function parseGroupRow(row: Record<string, unknown>, memberIds: string[]): Train
     memberIds,
     sourceProgramId: String(row.source_program_id ?? "").trim() || undefined,
     masterSnapshot: snapshotFromUnknown(row.master_snapshot),
+    sourcePeriodPlanId: String(row.source_period_plan_id ?? "").trim() || undefined,
+    masterPeriodPlan: periodPlan.plan,
+    masterPeriodPlanPrograms: periodPlan.programs.length ? periodPlan.programs : undefined,
     createdAt: String(row.created_at ?? new Date().toISOString()),
     updatedAt: String(row.updated_at ?? new Date().toISOString()),
   };
@@ -127,18 +141,27 @@ export async function persistTrainingGroup(group: TrainingGroup): Promise<{ ok: 
   if (!isSupabaseConfigured || !supabaseClient) {
     return { ok: false, error: "Sky er ikke konfigurert.", cloudAvailable: false };
   }
-  const { error } = await supabaseClient.from("training_groups").upsert(
-    {
-      id: group.id,
-      owner_user_id: group.ownerUserId,
-      name: group.name,
-      source_program_id: group.sourceProgramId ?? null,
-      master_snapshot: group.masterSnapshot ?? null,
-      created_at: group.createdAt,
-      updated_at: group.updatedAt,
-    },
-    { onConflict: "id" },
-  );
+  const baseRow = {
+    id: group.id,
+    owner_user_id: group.ownerUserId,
+    name: group.name,
+    source_program_id: group.sourceProgramId ?? null,
+    master_snapshot: group.masterSnapshot ?? null,
+    created_at: group.createdAt,
+    updated_at: group.updatedAt,
+  };
+  const withPeriodPlan = {
+    ...baseRow,
+    source_period_plan_id: group.sourcePeriodPlanId ?? null,
+    master_period_plan: serializeGroupMasterPeriodPlan(group),
+  };
+  let periodPlanSqlNeeded = false;
+  let { error } = await supabaseClient.from("training_groups").upsert(withPeriodPlan, { onConflict: "id" });
+  if (error && isMissingPeriodPlanColumnError(error.message)) {
+    const retry = await supabaseClient.from("training_groups").upsert(baseRow, { onConflict: "id" });
+    error = retry.error;
+    periodPlanSqlNeeded = !error;
+  }
   if (error) {
     return { ok: false, error: error.message, cloudAvailable: !isMissingTableError(error.message) };
   }
@@ -154,6 +177,13 @@ export async function persistTrainingGroup(group: TrainingGroup): Promise<{ ok: 
     if (memberError) {
       return { ok: false, error: memberError.message, cloudAvailable: true };
     }
+  }
+  if (periodPlanSqlNeeded) {
+    return {
+      ok: false,
+      error: "Kjør nyeste training_groups_schema.sql i Supabase for å lagre gruppeukeplan i skyen.",
+      cloudAvailable: true,
+    };
   }
   return { ok: true, cloudAvailable: true };
 }
