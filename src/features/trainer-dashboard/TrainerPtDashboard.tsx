@@ -16,7 +16,7 @@ import {
 } from "lucide-react";
 import { MOTUS } from "../../app/data";
 import type { MemberCustomerTypeFilter, MemberCustomerTypeSort } from "../../app/memberCustomerTier";
-import type { Member } from "../../app/types";
+import type { CustomerSubTab, Member } from "../../app/types";
 import type { TrainerTodoModel } from "../TrainerHomeOverview";
 import type { CustomerFollowUpItem, CustomerMetrics, CustomerTimelineItem } from "./buildCustomerDashboardData";
 
@@ -52,7 +52,7 @@ export type TrainerPtDashboardProps = {
   onToggleInactive?: () => void;
   listFooter?: ReactNode;
   showCustomerChrome: boolean;
-  customerSubTab?: "overview" | "programs" | "workouts" | "messages";
+  customerSubTab?: CustomerSubTab;
   customerName?: string;
   customerEmail?: string;
   customerPhone?: string;

@@ -162,6 +162,7 @@ import {
 import { TrainerPtDashboard, type TrainerListFilterTab, type TrainerPtListMember } from "./trainer-dashboard/TrainerPtDashboard";
 import { TrainerPtDetailPortal } from "./trainer-dashboard/TrainerPtDetailPortal";
 import { TrainerStatisticsView } from "./TrainerStatisticsView";
+import { TrainerMemberProgressView } from "./TrainerMemberProgressView";
 import { TrainerExerciseBankView } from "./TrainerExerciseBankView";
 import { TrainerPeriodPlanCalendar } from "./TrainerPeriodPlanCalendar";
 import { TrainerMealPlanEditor } from "./TrainerMealPlanEditor";
@@ -5289,7 +5290,7 @@ function pickFirstName(value: unknown): string {
           }}
           subTabs={
             selectedMember ? (
-              <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-5">
                 <PillButton active={customerSubTab === "overview"} onClick={() => setCustomerSubTab("overview")}>
                   Oversikt
                 </PillButton>
@@ -5309,6 +5310,14 @@ function pickFirstName(value: unknown): string {
                   }}
                 >
                   Økter
+                </PillButton>
+                <PillButton
+                  active={customerSubTab === "progress"}
+                  onClick={() => {
+                    setCustomerSubTab("progress");
+                  }}
+                >
+                  Progresjon
                 </PillButton>
                 <PillButton
                   active={customerSubTab === "messages"}
@@ -5361,7 +5370,8 @@ function pickFirstName(value: unknown): string {
           onPeriodPresetChange={setStatsPeriodPreset}
           onOpenClient={(memberId) => {
             setSelectedMemberId(memberId);
-                    setTrainerTab("customers");
+            setTrainerTab("customers");
+            setCustomerSubTab("progress");
           }}
           onOpenCustomers={() => setTrainerTab("customers")}
           onOpenPrograms={() => setTrainerTab("programs")}
@@ -6191,7 +6201,7 @@ function pickFirstName(value: unknown): string {
                 ) : null}
 
                 <div className="motus-pt-dash-legacy-hide-xl rounded-xl border bg-slate-50/80 p-2" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
-                  <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                  <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-5">
                     <PillButton active={customerSubTab === "overview"} onClick={() => setCustomerSubTab("overview")}>Oversikt og logg</PillButton>
                     <PillButton
                       active={customerSubTab === "programs"}
@@ -6203,6 +6213,7 @@ function pickFirstName(value: unknown): string {
                       Program & planer
                     </PillButton>
                     <PillButton active={customerSubTab === "workouts"} onClick={() => setCustomerSubTab("workouts")}>Økter</PillButton>
+                    <PillButton active={customerSubTab === "progress"} onClick={() => setCustomerSubTab("progress")}>Progresjon</PillButton>
                     <PillButton active={customerSubTab === "messages"} onClick={() => setCustomerSubTab("messages")}>
                       <span className="inline-flex items-center gap-1.5">
                         Meldinger
@@ -7200,6 +7211,14 @@ function pickFirstName(value: unknown): string {
                       )}
                     </div>
                   </div>
+                ) : null}
+
+                {customerSubTab === "progress" && selectedMember ? (
+                  <TrainerMemberProgressView
+                    memberName={selectedMemberProfile?.name ?? selectedMember.name}
+                    logs={selectedLogs}
+                    exercises={exercises}
+                  />
                 ) : null}
 
                 {customerSubTab === "nutrition" && selectedMember && selectedMemberNutritionAccess ? (

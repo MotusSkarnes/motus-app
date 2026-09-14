@@ -11575,6 +11575,125 @@ html:has(.motus-trainer-app) {
   color: #0f766e;
 }
 
+.motus-trainer-progress .motus-member-history-section-title {
+  font-size: 1.125rem;
+}
+
+.motus-trainer-progress .motus-member-history-kpi-row {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.motus-trainer-progress .motus-member-history-chart {
+  overflow-x: auto;
+}
+
+.motus-trainer-progress .motus-member-history-chart-col {
+  min-width: 1.15rem;
+}
+
+@media (min-width: 900px) {
+  .motus-trainer-progress .motus-member-history-kpi-row {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+.motus-trainer-progress-bar-value {
+  font-size: 0.625rem;
+  font-weight: 700;
+  line-height: 1;
+  color: #0f766e;
+}
+
+.motus-trainer-progress-spark {
+  display: block;
+  width: 5.25rem;
+  height: 1.75rem;
+  flex-shrink: 0;
+}
+
+@media (max-width: 639px) {
+  .motus-trainer-progress-spark {
+    display: none;
+  }
+}
+
+.motus-trainer-progress-spark.is-empty {
+  color: #94a3b8;
+  font-size: 0.75rem;
+  line-height: 1.75rem;
+  text-align: center;
+}
+
+.motus-trainer-progress-lifts {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.motus-trainer-progress-lift {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  gap: 0.75rem;
+  border-radius: 0.875rem;
+  border: 1px solid rgba(15, 23, 42, 0.06);
+  background: #f8fafc;
+  padding: 0.7rem 0.8rem;
+  text-align: left;
+}
+
+.motus-trainer-progress-lift:hover {
+  border-color: rgba(13, 148, 136, 0.28);
+  background: #ffffff;
+}
+
+.motus-trainer-progress-lift-icon {
+  display: inline-flex;
+  height: 2rem;
+  width: 2rem;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0.75rem;
+  background: rgba(13, 148, 136, 0.12);
+  color: #0f766e;
+}
+
+.motus-trainer-progress-lift-name {
+  display: block;
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.motus-trainer-progress-lift-meta {
+  display: block;
+  margin-top: 0.125rem;
+  font-size: 0.75rem;
+  color: #64748b;
+}
+
+.motus-trainer-progress-lift-delta {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #64748b;
+}
+
+.motus-trainer-progress-lift-delta.is-up {
+  color: #0e8f73;
+}
+
+.motus-trainer-progress-lift-delta.is-down {
+  color: #be185d;
+}
+
 /* PT Statistikk dashboard — hvit bakgrunn, kort og grafer */
 .motus-trainer-stats {
   padding: 0.25rem 0 1.5rem;

@@ -21,7 +21,7 @@ export type TrainerTab =
   | "settings"
   | "messages"
   | "groups";
-export type CustomerSubTab = "overview" | "profile" | "programs" | "workouts" | "messages" | "nutrition";
+export type CustomerSubTab = "overview" | "profile" | "programs" | "workouts" | "progress" | "messages" | "nutrition";
 
 /** Vist på klientfane-raden i trenervisning (Klienter → valgt kunde). */
 export const CUSTOMER_NUTRITION_TAB_LABEL = "Ernæring";
