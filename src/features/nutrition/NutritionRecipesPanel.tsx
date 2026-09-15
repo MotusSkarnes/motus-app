@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { ArrowLeft, Copy, Pencil, Soup, Trash2 } from "lucide-react";
+import { ArrowLeft, Copy, Pencil, Trash2 } from "lucide-react";
 import { buildDefaultFoodBankItems } from "../../app/foodBankSeed";
 import type { MealPlanTargets } from "../../app/mealPlanTypes";
 import { buildScaledRecipeView, resolveRecipeScalingMode } from "../../app/recipeMealScaling";
@@ -22,6 +22,7 @@ import { useInspirationRecipeItems, type InspirationRecipeItem } from "../../app
 import { useFoodBankItems } from "../../app/useFoodBankItems";
 import { RecipeCookPanel } from "../../components/RecipeCookPanel";
 import { RecipeMacroSummary } from "../../components/RecipeMacroSummary";
+import { RecipePhoto } from "../../components/RecipePhoto";
 import { Card, EmptyState, OutlineButton, PillButton } from "../../app/ui";
 import "../../foodbank.css";
 
@@ -101,15 +102,7 @@ function RecipeDetail({
         ) : null}
       </div>
       <article className="overflow-hidden rounded-2xl border bg-white shadow-sm" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
-        {item.imageUrl ? (
-          <div className="aspect-[16/10] w-full overflow-hidden bg-slate-100">
-            <img src={item.imageUrl} alt="" className="h-full w-full object-cover" loading="lazy" decoding="async" />
-          </div>
-        ) : (
-          <div className="flex aspect-[16/10] items-center justify-center bg-teal-50">
-            <Soup className="h-14 w-14 text-teal-600/60" aria-hidden />
-          </div>
-        )}
+        <RecipePhoto src={item.imageUrl} size="hero" alt="" />
         <div className="p-4 sm:p-5">
           <div className="flex flex-wrap items-center gap-2">
             <RecipeMealBadges slots={mealSlots} />
@@ -161,16 +154,8 @@ function RecipeCard({
       style={{ borderColor: "rgba(15,23,42,0.08)" }}
     >
       <button type="button" onClick={onSelect} className="flex flex-1 flex-col text-left">
-      {item.imageUrl ? (
-        <div className="aspect-[16/10] w-full overflow-hidden bg-slate-100">
-          <img src={item.imageUrl} alt="" className="h-full w-full object-cover" loading="lazy" decoding="async" />
-        </div>
-      ) : (
-        <div className="flex aspect-[16/10] items-center justify-center bg-gradient-to-br from-teal-50 to-white">
-          <Soup className="h-10 w-10 text-teal-600/50" aria-hidden />
-        </div>
-      )}
-      <div className="flex flex-1 flex-col p-3 sm:p-4">
+        <RecipePhoto src={item.imageUrl} size="card" alt="" />
+        <div className="flex flex-1 flex-col p-3 sm:p-4">
         <div className="flex flex-wrap items-center gap-1.5">
           {mealSlots.map((slot) => (
             <span key={slot} className="rounded-full bg-teal-700/90 px-2 py-0.5 text-[10px] font-semibold text-white">
@@ -195,7 +180,7 @@ function RecipeCard({
             hint={adjusted ? "Tilpasset ditt måltidsmål" : undefined}
           />
         ) : null}
-      </div>
+        </div>
       </button>
       {canManage && (onEdit || onDuplicate || onDelete) ? (
         <div className="border-t px-3 py-2" style={{ borderColor: "rgba(15,23,42,0.06)" }}>

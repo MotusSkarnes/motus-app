@@ -1,5 +1,6 @@
 import { Fragment, useEffect, useRef } from "react";
-import { Eye, MoreHorizontal, Plus, Soup, UtensilsCrossed } from "lucide-react";
+import { Eye, MoreHorizontal, Plus, Soup } from "lucide-react";
+import { RecipePhoto } from "../../components/RecipePhoto";
 import type { InspirationRecipeItem } from "../../app/inspirationRecipeItems";
 import { getPlannerMealSlotsForPlan } from "../../app/mealPlanMealSlots";
 import { findMealForSlot, mealCellDisplayTitle, resolveMealCellImage } from "../../app/mealPlanWeekPlanner";
@@ -91,13 +92,7 @@ export function TrainerMealPlanWeekGrid({
                   >
                     {hasFood ? (
                       <>
-                        {imageSrc ? (
-                          <img src={imageSrc} alt="" className="motus-pt-planner-grid__img" loading="lazy" />
-                        ) : (
-                          <div className="motus-pt-planner-grid__img motus-pt-planner-grid__img--placeholder" aria-hidden>
-                            <UtensilsCrossed className="h-5 w-5 text-white/80" />
-                          </div>
-                        )}
+                        <RecipePhoto src={imageSrc} size="tile" alt="" />
                         <div className="motus-pt-planner-grid__card-body">
                           <span className="motus-pt-planner-grid__card-title">{title}</span>
                           <span className="motus-pt-planner-grid__card-meta">

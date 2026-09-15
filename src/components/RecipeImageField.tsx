@@ -1,3 +1,5 @@
+import { RecipePhoto } from "./RecipePhoto";
+
 type RecipeImageFieldProps = {
   imageUrl: string;
   onImageUrlChange: (url: string) => void;
@@ -18,7 +20,9 @@ export function RecipeImageField({
   return (
     <div className="motus-foodbank-image-field">
       <span className="motus-foodbank-field-label">Bilde på oppskrift</span>
-      <p className="motus-foodbank-image-field-hint">Valgfritt. Vises i oppskriftslisten og på detaljsiden.</p>
+      <p className="motus-foodbank-image-field-hint">
+        Valgfritt. Vises som kvadrat (1:1) i oppskriftslisten, på detaljsiden og i matplanen — samme beskjæring overalt.
+      </p>
       <div className="motus-foodbank-image-field-row">
         <label className="motus-foodbank-image-upload">
           <input
@@ -47,11 +51,7 @@ export function RecipeImageField({
           </button>
         ) : null}
       </div>
-      {hasPhoto ? (
-        <div className="mt-2 overflow-hidden rounded-xl border border-slate-100 bg-slate-50">
-          <img src={imageUrl} alt="" className="max-h-40 w-full object-cover" />
-        </div>
-      ) : null}
+      {hasPhoto ? <RecipePhoto src={imageUrl} size="preview" alt="" /> : null}
     </div>
   );
 }

@@ -78,6 +78,7 @@ import { RecipeAvoidanceWarning } from "../components/RecipeAvoidanceWarning";
 import { RecipeCookPanel } from "../components/RecipeCookPanel";
 import { RecipeIngredientList } from "../components/RecipeIngredientList";
 import { RecipeMacroBlocks } from "../components/RecipeMacroBlocks";
+import { RecipePhoto } from "../components/RecipePhoto";
 import { MealMacroMiniBar, TrainerMealPlanMacroPanel } from "./TrainerMealPlanMacroPanel";
 import { TrainerMealPlanNutritionOverview, type MicronutrientOverviewRow } from "./nutrition/TrainerMealPlanNutritionOverview";
 import { TrainerMealPlanWeekGrid, type MealGridSelection } from "./nutrition/TrainerMealPlanWeekGrid";
@@ -1962,7 +1963,7 @@ export function TrainerMealPlanEditor({
                         <button
                           key={recipe.id}
                           type="button"
-                          className={`flex w-full flex-col items-start gap-0.5 rounded-xl border px-3 py-2 text-left text-sm ${
+                          className={`flex w-full items-center gap-2 rounded-xl border px-3 py-2 text-left text-sm ${
                             selected
                               ? "border-teal-300 bg-teal-50 ring-1 ring-teal-200"
                               : "border-slate-100 hover:bg-teal-50"
@@ -1974,8 +1975,11 @@ export function TrainerMealPlanEditor({
                             setRecipePreviewId(recipe.id);
                           }}
                         >
-                          <span className="font-medium text-slate-800">{recipe.title}</span>
-                          <span className="text-xs text-slate-500">{recipe.tag}</span>
+                          <RecipePhoto src={recipe.imageUrl} size="swap" alt="" />
+                          <span className="min-w-0">
+                            <span className="block font-medium text-slate-800">{recipe.title}</span>
+                            <span className="text-xs text-slate-500">{recipe.tag}</span>
+                          </span>
                         </button>
                       );
                     })
@@ -1984,6 +1988,7 @@ export function TrainerMealPlanEditor({
                 <div className="motus-recipe-picker-preview max-h-[min(52vh,28rem)] overflow-y-auto">
                   {previewRecipe ? (
                     <div className="space-y-3">
+                      <RecipePhoto src={previewRecipe.imageUrl} size="preview" alt="" />
                       <div>
                         <h4 className="text-sm font-bold text-slate-900">{previewRecipe.title}</h4>
                         {previewRecipe.description ? (
@@ -2185,6 +2190,7 @@ export function TrainerMealPlanEditor({
               </button>
             </div>
             <div className="motus-foodbank-modal-body space-y-3">
+              <RecipePhoto src={recipeReadOnly.imageUrl} size="hero" alt="" />
               {recipeReadOnly.description ? <p className="text-sm text-slate-600">{recipeReadOnly.description}</p> : null}
               <RecipeCookPanel item={recipeReadOnly} foodItems={foodItemsForMacros} />
             </div>

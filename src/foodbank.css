@@ -531,6 +531,66 @@
   overflow: hidden;
 }
 
+/* Felles 1:1-ramme for oppskriftsbilder — samme beskjæring i liste, detalj og matplan. */
+.motus-recipe-photo {
+  position: relative;
+  overflow: hidden;
+  aspect-ratio: 1 / 1;
+  background: #f1f5f9;
+}
+
+.motus-recipe-photo__img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+}
+
+.motus-recipe-photo__placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(160deg, #ecfdf5 0%, #f8fafc 70%);
+}
+
+.motus-recipe-photo--hero {
+  width: min(100%, 22rem);
+  margin-inline: auto;
+  border-radius: 1rem;
+}
+
+.motus-recipe-photo--card {
+  width: 100%;
+}
+
+.motus-recipe-photo--preview {
+  width: min(100%, 16rem);
+  border-radius: 1rem;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+}
+
+.motus-recipe-photo--tile {
+  width: 4.5rem;
+  max-width: 100%;
+  margin-inline: auto;
+  border-radius: 0.45rem;
+}
+
+.motus-recipe-photo--thumb {
+  width: 4.5rem;
+  flex-shrink: 0;
+  border-radius: 0.75rem;
+}
+
+.motus-recipe-photo--swap {
+  width: 2.75rem;
+  flex-shrink: 0;
+  border-radius: 0.5rem;
+}
+
 .motus-recipe-composer-body {
   max-height: min(82vh, 46rem) !important;
   padding-right: 0.15rem;
@@ -2959,12 +3019,20 @@
   width: 4.5rem;
   height: 4.5rem;
   flex-shrink: 0;
+  overflow: hidden;
+  border-radius: 0.75rem;
+}
+
+.motus-matplan-meal-card__media .motus-recipe-photo {
+  width: 100%;
+  height: 100%;
 }
 
 .motus-matplan-meal-card__img {
   width: 100%;
   height: 100%;
   object-fit: cover;
+  object-position: center;
   border-radius: 0.75rem;
 }
 
@@ -3360,8 +3428,10 @@
 
 .motus-pt-planner-grid__img {
   width: 100%;
-  height: 2.5rem;
+  aspect-ratio: 1 / 1;
+  height: auto;
   object-fit: cover;
+  object-position: center;
   border-radius: 0.45rem;
 }
 

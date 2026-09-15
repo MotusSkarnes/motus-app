@@ -1,9 +1,9 @@
-import { compressImageDataUrl } from "./imageCompress";
+import { cropImageDataUrlToSquare } from "./imageCompress";
 
-/** Klargjør oppskrifts-/inspirasjonsbilde for lagring (komprimerer data-URL). */
+/** Klargjør oppskriftsbilde for lagring: 1:1-beskjæring + komprimering. */
 export async function resolveInspirationImageForStorage(value: string): Promise<string | undefined> {
   const trimmed = value.trim();
   if (!trimmed) return undefined;
   if (!trimmed.startsWith("data:image/")) return trimmed;
-  return compressImageDataUrl(trimmed);
+  return cropImageDataUrlToSquare(trimmed, 960, 0.82);
 }

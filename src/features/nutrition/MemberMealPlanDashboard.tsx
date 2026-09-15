@@ -11,7 +11,6 @@ import {
   Plus,
   Share2,
   ShoppingCart,
-  UtensilsCrossed,
   Wheat,
   X,
 } from "lucide-react";
@@ -33,6 +32,7 @@ import { useInspirationRecipeItems } from "../../app/inspirationRecipeItems";
 import type { InspirationRecipeItem } from "../../app/inspirationRecipeItems";
 import { computeRecipeMacros } from "../../app/recipeMacros";
 import { RecipeCookPanel } from "../../components/RecipeCookPanel";
+import { RecipePhoto } from "../../components/RecipePhoto";
 import { parseInspirationRecipeFoodId } from "../../app/mealPlanRecipeEntry";
 import {
   MEAL_PLAN_STATE_CHANGED_EVENT,
@@ -923,13 +923,7 @@ export function MemberMealPlanDashboard({ plan, memberId, onOpenAvoidances, onRe
                 className={`motus-matplan-meal-card motus-matplan-meal-card--v2 ${isExpanded ? "motus-matplan-meal-card--expanded" : ""} ${logged ? "motus-matplan-meal-card--logged" : ""} ${hasPartialLog ? "motus-matplan-meal-card--partial" : ""}`}
               >
                 <div className="motus-matplan-meal-card__media">
-                  {imageSrc ? (
-                    <img src={imageSrc} alt="" className="motus-matplan-meal-card__img" loading="lazy" />
-                  ) : (
-                    <div className="motus-matplan-meal-card__img motus-matplan-meal-card__img--placeholder" aria-hidden>
-                      <UtensilsCrossed className="h-7 w-7 text-white/75" strokeWidth={1.5} />
-                    </div>
-                  )}
+                  <RecipePhoto src={imageSrc} size="thumb" alt="" />
                 </div>
                 <div className="motus-matplan-meal-card__body">
                   <div className="motus-matplan-meal-card__top">
@@ -1350,13 +1344,7 @@ export function MemberMealPlanDashboard({ plan, memberId, onOpenAvoidances, onRe
                             className="motus-matplan-swap-item motus-pressable"
                             onClick={() => handleApplySwap(dayId, meal.id)}
                           >
-                            {img ? (
-                              <img src={img} alt="" className="motus-matplan-swap-thumb" />
-                            ) : (
-                              <div className="motus-matplan-swap-thumb motus-matplan-swap-thumb--placeholder">
-                                <UtensilsCrossed className="h-4 w-4 text-white/80" />
-                              </div>
-                            )}
+                            <RecipePhoto src={img} size="swap" alt="" />
                             <div className="min-w-0 flex-1 text-left">
                               <div className="font-semibold text-slate-900">{mealDisplayTitle(meal)}</div>
                               <div className="text-xs text-slate-500">
@@ -1435,6 +1423,7 @@ export function MemberMealPlanDashboard({ plan, memberId, onOpenAvoidances, onRe
               className="motus-foodbank-modal-body space-y-3 overflow-y-auto overscroll-contain pb-6"
               style={{ maxHeight: "calc(100dvh - 8rem)", paddingBottom: "max(1.5rem, env(safe-area-inset-bottom))" }}
             >
+              <RecipePhoto src={activeRecipe.imageUrl} size="hero" alt="" />
               {activeRecipe.description ? <p className="text-sm text-slate-600">{activeRecipe.description}</p> : null}
               <RecipeCookPanel item={activeRecipe} foodItems={foodItems} />
             </div>
