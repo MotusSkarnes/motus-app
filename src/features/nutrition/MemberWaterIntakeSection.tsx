@@ -13,7 +13,7 @@ import { resolveNutritionFromFoodItems } from "../../app/memberNutritionRehydrat
 import { foodWaterPer100g } from "../../app/foodBankWater";
 
 export const WATER_TARGET_L = 2.5;
-export const WATER_STEP_L = 0.2;
+export const WATER_STEP_L = 0.1;
 
 function todayKey(): string {
   return toIsoDateKey(new Date());
