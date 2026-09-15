@@ -83,6 +83,53 @@ export function savedMealsForSlot(savedMeals: MemberSavedMeal[], _mealSlotId?: s
   return [...savedMeals].sort((a, b) => Date.parse(b.updatedAt) - Date.parse(a.updatedAt));
 }
 
+export type LoggedMealSaveRow = {
+  id: string;
+  included: boolean;
+  name: string;
+  grams: number;
+  source: MemberQuickFoodLogEntry["source"];
+  nutritionPer100g: MemberQuickFoodLogEntry["nutritionPer100g"];
+};
+
+export function loggedMealSaveRowsFromEntries(entries: MemberQuickFoodLogEntry[]): LoggedMealSaveRow[] {
+  return entries.map((entry) => ({
+    id: entry.id,
+    included: true,
+    name: entry.name,
+    grams: entry.grams,
+    source: entry.source,
+    nutritionPer100g: { ...entry.nutritionPer100g },
+  }));
+}
+
+export function includedLoggedMealSaveRows(rows: LoggedMealSaveRow[]): LoggedMealSaveRow[] {
+  return rows.filter((row) => row.included && Number.isFinite(row.grams) && row.grams > 0);
+}
+
+export function createSavedMealFromSaveRows(
+  rows: LoggedMealSaveRow[],
+  name: string,
+  mealSlotId?: string,
+): MemberSavedMeal | null {
+  const included = includedLoggedMealSaveRows(rows);
+  const trimmedName = name.trim();
+  if (!included.length || !trimmedName) return null;
+  return createSavedMealFromQuickLogs(
+    included.map((row) => ({
+      id: row.id,
+      name: row.name,
+      grams: row.grams,
+      source: row.source,
+      mealId: mealSlotId?.trim() || undefined,
+      loggedAt: new Date().toISOString(),
+      nutritionPer100g: { ...row.nutritionPer100g },
+    })),
+    trimmedName,
+    mealSlotId,
+  );
+}
+
 export function createSavedMealFromQuickLogs(
   entries: MemberQuickFoodLogEntry[],
   name: string,

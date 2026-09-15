@@ -14,6 +14,7 @@ import { persistMemberMealPlanStateLocalAndScheduleCloud, syncMemberMealPlanStat
 import { MEAL_PLAN_STATE_CHANGED_EVENT } from "../../app/memberMealPlanState";
 import type { MemberSavedMeal } from "../../app/memberSavedMeals";
 import { addMemberSavedMeal, addQuickFoodLogs, removeMemberSavedMeal, updateQuickFoodLog } from "../../app/memberMealPlanTracking";
+import { SaveLoggedMealCopyButton, SaveLoggedMealModal } from "./SaveLoggedMealModal";
 import type { MealPlanTargets } from "../../app/mealPlanTypes";
 import { useFoodBankItems } from "../../app/useFoodBankItems";
 import { GradientButton } from "../../app/ui";
@@ -85,6 +86,11 @@ export function LogMealPanel({
   const [mealSlotId, setMealSlotId] = useState(MEMBER_MEAL_SLOTS[0]!.id);
   const [draftBySlot, setDraftBySlot] = useState<Record<string, MealDraftItem[]>>({});
   const [status, setStatus] = useState<string | null>(null);
+  const [saveLoggedMeal, setSaveLoggedMeal] = useState<{
+    mealSlotId: string;
+    mealLabel: string;
+    entries: MemberQuickFoodLogEntry[];
+  } | null>(null);
   const [state, setState] = useState<MemberMealPlanState>(() => loadMemberMealPlanState(memberId));
   const [dateKey, setDateKey] = useState(() =>
     clampLogDateKey(preferredDateKey?.trim() || todayKey()),
@@ -316,7 +322,7 @@ export function LogMealPanel({
         />
       ) : null}
 
-      {hasLogs && !open ? (
+      {hasLogs ? (
         <section className="motus-log-meal-panel__summary" aria-label={`Logget ${dateLabel}`}>
           <header className="motus-log-meal-panel__summary-head">
             <div className="motus-log-meal-panel__summary-title-wrap">
@@ -331,10 +337,12 @@ export function LogMealPanel({
                 </p>
               </div>
             </div>
-            <GradientButton type="button" className="motus-log-meal-cta motus-log-meal-cta--compact" onClick={() => setOpen(true)}>
-              <Plus className="h-4 w-4" aria-hidden />
-              Logg et måltid
-            </GradientButton>
+            {!open ? (
+              <GradientButton type="button" className="motus-log-meal-cta motus-log-meal-cta--compact" onClick={() => setOpen(true)}>
+                <Plus className="h-4 w-4" aria-hidden />
+                Logg et måltid
+              </GradientButton>
+            ) : null}
           </header>
           <div className="motus-log-meal-panel__groups">
             {MEMBER_MEAL_SLOTS.map((slot) => {
@@ -344,7 +352,13 @@ export function LogMealPanel({
               return (
                 <article key={slot.id} className="motus-log-meal-panel__meal-group">
                   <header className="motus-log-meal-panel__meal-head">
-                    <h3 className="motus-log-meal-panel__meal-title">{slot.label}</h3>
+                    <div className="motus-log-meal-panel__meal-title-row">
+                      <h3 className="motus-log-meal-panel__meal-title">{slot.label}</h3>
+                      <SaveLoggedMealCopyButton
+                        mealLabel={slot.label}
+                        onClick={() => setSaveLoggedMeal({ mealSlotId: slot.id, mealLabel: slot.label, entries })}
+                      />
+                    </div>
                     <span className="motus-log-meal-panel__meal-sum">
                       {formatMacro(slotMacros.kcal, 0)} kcal · P {formatMacro(slotMacros.protein, 0)} g
                     </span>
@@ -356,7 +370,19 @@ export function LogMealPanel({
             {(logsBySlot.get("other") ?? []).length > 0 ? (
               <article className="motus-log-meal-panel__meal-group motus-log-meal-panel__meal-group--other">
                 <header className="motus-log-meal-panel__meal-head">
-                  <h3 className="motus-log-meal-panel__meal-title">Annet</h3>
+                  <div className="motus-log-meal-panel__meal-title-row">
+                    <h3 className="motus-log-meal-panel__meal-title">Annet</h3>
+                    <SaveLoggedMealCopyButton
+                      mealLabel="Annet"
+                      onClick={() =>
+                        setSaveLoggedMeal({
+                          mealSlotId: "other",
+                          mealLabel: "Annet",
+                          entries: logsBySlot.get("other") ?? [],
+                        })
+                      }
+                    />
+                  </div>
                   <span className="motus-log-meal-panel__meal-sum">
                     {formatMacro(sumQuickFoodLogMacros(logsBySlot.get("other")).kcal, 0)} kcal
                   </span>
@@ -427,6 +453,17 @@ export function LogMealPanel({
       ) : null}
 
       {status ? <p className="motus-log-meal-panel__status">{status}</p> : null}
+
+      {saveLoggedMeal ? (
+        <SaveLoggedMealModal
+          open
+          mealLabel={saveLoggedMeal.mealLabel}
+          mealSlotId={saveLoggedMeal.mealSlotId === "other" ? undefined : saveLoggedMeal.mealSlotId}
+          entries={saveLoggedMeal.entries}
+          onClose={() => setSaveLoggedMeal(null)}
+          onSave={handleSaveTemplate}
+        />
+      ) : null}
     </div>
   );
 }

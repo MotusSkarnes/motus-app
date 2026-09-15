@@ -3859,11 +3859,212 @@
   border-bottom: 1px solid #d1fae5;
 }
 
+.motus-log-meal-panel__meal-title-row {
+  display: flex;
+  align-items: center;
+  gap: 0.15rem;
+  min-width: 0;
+}
+
 .motus-log-meal-panel__meal-title {
   margin: 0;
   font-size: 0.8125rem;
   font-weight: 700;
   color: #0f766e;
+}
+
+.motus-save-logged-meal__copy {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.75rem;
+  height: 1.75rem;
+  flex-shrink: 0;
+  border: 0;
+  border-radius: 0.45rem;
+  background: transparent;
+  color: #0f766e;
+  cursor: pointer;
+}
+
+.motus-save-logged-meal__copy:hover {
+  background: rgba(15, 118, 110, 0.12);
+}
+
+.motus-matplan-meal-card__slot-row {
+  display: flex;
+  align-items: center;
+  gap: 0.1rem;
+  min-width: 0;
+}
+
+.motus-matplan-meal-card__slot-row .motus-save-logged-meal__copy {
+  width: 1.5rem;
+  height: 1.5rem;
+  color: #e11d48;
+}
+
+.motus-matplan-meal-card__slot-row .motus-save-logged-meal__copy:hover {
+  background: rgba(225, 29, 72, 0.1);
+}
+
+.motus-save-logged-meal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 10040;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  background: rgba(15, 23, 42, 0.55);
+  padding: 2rem 1rem;
+}
+
+@media (min-width: 640px) {
+  .motus-save-logged-meal-backdrop {
+    align-items: center;
+  }
+}
+
+.motus-save-logged-meal-modal__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 1.1rem 1.15rem 0.85rem;
+  background: linear-gradient(155deg, rgba(48, 227, 190, 0.12) 0%, rgba(217, 18, 120, 0.08) 55%, #fff 100%);
+}
+
+.motus-save-logged-meal-modal__title {
+  margin: 0;
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.motus-save-logged-meal-modal__lead {
+  margin: 0.4rem 0 0;
+  font-size: 0.8125rem;
+  line-height: 1.45;
+  color: #475569;
+}
+
+.motus-save-logged-meal-modal__close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  flex-shrink: 0;
+  border: 0;
+  border-radius: 0.55rem;
+  background: transparent;
+  color: #64748b;
+  cursor: pointer;
+}
+
+.motus-save-logged-meal-modal__close:hover {
+  background: #f1f5f9;
+  color: #0f172a;
+}
+
+.motus-save-logged-meal-modal__body {
+  padding: 0.9rem 1.15rem 1.15rem;
+}
+
+.motus-save-logged-meal-modal__list {
+  list-style: none;
+  margin: 0.75rem 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.motus-save-logged-meal-modal__row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.45rem 0.5rem;
+  border-radius: 0.65rem;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+}
+
+.motus-save-logged-meal-modal__row--excluded {
+  opacity: 0.55;
+}
+
+.motus-save-logged-meal-modal__check {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  min-width: 0;
+  cursor: pointer;
+}
+
+.motus-save-logged-meal-modal__check input {
+  width: 1.05rem;
+  height: 1.05rem;
+  flex-shrink: 0;
+  accent-color: #0d9488;
+}
+
+.motus-save-logged-meal-modal__name {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: #0f172a;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.motus-save-logged-meal-modal__kcal {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  color: #64748b;
+  white-space: nowrap;
+}
+
+.motus-save-logged-meal-modal__grams {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #475569;
+}
+
+.motus-save-logged-meal-modal__grams input {
+  width: 4.25rem;
+  height: 2rem;
+  border: 1px solid #cbd5e1;
+  border-radius: 0.45rem;
+  padding: 0 0.4rem;
+  font-size: 0.8125rem;
+  color: #0f172a;
+}
+
+.motus-save-logged-meal-modal__grams input:disabled {
+  background: #f1f5f9;
+  color: #94a3b8;
+}
+
+.motus-save-logged-meal-modal__error {
+  margin: 0.6rem 0 0;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #be123c;
+}
+
+.motus-save-logged-meal-modal__actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.45rem;
+  margin-top: 0.9rem;
 }
 
 .motus-log-meal-panel__meal-sum {

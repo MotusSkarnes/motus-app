@@ -19,7 +19,7 @@ import { MOTUS } from "../../app/data";
 import { formatMacro } from "../../app/foodBankTypes";
 import type { FoodItem } from "../../app/foodBankTypes";
 import { countMealPlanFoodItems } from "../../app/mealPlanCloud";
-import { memberMealSlotLabel } from "../../app/memberMealSlots";
+import { canonicalMemberMealSlotId } from "../../app/memberMealSlots";
 import { sumQuickFoodLogMacros } from "../../app/quickFoodLogMacros";
 import {
   computeMealMacros,
@@ -82,6 +82,7 @@ import { foodWaterPer100g } from "../../app/foodBankWater";
 import { LoggedQuickFoodEntryRow } from "./LoggedQuickFoodEntryRow";
 import { MealDraftComposer } from "./MealDraftComposer";
 import { LogMealPanel } from "./LogMealPanel";
+import { SaveLoggedMealCopyButton, SaveLoggedMealModal } from "./SaveLoggedMealModal";
 import { MemberWaterIntakeSection } from "./MemberWaterIntakeSection";
 import { WaterTotalSummary } from "./WaterTotalSummary";
 import "../../foodbank.css";
@@ -227,6 +228,29 @@ function isMealComplete(
   return selfLogs.length > 0;
 }
 
+export function loggedMealEntriesFromPlanMeal(
+  meal: MealPlanMeal,
+  loggedFood: Set<string>,
+  skippedFood: Set<string>,
+  selfLogs: MemberQuickFoodLogEntry[],
+): MemberQuickFoodLogEntry[] {
+  const fromPlan = meal.items
+    .filter((item) => !skippedFood.has(item.id) && loggedFood.has(item.id))
+    .map(
+      (item): MemberQuickFoodLogEntry => ({
+        id: item.id,
+        name: item.foodName,
+        grams: item.grams,
+        source: isRecipeEntry(item.foodId, item.note) ? "recipe" : "food",
+        foodId: item.foodId,
+        mealId: meal.id,
+        loggedAt: "",
+        nutritionPer100g: { ...item.nutritionPer100g },
+      }),
+    );
+  return [...fromPlan, ...selfLogs];
+}
+
 export function MemberMealPlanDashboard({ plan, memberId, onOpenAvoidances, onRefreshFoodBank }: MemberMealPlanDashboardProps) {
   const foodItems = useFoodBankItems();
   const { items: inspirationRecipes } = useInspirationRecipeItems();
@@ -273,6 +297,11 @@ export function MemberMealPlanDashboard({ plan, memberId, onOpenAvoidances, onRe
   const [showCoachTips, setShowCoachTips] = useState(false);
   const [expandedMealId, setExpandedMealId] = useState<string | null>(null);
   const [mealMenuId, setMealMenuId] = useState<string | null>(null);
+  const [saveLoggedMeal, setSaveLoggedMeal] = useState<{
+    mealSlotId: string;
+    mealLabel: string;
+    entries: MemberQuickFoodLogEntry[];
+  } | null>(null);
   const [activeRecipeId, setActiveRecipeId] = useState<string | null>(null);
   const [draftByMealId, setDraftByMealId] = useState<Record<string, MealDraftItem[]>>({});
   const mealSectionRef = useRef<HTMLDivElement | null>(null);
@@ -882,6 +911,8 @@ export function MemberMealPlanDashboard({ plan, memberId, onOpenAvoidances, onRe
             const activeItems = meal.items.filter((item) => !displaySkippedFood.has(item.id));
             const skippedItems = meal.items.filter((item) => displaySkippedFood.has(item.id));
             const selfLogs = mealSelfLogs(displayQuickLogs, meal.id);
+            const saveEntries = loggedMealEntriesFromPlanMeal(meal, displayLoggedFood, displaySkippedFood, selfLogs);
+            const slotLabel = mealSlotLabel(meal.name);
             const hasPlanFood = activeItems.length > 0;
             const hasSelfLogs = selfLogs.length > 0;
             const hasFood = hasPlanFood || hasSelfLogs;
@@ -924,7 +955,21 @@ export function MemberMealPlanDashboard({ plan, memberId, onOpenAvoidances, onRe
                 </div>
                 <div className="motus-matplan-meal-card__body">
                   <div className="motus-matplan-meal-card__top">
-                    <span className="motus-matplan-meal-card__slot">{mealSlotLabel(meal.name)}</span>
+                    <div className="motus-matplan-meal-card__slot-row">
+                      <span className="motus-matplan-meal-card__slot">{slotLabel}</span>
+                      {saveEntries.length > 0 ? (
+                        <SaveLoggedMealCopyButton
+                          mealLabel={slotLabel}
+                          onClick={() =>
+                            setSaveLoggedMeal({
+                              mealSlotId: canonicalMemberMealSlotId(meal.id, meal.name) ?? meal.id,
+                              mealLabel: slotLabel,
+                              entries: saveEntries,
+                            })
+                          }
+                        />
+                      ) : null}
+                    </div>
                     <div className="relative">
                       <button
                         type="button"
@@ -1435,6 +1480,17 @@ export function MemberMealPlanDashboard({ plan, memberId, onOpenAvoidances, onRe
             </div>
           </div>
         </div>
+      ) : null}
+
+      {saveLoggedMeal ? (
+        <SaveLoggedMealModal
+          open
+          mealLabel={saveLoggedMeal.mealLabel}
+          mealSlotId={saveLoggedMeal.mealSlotId}
+          entries={saveLoggedMeal.entries}
+          onClose={() => setSaveLoggedMeal(null)}
+          onSave={handleSaveSavedMeal}
+        />
       ) : null}
     </div>
   );
