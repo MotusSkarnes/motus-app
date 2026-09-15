@@ -548,6 +548,35 @@
   line-height: 1.55;
 }
 
+.motus-recipe-meal-slots {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.4rem;
+}
+
+.motus-recipe-meal-slot {
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  background: #fff;
+  color: #0f172a;
+  border-radius: 999px;
+  padding: 0.4rem 0.85rem;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.motus-recipe-meal-slot:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.motus-recipe-meal-slot--active {
+  background: #0f766e;
+  border-color: #0f766e;
+  color: #fff;
+}
+
 @media (max-width: 640px) {
   .motus-recipe-composer-backdrop {
     align-items: stretch;

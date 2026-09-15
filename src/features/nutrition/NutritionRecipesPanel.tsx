@@ -6,7 +6,10 @@ import { buildScaledRecipeView, resolveRecipeScalingMode } from "../../app/recip
 import { computeRecipeMacros } from "../../app/recipeMacros";
 import {
   RECIPE_MEAL_SLOTS,
-  resolveRecipeMealSlot,
+  mealSlotLabel,
+  recipeMealSlotFor,
+  recipeMealSlotsFor,
+  type RecipeMealListTab,
   type RecipeMealSlot,
 } from "../../app/recipeMealCategory";
 import {
@@ -30,6 +33,23 @@ function useFoodItemsForMacros() {
   );
 }
 
+function recipeShowsProteinType(slots: RecipeMealSlot[]): boolean {
+  return slots.includes("lunsj") || slots.includes("middag");
+}
+
+function RecipeMealBadges({ slots }: { slots: RecipeMealSlot[] }) {
+  if (!slots.length) return null;
+  return (
+    <>
+      {slots.map((slot) => (
+        <span key={slot} className="rounded-full bg-teal-700 px-2.5 py-1 text-[11px] font-semibold text-white">
+          {mealSlotLabel(slot)}
+        </span>
+      ))}
+    </>
+  );
+}
+
 function RecipeDetail({
   item,
   onBack,
@@ -37,6 +57,7 @@ function RecipeDetail({
   canManage,
   onEdit,
   onDuplicate,
+  preferredMealSlot,
 }: {
   item: InspirationRecipeItem;
   onBack: () => void;
@@ -44,9 +65,11 @@ function RecipeDetail({
   canManage?: boolean;
   onEdit?: (item: InspirationRecipeItem) => void;
   onDuplicate?: (item: InspirationRecipeItem) => void;
+  preferredMealSlot?: RecipeMealSlot | null;
 }) {
   const foodItems = useFoodItemsForMacros();
-  const mealSlot = resolveRecipeMealSlot(item.tag, item.title, item.description);
+  const mealSlots = recipeMealSlotsFor(item);
+  const mealSlot = recipeMealSlotFor(item, preferredMealSlot);
   const proteinCategory = resolveRecipeProteinCategory(item);
 
   return (
@@ -81,15 +104,11 @@ function RecipeDetail({
         )}
         <div className="p-4 sm:p-5">
           <div className="flex flex-wrap items-center gap-2">
-            {mealSlot ? (
-              <span className="rounded-full bg-teal-700 px-2.5 py-1 text-[11px] font-semibold text-white">
-                {RECIPE_MEAL_SLOTS.find((row) => row.id === mealSlot)?.label}
-              </span>
-            ) : null}
+            <RecipeMealBadges slots={mealSlots} />
             <span className="rounded-full bg-teal-50 px-2.5 py-1 text-[11px] font-semibold text-teal-800 ring-1 ring-teal-100">
               {item.tag}
             </span>
-            {mealSlot === "lunsj" || mealSlot === "middag" ? (
+            {recipeShowsProteinType(mealSlots) ? (
               <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-semibold text-slate-700">
                 {recipeProteinCategoryLabel(proteinCategory) || "Uten type"}
               </span>
@@ -123,7 +142,7 @@ function RecipeCard({
   onEdit?: (item: InspirationRecipeItem) => void;
   onDuplicate?: (item: InspirationRecipeItem) => void;
 }) {
-  const mealSlot = resolveRecipeMealSlot(item.tag, item.title, item.description);
+  const mealSlots = recipeMealSlotsFor(item);
   const proteinCategory = resolveRecipeProteinCategory(item);
 
   return (
@@ -143,13 +162,13 @@ function RecipeCard({
       )}
       <div className="flex flex-1 flex-col p-3 sm:p-4">
         <div className="flex flex-wrap items-center gap-1.5">
-          {mealSlot ? (
-            <span className="rounded-full bg-teal-700/90 px-2 py-0.5 text-[10px] font-semibold text-white">
-              {RECIPE_MEAL_SLOTS.find((row) => row.id === mealSlot)?.label}
+          {mealSlots.map((slot) => (
+            <span key={slot} className="rounded-full bg-teal-700/90 px-2 py-0.5 text-[10px] font-semibold text-white">
+              {mealSlotLabel(slot)}
             </span>
-          ) : null}
+          ))}
           <span className="text-[11px] font-semibold uppercase tracking-wide text-teal-700">{item.tag}</span>
-          {(mealSlot === "lunsj" || mealSlot === "middag") && proteinCategory ? (
+          {recipeShowsProteinType(mealSlots) && proteinCategory ? (
             <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-700">
               {recipeProteinCategoryLabel(proteinCategory)}
             </span>
@@ -213,7 +232,7 @@ export function NutritionRecipesPanel({ mealPlanTargets, canManage, onEdit, onDu
   const { items, loading } = useInspirationRecipeItems();
   const foodItems = useFoodItemsForMacros();
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [mealTab, setMealTab] = useState<RecipeMealSlot>("frokost");
+  const [mealTab, setMealTab] = useState<RecipeMealListTab>("all");
   const [proteinFilter, setProteinFilter] = useState<RecipeProteinCategoryFilter>("all");
 
   const scaledById = useMemo(() => {
@@ -222,7 +241,7 @@ export function NutritionRecipesPanel({ mealPlanTargets, canManage, onEdit, onDu
       { macros: ReturnType<typeof computeRecipeMacros>; adjusted: boolean }
     >();
     for (const item of items) {
-      const mealSlot = resolveRecipeMealSlot(item.tag, item.title, item.description);
+      const mealSlot = recipeMealSlotFor(item);
       const scalingMode = resolveRecipeScalingMode({
         id: item.id,
         scalingMode: item.scalingMode,
@@ -248,8 +267,9 @@ export function NutritionRecipesPanel({ mealPlanTargets, canManage, onEdit, onDu
       RECIPE_MEAL_SLOTS.map((slot) => [slot.id, []]),
     );
     for (const item of items) {
-      const slot = resolveRecipeMealSlot(item.tag, item.title, item.description);
-      if (slot) grouped.get(slot)?.push(item);
+      for (const slot of recipeMealSlotsFor(item)) {
+        grouped.get(slot)?.push(item);
+      }
     }
     for (const list of grouped.values()) {
       list.sort((a, b) => a.title.localeCompare(b.title, "no"));
@@ -259,7 +279,10 @@ export function NutritionRecipesPanel({ mealPlanTargets, canManage, onEdit, onDu
 
   const selected = items.find((item) => item.id === selectedId) ?? null;
   const supportsProteinFilter = mealTab === "lunsj" || mealTab === "middag";
-  const mealItems = itemsByMeal.get(mealTab) ?? [];
+  const mealItems =
+    mealTab === "all"
+      ? [...items].sort((a, b) => a.title.localeCompare(b.title, "no"))
+      : (itemsByMeal.get(mealTab) ?? []);
   const proteinCounts = useMemo(() => {
     const counts = new Map<RecipeProteinCategoryFilter, number>([["all", mealItems.length]]);
     for (const item of mealItems) {
@@ -286,6 +309,7 @@ export function NutritionRecipesPanel({ mealPlanTargets, canManage, onEdit, onDu
         canManage={canManage}
         onEdit={onEdit}
         onDuplicate={onDuplicate}
+        preferredMealSlot={mealTab === "all" ? null : mealTab}
       />
     );
   }
@@ -319,6 +343,16 @@ export function NutritionRecipesPanel({ mealPlanTargets, canManage, onEdit, onDu
         )}
       </p>
       <div className="flex flex-wrap gap-2">
+        <PillButton
+          active={mealTab === "all"}
+          onClick={() => {
+            setMealTab("all");
+            setProteinFilter("all");
+          }}
+        >
+          Alle
+          {items.length > 0 ? ` (${items.length})` : ""}
+        </PillButton>
         {RECIPE_MEAL_SLOTS.map((slot) => {
           const count = itemsByMeal.get(slot.id)?.length ?? 0;
           return (
@@ -357,7 +391,7 @@ export function NutritionRecipesPanel({ mealPlanTargets, canManage, onEdit, onDu
         <EmptyState
           icon="🍽️"
           title={`Ingen ${RECIPE_MEAL_SLOTS.find((s) => s.id === mealTab)?.label?.toLowerCase() ?? "oppskrifter"}`}
-          description="Velg en annen kategori, eller be PT merke oppskrifter med f.eks. «Frokost» i taggen."
+          description="Velg Alle, eller en annen kategori. Nye oppskrifter vises under alle måltidene du huker av når du lagrer."
           className="bg-white"
         />
       ) : (

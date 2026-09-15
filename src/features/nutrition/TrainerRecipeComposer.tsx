@@ -15,6 +15,13 @@ import type { InspirationRecipeItem } from "../../app/inspirationRecipeItems";
 import { resolveInspirationImageForStorage } from "../../app/inspirationRecipeImage";
 import { compressImageFile } from "../../app/imageCompress";
 import {
+  RECIPE_MEAL_SLOTS,
+  mealSlotsLabel,
+  recipeMealSlotsFor,
+  uniqueRecipeMealSlots,
+  type RecipeMealSlot,
+} from "../../app/recipeMealCategory";
+import {
   RECIPE_PROTEIN_CATEGORIES,
   isRecipeProteinCategory,
   type RecipeProteinCategory,
@@ -42,6 +49,7 @@ type RecipeDraftSnapshot = {
   title: string;
   description: string;
   tag: string;
+  mealSlots: RecipeMealSlot[];
   proteinCategory: string;
   servings: string;
   method: string;
@@ -64,6 +72,7 @@ function buildRecipeDraftFromSource(
     title: duplicateTitle || (source?.title ?? ""),
     description: source?.description ?? "",
     tag: source?.tag ?? "Oppskrift",
+    mealSlots: source ? recipeMealSlotsFor(source) : [],
     proteinCategory: source?.proteinCategory ?? "",
     servings: String(source?.servings ?? (body ? parseRecipeBaseServings(body) : "2")),
     method: extractRecipeMethodSection(body),
@@ -108,6 +117,9 @@ export function TrainerRecipeComposer({
   const [title, setTitle] = useState(sourceItem?.title ?? "");
   const [description, setDescription] = useState(sourceItem?.description ?? "");
   const [tag, setTag] = useState(sourceItem?.tag ?? "Oppskrift");
+  const [mealSlots, setMealSlots] = useState<RecipeMealSlot[]>(
+    sourceItem ? recipeMealSlotsFor(sourceItem) : [],
+  );
   const [proteinCategory, setProteinCategory] = useState<RecipeProteinCategory | "">(
     sourceItem?.proteinCategory ?? "",
   );
@@ -135,6 +147,7 @@ export function TrainerRecipeComposer({
     setTitle(nextDraft.title);
     setDescription(nextDraft.description);
     setTag(nextDraft.tag);
+    setMealSlots(nextDraft.mealSlots);
     setProteinCategory(nextDraft.proteinCategory);
     setServings(nextDraft.servings);
     setMethod(nextDraft.method);
@@ -151,6 +164,7 @@ export function TrainerRecipeComposer({
         title,
         description,
         tag,
+        mealSlots,
         proteinCategory,
         servings,
         method,
@@ -158,7 +172,7 @@ export function TrainerRecipeComposer({
         ingredients,
         imageUrl,
       }),
-    [title, description, tag, proteinCategory, servings, method, tips, ingredients, imageUrl],
+    [title, description, tag, mealSlots, proteinCategory, servings, method, tips, ingredients, imageUrl],
   );
   const hasUnsavedChanges = baselineSnapshot !== null && currentSnapshot !== baselineSnapshot;
 
@@ -237,6 +251,10 @@ export function TrainerRecipeComposer({
       setStatus("Fyll inn kort beskrivelse.");
       return;
     }
+    if (!mealSlots.length) {
+      setStatus("Velg minst én kategori (frokost, lunsj, middag eller snack).");
+      return;
+    }
     const namedIngredients = ingredients.filter((row) => row.name.trim());
     if (!namedIngredients.length) {
       setStatus("Legg til minst én ingrediens.");
@@ -263,6 +281,7 @@ export function TrainerRecipeComposer({
     const scalingMode =
       sourceItem?.scalingMode ?? DEFAULT_RECIPE_SCALING_BY_ID.get(recipeId);
 
+    const tagValue = tag.trim() && tag.trim() !== "Oppskrift" ? tag.trim() : mealSlotsLabel(mealSlots);
     const recipeRow: Record<string, unknown> = {
       id: recipeId,
       category: "recipes",
@@ -270,7 +289,9 @@ export function TrainerRecipeComposer({
       title: title.trim(),
       description: description.trim(),
       body,
-      tag: tag.trim() || "Oppskrift",
+      tag: tagValue,
+      mealSlots,
+      mealSlot: mealSlots[0],
       author: authorName,
       ...(editItem?.createdAt && !duplicateFromItem
         ? { createdAt: editItem.createdAt }
@@ -335,7 +356,38 @@ export function TrainerRecipeComposer({
           </p>
           <TextInput value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Tittel" />
           <TextInput value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Kort beskrivelse" />
-          <TextInput value={tag} onChange={(e) => setTag(e.target.value)} placeholder="F.eks. 15 min · Middag" />
+          <TextInput value={tag} onChange={(e) => setTag(e.target.value)} placeholder="F.eks. 15 min" />
+          <fieldset className="block">
+            <legend className="motus-foodbank-field-label">Vis under måltid</legend>
+            <div className="motus-recipe-meal-slots">
+              {RECIPE_MEAL_SLOTS.map((slot) => {
+                const active = mealSlots.includes(slot.id);
+                return (
+                  <button
+                    key={slot.id}
+                    type="button"
+                    className={`motus-recipe-meal-slot${active ? " motus-recipe-meal-slot--active" : ""}`}
+                    aria-pressed={active}
+                    disabled={saving}
+                    onClick={() => {
+                      setMealSlots((current) =>
+                        uniqueRecipeMealSlots(
+                          current.includes(slot.id)
+                            ? current.filter((id) => id !== slot.id)
+                            : [...current, slot.id],
+                        ),
+                      );
+                    }}
+                  >
+                    {slot.label}
+                  </button>
+                );
+              })}
+            </div>
+            <p className="mt-1 text-xs text-slate-500">
+              Velg én eller flere faner. Samme oppskrift kan ligge både under frokost og lunsj.
+            </p>
+          </fieldset>
           <label className="block">
             <span className="motus-foodbank-field-label">Oppskriften er ment for (antall personer)</span>
             <TextInput

@@ -97,7 +97,7 @@ import {
   parseInspirationRecipeFoodId,
   recipeToMealPlanEntry,
 } from "../app/mealPlanRecipeEntry";
-import { resolveRecipeMealSlot } from "../app/recipeMealCategory";
+import { recipeBelongsToMealSlot, recipeMealSlotFor, type RecipeMealSlot } from "../app/recipeMealCategory";
 import { buildScaledRecipeView, resolveRecipeScalingMode } from "../app/recipeMealScaling";
 import type { MealPlan, MealPlanFoodEntry, MealPlanMeal, MealPlanTargets } from "../app/mealPlanTypes";
 import type { FoodItem } from "../app/foodBankTypes";
@@ -124,6 +124,15 @@ type MealPickerTarget = {
   dayId: string;
   mealId: string;
 };
+
+function preferredRecipeSlotFromMealName(name: string): RecipeMealSlot | null {
+  const key = name.trim().toLowerCase();
+  if (key.includes("frokost")) return "frokost";
+  if (key.includes("lunsj")) return "lunsj";
+  if (key.includes("middag")) return "middag";
+  if (key.includes("snack") || key.includes("kveld") || key.includes("mellom")) return "snack";
+  return null;
+}
 
 type FoodPickerState = MealPickerTarget | null;
 
@@ -670,9 +679,17 @@ export function TrainerMealPlanEditor({
     [recipeItems, recipePreviewId],
   );
 
+  const recipePickerPreferredSlot = useMemo(() => {
+    if (!recipePicker || !plan) return null;
+    const meal = plan.days
+      .find((day) => day.id === recipePicker.dayId)
+      ?.meals.find((row) => row.id === recipePicker.mealId);
+    return meal ? preferredRecipeSlotFromMealName(meal.name) : null;
+  }, [plan, recipePicker]);
+
   const previewRecipeScaled = useMemo(() => {
     if (!previewRecipe) return null;
-    const mealSlot = resolveRecipeMealSlot(previewRecipe.tag, previewRecipe.title, previewRecipe.description);
+    const mealSlot = recipeMealSlotFor(previewRecipe, recipePickerPreferredSlot);
     const scalingMode = resolveRecipeScalingMode({
       id: previewRecipe.id,
       scalingMode: previewRecipe.scalingMode,
@@ -685,7 +702,7 @@ export function TrainerMealPlanEditor({
       dailyTargets: plan?.targets,
       mealSlot,
     });
-  }, [previewRecipe, foodItemsForMacros, plan?.targets]);
+  }, [previewRecipe, foodItemsForMacros, plan?.targets, recipePickerPreferredSlot]);
 
   const previewRecipeMacros = previewRecipeScaled?.macros ?? null;
 
@@ -726,22 +743,10 @@ export function TrainerMealPlanEditor({
       const targetByMealId = new Map(mealTargets.map((meal) => [meal.id, meal.targets]));
 
       const pickRecipeForMeal = (meal: MealPlanMeal): (typeof recipeItems)[number] | null => {
-        const mealNameKey = meal.name.trim().toLowerCase();
-        const preferredSlot =
-          mealNameKey.includes("frokost")
-            ? "frokost"
-            : mealNameKey.includes("lunsj")
-              ? "lunsj"
-              : mealNameKey.includes("middag")
-                ? "middag"
-                : mealNameKey.includes("kveld")
-                  ? "kveldsmat"
-                  : null;
+        const preferredSlot = preferredRecipeSlotFromMealName(meal.name);
 
         const scoped = preferredSlot
-          ? recipeItems.filter(
-              (recipe) => resolveRecipeMealSlot(recipe.tag, recipe.title, recipe.description) === preferredSlot,
-            )
+          ? recipeItems.filter((recipe) => recipeBelongsToMealSlot(recipe, preferredSlot))
           : recipeItems;
         const candidates = scoped.length > 0 ? scoped : recipeItems;
         if (!candidates.length) return null;
@@ -754,7 +759,7 @@ export function TrainerMealPlanEditor({
 
         const ranked = candidates
           .map((recipe) => {
-            const mealSlot = resolveRecipeMealSlot(recipe.tag, recipe.title, recipe.description);
+            const mealSlot = recipeMealSlotFor(recipe, preferredSlot);
             const scalingMode = resolveRecipeScalingMode({
               id: recipe.id,
               scalingMode: recipe.scalingMode,
@@ -789,7 +794,7 @@ export function TrainerMealPlanEditor({
         if (!picked) return meal;
         pickedForCurrentDay.add(picked.id);
         usedRecipeIds.add(picked.id);
-        const mealSlot = resolveRecipeMealSlot(picked.tag, picked.title, picked.description);
+        const mealSlot = recipeMealSlotFor(picked, preferredRecipeSlotFromMealName(meal.name));
         const entry = recipeToMealPlanEntry(picked, foodItems, {
           dailyTargets: sourcePlan.targets,
           mealSlot,
@@ -1060,7 +1065,10 @@ export function TrainerMealPlanEditor({
       setSaveStatus("Fant ikke oppskriften. Prøv å laste siden på nytt.");
       return;
     }
-    const mealSlot = resolveRecipeMealSlot(recipe.tag, recipe.title, recipe.description);
+    const pickerMeal = plan?.days
+      .find((day) => day.id === target.dayId)
+      ?.meals.find((meal) => meal.id === target.mealId);
+    const mealSlot = recipeMealSlotFor(recipe, pickerMeal ? preferredRecipeSlotFromMealName(pickerMeal.name) : null);
     const entry = recipeToMealPlanEntry(recipe, foodItems, {
       dailyTargets: plan?.targets,
       mealSlot,
@@ -1986,11 +1994,7 @@ export function TrainerMealPlanEditor({
                         body={previewRecipe.body}
                         foodItems={foodItemsForMacros}
                         dailyTargets={plan?.targets}
-                        mealSlot={resolveRecipeMealSlot(
-                          previewRecipe.tag,
-                          previewRecipe.title,
-                          previewRecipe.description,
-                        )}
+                        mealSlot={recipeMealSlotFor(previewRecipe, recipePickerPreferredSlot)}
                         scalingMode={resolveRecipeScalingMode({
                           id: previewRecipe.id,
                           scalingMode: previewRecipe.scalingMode,

@@ -3,7 +3,7 @@ import type { FoodItem } from "../app/foodBankTypes";
 import type { InspirationRecipeItem } from "../app/inspirationRecipeItems";
 import type { MealPlanTargets } from "../app/mealPlanTypes";
 import { parseRecipeBaseServings } from "../app/recipeBody";
-import { resolveRecipeMealSlot, type RecipeMealSlot } from "../app/recipeMealCategory";
+import { recipeMealSlotFor, type RecipeMealSlot } from "../app/recipeMealCategory";
 import { buildScaledRecipeView, resolveRecipeScalingMode } from "../app/recipeMealScaling";
 import { computeRecipeMacros, extractRecipeIngredientLines } from "../app/recipeMacros";
 import { RecipeIngredientList } from "./RecipeIngredientList";
@@ -19,7 +19,7 @@ type RecipeCookPanelProps = {
 };
 
 export function RecipeCookPanel({ item, foodItems, dailyTargets, mealSlot: mealSlotProp }: RecipeCookPanelProps) {
-  const mealSlot = mealSlotProp ?? resolveRecipeMealSlot(item.tag, item.title, item.description);
+  const mealSlot = mealSlotProp ?? recipeMealSlotFor(item);
   const baseServings = parseRecipeBaseServings(item.body, item.servings);
   const [viewServings, setViewServings] = useState(baseServings);
 

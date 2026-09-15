@@ -4,7 +4,7 @@ import { parseInspirationRecipeFoodId } from "./mealPlanRecipeEntry";
 import type { MealPlan, MealPlanFoodEntry, MealPlanTargets } from "./mealPlanTypes";
 import { buildScaledRecipeView, resolveRecipeScalingMode } from "./recipeMealScaling";
 import type { RecipeMealSlot } from "./recipeMealCategory";
-import { resolveRecipeMealSlot } from "./recipeMealCategory";
+import { recipeMealSlotFor } from "./recipeMealCategory";
 
 export type ShoppingListItem = {
   key: string;
@@ -68,11 +68,17 @@ function clampPortionMultiplier(value: number): number {
 
 function resolveMealSlotFromMealName(mealName: string, recipe: InspirationRecipeItem): RecipeMealSlot | null {
   const fromName = mealName.toLowerCase();
-  if (fromName.includes("frokost")) return "frokost";
-  if (fromName.includes("lunsj")) return "lunsj";
-  if (fromName.includes("middag")) return "middag";
-  if (fromName.includes("snack") || fromName.includes("mellom")) return "snack";
-  return resolveRecipeMealSlot(recipe.tag, recipe.title, recipe.description);
+  const preferred =
+    fromName.includes("frokost")
+      ? "frokost"
+      : fromName.includes("lunsj")
+        ? "lunsj"
+        : fromName.includes("middag")
+          ? "middag"
+          : fromName.includes("snack") || fromName.includes("mellom")
+            ? "snack"
+            : null;
+  return recipeMealSlotFor(recipe, preferred);
 }
 
 function formatGramsLabel(name: string, grams: number): string {

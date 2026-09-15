@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { DEFAULT_INSPIRATION_RECIPES, DEFAULT_RECIPE_SCALING_BY_ID } from "./defaultInspirationRecipes";
 import { applyCanonicalRecipeBodies, type RecipeIngredientFoodOverrides } from "./recipeMacros";
+import { parseRecipeMealSlots, type RecipeMealSlot } from "./recipeMealCategory";
 import { isRecipeProteinCategory, type RecipeProteinCategory } from "./recipeProteinCategory";
 import {
   fetchInspirationItemsForHub,
@@ -24,6 +25,8 @@ export type InspirationRecipeItem = {
   imageUrl?: string;
   scalingMode?: "flexible" | "fixed";
   proteinCategory?: RecipeProteinCategory;
+  mealSlots?: RecipeMealSlot[];
+  mealSlot?: RecipeMealSlot;
   servings?: number;
   ingredientFoodOverrides?: RecipeIngredientFoodOverrides;
 };
@@ -66,6 +69,7 @@ function normalizeRecipeItem(raw: unknown): InspirationRecipeItem | null {
           ),
         )
       : undefined;
+  const mealSlots = parseRecipeMealSlots(row.mealSlots, row.mealSlot);
   return {
     id,
     title: String(row.title ?? "").trim() || "Oppskrift",
@@ -74,6 +78,7 @@ function normalizeRecipeItem(raw: unknown): InspirationRecipeItem | null {
     tag: String(row.tag ?? "").trim() || "Oppskrift",
     ...(scalingMode ? { scalingMode } : {}),
     ...(isRecipeProteinCategory(row.proteinCategory) ? { proteinCategory: row.proteinCategory } : {}),
+    ...(mealSlots.length ? { mealSlots, mealSlot: mealSlots[0] } : {}),
     ...(Number.isFinite(servings) && servings > 0 ? { servings: Math.round(servings) } : {}),
     ...(ingredientFoodOverrides && Object.keys(ingredientFoodOverrides).length
       ? { ingredientFoodOverrides }
@@ -120,6 +125,8 @@ function recipeItemListsEqual(a: InspirationRecipeItem[], b: InspirationRecipeIt
       left.imageUrl !== right.imageUrl ||
       left.scalingMode !== right.scalingMode ||
       left.proteinCategory !== right.proteinCategory ||
+      JSON.stringify(left.mealSlots ?? []) !== JSON.stringify(right.mealSlots ?? []) ||
+      left.mealSlot !== right.mealSlot ||
       left.servings !== right.servings ||
       JSON.stringify(left.ingredientFoodOverrides ?? {}) !== JSON.stringify(right.ingredientFoodOverrides ?? {})
     ) {
