@@ -203,6 +203,17 @@ Slik gjør du
     expect(overridden[0]?.foodName).toBe("Soyafarse");
     expect(overridden[0]?.grams).toBe(200);
   });
+
+  it("beholder visningsnavn og makroer når navnet ikke matcher banken men foodId er satt", () => {
+    const laks = foods.find((item) => /laks/i.test(item.name));
+    expect(laks).toBeTruthy();
+    const body = `**Ingredienser**\n- 200 g den rosa fisken`;
+    const rows = computeRecipeIngredients(body, foods, { "ing-0": laks!.id });
+    expect(rows).toHaveLength(1);
+    expect(rows[0]?.searchText).toBe("den rosa fisken");
+    expect(rows[0]?.grams).toBe(200);
+    expect(recipeCustomerIngredientLabel(rows[0]!)).toBe("den rosa fisken");
+  });
 });
 
 describe("recipeCustomerIngredientLabel", () => {

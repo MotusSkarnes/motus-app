@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { Trash2, X } from "lucide-react";
 import { DEFAULT_RECIPE_SCALING_BY_ID } from "../../app/defaultInspirationRecipes";
 import { buildDefaultFoodBankItems } from "../../app/foodBankSeed";
+import type { FoodItem } from "../../app/foodBankTypes";
 import { findRecipeFoodAvoidanceConflicts } from "../../app/memberFoodAvoidances";
 import type { Member } from "../../app/types";
 import {
@@ -26,7 +27,7 @@ import {
   isRecipeProteinCategory,
   type RecipeProteinCategory,
 } from "../../app/recipeProteinCategory";
-import { computeRecipeMacros } from "../../app/recipeMacros";
+import { computeRecipeIngredients, computeRecipeMacros } from "../../app/recipeMacros";
 import {
   buildRecipeBody,
   extractRecipeMethodSection,
@@ -41,7 +42,7 @@ import { RecipeImageField } from "../../components/RecipeImageField";
 import { RecipeIngredientEditor } from "../../components/RecipeIngredientEditor";
 import { RecipeIngredientList } from "../../components/RecipeIngredientList";
 import { RecipeMacroBlocks } from "../../components/RecipeMacroBlocks";
-import { RecipeMethodSection } from "../../components/RecipeMethodSection";
+import { RecipeCustomerPreview } from "../../components/RecipeCustomerPreview";
 import { ConfirmDialog, DangerButton, GradientButton, OutlineButton, StatusMessage, TextArea, TextInput } from "../../app/ui";
 import { useFoodBankItems } from "../../app/useFoodBankItems";
 import { uid } from "../../app/storage";
@@ -81,6 +82,26 @@ function buildRecipeDraftFromSource(
     ingredients,
     imageUrl: source?.imageUrl ?? "",
   };
+}
+
+function withMatchedFoodIds(
+  drafts: RecipeIngredientDraft[],
+  foodItems: FoodItem[],
+  servings: number,
+  method: string,
+  tips: string,
+): RecipeIngredientDraft[] {
+  const body = buildRecipeBody({ servings, ingredients: drafts, method, tips });
+  const matched = computeRecipeIngredients(body, foodItems);
+  let changed = false;
+  const next = drafts.map((row, index) => {
+    if (row.foodId?.trim()) return row;
+    const foodId = matched.find((item) => item.key === `ing-${index}`)?.foodId;
+    if (!foodId) return row;
+    changed = true;
+    return { ...row, foodId };
+  });
+  return changed ? next : drafts;
 }
 
 function snapshotRecipeDraft(input: RecipeDraftSnapshot): string {
@@ -147,6 +168,13 @@ export function TrainerRecipeComposer({
     }
     const source = duplicateFromItem ?? editItem;
     const nextDraft = buildRecipeDraftFromSource(source, duplicateFromItem);
+    nextDraft.ingredients = withMatchedFoodIds(
+      nextDraft.ingredients,
+      foodItemsForMacros,
+      Math.max(1, Math.round(Number(nextDraft.servings) || 1)),
+      nextDraft.method,
+      nextDraft.tips,
+    );
     setTitle(nextDraft.title);
     setDescription(nextDraft.description);
     setTag(nextDraft.tag);
@@ -489,31 +517,15 @@ export function TrainerRecipeComposer({
             />
           ) : null}
           {ingredients.some((row) => row.name.trim()) ? (
-            <section className="motus-recipe-customer-preview" aria-label="Slik ser kunden det">
-              <div className="motus-recipe-customer-preview__head">
-                <h3>Slik ser kunden det</h3>
-                <p>
-                  Dette er listen medlemmet får opp. Klikk i et navn for å korte det ned — mengde og næringsinnhold
-                  følger fortsatt matvaren du valgte i banken.
-                </p>
-              </div>
-              <RecipeIngredientList
-                body={draftBody}
-                foodItems={foodItemsForMacros}
-                recipeId={editItem?.id}
-                servings={draftServings}
-                foodOverrides={composedOverrides}
-                customerPreview
-                onCustomerLabelChange={(ingredientKey, label) => {
-                  const index = Number(ingredientKey.replace(/^ing-/, ""));
-                  if (!Number.isFinite(index)) return;
-                  setIngredients((prev) =>
-                    prev.map((row, rowIndex) => (rowIndex === index ? { ...row, name: label } : row)),
-                  );
-                }}
-              />
-              <RecipeMethodSection body={draftBody} />
-            </section>
+            <RecipeCustomerPreview
+              ingredients={ingredients}
+              servings={draftServings}
+              body={draftBody}
+              foodItems={foodItemsForMacros}
+              onNameChange={(id, name) => {
+                setIngredients((prev) => prev.map((row) => (row.id === id ? { ...row, name } : row)));
+              }}
+            />
           ) : null}
           {avoidanceConflicts.length > 0 ? <RecipeAvoidanceWarning conflicts={avoidanceConflicts} /> : null}
           {status ? <StatusMessage message={status} tone="error" /> : null}

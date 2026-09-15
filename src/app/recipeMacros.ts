@@ -605,26 +605,28 @@ export function computeRecipeIngredients(
   lines.forEach((line, index) => {
     if (!shouldCountIngredientForMacros(line)) return;
     const parsed = parseIngredientLine(line);
-    if (!parsed) return;
+    const overrideId = overrides?.[`ing-${index}`]?.trim();
+    const overrideFood = overrideId ? foodItems.find((item) => item.id === overrideId) : undefined;
+    if (!parsed && !overrideFood) return;
 
-    const food = resolveFoodForIngredient(parsed.searchText, foodItems);
+    const food = overrideFood ?? (parsed ? resolveFoodForIngredient(parsed.searchText, foodItems) : null);
     if (!food) return;
 
     const grams =
-      parsed.grams ??
-      (parsed.quantity != null
+      parsed?.grams ??
+      (parsed?.quantity != null
         ? convertQuantityToGrams(parsed.quantity, parsed.unit ?? "", parsed.searchText, food)
         : 0);
     if (grams <= 0) return;
 
     const name = food.name;
-    const quantity = parsed.quantity ?? (parsed.grams != null && !parsed.unit ? parsed.grams : undefined);
-    const unit = parsed.unit || (parsed.grams != null && parsed.quantity == null ? "g" : undefined);
+    const quantity = parsed?.quantity ?? (parsed?.grams != null && !parsed.unit ? parsed.grams : undefined);
+    const unit = parsed?.unit || (parsed?.grams != null && parsed.quantity == null ? "g" : undefined);
     rows.push({
       key: `ing-${index}`,
       sourceLine: line,
-      searchText: parsed.searchText,
-      displayAmount: formatIngredientDisplay(parsed, grams, name),
+      searchText: parsed?.searchText || name,
+      displayAmount: parsed ? formatIngredientDisplay(parsed, grams, name) : `${Math.round(grams)} g ${name}`,
       foodId: foodRowId(food),
       foodName: name,
       category: foodRowCategory(food),

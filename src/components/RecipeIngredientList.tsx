@@ -31,7 +31,6 @@ import {
 } from "../app/recipeIngredientSwap";
 import { computeMacrosForGrams } from "../app/mealPlanMacros";
 import { RecipeFoodSelectModal } from "./RecipeFoodSelectModal";
-import { TextInput } from "../app/ui";
 
 type DisplayIngredient = RecipeIngredient & {
   swappedFrom?: string;
@@ -52,8 +51,6 @@ type RecipeIngredientListProps = {
   editable?: boolean;
   foodOverrides?: RecipeIngredientFoodOverrides;
   onFoodOverrideChange?: (ingredientKey: string, foodId: string | null) => void;
-  customerPreview?: boolean;
-  onCustomerLabelChange?: (ingredientKey: string, label: string) => void;
 };
 
 function formatGramsLabel(grams: number, servings: number): string {
@@ -180,8 +177,6 @@ export function RecipeIngredientList({
   editable = false,
   foodOverrides,
   onFoodOverrideChange,
-  customerPreview = false,
-  onCustomerLabelChange,
 }: RecipeIngredientListProps) {
   const servings = useMemo(() => parseRecipeServings(body, servingsProp), [body, servingsProp]);
   const scalingMode = useMemo(
@@ -304,21 +299,9 @@ export function RecipeIngredientList({
               <span className="motus-recipe-ingredient-amount">
                 {editable ? formatGramsLabel(row.grams, servings) : formatCookAmount(row)}
               </span>
-              {onCustomerLabelChange ? (
-                <TextInput
-                  className="motus-recipe-ingredient-name-input"
-                  value={recipeCustomerIngredientLabel(row)}
-                  onChange={(event) => onCustomerLabelChange(row.key, event.target.value)}
-                  aria-label={`Navn kunden ser for ${row.foodName}`}
-                />
-              ) : (
-                <span className="motus-recipe-ingredient-name">
-                  {editable ? row.foodName : recipeCustomerIngredientLabel(row)}
-                </span>
-              )}
-              {onCustomerLabelChange && row.foodName !== recipeCustomerIngredientLabel(row) ? (
-                <span className="motus-recipe-ingredient-source">I matvarebanken: {row.foodName}</span>
-              ) : null}
+              <span className="motus-recipe-ingredient-name">
+                {editable ? row.foodName : recipeCustomerIngredientLabel(row)}
+              </span>
               {editable ? (
                 <span className="motus-recipe-ingredient-source">
                   Fra tekst: «{row.sourceLine.replace(/^[-*•]\s*/, "")}»
@@ -352,8 +335,6 @@ export function RecipeIngredientList({
               <span className="motus-recipe-ingredient-macros">
                 {Math.round(row.macros.kcal)} kcal · {formatMacro(row.macros.protein)} P
               </span>
-              {customerPreview ? null : (
-                <>
               {editable && row.isManualOverride ? (
                 <button
                   type="button"
@@ -396,8 +377,6 @@ export function RecipeIngredientList({
                   Bytt
                 </button>
               ) : null}
-                </>
-              )}
             </div>
           </li>
         ))}
@@ -413,7 +392,7 @@ export function RecipeIngredientList({
           ))}
         </ul>
       ) : null}
-      {!editable && !customerPreview ? (
+      {!editable ? (
         <p className="motus-recipe-ingredients-hint text-xs text-slate-500">
           Bytt en ingrediens for å se hvor mye av en lignende matvare som gir omtrent samme energi og makroer.
         </p>

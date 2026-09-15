@@ -1798,8 +1798,23 @@
 
 .motus-recipe-ingredient-name-input {
   height: 2.25rem !important;
-  margin-top: 0.15rem;
+  margin-top: 0;
   font-weight: 600;
+  background: #fff !important;
+  color: #0f172a;
+}
+
+.motus-recipe-customer-preview__row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+}
+
+.motus-recipe-customer-preview__name {
+  min-width: 0;
+  flex: 1;
+  display: grid;
+  gap: 0.15rem;
 }
 
 .motus-recipe-ingredient-source,
