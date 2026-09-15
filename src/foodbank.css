@@ -1796,6 +1796,12 @@
   color: #0f172a;
 }
 
+.motus-recipe-ingredient-name-input {
+  height: 2.25rem !important;
+  margin-top: 0.15rem;
+  font-weight: 600;
+}
+
 .motus-recipe-ingredient-source,
 .motus-recipe-ingredient-swapped-note {
   font-size: 0.6875rem;
@@ -1964,6 +1970,29 @@
   padding: 0.9rem 1rem;
 }
 
+.motus-recipe-customer-preview {
+  display: grid;
+  gap: 0.75rem;
+  border-radius: 1rem;
+  border: 1px solid rgba(13, 148, 136, 0.22);
+  background: linear-gradient(180deg, rgba(48, 227, 190, 0.08), rgba(255, 255, 255, 0.96));
+  padding: 0.9rem;
+}
+
+.motus-recipe-customer-preview__head h3 {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.motus-recipe-customer-preview__head p {
+  margin: 0.3rem 0 0;
+  font-size: 0.75rem;
+  line-height: 1.45;
+  color: #475569;
+}
+
 .motus-recipe-method ol {
   margin: 0.65rem 0 0;
   padding-left: 1.2rem;
@@ -2089,6 +2118,15 @@
   display: grid;
   grid-template-columns: 4.5rem 5rem minmax(0, 1fr);
   gap: 0.4rem;
+}
+
+.motus-recipe-ingredient-editor__item-fields--labels {
+  padding: 0 0.6rem;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: #64748b;
 }
 
 .motus-recipe-ingredient-editor__item-meta {

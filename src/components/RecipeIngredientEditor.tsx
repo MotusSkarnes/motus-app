@@ -5,6 +5,7 @@ import { defaultPortionGramsForFood } from "../app/foodPortionDefaults";
 import {
   RECIPE_INGREDIENT_UNITS,
   formatRecipeIngredientLine,
+  suggestRecipeDisplayName,
   type RecipeIngredientDraft,
 } from "../app/recipeBody";
 import { uid } from "../app/storage";
@@ -57,7 +58,7 @@ export function RecipeIngredientEditor({
   }
 
   function addIngredient() {
-    const name = (selectedFood?.name ?? customName).trim();
+    const name = suggestRecipeDisplayName((selectedFood?.name ?? customName).trim());
     if (!name) {
       setError("Søk opp en matvare, eller skriv inn navn på ingrediensen.");
       return;
@@ -96,7 +97,7 @@ export function RecipeIngredientEditor({
     <section className="motus-recipe-ingredient-editor" aria-label="Ingredienser">
       <div className="motus-recipe-ingredient-editor__head">
         <h3>Ingredienser</h3>
-        <p>Søk i matvarebanken og legg til mengde. Du kan også skrive inn en ingrediens som ikke ligger i banken.</p>
+        <p>Søk i matvarebanken og legg til mengde. Du kan også skrive inn en ingrediens som ikke ligger i banken. Navnet i listen er det kunden ser — det kan du korte ned nederst.</p>
       </div>
 
       {selectedFood ? (
@@ -187,8 +188,16 @@ export function RecipeIngredientEditor({
       {error ? <p className="motus-recipe-ingredient-editor__error">{error}</p> : null}
 
       {ingredients.length > 0 ? (
+        <>
+          <div className="motus-recipe-ingredient-editor__item-fields motus-recipe-ingredient-editor__item-fields--labels">
+            <span>Mengde</span>
+            <span>Enhet</span>
+            <span>Navn kunden ser</span>
+          </div>
         <ul className="motus-recipe-ingredient-editor__list">
-          {ingredients.map((row) => (
+          {ingredients.map((row) => {
+            const bankName = row.foodId ? foodItems.find((item) => item.id === row.foodId)?.name : undefined;
+            return (
             <li key={row.id} className="motus-recipe-ingredient-editor__item">
               <div className="motus-recipe-ingredient-editor__item-fields">
                 <TextInput
@@ -216,12 +225,16 @@ export function RecipeIngredientEditor({
                 <TextInput
                   value={row.name}
                   onChange={(event) => updateRow(row.id, { name: event.target.value })}
-                  aria-label="Ingrediensnavn"
+                  aria-label="Navn kunden ser"
                   disabled={disabled}
                 />
               </div>
               <div className="motus-recipe-ingredient-editor__item-meta">
-                <span>{formatRecipeIngredientLine(row)}</span>
+                <span>
+                  {bankName && bankName !== row.name.trim()
+                    ? `I banken: ${bankName}`
+                    : formatRecipeIngredientLine(row)}
+                </span>
                 <button
                   type="button"
                   className="motus-recipe-ingredient-editor__remove"
@@ -233,8 +246,10 @@ export function RecipeIngredientEditor({
                 </button>
               </div>
             </li>
-          ))}
+            );
+          })}
         </ul>
+        </>
       ) : (
         <p className="motus-recipe-ingredient-editor__empty">Ingen ingredienser lagt til ennå.</p>
       )}

@@ -6,6 +6,7 @@ import {
   formatRecipeIngredientLine,
   parseRecipeIngredientDrafts,
   recipePeopleLabel,
+  suggestRecipeDisplayName,
 } from "./recipeBody";
 
 const SAMPLE_BODY = `**Til 2 porsjoner**
@@ -62,5 +63,10 @@ describe("recipeBody", () => {
   it("beskriver antall personer", () => {
     expect(recipePeopleLabel(1)).toBe("1 person");
     expect(recipePeopleLabel(4)).toBe("4 personer");
+  });
+
+  it("korter ned lange matvarenavn til visningsnavn", () => {
+    expect(suggestRecipeDisplayName("Cottage cheese, 1,7% protein, naturell")).toBe("Cottage cheese");
+    expect(suggestRecipeDisplayName("Kyllingbryst")).toBe("Kyllingbryst");
   });
 });

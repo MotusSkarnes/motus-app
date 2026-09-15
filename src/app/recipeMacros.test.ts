@@ -8,6 +8,7 @@ import {
   extractRecipeIngredientLines,
   parseIngredientLine,
   parseRecipeServings,
+  recipeCustomerIngredientLabel,
 } from "./recipeMacros";
 
 const OATMEAL_BODY = `**Til 1 porsjon · ca. 10 min**
@@ -201,5 +202,26 @@ Slik gjør du
     const overridden = computeRecipeIngredients(body, foods, { [auto!.key]: soyafarse!.id });
     expect(overridden[0]?.foodName).toBe("Soyafarse");
     expect(overridden[0]?.grams).toBe(200);
+  });
+});
+
+describe("recipeCustomerIngredientLabel", () => {
+  it("viser oppskriftens visningsnavn i stedet for langt banknavn", () => {
+    expect(
+      recipeCustomerIngredientLabel({
+        searchText: "Cottage cheese",
+        foodName: "Cottage cheese, 1,7% protein, naturell",
+      }),
+    ).toBe("Cottage cheese");
+  });
+
+  it("viser byttet matvare når kunden bytter ingrediens", () => {
+    expect(
+      recipeCustomerIngredientLabel({
+        searchText: "Kyllingbryst",
+        foodName: "Kalkunfilet",
+        swappedFrom: "Kyllingbryst",
+      }),
+    ).toBe("Kalkunfilet");
   });
 });

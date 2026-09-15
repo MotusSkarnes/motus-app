@@ -33,6 +33,14 @@ function formatDraftQuantity(value: number): string {
   return value.toFixed(2).replace(/0+$/, "").replace(/\.$/, "").replace(".", ",");
 }
 
+/** Kort visningsnavn når matvaren i banken har langt, kronglete navn. */
+export function suggestRecipeDisplayName(foodName: string): string {
+  const trimmed = foodName.trim();
+  if (!trimmed) return "";
+  const beforeComma = trimmed.split(",")[0]?.trim() ?? trimmed;
+  return beforeComma || trimmed;
+}
+
 export function formatRecipeIngredientLine(row: RecipeIngredientDraft): string {
   const qty = row.quantity.trim().replace(".", ",");
   const unit = row.unit.trim();

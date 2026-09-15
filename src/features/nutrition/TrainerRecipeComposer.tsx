@@ -41,6 +41,7 @@ import { RecipeImageField } from "../../components/RecipeImageField";
 import { RecipeIngredientEditor } from "../../components/RecipeIngredientEditor";
 import { RecipeIngredientList } from "../../components/RecipeIngredientList";
 import { RecipeMacroBlocks } from "../../components/RecipeMacroBlocks";
+import { RecipeMethodSection } from "../../components/RecipeMethodSection";
 import { ConfirmDialog, DangerButton, GradientButton, OutlineButton, StatusMessage, TextArea, TextInput } from "../../app/ui";
 import { useFoodBankItems } from "../../app/useFoodBankItems";
 import { uid } from "../../app/storage";
@@ -486,6 +487,33 @@ export function TrainerRecipeComposer({
                 );
               }}
             />
+          ) : null}
+          {ingredients.some((row) => row.name.trim()) ? (
+            <section className="motus-recipe-customer-preview" aria-label="Slik ser kunden det">
+              <div className="motus-recipe-customer-preview__head">
+                <h3>Slik ser kunden det</h3>
+                <p>
+                  Dette er listen medlemmet får opp. Klikk i et navn for å korte det ned — mengde og næringsinnhold
+                  følger fortsatt matvaren du valgte i banken.
+                </p>
+              </div>
+              <RecipeIngredientList
+                body={draftBody}
+                foodItems={foodItemsForMacros}
+                recipeId={editItem?.id}
+                servings={draftServings}
+                foodOverrides={composedOverrides}
+                customerPreview
+                onCustomerLabelChange={(ingredientKey, label) => {
+                  const index = Number(ingredientKey.replace(/^ing-/, ""));
+                  if (!Number.isFinite(index)) return;
+                  setIngredients((prev) =>
+                    prev.map((row, rowIndex) => (rowIndex === index ? { ...row, name: label } : row)),
+                  );
+                }}
+              />
+              <RecipeMethodSection body={draftBody} />
+            </section>
           ) : null}
           {avoidanceConflicts.length > 0 ? <RecipeAvoidanceWarning conflicts={avoidanceConflicts} /> : null}
           {status ? <StatusMessage message={status} tone="error" /> : null}

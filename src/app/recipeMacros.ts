@@ -561,6 +561,17 @@ export function formatRecipeIngredientAmount(row: {
   return `${Math.round(row.grams)} g`;
 }
 
+/** Navnet medlemmet ser i ingredienslisten. Byttet matvare vises med nytt banknavn. */
+export function recipeCustomerIngredientLabel(row: {
+  searchText?: string;
+  foodName: string;
+  swappedFrom?: string;
+}): string {
+  if (row.swappedFrom) return row.foodName.trim() || row.searchText?.trim() || "Ingrediens";
+  const label = row.searchText?.trim();
+  return label || row.foodName.trim() || "Ingrediens";
+}
+
 export function formatIngredientDisplay(
   parsed: ParsedIngredient,
   grams: number,
