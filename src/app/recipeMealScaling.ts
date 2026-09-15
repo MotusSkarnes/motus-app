@@ -1,14 +1,12 @@
 import type { FoodItem } from "./foodBankTypes";
 import { computeMacrosForGrams, type MacroTotals } from "./mealPlanMacros";
 import type { MealPlanTargets } from "./mealPlanTypes";
-import { DEFAULT_RECIPE_SCALING_BY_ID } from "./defaultInspirationRecipes";
 import type { RecipeMealSlot } from "./recipeMealCategory";
 import { roundRecipeGrams } from "./recipeIngredientSwap";
 import {
   computeRecipeIngredients,
   computeRecipeMacros,
   formatIngredientDisplay,
-  parseRecipeServings,
   type RecipeIngredient,
   type RecipeIngredientFoodOverrides,
   type RecipeMacroResult,
@@ -23,9 +21,6 @@ const MEAL_KCAL_SHARE: Record<RecipeMealSlot, number> = {
   middag: 0.35,
   snack: 0.1,
 };
-
-const MIN_SCALE = 0.7;
-const MAX_SCALE = 1.55;
 
 export type ScaledRecipeView = {
   ingredients: RecipeIngredient[];
@@ -49,36 +44,24 @@ export function targetKcalForRecipeMeal(
   return Math.round(daily * share);
 }
 
+/** Kaloriskalering er av: mengdene følger oppskriften. Flere personer styres av peopleScale. */
 export function computeIngredientScaleFactor(
-  basePerServingKcal: number,
-  targetMealKcal: number | null,
-  mode: RecipeScalingMode,
+  _basePerServingKcal?: number,
+  _targetMealKcal?: number | null,
+  _mode?: RecipeScalingMode,
 ): number {
-  if (mode === "fixed" || !targetMealKcal || basePerServingKcal <= 0) return 1;
-  const raw = targetMealKcal / basePerServingKcal;
-  return Math.min(MAX_SCALE, Math.max(MIN_SCALE, raw));
+  return 1;
 }
 
-export function resolveRecipeScalingMode(input: {
+export function resolveRecipeScalingMode(_input?: {
   id?: string;
   scalingMode?: RecipeScalingMode;
-  body: string;
+  body?: string;
   title?: string;
   tag?: string;
   servings?: number;
 }): RecipeScalingMode {
-  if (input.scalingMode === "flexible" || input.scalingMode === "fixed") return input.scalingMode;
-  const fromDefault = input.id ? DEFAULT_RECIPE_SCALING_BY_ID.get(input.id) : undefined;
-  if (fromDefault) return fromDefault;
-
-  const servings = parseRecipeServings(input.body, input.servings);
-  const hay = `${input.tag ?? ""} ${input.title ?? ""}`.toLowerCase();
-
-  if (servings > 1) return "fixed";
-  if (/brødskive|rugbrød|riskaker|bolo|bolognese|4 porsjon|omelett|vafler|kake|brownies/.test(hay)) {
-    return "fixed";
-  }
-  return "flexible";
+  return "fixed";
 }
 
 function scaleIngredientRows(ingredients: RecipeIngredient[], factor: number): RecipeIngredient[] {

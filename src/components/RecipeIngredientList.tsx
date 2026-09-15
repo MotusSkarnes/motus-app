@@ -278,17 +278,6 @@ export function RecipeIngredientList({
           Vi gjetter matvare fra teksten. Sjekk at koblingen stemmer — trykk <strong>Velg matvare</strong> for å rette.
         </p>
       ) : null}
-      {scaledView?.adjusted && scaledView.targetMealKcal ? (
-        <p className="mt-2 rounded-xl border border-teal-100 bg-teal-50/80 px-3 py-2 text-xs text-teal-900">
-          Mengdene er tilpasset ca. <strong>{scaledView.targetMealKcal} kcal</strong> for dette måltidet
-          {dailyTargets?.kcal ? ` (matplan: ${Math.round(dailyTargets.kcal)} kcal/dag)` : ""}. Du kan fortsatt bytte
-          ingredienser.
-        </p>
-      ) : scalingMode === "fixed" && dailyTargets?.kcal ? (
-        <p className="mt-2 rounded-xl border border-slate-100 bg-slate-50 px-3 py-2 text-xs text-slate-600">
-          Denne oppskriften har <strong>faste mengder</strong> for best resultat og skaleres ikke automatisk.
-        </p>
-      ) : null}
       <ul className="motus-recipe-ingredient-list">
         {displayRows.map((row) => (
           <li

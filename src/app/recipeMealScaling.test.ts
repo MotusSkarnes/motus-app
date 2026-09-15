@@ -10,7 +10,7 @@ import {
 describe("recipeMealScaling", () => {
   const foods = buildDefaultFoodBankItems();
 
-  it("skalerer fleksible middager mot måltids-kcal", () => {
+  it("beholder skrevne mengder selv når kunden har kalorimål", () => {
     const recipe = DEFAULT_INSPIRATION_RECIPES.find((row) => row.id === "default-recipe-13")!;
     const view = buildScaledRecipeView(recipe.body, foods, {
       scalingMode: "flexible",
@@ -18,9 +18,26 @@ describe("recipeMealScaling", () => {
       mealSlot: "middag",
     });
     expect(view).not.toBeNull();
-    expect(view!.adjusted).toBe(true);
-    expect(view!.macros.perServing.kcal).toBeGreaterThan(400);
-    expect(view!.macros.perServing.kcal).toBeLessThan(900);
+    expect(view!.adjusted).toBe(false);
+    expect(view!.scaleFactor).toBe(1);
+  });
+
+  it("beholder 115 g cottage cheese selv mot et 500 kcal måltidsmål", () => {
+    const body = `**Til 1 porsjon**
+
+**Ingredienser**
+- 115 g cottage cheese
+
+**Slik gjør du**
+1. Server.`;
+    const view = buildScaledRecipeView(body, foods, {
+      scalingMode: "flexible",
+      dailyTargets: { kcal: 1667 },
+      mealSlot: "lunsj",
+    });
+    expect(view?.targetMealKcal).toBe(500);
+    expect(view?.ingredients[0]?.grams).toBe(115);
+    expect(view?.adjusted).toBe(false);
   });
 
   it("skalerer ikke faste oppskrifter", () => {
@@ -34,9 +51,9 @@ describe("recipeMealScaling", () => {
     expect(view?.adjusted).toBe(false);
   });
 
-  it("begrenser skaleringsfaktor", () => {
-    expect(computeIngredientScaleFactor(500, 700, "flexible")).toBeCloseTo(1.4, 1);
-    expect(computeIngredientScaleFactor(900, 400, "flexible")).toBe(0.7);
+  it("skalerer ikke mot kalorimål", () => {
+    expect(computeIngredientScaleFactor(500, 700, "flexible")).toBe(1);
+    expect(computeIngredientScaleFactor(900, 400, "flexible")).toBe(1);
     expect(computeIngredientScaleFactor(500, 700, "fixed")).toBe(1);
   });
 

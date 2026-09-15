@@ -7,7 +7,7 @@ export type DefaultInspirationRecipe = {
   tag: string;
   imageUrl?: string;
   createdAt: string;
-  /** flexible = mengder kan skaleres mot kundens måltids-kcal; fixed = behold oppskriftens balanse. */
+  /** Beholdt for eldre data. Mengder vises alltid som i oppskriften. */
   scalingMode?: "flexible" | "fixed";
 };
 
@@ -120,7 +120,7 @@ export const DEFAULT_INSPIRATION_RECIPES: DefaultInspirationRecipe[] = [
     description: "Enkel hverdagsmiddag — protein, karbo og fiber på ett fat.",
     body: "**Til 1 porsjon · ca. 20 min**\n\n**Ingredienser**\n- 150 g kyllingbryst\n- 60 g basmatiris tørr\n- 150 g brokkoli\n- 50 g paprika\n- 1 ss olivenolje\n- Salt og pepper\n\n**Slik gjør du**\n1. Kok risen etter pakkens anvisning.\n2. Krydre kyllingen med salt og pepper. Stek i olivenolje på middels varme til den er gjennomstekt, ca. 5–6 minutter per side.\n3. Damp eller wok brokkoli og paprika i 3–4 minutter.\n4. Server kylling, ris og grønnsaker sammen.\n\n**Tips:** Bytt brokkoli med asparges eller squash etter sesong.",
     tag: "20 min · Middag",
-    scalingMode: "flexible",
+    scalingMode: "fixed",
     createdAt: "2026-05-27",
   },
   {
@@ -129,7 +129,7 @@ export const DEFAULT_INSPIRATION_RECIPES: DefaultInspirationRecipe[] = [
     description: "Mettende middag som smaker mer enn den er vanskelig.",
     body: "**Til 1 porsjon · ca. 25 min**\n\n**Ingredienser**\n- 150 g karbonadedeig mager\n- 60 g basmatiris tørr\n- 50 g løk\n- 100 g tomat\n- 1/2 paprika\n- 1 ss olivenolje\n- 1 ts paprikakrydder\n- Salt og pepper\n\n**Slik gjør du**\n1. Kok risen.\n2. Brun kjøttdeig med løk i en panne. Krydre med paprika, salt og pepper.\n3. Tilsett hakket tomat og paprika. La småputre i 5 minutter.\n4. Server med ris.\n\n**Tips:** Topp med litt revet ost eller skyr naturell hvis du vil ha mer protein.",
     tag: "25 min · Middag",
-    scalingMode: "flexible",
+    scalingMode: "fixed",
     createdAt: "2026-05-27",
   },
   {
@@ -138,7 +138,7 @@ export const DEFAULT_INSPIRATION_RECIPES: DefaultInspirationRecipe[] = [
     description: "Lett fordøyelig middag med magert protein.",
     body: "**Til 1 porsjon · ca. 30 min**\n\n**Ingredienser**\n- 150 g torsk\n- 200 g potet kokt\n- 100 g gulrot\n- 1 ss olivenolje\n- Saft fra 1/2 sitron\n- Salt og pepper\n\n**Slik gjør du**\n1. Varm ovnen til 200 °C. Skjær potet og gulrot i biter og kok til nesten mør.\n2. Legg fisk og grønnsaker på et brett, pensle med olivenolje, salt, pepper og sitron.\n3. Stek i 12–15 minutter til fisken er gjennomstekt.\n\n**Tips:** Server med frisk dill eller persille.",
     tag: "30 min · Middag",
-    scalingMode: "flexible",
+    scalingMode: "fixed",
     createdAt: "2026-05-27",
   },
   {
@@ -147,7 +147,7 @@ export const DEFAULT_INSPIRATION_RECIPES: DefaultInspirationRecipe[] = [
     description: "Rask pastarett med grønnsaker og god metthet.",
     body: "**Til 1 porsjon · ca. 20 min**\n\n**Ingredienser**\n- 120 g kyllingbryst\n- 80 g fullkornspasta tørr\n- 100 g spinat\n- 80 g tomat\n- 1 ss olivenolje\n- 1 fedd hvitløk\n- Salt og pepper\n\n**Slik gjør du**\n1. Kok pastaen al dente.\n2. Stek kylling i strimler med hvitløk til gjennomstekt.\n3. Tilsett tomat og spinat, rør til spinaten faller sammen.\n4. Bland inn pasta og smak til med salt og pepper.\n\n**Tips:** Spar litt pastavann og rør inn for en silkemyk saus uten fløte.",
     tag: "20 min · Middag",
-    scalingMode: "flexible",
+    scalingMode: "fixed",
     createdAt: "2026-05-27",
   },
   {
@@ -156,7 +156,7 @@ export const DEFAULT_INSPIRATION_RECIPES: DefaultInspirationRecipe[] = [
     description: "Klassisk tallerkenmiddag med magert kjøtt og enkle sides.",
     body: "**Til 1 porsjon · ca. 25 min**\n\n**Ingredienser**\n- 120 g storfekjøtt mager\n- 250 g potet kokt\n- 150 g brokkoli\n- 1 ss olivenolje\n- Salt og pepper\n\n**Slik gjør du**\n1. Kok potet og brokkoli til møre.\n2. Stek storfekjøttet raskt på høy varme til ønsket stekegrad. La hvile noen minutter.\n3. Server med potet og brokkoli.\n\n**Tips:** Skjær kjøttet tynt mot fiberen for maksimal mørhet.",
     tag: "25 min · Middag",
-    scalingMode: "flexible",
+    scalingMode: "fixed",
     createdAt: "2026-05-27",
   },
   {
@@ -165,7 +165,7 @@ export const DEFAULT_INSPIRATION_RECIPES: DefaultInspirationRecipe[] = [
     description: "Plantebasert middag med fiber og protein — god som meat-free dag.",
     body: "**Til 1 porsjon · ca. 20 min**\n\n**Ingredienser**\n- 150 g linser kokt\n- 80 g gulrot\n- 50 g løk\n- 100 g tomat\n- 1 ss olivenolje\n- 1 ts paprikakrydder\n- Salt og pepper\n\n**Slik gjør du**\n1. Stek løk og gulrot i olivenolje i 3–4 minutter.\n2. Tilsett linser, tomat og krydder. La småputre i 8–10 minutter.\n3. Smak til med salt og pepper.\n\n**Tips:** Tilsett 100 g kyllingbryst hvis du vil ha mer protein denne dagen.",
     tag: "20 min · Middag",
-    scalingMode: "flexible",
+    scalingMode: "fixed",
     createdAt: "2026-05-27",
   },
   {
@@ -174,7 +174,7 @@ export const DEFAULT_INSPIRATION_RECIPES: DefaultInspirationRecipe[] = [
     description: "Frisk middag eller stor lunsj — lett å ta med.",
     body: "**Til 1 porsjon · ca. 15 min**\n\n**Ingredienser**\n- 120 g kyllingbryst\n- 80 g quinoa kokt\n- 80 g salat mix\n- 80 g tomat\n- 1 ss olivenolje\n- Saft fra 1/2 sitron\n- Salt og pepper\n\n**Slik gjør du**\n1. Stek eller kok kyllingen og skjær i strimler.\n2. Bland quinoa, salat og tomat i en bolle.\n3. Topp med kylling, olivenolje, sitron, salt og pepper.\n\n**Tips:** Kok ekstra quinoa til lunsj dagen etter.",
     tag: "15 min · Middag",
-    scalingMode: "flexible",
+    scalingMode: "fixed",
     createdAt: "2026-05-27",
   },
   {
@@ -183,7 +183,7 @@ export const DEFAULT_INSPIRATION_RECIPES: DefaultInspirationRecipe[] = [
     description: "Rask variant av fiskemiddag når du vil ha noe ekstra mettende.",
     body: "**Til 1 porsjon · ca. 20 min**\n\n**Ingredienser**\n- 130 g laks\n- 250 g potet kokt\n- 1 ss smør\n- 2 ss lettmelk\n- 100 g brokkoli\n- Salt og pepper\n\n**Slik gjør du**\n1. Kok potet og brokkoli. Mos poteten med smør og litt melk.\n2. Stek laksen i en panne med salt og pepper, ca. 3–4 minutter per side.\n3. Server laks med potetmos og brokkoli.\n\n**Tips:** Ikke stek for hardt — laksen skal være saftig inni.",
     tag: "20 min · Middag",
-    scalingMode: "flexible",
+    scalingMode: "fixed",
     createdAt: "2026-05-27",
   },
   {
@@ -216,7 +216,7 @@ export const DEFAULT_INSPIRATION_RECIPES: DefaultInspirationRecipe[] = [
 ];
 
 export const DEFAULT_RECIPE_SCALING_BY_ID = new Map(
-  DEFAULT_INSPIRATION_RECIPES.map((recipe) => [recipe.id, recipe.scalingMode ?? "flexible"]),
+  DEFAULT_INSPIRATION_RECIPES.map((recipe) => [recipe.id, recipe.scalingMode ?? "fixed"]),
 );
 
 export const DEFAULT_RECIPE_BODY_BY_ID = new Map(

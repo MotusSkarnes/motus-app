@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Trash2, X } from "lucide-react";
-import { DEFAULT_RECIPE_SCALING_BY_ID } from "../../app/defaultInspirationRecipes";
 import { buildDefaultFoodBankItems } from "../../app/foodBankSeed";
 import type { FoodItem } from "../../app/foodBankTypes";
 import { findRecipeFoodAvoidanceConflicts } from "../../app/memberFoodAvoidances";
@@ -309,8 +308,7 @@ export function TrainerRecipeComposer({
 
     const recipeId = editItem && !duplicateFromItem ? editItem.id : uid("recipe");
     const storedImageUrl = await resolveInspirationImageForStorage(imageUrl);
-    const scalingMode =
-      sourceItem?.scalingMode ?? DEFAULT_RECIPE_SCALING_BY_ID.get(recipeId);
+    const scalingMode = "fixed";
 
     const tagValue = tag.trim() && tag.trim() !== "Oppskrift" ? tag.trim() : mealSlotsLabel(mealSlots);
     const recipeRow: Record<string, unknown> = {

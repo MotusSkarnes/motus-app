@@ -355,19 +355,8 @@ export function NutritionRecipesPanel({ mealPlanTargets, canManage, onEdit, onDu
   return (
     <div className="space-y-4">
       <p className="text-sm text-slate-600">
-        Oppskrifter med næringsinnhold per person. Velg hvor mange du skal lage til inne på oppskriften — da oppdateres
-        mengdene.{" "}
-        {mealPlanTargets?.kcal ? (
-          <>
-            Fleksible middager tilpasses ca. måltidsmålet fra matplanen din ({Math.round(mealPlanTargets.kcal)} kcal/dag).
-            Faste oppskrifter (f.eks. brødskive, batch-retter) beholder opprinnelige mengder.
-          </>
-        ) : (
-          <>
-            Når du har matplan med kalorimål, tilpasses enkle middager automatisk — oppskrifter med faste mengder
-            endres ikke.
-          </>
-        )}
+        Oppskrifter med næringsinnhold per person. Mengdene er de samme som i oppskriften. Velg hvor mange du skal lage
+        til inne på oppskriften — da oppdateres mengdene.
       </p>
       <div className="flex flex-wrap gap-2">
         <PillButton
