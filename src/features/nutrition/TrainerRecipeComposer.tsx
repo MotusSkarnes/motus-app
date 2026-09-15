@@ -12,8 +12,8 @@ import {
 } from "../../app/inspirationStorage";
 import { isInspirationRecipeItem } from "../../app/inspirationHubItems";
 import type { InspirationRecipeItem } from "../../app/inspirationRecipeItems";
-import { resolveInspirationImageForStorage } from "../../app/inspirationRecipeImage";
-import { cropImageDataUrlToSquare, readImageFileAsDataUrl } from "../../app/imageCompress";
+import { prepareRecipePhotoDataUrl, resolveInspirationImageForStorage } from "../../app/inspirationRecipeImage";
+import { readImageFileAsDataUrl } from "../../app/imageCompress";
 import {
   RECIPE_MEAL_SLOTS,
   mealSlotsLabel,
@@ -262,7 +262,7 @@ export function TrainerRecipeComposer({
     setStatus(null);
     try {
       const original = await readImageFileAsDataUrl(file);
-      setImageUrl(await cropImageDataUrlToSquare(original, 960, 0.82));
+      setImageUrl(await prepareRecipePhotoDataUrl(original));
     } catch {
       setStatus("Kunne ikke lese bildefilen. Prøv et mindre bilde.");
     } finally {

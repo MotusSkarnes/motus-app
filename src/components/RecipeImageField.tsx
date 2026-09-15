@@ -21,7 +21,7 @@ export function RecipeImageField({
     <div className="motus-foodbank-image-field">
       <span className="motus-foodbank-field-label">Bilde på oppskrift</span>
       <p className="motus-foodbank-image-field-hint">
-        Valgfritt. Vises som kvadrat (1:1) i oppskriftslisten, på detaljsiden og i matplanen — samme beskjæring overalt.
+        Valgfritt. Vises i 5:4 (litt bredere enn høyt) i oppskriftslisten, på detaljsiden og i matplanen — samme beskjæring overalt.
       </p>
       <div className="motus-foodbank-image-field-row">
         <label className="motus-foodbank-image-upload">

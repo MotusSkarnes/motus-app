@@ -40,6 +40,64 @@ export function compressImageDataUrl(dataUrl: string, maxSide = 960, quality = 0
   });
 }
 
+/** Største sentrerte utsnitt med gitt sideforhold (bredde:høyde). */
+export function coverCropRect(
+  sourceWidth: number,
+  sourceHeight: number,
+  aspectWidth: number,
+  aspectHeight: number,
+): { sx: number; sy: number; sw: number; sh: number } {
+  const width = Math.max(1, sourceWidth);
+  const height = Math.max(1, sourceHeight);
+  const target = aspectWidth / aspectHeight;
+  const source = width / height;
+  if (source > target) {
+    const sw = Math.max(1, Math.round(height * target));
+    return { sx: Math.floor((width - sw) / 2), sy: 0, sw, sh: height };
+  }
+  const sh = Math.max(1, Math.round(width / target));
+  return { sx: 0, sy: Math.floor((height - sh) / 2), sw: width, sh };
+}
+
+/** Beskjær til et fast sideforhold med hvit bakgrunn. */
+export function cropImageDataUrlToAspect(
+  dataUrl: string,
+  aspectWidth: number,
+  aspectHeight: number,
+  maxWidth = 960,
+  quality = 0.82,
+): Promise<string> {
+  if (!dataUrl.startsWith("data:image/")) return Promise.resolve(dataUrl);
+
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => {
+      const crop = coverCropRect(img.width, img.height, aspectWidth, aspectHeight);
+      const outWidth = Math.max(1, Math.min(maxWidth, crop.sw));
+      const outHeight = Math.max(1, Math.round((outWidth * aspectHeight) / aspectWidth));
+      const canvas = document.createElement("canvas");
+      canvas.width = outWidth;
+      canvas.height = outHeight;
+      const context = canvas.getContext("2d");
+      if (!context) {
+        reject(new Error("Kunne ikke behandle bildefilen."));
+        return;
+      }
+      context.fillStyle = "#ffffff";
+      context.fillRect(0, 0, outWidth, outHeight);
+      context.drawImage(img, crop.sx, crop.sy, crop.sw, crop.sh, 0, 0, outWidth, outHeight);
+      const mime = dataUrl.includes("image/png") ? "image/png" : "image/jpeg";
+      const out =
+        mime === "image/png"
+          ? canvas.toDataURL("image/png")
+          : canvas.toDataURL("image/jpeg", quality);
+      resolve(out || dataUrl);
+    };
+    img.onerror = () => reject(new Error("Kunne ikke behandle bildefilen."));
+    img.src = dataUrl;
+  });
+}
+
 /** Beskjær til kvadrat (1:1) med hvit bakgrunn — brukes for øvelsesbilder. */
 export function cropImageDataUrlToSquare(
   dataUrl: string,

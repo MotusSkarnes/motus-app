@@ -10,7 +10,7 @@ type RecipePhotoProps = {
   className?: string;
 };
 
-/** Felles 1:1-ramme for oppskriftsbilder i liste, detalj, matplan og komponist. */
+/** Felles 5:4-ramme for oppskriftsbilder i liste, detalj, matplan og komponist. */
 export function RecipePhoto({ src, alt = "", size = "card", className = "" }: RecipePhotoProps) {
   const url = src?.trim() ?? "";
   const iconSize = size === "hero" || size === "card" ? 56 : size === "preview" || size === "tile" ? 28 : 20;

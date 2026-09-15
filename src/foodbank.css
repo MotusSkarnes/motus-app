@@ -531,11 +531,11 @@
   overflow: hidden;
 }
 
-/* Felles 1:1-ramme for oppskriftsbilder — samme beskjæring i liste, detalj og matplan. */
+/* Felles 5:4-ramme for oppskriftsbilder — samme beskjæring i liste, detalj og matplan. */
 .motus-recipe-photo {
   position: relative;
   overflow: hidden;
-  aspect-ratio: 1 / 1;
+  aspect-ratio: 5 / 4;
   background: #f1f5f9;
 }
 
@@ -573,20 +573,20 @@
 }
 
 .motus-recipe-photo--tile {
-  width: 4.5rem;
+  width: 5.5rem;
   max-width: 100%;
   margin-inline: auto;
   border-radius: 0.45rem;
 }
 
 .motus-recipe-photo--thumb {
-  width: 4.5rem;
+  width: 5.5rem;
   flex-shrink: 0;
   border-radius: 0.75rem;
 }
 
 .motus-recipe-photo--swap {
-  width: 2.75rem;
+  width: 3.25rem;
   flex-shrink: 0;
   border-radius: 0.5rem;
 }
@@ -2996,7 +2996,7 @@
 
 .motus-matplan-meal-card--v2 {
   display: grid;
-  grid-template-columns: 4.5rem minmax(0, 1fr) auto;
+  grid-template-columns: 5.5rem minmax(0, 1fr) auto;
   align-items: start;
   gap: 0.65rem;
   padding: 0.65rem;
@@ -3016,8 +3016,9 @@
 }
 
 .motus-matplan-meal-card__media {
-  width: 4.5rem;
-  height: 4.5rem;
+  width: 5.5rem;
+  height: auto;
+  aspect-ratio: 5 / 4;
   flex-shrink: 0;
   overflow: hidden;
   border-radius: 0.75rem;
@@ -3428,7 +3429,7 @@
 
 .motus-pt-planner-grid__img {
   width: 100%;
-  aspect-ratio: 1 / 1;
+  aspect-ratio: 5 / 4;
   height: auto;
   object-fit: cover;
   object-position: center;
@@ -3774,7 +3775,7 @@
 }
 
 .motus-matplan-meal-card--v2.motus-matplan-meal-card--expanded {
-  grid-template-columns: 4.5rem minmax(0, 1fr) auto;
+  grid-template-columns: 5.5rem minmax(0, 1fr) auto;
   grid-template-rows: auto auto;
 }
 
