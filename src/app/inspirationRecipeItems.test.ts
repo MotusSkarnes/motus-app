@@ -3,7 +3,8 @@ import { filterRecipeInspirationItems } from "./inspirationRecipeItems";
 
 describe("filterRecipeInspirationItems", () => {
   it("lar lagrede oppskrifter overstyre standardoppskrifter med samme id", () => {
-    const merged = filterRecipeInspirationItems([
+    const merged = filterRecipeInspirationItems(
+      [
       {
         id: "default-recipe-1",
         category: "recipes",
@@ -12,7 +13,9 @@ describe("filterRecipeInspirationItems", () => {
         body: "**Til 1 porsjon**\n\n**Ingredienser**\n- 1 dl lettmelk\n\n**Slik gjør du**\n1. Bland.",
         tag: "Frokost",
       },
-    ]);
+      ],
+      { suppressedIds: [] },
+    );
     const hit = merged.find((row) => row.id === "default-recipe-1");
     expect(hit?.title).toBe("Min tilpassede frokost");
     expect(hit?.description).toBe("Endret");
@@ -56,5 +59,23 @@ describe("filterRecipeInspirationItems", () => {
     ]);
     const hit = merged.find((row) => row.id === "default-recipe-1");
     expect(hit?.imageUrl).toBe("https://example.com/protein-bowl.jpg");
+  });
+
+  it("skjuler slettede standardoppskrifter", () => {
+    const merged = filterRecipeInspirationItems(
+      [
+        {
+          id: "custom-recipe-1",
+          category: "recipes",
+          title: "Cottage cheese og bær",
+          description: "Egen",
+          body: "**Til 1 porsjon**\n\n**Ingredienser**\n- 150 g cottage cheese\n\n**Slik gjør du**\n1. Bland.",
+          tag: "Frokost",
+        },
+      ],
+      { suppressedIds: ["default-recipe-1", "custom-recipe-1"] },
+    );
+    expect(merged.some((row) => row.id === "default-recipe-1")).toBe(false);
+    expect(merged.some((row) => row.id === "custom-recipe-1")).toBe(false);
   });
 });

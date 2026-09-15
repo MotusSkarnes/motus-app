@@ -3,9 +3,9 @@ import { Plus } from "lucide-react";
 import {
   loadInspirationItemsFromLocalStorage,
 } from "../../app/inspirationStorage";
-import type { InspirationRecipeItem } from "../../app/inspirationRecipeItems";
+import { deleteInspirationRecipe, type InspirationRecipeItem } from "../../app/inspirationRecipeItems";
 import type { Member } from "../../app/types";
-import { GradientButton } from "../../app/ui";
+import { ConfirmDialog, GradientButton, StatusMessage } from "../../app/ui";
 import { NutritionRecipesPanel } from "./NutritionRecipesPanel";
 import { TrainerRecipeComposer } from "./TrainerRecipeComposer";
 
@@ -18,6 +18,9 @@ export function TrainerRecipesPanel({ members, authorName = "Motus PT" }: Traine
   const [composerOpen, setComposerOpen] = useState(false);
   const [editItem, setEditItem] = useState<InspirationRecipeItem | null>(null);
   const [duplicateFromItem, setDuplicateFromItem] = useState<InspirationRecipeItem | null>(null);
+  const [pendingDelete, setPendingDelete] = useState<InspirationRecipeItem | null>(null);
+  const [deleting, setDeleting] = useState(false);
+  const [status, setStatus] = useState<string | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
 
   const composerVisible = composerOpen || editItem !== null;
@@ -46,6 +49,31 @@ export function TrainerRecipesPanel({ members, authorName = "Motus PT" }: Traine
     setDuplicateFromItem(null);
   }
 
+  function requestDelete(item: InspirationRecipeItem) {
+    setStatus(null);
+    setPendingDelete(item);
+  }
+
+  async function confirmDelete() {
+    if (!pendingDelete || deleting) return;
+    setDeleting(true);
+    const result = await deleteInspirationRecipe(
+      pendingDelete.id,
+      loadInspirationItemsFromLocalStorage() ?? [],
+    );
+    setDeleting(false);
+    if (!result.ok) {
+      setStatus(result.error ?? "Kunne ikke slette oppskriften.");
+      return;
+    }
+    if (editItem?.id === pendingDelete.id || duplicateFromItem?.id === pendingDelete.id) {
+      closeComposer();
+    }
+    setPendingDelete(null);
+    setStatus(`«${pendingDelete.title}» er slettet.`);
+    setReloadKey((n) => n + 1);
+  }
+
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
@@ -58,7 +86,14 @@ export function TrainerRecipesPanel({ members, authorName = "Motus PT" }: Traine
           Ny oppskrift
         </GradientButton>
       </div>
-      <NutritionRecipesPanel key={reloadKey} canManage onEdit={openEdit} onDuplicate={openDuplicate} />
+      {status ? <StatusMessage message={status} tone={status.includes("slettet") ? "success" : "error"} /> : null}
+      <NutritionRecipesPanel
+        key={reloadKey}
+        canManage
+        onEdit={openEdit}
+        onDuplicate={openDuplicate}
+        onDelete={requestDelete}
+      />
       <TrainerRecipeComposer
         open={composerVisible}
         members={members}
@@ -68,6 +103,26 @@ export function TrainerRecipesPanel({ members, authorName = "Motus PT" }: Traine
         authorName={authorName}
         onClose={closeComposer}
         onSaved={() => setReloadKey((n) => n + 1)}
+        onDelete={editItem && !duplicateFromItem ? requestDelete : undefined}
+      />
+      <ConfirmDialog
+        open={pendingDelete !== null}
+        title="Slette oppskrift?"
+        message={
+          pendingDelete
+            ? `«${pendingDelete.title}» fjernes fra listen for alle medlemmer. Dette kan ikke angres.`
+            : ""
+        }
+        confirmLabel={deleting ? "Sletter…" : "Slett oppskrift"}
+        cancelLabel="Avbryt"
+        tone="danger"
+        onCancel={() => {
+          if (deleting) return;
+          setPendingDelete(null);
+        }}
+        onConfirm={() => {
+          void confirmDelete();
+        }}
       />
     </div>
   );

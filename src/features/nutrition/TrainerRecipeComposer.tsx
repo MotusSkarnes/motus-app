@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { X } from "lucide-react";
+import { Trash2, X } from "lucide-react";
 import { DEFAULT_RECIPE_SCALING_BY_ID } from "../../app/defaultInspirationRecipes";
 import { buildDefaultFoodBankItems } from "../../app/foodBankSeed";
 import { findRecipeFoodAvoidanceConflicts } from "../../app/memberFoodAvoidances";
@@ -41,7 +41,7 @@ import { RecipeImageField } from "../../components/RecipeImageField";
 import { RecipeIngredientEditor } from "../../components/RecipeIngredientEditor";
 import { RecipeIngredientList } from "../../components/RecipeIngredientList";
 import { RecipeMacroBlocks } from "../../components/RecipeMacroBlocks";
-import { ConfirmDialog, GradientButton, OutlineButton, StatusMessage, TextArea, TextInput } from "../../app/ui";
+import { ConfirmDialog, DangerButton, GradientButton, OutlineButton, StatusMessage, TextArea, TextInput } from "../../app/ui";
 import { useFoodBankItems } from "../../app/useFoodBankItems";
 import { uid } from "../../app/storage";
 
@@ -95,6 +95,7 @@ type TrainerRecipeComposerProps = {
   authorName?: string;
   onClose: () => void;
   onSaved: () => void;
+  onDelete?: (item: InspirationRecipeItem) => void;
 };
 
 export function TrainerRecipeComposer({
@@ -106,6 +107,7 @@ export function TrainerRecipeComposer({
   authorName = "Motus",
   onClose,
   onSaved,
+  onDelete,
 }: TrainerRecipeComposerProps) {
   const sourceItem = duplicateFromItem ?? editItem;
   const foodBankItems = useFoodBankItems();
@@ -487,13 +489,28 @@ export function TrainerRecipeComposer({
           ) : null}
           {avoidanceConflicts.length > 0 ? <RecipeAvoidanceWarning conflicts={avoidanceConflicts} /> : null}
           {status ? <StatusMessage message={status} tone="error" /> : null}
-          <div className="flex flex-wrap justify-end gap-2">
-            <OutlineButton type="button" onClick={requestClose}>
-              Avbryt
-            </OutlineButton>
-            <GradientButton type="button" onClick={() => void handleSave()} disabled={saving || isImageProcessing}>
-              {saving ? "Lagrer…" : editItem && !duplicateFromItem ? "Lagre endringer" : duplicateFromItem ? "Opprett kopi" : "Publiser oppskrift"}
-            </GradientButton>
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            {editItem && !duplicateFromItem && onDelete ? (
+              <DangerButton
+                type="button"
+                className="text-sm"
+                disabled={saving}
+                onClick={() => onDelete(editItem)}
+              >
+                <Trash2 className="mr-1.5 inline h-4 w-4" aria-hidden />
+                Slett oppskrift
+              </DangerButton>
+            ) : (
+              <span />
+            )}
+            <div className="flex flex-wrap justify-end gap-2">
+              <OutlineButton type="button" onClick={requestClose}>
+                Avbryt
+              </OutlineButton>
+              <GradientButton type="button" onClick={() => void handleSave()} disabled={saving || isImageProcessing}>
+                {saving ? "Lagrer…" : editItem && !duplicateFromItem ? "Lagre endringer" : duplicateFromItem ? "Opprett kopi" : "Publiser oppskrift"}
+              </GradientButton>
+            </div>
           </div>
         </div>
       </div>

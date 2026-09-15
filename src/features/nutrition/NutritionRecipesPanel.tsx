@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { ArrowLeft, Copy, Pencil, Soup } from "lucide-react";
+import { ArrowLeft, Copy, Pencil, Soup, Trash2 } from "lucide-react";
 import { buildDefaultFoodBankItems } from "../../app/foodBankSeed";
 import type { MealPlanTargets } from "../../app/mealPlanTypes";
 import { buildScaledRecipeView, resolveRecipeScalingMode } from "../../app/recipeMealScaling";
@@ -57,6 +57,7 @@ function RecipeDetail({
   canManage,
   onEdit,
   onDuplicate,
+  onDelete,
   preferredMealSlot,
 }: {
   item: InspirationRecipeItem;
@@ -65,6 +66,7 @@ function RecipeDetail({
   canManage?: boolean;
   onEdit?: (item: InspirationRecipeItem) => void;
   onDuplicate?: (item: InspirationRecipeItem) => void;
+  onDelete?: (item: InspirationRecipeItem) => void;
   preferredMealSlot?: RecipeMealSlot | null;
 }) {
   const foodItems = useFoodItemsForMacros();
@@ -89,6 +91,12 @@ function RecipeDetail({
           <OutlineButton type="button" className="text-sm" onClick={() => onDuplicate(item)}>
             <Copy className="mr-1.5 inline h-4 w-4" aria-hidden />
             Dupliser oppskrift
+          </OutlineButton>
+        ) : null}
+        {canManage && onDelete ? (
+          <OutlineButton type="button" className="text-sm text-rose-700" onClick={() => onDelete(item)}>
+            <Trash2 className="mr-1.5 inline h-4 w-4" aria-hidden />
+            Slett oppskrift
           </OutlineButton>
         ) : null}
       </div>
@@ -133,6 +141,7 @@ function RecipeCard({
   canManage,
   onEdit,
   onDuplicate,
+  onDelete,
 }: {
   item: InspirationRecipeItem;
   macros: ReturnType<typeof computeRecipeMacros>;
@@ -141,6 +150,7 @@ function RecipeCard({
   canManage?: boolean;
   onEdit?: (item: InspirationRecipeItem) => void;
   onDuplicate?: (item: InspirationRecipeItem) => void;
+  onDelete?: (item: InspirationRecipeItem) => void;
 }) {
   const mealSlots = recipeMealSlotsFor(item);
   const proteinCategory = resolveRecipeProteinCategory(item);
@@ -187,12 +197,13 @@ function RecipeCard({
         ) : null}
       </div>
       </button>
-      {canManage && onEdit ? (
+      {canManage && (onEdit || onDuplicate || onDelete) ? (
         <div className="border-t px-3 py-2" style={{ borderColor: "rgba(15,23,42,0.06)" }}>
-          <div className="flex gap-1.5">
+          <div className="flex flex-wrap gap-1.5">
+            {onEdit ? (
             <button
               type="button"
-              className="inline-flex w-full items-center justify-center gap-1.5 rounded-lg border border-slate-200 bg-slate-50 px-2 py-1.5 text-xs font-semibold text-slate-700 transition hover:bg-white"
+              className="inline-flex min-w-[5.5rem] flex-1 items-center justify-center gap-1.5 rounded-lg border border-slate-200 bg-slate-50 px-2 py-1.5 text-xs font-semibold text-slate-700 transition hover:bg-white"
               onClick={(event) => {
                 event.stopPropagation();
                 onEdit(item);
@@ -201,10 +212,11 @@ function RecipeCard({
               <Pencil className="h-3.5 w-3.5" aria-hidden />
               Rediger
             </button>
+            ) : null}
             {onDuplicate ? (
               <button
                 type="button"
-                className="inline-flex w-full items-center justify-center gap-1.5 rounded-lg border border-slate-200 bg-slate-50 px-2 py-1.5 text-xs font-semibold text-slate-700 transition hover:bg-white"
+                className="inline-flex min-w-[5.5rem] flex-1 items-center justify-center gap-1.5 rounded-lg border border-slate-200 bg-slate-50 px-2 py-1.5 text-xs font-semibold text-slate-700 transition hover:bg-white"
                 onClick={(event) => {
                   event.stopPropagation();
                   onDuplicate(item);
@@ -212,6 +224,19 @@ function RecipeCard({
               >
                 <Copy className="h-3.5 w-3.5" aria-hidden />
                 Dupliser
+              </button>
+            ) : null}
+            {onDelete ? (
+              <button
+                type="button"
+                className="inline-flex min-w-[5.5rem] flex-1 items-center justify-center gap-1.5 rounded-lg border border-rose-200 bg-rose-50 px-2 py-1.5 text-xs font-semibold text-rose-700 transition hover:bg-rose-100"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  onDelete(item);
+                }}
+              >
+                <Trash2 className="h-3.5 w-3.5" aria-hidden />
+                Slett
               </button>
             ) : null}
           </div>
@@ -226,9 +251,10 @@ type NutritionRecipesPanelProps = {
   canManage?: boolean;
   onEdit?: (item: InspirationRecipeItem) => void;
   onDuplicate?: (item: InspirationRecipeItem) => void;
+  onDelete?: (item: InspirationRecipeItem) => void;
 };
 
-export function NutritionRecipesPanel({ mealPlanTargets, canManage, onEdit, onDuplicate }: NutritionRecipesPanelProps) {
+export function NutritionRecipesPanel({ mealPlanTargets, canManage, onEdit, onDuplicate, onDelete }: NutritionRecipesPanelProps) {
   const { items, loading } = useInspirationRecipeItems();
   const foodItems = useFoodItemsForMacros();
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -309,6 +335,7 @@ export function NutritionRecipesPanel({ mealPlanTargets, canManage, onEdit, onDu
         canManage={canManage}
         onEdit={onEdit}
         onDuplicate={onDuplicate}
+        onDelete={onDelete}
         preferredMealSlot={mealTab === "all" ? null : mealTab}
       />
     );
@@ -406,6 +433,7 @@ export function NutritionRecipesPanel({ mealPlanTargets, canManage, onEdit, onDu
                 canManage={canManage}
                 onEdit={onEdit}
                 onDuplicate={onDuplicate}
+                onDelete={onDelete}
               />
             </li>
           ))}

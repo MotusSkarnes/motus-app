@@ -7,6 +7,11 @@ import {
   fetchInspirationItemsForHub,
   INSPIRATION_CHANGED_EVENT,
   loadInspirationItemsFromLocalStorage,
+  loadSuppressedInspirationIds,
+  notifyInspirationItemsChanged,
+  persistInspirationItems,
+  suppressInspirationItemId,
+  type InspirationSaveResult,
 } from "./inspirationStorage";
 
 const DEFAULT_RECIPE_FEED_ROWS: unknown[] = DEFAULT_INSPIRATION_RECIPES.map((recipe) => ({
@@ -87,7 +92,10 @@ function normalizeRecipeItem(raw: unknown): InspirationRecipeItem | null {
   };
 }
 
-export function filterRecipeInspirationItems(items: unknown[]): InspirationRecipeItem[] {
+export function filterRecipeInspirationItems(
+  items: unknown[],
+  options?: { suppressedIds?: Iterable<string> },
+): InspirationRecipeItem[] {
   const byId = new Map<string, InspirationRecipeItem>();
   for (const raw of DEFAULT_RECIPE_FEED_ROWS) {
     const normalized = normalizeRecipeItem(raw);
@@ -104,10 +112,31 @@ export function filterRecipeInspirationItems(items: unknown[]): InspirationRecip
       existing ? pickPreferredRecipeVariant(existing, normalized, { preferCandidate: true }) : normalized,
     );
   }
+  const suppressed = new Set(
+    options?.suppressedIds ? Array.from(options.suppressedIds) : Array.from(loadSuppressedInspirationIds()),
+  );
   const patched = applyCanonicalRecipeBodies(
     Array.from(byId.values()).map((item) => ({ ...item, category: "recipes" })),
   );
-  return patched.sort((a, b) => b.title.localeCompare(a.title, "no"));
+  return patched.filter((item) => !suppressed.has(item.id)).sort((a, b) => b.title.localeCompare(a.title, "no"));
+}
+
+export async function deleteInspirationRecipe(
+  recipeId: string,
+  existingItems: unknown[] = [],
+): Promise<InspirationSaveResult> {
+  const trimmed = recipeId.trim();
+  if (!trimmed) return { ok: false, error: "Mangler oppskrift." };
+
+  const latestItems =
+    (await fetchInspirationItemsForHub<unknown>()) ??
+    loadInspirationItemsFromLocalStorage<unknown>() ??
+    existingItems;
+  const nextFeed = (latestItems as Array<{ id: string }>).filter((item) => item.id !== trimmed);
+  suppressInspirationItemId(trimmed);
+  const result = await persistInspirationItems(nextFeed);
+  if (result.ok) notifyInspirationItemsChanged();
+  return result;
 }
 
 function recipeItemListsEqual(a: InspirationRecipeItem[], b: InspirationRecipeItem[]): boolean {
