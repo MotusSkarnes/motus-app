@@ -25,6 +25,8 @@ export type RecipeIngredient = {
   foodName: string;
   category: FoodCategoryId;
   grams: number;
+  quantity?: number;
+  unit?: string;
   macros: MacroTotals;
   nutritionPer100g: FoodNutrition;
 };
@@ -190,7 +192,10 @@ export function parseRecipeServings(body: string, override?: number): number {
 const INGREDIENT_SECTION_MARKER =
   /\*\*Ingredienser\*\*|(?:^|\n)#{1,3}\s*Ingredienser\b|(?:^|\n)Ingredienser\s*:?\s*(?:\n|$)/i;
 
-export function extractRecipeIngredientLines(body: string): string[] {
+export function extractRecipeIngredientLines(
+  body: string,
+  options?: { forEditor?: boolean },
+): string[] {
   const normalized = body.replace(/\r\n/g, "\n");
   const marker = normalized.match(INGREDIENT_SECTION_MARKER);
   if (!marker || marker.index === undefined) return [];
@@ -201,15 +206,14 @@ export function extractRecipeIngredientLines(body: string): string[] {
     .split("\n")
     .map((line) => line.trim())
     .map((line) => line.replace(/^[-*•]\s+/, "").replace(/^\d+[\).]\s+/, "").trim())
-    .filter(
-      (line) =>
-        line.length > 0 &&
-        !/^slik gjør du\b/i.test(line) &&
-        !/^fremgangsmate\b/i.test(line) &&
-        !/^tips\b/i.test(line) &&
-        !isNegligibleIngredientLine(line) &&
-        !/\(valgfritt\)/i.test(line),
-    );
+    .filter((line) => {
+      if (!line.length) return false;
+      if (/^slik gjør du\b/i.test(line)) return false;
+      if (/^fremgangsmate\b/i.test(line)) return false;
+      if (/^tips\b/i.test(line)) return false;
+      if (options?.forEditor) return true;
+      return !isNegligibleIngredientLine(line) && !/\(valgfritt\)/i.test(line);
+    });
 }
 
 function parseLeadingQuantity(raw: string): { quantity: number; rest: string } | null {
@@ -538,6 +542,25 @@ const UNIT_LABELS: Record<string, string> = {
   stor: "stor",
 };
 
+export function formatIngredientQuantity(value: number): string {
+  return formatQuantity(value);
+}
+
+export function formatRecipeIngredientAmount(row: {
+  quantity?: number;
+  unit?: string;
+  grams: number;
+}): string {
+  if (row.quantity != null && Number.isFinite(row.quantity) && row.unit) {
+    const unit = UNIT_LABELS[row.unit] ?? row.unit;
+    return `${formatQuantity(row.quantity)} ${unit}`;
+  }
+  if (row.quantity != null && Number.isFinite(row.quantity) && !row.unit) {
+    return formatQuantity(row.quantity);
+  }
+  return `${Math.round(row.grams)} g`;
+}
+
 export function formatIngredientDisplay(
   parsed: ParsedIngredient,
   grams: number,
@@ -547,10 +570,17 @@ export function formatIngredientDisplay(
     const unit = UNIT_LABELS[parsed.unit] ?? parsed.unit;
     return `${formatQuantity(parsed.quantity)} ${unit} ${foodName}`;
   }
+  if (parsed.quantity != null && !parsed.unit) {
+    return `${formatQuantity(parsed.quantity)} ${foodName}`;
+  }
   if (parsed.grams != null && parsed.grams > 0 && !parsed.quantity) {
     return `${formatQuantity(parsed.grams)} g ${foodName}`;
   }
   return `${Math.round(grams)} g ${foodName}`;
+}
+
+function shouldCountIngredientForMacros(line: string): boolean {
+  return !isNegligibleIngredientLine(line) && !/\(valgfritt\)/i.test(line);
 }
 
 export function computeRecipeIngredients(
@@ -558,10 +588,11 @@ export function computeRecipeIngredients(
   foodItems: FoodItem[],
   overrides?: RecipeIngredientFoodOverrides,
 ): RecipeIngredient[] {
-  const lines = extractRecipeIngredientLines(body);
+  const lines = extractRecipeIngredientLines(body, { forEditor: true });
   const rows: RecipeIngredient[] = [];
 
   lines.forEach((line, index) => {
+    if (!shouldCountIngredientForMacros(line)) return;
     const parsed = parseIngredientLine(line);
     if (!parsed) return;
 
@@ -576,6 +607,8 @@ export function computeRecipeIngredients(
     if (grams <= 0) return;
 
     const name = food.name;
+    const quantity = parsed.quantity ?? (parsed.grams != null && !parsed.unit ? parsed.grams : undefined);
+    const unit = parsed.unit || (parsed.grams != null && parsed.quantity == null ? "g" : undefined);
     rows.push({
       key: `ing-${index}`,
       sourceLine: line,
@@ -585,6 +618,8 @@ export function computeRecipeIngredients(
       foodName: name,
       category: foodRowCategory(food),
       grams,
+      ...(quantity != null ? { quantity } : {}),
+      ...(unit ? { unit } : {}),
       macros: computeMacrosForGrams(food.nutritionPer100g, grams),
       nutritionPer100g: food.nutritionPer100g,
     });

@@ -40,6 +40,27 @@ describe("recipeMealScaling", () => {
     expect(computeIngredientScaleFactor(500, 700, "fixed")).toBe(1);
   });
 
+  it("dobler ingrediensmengder når kunden lager til flere personer", () => {
+    const body = `**Til 2 porsjoner**
+
+**Ingredienser**
+- 200 g skyr naturell
+
+**Slik gjør du**
+1. Bland.`;
+    const base = buildScaledRecipeView(body, foods, { scalingMode: "fixed", servings: 2 });
+    const doubled = buildScaledRecipeView(body, foods, {
+      scalingMode: "fixed",
+      servings: 2,
+      viewServings: 4,
+    });
+    expect(base?.ingredients[0]?.grams).toBeGreaterThan(0);
+    expect(doubled?.viewServings).toBe(4);
+    expect(doubled?.peopleScale).toBe(2);
+    expect(doubled!.ingredients[0]!.grams).toBeCloseTo(base!.ingredients[0]!.grams * 2, 0);
+    expect(doubled!.macros.perServing.kcal).toBeCloseTo(base!.macros.perServing.kcal, 0);
+  });
+
   it("beregner makro for nye standardmiddager", () => {
     const dinnerIds = new Set([
       "default-recipe-13",

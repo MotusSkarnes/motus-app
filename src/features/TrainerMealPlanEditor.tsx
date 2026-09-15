@@ -75,6 +75,7 @@ import { formatMacro } from "../app/foodBankTypes";
 import { findRecipeFoodAvoidanceConflicts } from "../app/memberFoodAvoidances";
 import { computeRecipeMacros } from "../app/recipeMacros";
 import { RecipeAvoidanceWarning } from "../components/RecipeAvoidanceWarning";
+import { RecipeCookPanel } from "../components/RecipeCookPanel";
 import { RecipeIngredientList } from "../components/RecipeIngredientList";
 import { RecipeMacroBlocks } from "../components/RecipeMacroBlocks";
 import { MealMacroMiniBar, TrainerMealPlanMacroPanel } from "./TrainerMealPlanMacroPanel";
@@ -2181,10 +2182,7 @@ export function TrainerMealPlanEditor({
             </div>
             <div className="motus-foodbank-modal-body space-y-3">
               {recipeReadOnly.description ? <p className="text-sm text-slate-600">{recipeReadOnly.description}</p> : null}
-              <RecipeIngredientList body={recipeReadOnly.body} foodItems={foodItemsForMacros} recipeId={recipeReadOnly.id} />
-              {computeRecipeMacros(recipeReadOnly.body, foodItemsForMacros) ? (
-                <RecipeMacroBlocks result={computeRecipeMacros(recipeReadOnly.body, foodItemsForMacros)!} />
-              ) : null}
+              <RecipeCookPanel item={recipeReadOnly} foodItems={foodItemsForMacros} />
             </div>
           </div>
         </div>

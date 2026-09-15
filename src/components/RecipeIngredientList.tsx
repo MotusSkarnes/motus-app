@@ -12,11 +12,16 @@ import type { RecipeMealSlot } from "../app/recipeMealCategory";
 import {
   applyRecipeIngredientFoodOverrides,
   computeRecipeIngredients,
+  extractRecipeIngredientLines,
+  formatIngredientQuantity,
+  formatRecipeIngredientAmount,
   isConfidentIngredientFoodMatch,
+  parseIngredientLine,
   parseRecipeServings,
   type RecipeIngredient,
   type RecipeIngredientFoodOverrides,
 } from "../app/recipeMacros";
+import { recipePeopleLabel } from "../app/recipeBody";
 import {
   findRecipeIngredientSwapOptions,
   gramsForEquivalentMacros,
@@ -41,6 +46,7 @@ type RecipeIngredientListProps = {
   scalingMode?: RecipeScalingMode;
   recipeId?: string;
   servings?: number;
+  viewServings?: number;
   editable?: boolean;
   foodOverrides?: RecipeIngredientFoodOverrides;
   onFoodOverrideChange?: (ingredientKey: string, foodId: string | null) => void;
@@ -51,6 +57,18 @@ function formatGramsLabel(grams: number, servings: number): string {
   if (servings <= 1) return `${rounded} g`;
   const per = roundRecipeGrams(grams / servings);
   return `${rounded} g (${per} g/porsjon)`;
+}
+
+function formatCookAmount(row: RecipeIngredient): string {
+  return formatRecipeIngredientAmount(row);
+}
+
+function scaleDisplayIngredientLine(line: string, factor: number): string {
+  if (Math.abs(factor - 1) < 0.03) return line;
+  const parsed = parseIngredientLine(line);
+  if (!parsed?.quantity || !Number.isFinite(parsed.quantity)) return line;
+  const nextQty = formatIngredientQuantity(parsed.quantity * factor);
+  return line.replace(/^(\d+(?:[.,]\d+)?(?:\s*\/\s*\d+)?)/, nextQty);
 }
 
 function SwapModal({
@@ -154,6 +172,7 @@ export function RecipeIngredientList({
   scalingMode: scalingModeProp,
   recipeId,
   servings: servingsProp,
+  viewServings,
   editable = false,
   foodOverrides,
   onFoodOverrideChange,
@@ -172,9 +191,10 @@ export function RecipeIngredientList({
         dailyTargets,
         mealSlot,
         servings: servingsProp,
+        viewServings,
         ingredientFoodOverrides: foodOverrides,
       }),
-    [body, foodItems, scalingMode, dailyTargets, mealSlot, servingsProp, foodOverrides],
+    [body, foodItems, scalingMode, dailyTargets, mealSlot, servingsProp, viewServings, foodOverrides],
   );
   const baseIngredients = useMemo(
     () => computeRecipeIngredients(body, foodItems),
@@ -187,6 +207,12 @@ export function RecipeIngredientList({
   const [previewSwaps, setPreviewSwaps] = useState<Record<string, string>>({});
   const [swapTarget, setSwapTarget] = useState<RecipeIngredient | null>(null);
   const [pickTarget, setPickTarget] = useState<RecipeIngredient | null>(null);
+
+  const extraLines = useMemo(() => {
+    if (editable) return [];
+    const shown = new Set(ingredients.map((row) => row.sourceLine.replace(/^[-*•]\s*/, "").trim().toLowerCase()));
+    return extractRecipeIngredientLines(body, { forEditor: true }).filter((line) => !shown.has(line.trim().toLowerCase()));
+  }, [body, editable, ingredients]);
 
   const displayRows = useMemo((): DisplayIngredient[] => {
     return ingredients.map((ing) => {
@@ -220,7 +246,7 @@ export function RecipeIngredientList({
     });
   }, [ingredients, baseIngredients, foodOverrides, foodItems, previewSwaps, editable]);
 
-  if (!ingredients.length) return null;
+  if (!ingredients.length && extraLines.length === 0) return null;
 
   function applyFoodChoice(ingredientKey: string, foodId: string) {
     if (editable && onFoodOverrideChange) {
@@ -234,9 +260,13 @@ export function RecipeIngredientList({
     <section className="motus-recipe-ingredients" aria-label="Ingredienser med mengder">
       <div className="motus-recipe-ingredients-head">
         <h3 className="text-sm font-semibold text-slate-900">
-          {editable ? "Hurtiglesing av ingredienskobling" : "Ingredienser og mengder"}
+          {editable ? "Hurtiglesing av ingredienskobling" : "Ingredienser"}
         </h3>
-        {servings > 1 ? (
+        {!editable ? (
+          <span className="text-xs text-slate-500">
+            {recipePeopleLabel(scaledView?.viewServings ?? viewServings ?? servings)}
+          </span>
+        ) : servings > 1 ? (
           <span className="text-xs text-slate-500">
             Totalt for {servings} porsjoner · mengder i parentes per porsjon
           </span>
@@ -265,7 +295,9 @@ export function RecipeIngredientList({
             className={`motus-recipe-ingredient-row ${row.needsReview ? "motus-recipe-ingredient-row--review" : ""}`}
           >
             <div className="motus-recipe-ingredient-main">
-              <span className="motus-recipe-ingredient-amount">{formatGramsLabel(row.grams, servings)}</span>
+              <span className="motus-recipe-ingredient-amount">
+                {editable ? formatGramsLabel(row.grams, servings) : formatCookAmount(row)}
+              </span>
               <span className="motus-recipe-ingredient-name">{row.foodName}</span>
               {editable ? (
                 <span className="motus-recipe-ingredient-source">
@@ -273,9 +305,7 @@ export function RecipeIngredientList({
                 </span>
               ) : row.swappedFrom ? (
                 <span className="motus-recipe-ingredient-swapped-note">Byttet fra {row.swappedFrom}</span>
-              ) : (
-                <span className="motus-recipe-ingredient-source">{row.sourceLine}</span>
-              )}
+              ) : null}
               {editable ? (
                 <span
                   className={`motus-recipe-ingredient-match-badge ${
@@ -348,10 +378,20 @@ export function RecipeIngredientList({
           </li>
         ))}
       </ul>
+      {extraLines.length > 0 ? (
+        <ul className="motus-recipe-ingredient-list motus-recipe-ingredient-list--extra">
+          {extraLines.map((line) => (
+            <li key={line} className="motus-recipe-ingredient-row motus-recipe-ingredient-row--note">
+              <span className="motus-recipe-ingredient-name">
+                {scaleDisplayIngredientLine(line, scaledView?.peopleScale ?? 1)}
+              </span>
+            </li>
+          ))}
+        </ul>
+      ) : null}
       {!editable ? (
         <p className="motus-recipe-ingredients-hint text-xs text-slate-500">
-          Bytt en ingrediens for å se hvor mye av en lignende matvare som gir omtrent samme energi og makroer — f.eks. potet
-          mot tørr ris.
+          Bytt en ingrediens for å se hvor mye av en lignende matvare som gir omtrent samme energi og makroer.
         </p>
       ) : null}
       {swapTarget ? (

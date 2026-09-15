@@ -3,7 +3,7 @@ import { ArrowLeft, Copy, Pencil, Soup } from "lucide-react";
 import { buildDefaultFoodBankItems } from "../../app/foodBankSeed";
 import type { MealPlanTargets } from "../../app/mealPlanTypes";
 import { buildScaledRecipeView, resolveRecipeScalingMode } from "../../app/recipeMealScaling";
-import { computeRecipeMacros, extractRecipeIngredientLines } from "../../app/recipeMacros";
+import { computeRecipeMacros } from "../../app/recipeMacros";
 import {
   RECIPE_MEAL_SLOTS,
   resolveRecipeMealSlot,
@@ -17,8 +17,7 @@ import {
 } from "../../app/recipeProteinCategory";
 import { useInspirationRecipeItems, type InspirationRecipeItem } from "../../app/inspirationRecipeItems";
 import { useFoodBankItems } from "../../app/useFoodBankItems";
-import { RecipeIngredientList } from "../../components/RecipeIngredientList";
-import { RecipeMacroBlocks } from "../../components/RecipeMacroBlocks";
+import { RecipeCookPanel } from "../../components/RecipeCookPanel";
 import { RecipeMacroSummary } from "../../components/RecipeMacroSummary";
 import { Card, EmptyState, OutlineButton, PillButton } from "../../app/ui";
 import "../../foodbank.css";
@@ -49,32 +48,6 @@ function RecipeDetail({
   const foodItems = useFoodItemsForMacros();
   const mealSlot = resolveRecipeMealSlot(item.tag, item.title, item.description);
   const proteinCategory = resolveRecipeProteinCategory(item);
-  const scalingMode = resolveRecipeScalingMode({
-    id: item.id,
-    scalingMode: item.scalingMode,
-    body: item.body,
-    title: item.title,
-    tag: item.tag,
-    servings: item.servings,
-  });
-  const scaledView = useMemo(
-    () =>
-      buildScaledRecipeView(item.body, foodItems, {
-        scalingMode,
-        dailyTargets,
-        mealSlot,
-        servings: item.servings,
-        ingredientFoodOverrides: item.ingredientFoodOverrides,
-      }),
-    [item.body, item.servings, item.ingredientFoodOverrides, foodItems, scalingMode, dailyTargets, mealSlot],
-  );
-  const macros =
-    scaledView?.macros ??
-    computeRecipeMacros(item.body, foodItems, {
-      servings: item.servings,
-      ingredientFoodOverrides: item.ingredientFoodOverrides,
-    });
-  const hasIngredientSection = useMemo(() => extractRecipeIngredientLines(item.body).length > 0, [item.body]);
 
   return (
     <div className="space-y-4">
@@ -124,32 +97,9 @@ function RecipeDetail({
           </div>
           <h2 className="mt-3 text-xl font-bold tracking-tight text-slate-950 sm:text-2xl">{item.title}</h2>
           {item.description ? <p className="mt-2 text-sm text-slate-600 sm:text-base">{item.description}</p> : null}
-          <RecipeIngredientList
-            body={item.body}
-            foodItems={foodItems}
-            dailyTargets={dailyTargets}
-            mealSlot={mealSlot}
-            scalingMode={scalingMode}
-            recipeId={item.id}
-            servings={item.servings}
-            foodOverrides={item.ingredientFoodOverrides}
-          />
-          {item.body.trim() ? (
-            <details className="mt-4 rounded-xl border border-slate-100 bg-slate-50/60 px-3 py-2">
-              <summary className="cursor-pointer text-xs font-semibold text-slate-600">Vis full oppskriftstekst</summary>
-              <div className="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-slate-700">{item.body}</div>
-            </details>
-          ) : null}
-          {macros ? (
-            <div className="mt-6">
-              <RecipeMacroBlocks result={macros} />
-            </div>
-          ) : hasIngredientSection ? (
-            <p className="mt-6 rounded-xl border border-amber-100 bg-amber-50/80 px-3 py-2 text-xs text-amber-900">
-              Kunne ikke beregne makroer for alle ingredienser. Sjekk at oppskriften bruker mengder (f.eks. dl, g, ss) og at
-              ingrediensene finnes i matvarebanken.
-            </p>
-          ) : null}
+          <div className="mt-4">
+            <RecipeCookPanel item={item} foodItems={foodItems} dailyTargets={dailyTargets} mealSlot={mealSlot} />
+          </div>
         </div>
       </article>
     </div>
@@ -354,7 +304,8 @@ export function NutritionRecipesPanel({ mealPlanTargets, canManage, onEdit, onDu
   return (
     <div className="space-y-4">
       <p className="text-sm text-slate-600">
-        Oppskrifter med makronæringsstoffer per porsjon.{" "}
+        Oppskrifter med næringsinnhold per person. Velg hvor mange du skal lage til inne på oppskriften — da oppdateres
+        mengdene.{" "}
         {mealPlanTargets?.kcal ? (
           <>
             Fleksible middager tilpasses ca. måltidsmålet fra matplanen din ({Math.round(mealPlanTargets.kcal)} kcal/dag).

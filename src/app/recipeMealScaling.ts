@@ -7,10 +7,13 @@ import { roundRecipeGrams } from "./recipeIngredientSwap";
 import {
   computeRecipeIngredients,
   computeRecipeMacros,
+  formatIngredientDisplay,
   parseRecipeServings,
   type RecipeIngredient,
+  type RecipeIngredientFoodOverrides,
   type RecipeMacroResult,
 } from "./recipeMacros";
+import { EMPTY_MICRONUTRIENTS } from "./foodBankMicronutrients";
 
 export type RecipeScalingMode = "flexible" | "fixed";
 
@@ -32,6 +35,8 @@ export type ScaledRecipeView = {
   targetMealKcal: number | null;
   basePerServingKcal: number;
   adjusted: boolean;
+  viewServings: number;
+  peopleScale: number;
 };
 
 export function targetKcalForRecipeMeal(
@@ -80,11 +85,22 @@ function scaleIngredientRows(ingredients: RecipeIngredient[], factor: number): R
   if (Math.abs(factor - 1) < 0.03) return ingredients;
   return ingredients.map((row) => {
     const grams = roundRecipeGrams(row.grams * factor);
+    const quantity = row.quantity != null ? row.quantity * factor : undefined;
     return {
       ...row,
       grams,
+      quantity,
       macros: computeMacrosForGrams(row.nutritionPer100g, grams),
-      displayAmount: `${grams} g ${row.foodName}`,
+      displayAmount: formatIngredientDisplay(
+        {
+          searchText: row.searchText,
+          quantity,
+          unit: row.unit,
+          grams: quantity == null ? grams : undefined,
+        },
+        grams,
+        row.foodName,
+      ),
     };
   });
 }
@@ -110,6 +126,7 @@ function macrosFromIngredients(ingredients: RecipeIngredient[], servings: number
     servings: safeServings,
     matchedCount: ingredients.length,
     ingredientCount: ingredients.length,
+    perServingMicronutrients: { ...EMPTY_MICRONUTRIENTS },
   };
 }
 
@@ -122,6 +139,7 @@ export function buildScaledRecipeView(
     mealSlot?: RecipeMealSlot | null;
     ingredientFoodOverrides?: RecipeIngredientFoodOverrides;
     servings?: number;
+    viewServings?: number;
   },
 ): ScaledRecipeView | null {
   const baseMacros = computeRecipeMacros(body, foodItems, {
@@ -135,9 +153,16 @@ export function buildScaledRecipeView(
 
   const targetMealKcal = targetKcalForRecipeMeal(options.dailyTargets, options.mealSlot ?? null);
   const basePerServingKcal = baseMacros.perServing.kcal;
-  const scaleFactor = computeIngredientScaleFactor(basePerServingKcal, targetMealKcal, options.scalingMode);
+  const kcalScale = computeIngredientScaleFactor(basePerServingKcal, targetMealKcal, options.scalingMode);
+  const baseServings = baseMacros.servings;
+  const viewServings =
+    typeof options.viewServings === "number" && Number.isFinite(options.viewServings) && options.viewServings > 0
+      ? Math.max(1, Math.round(options.viewServings))
+      : baseServings;
+  const peopleScale = viewServings / baseServings;
+  const scaleFactor = kcalScale * peopleScale;
   const ingredients = scaleIngredientRows(baseIngredients, scaleFactor);
-  const macros = macrosFromIngredients(ingredients, baseMacros.servings);
+  const macros = macrosFromIngredients(ingredients, viewServings);
 
   return {
     ingredients,
@@ -146,7 +171,9 @@ export function buildScaledRecipeView(
     scalingMode: options.scalingMode,
     targetMealKcal,
     basePerServingKcal,
-    adjusted: options.scalingMode === "flexible" && Math.abs(scaleFactor - 1) >= 0.03,
+    adjusted: options.scalingMode === "flexible" && Math.abs(kcalScale - 1) >= 0.03,
+    viewServings,
+    peopleScale,
   };
 }
 

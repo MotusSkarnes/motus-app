@@ -19,9 +19,19 @@ import {
   isRecipeProteinCategory,
   type RecipeProteinCategory,
 } from "../../app/recipeProteinCategory";
-import { computeRecipeIngredients, computeRecipeMacros, parseRecipeServings, type RecipeIngredientFoodOverrides } from "../../app/recipeMacros";
+import { computeRecipeMacros } from "../../app/recipeMacros";
+import {
+  buildRecipeBody,
+  extractRecipeMethodSection,
+  extractRecipeTipsSection,
+  overridesFromIngredientDrafts,
+  parseRecipeBaseServings,
+  parseRecipeIngredientDrafts,
+  type RecipeIngredientDraft,
+} from "../../app/recipeBody";
 import { RecipeAvoidanceWarning } from "../../components/RecipeAvoidanceWarning";
 import { RecipeImageField } from "../../components/RecipeImageField";
+import { RecipeIngredientEditor } from "../../components/RecipeIngredientEditor";
 import { RecipeIngredientList } from "../../components/RecipeIngredientList";
 import { RecipeMacroBlocks } from "../../components/RecipeMacroBlocks";
 import { ConfirmDialog, GradientButton, OutlineButton, StatusMessage, TextArea, TextInput } from "../../app/ui";
@@ -34,9 +44,10 @@ type RecipeDraftSnapshot = {
   tag: string;
   proteinCategory: string;
   servings: string;
-  body: string;
+  method: string;
+  tips: string;
+  ingredients: RecipeIngredientDraft[];
   imageUrl: string;
-  ingredientFoodOverrides: RecipeIngredientFoodOverrides;
 };
 
 function buildRecipeDraftFromSource(
@@ -44,15 +55,21 @@ function buildRecipeDraftFromSource(
   duplicateFromItem: InspirationRecipeItem | null,
 ): RecipeDraftSnapshot {
   const duplicateTitle = duplicateFromItem?.title?.trim() ? `${duplicateFromItem.title.trim()} (kopi)` : "";
+  const body = source?.body ?? "";
+  const ingredients = parseRecipeIngredientDrafts(
+    body,
+    duplicateFromItem ? undefined : source?.ingredientFoodOverrides,
+  );
   return {
     title: duplicateTitle || (source?.title ?? ""),
     description: source?.description ?? "",
     tag: source?.tag ?? "Oppskrift",
     proteinCategory: source?.proteinCategory ?? "",
-    servings: String(source?.servings ?? (source?.body ? parseRecipeServings(source.body) : "")),
-    body: source?.body ?? "",
+    servings: String(source?.servings ?? (body ? parseRecipeBaseServings(body) : "2")),
+    method: extractRecipeMethodSection(body),
+    tips: extractRecipeTipsSection(body),
+    ingredients,
     imageUrl: source?.imageUrl ?? "",
-    ingredientFoodOverrides: duplicateFromItem ? {} : { ...(source?.ingredientFoodOverrides ?? {}) },
   };
 }
 
@@ -94,15 +111,18 @@ export function TrainerRecipeComposer({
   const [proteinCategory, setProteinCategory] = useState<RecipeProteinCategory | "">(
     sourceItem?.proteinCategory ?? "",
   );
-  const [servings, setServings] = useState(String(sourceItem?.servings ?? ""));
-  const [body, setBody] = useState(sourceItem?.body ?? "");
+  const [servings, setServings] = useState(String(sourceItem?.servings ?? "2"));
+  const [method, setMethod] = useState(extractRecipeMethodSection(sourceItem?.body ?? ""));
+  const [tips, setTips] = useState(extractRecipeTipsSection(sourceItem?.body ?? ""));
+  const [ingredients, setIngredients] = useState<RecipeIngredientDraft[]>(
+    parseRecipeIngredientDrafts(sourceItem?.body ?? "", sourceItem?.ingredientFoodOverrides),
+  );
   const [imageUrl, setImageUrl] = useState(sourceItem?.imageUrl ?? "");
   const [isImageProcessing, setIsImageProcessing] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [baselineSnapshot, setBaselineSnapshot] = useState<string | null>(null);
   const [confirmCloseOpen, setConfirmCloseOpen] = useState(false);
-  const [ingredientFoodOverrides, setIngredientFoodOverrides] = useState<RecipeIngredientFoodOverrides>({});
 
   useEffect(() => {
     if (!open) {
@@ -117,9 +137,10 @@ export function TrainerRecipeComposer({
     setTag(nextDraft.tag);
     setProteinCategory(nextDraft.proteinCategory);
     setServings(nextDraft.servings);
-    setBody(nextDraft.body);
+    setMethod(nextDraft.method);
+    setTips(nextDraft.tips);
+    setIngredients(nextDraft.ingredients);
     setImageUrl(nextDraft.imageUrl);
-    setIngredientFoodOverrides(nextDraft.ingredientFoodOverrides);
     setStatus(null);
     setBaselineSnapshot(snapshotRecipeDraft(nextDraft));
   }, [open, editItem, duplicateFromItem]);
@@ -132,11 +153,12 @@ export function TrainerRecipeComposer({
         tag,
         proteinCategory,
         servings,
-        body,
+        method,
+        tips,
+        ingredients,
         imageUrl,
-        ingredientFoodOverrides,
       }),
-    [title, description, tag, proteinCategory, servings, body, imageUrl, ingredientFoodOverrides],
+    [title, description, tag, proteinCategory, servings, method, tips, ingredients, imageUrl],
   );
   const hasUnsavedChanges = baselineSnapshot !== null && currentSnapshot !== baselineSnapshot;
 
@@ -160,36 +182,26 @@ export function TrainerRecipeComposer({
   }, [confirmCloseOpen, hasUnsavedChanges, open]);
 
   const draftServings = Math.max(1, Math.round(Number(servings) || 1));
+  const composedOverrides = useMemo(() => overridesFromIngredientDrafts(ingredients), [ingredients]);
   const draftBody = useMemo(
     () =>
-      body.trim() ||
-      `**Til ${draftServings} porsjon${draftServings === 1 ? "" : "er"}**
-
-**Ingredienser**
-- 
-
-**Slik gjør du**
-1. `,
-    [body, draftServings],
+      buildRecipeBody({
+        servings: draftServings,
+        ingredients,
+        method,
+        tips,
+      }),
+    [draftServings, ingredients, method, tips],
   );
 
   const recipeMacros = useMemo(
     () =>
       computeRecipeMacros(draftBody, foodItemsForMacros, {
-        servings: Number(servings),
-        ingredientFoodOverrides,
+        servings: draftServings,
+        ingredientFoodOverrides: composedOverrides,
       }),
-    [draftBody, foodItemsForMacros, servings, ingredientFoodOverrides],
+    [draftBody, foodItemsForMacros, draftServings, composedOverrides],
   );
-
-  useEffect(() => {
-    if (!open) return;
-    const validKeys = new Set(computeRecipeIngredients(draftBody, foodItemsForMacros).map((row) => row.key));
-    setIngredientFoodOverrides((prev) => {
-      const next = Object.fromEntries(Object.entries(prev).filter(([key]) => validKeys.has(key)));
-      return Object.keys(next).length === Object.keys(prev).length ? prev : next;
-    });
-  }, [draftBody, foodItemsForMacros, open]);
 
   const avoidanceConflicts = useMemo(
     () => findRecipeFoodAvoidanceConflicts(draftBody, foodItemsForMacros, members),
@@ -225,11 +237,23 @@ export function TrainerRecipeComposer({
       setStatus("Fyll inn kort beskrivelse.");
       return;
     }
-    if (!body.trim()) {
-      setStatus("Fyll inn oppskriftstekst med **Ingredienser**-liste.");
+    const namedIngredients = ingredients.filter((row) => row.name.trim());
+    if (!namedIngredients.length) {
+      setStatus("Legg til minst én ingrediens.");
       return;
     }
-    const servingsNumber = Math.max(1, Math.round(Number(servings) || parseRecipeServings(body)));
+    if (!method.trim()) {
+      setStatus("Fyll inn «Slik gjør du».");
+      return;
+    }
+    const servingsNumber = Math.max(1, Math.round(Number(servings) || 1));
+    const saveOverrides = overridesFromIngredientDrafts(namedIngredients);
+    const body = buildRecipeBody({
+      servings: servingsNumber,
+      ingredients: namedIngredients,
+      method,
+      tips,
+    });
 
     setSaving(true);
     setStatus(null);
@@ -245,7 +269,7 @@ export function TrainerRecipeComposer({
       kind: "article",
       title: title.trim(),
       description: description.trim(),
-      body: body.trim(),
+      body,
       tag: tag.trim() || "Oppskrift",
       author: authorName,
       ...(editItem?.createdAt && !duplicateFromItem
@@ -255,7 +279,7 @@ export function TrainerRecipeComposer({
       ...(scalingMode ? { scalingMode } : {}),
       ...(proteinCategory ? { proteinCategory } : {}),
       servings: servingsNumber,
-      ...(Object.keys(ingredientFoodOverrides).length ? { ingredientFoodOverrides } : {}),
+      ...(Object.keys(saveOverrides).length ? { ingredientFoodOverrides: saveOverrides } : {}),
     };
 
     const latestItems =
@@ -306,14 +330,14 @@ export function TrainerRecipeComposer({
             </p>
           ) : null}
           <p className="text-xs text-slate-600">
-            Oppskrifter vises kun under <strong>Ernæring</strong> for medlemmer og i matplan — ikke i Utforsk. Næringsinnhold
-            beregnes automatisk fra ingredienslisten når du skriver.
+            Oppskrifter vises kun under <strong>Ernæring</strong> for medlemmer og i matplan — ikke i Utforsk. Legg til
+            ingredienser fra matvarebanken, og skriv fremgangsmåten under <strong>Slik gjør du</strong>.
           </p>
           <TextInput value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Tittel" />
           <TextInput value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Kort beskrivelse" />
           <TextInput value={tag} onChange={(e) => setTag(e.target.value)} placeholder="F.eks. 15 min · Middag" />
           <label className="block">
-            <span className="motus-foodbank-field-label">Antall porsjoner oppskriften gjelder for</span>
+            <span className="motus-foodbank-field-label">Oppskriften er ment for (antall personer)</span>
             <TextInput
               type="number"
               min={1}
@@ -350,46 +374,62 @@ export function TrainerRecipeComposer({
             isUploading={isImageProcessing}
             disabled={saving}
           />
-          <TextArea
-            value={body}
-            onChange={(e) => setBody(e.target.value)}
-            placeholder={"**Til 2 porsjoner**\n\n**Ingredienser**\n- 200 g …\n\n**Slik gjør du**\n1. …"}
-            className="motus-recipe-composer-textarea"
-            rows={12}
+          <RecipeIngredientEditor
+            ingredients={ingredients}
+            foodItems={foodItemsForMacros}
+            disabled={saving}
+            onChange={setIngredients}
           />
+          <label className="block">
+            <span className="motus-foodbank-field-label">Slik gjør du</span>
+            <TextArea
+              value={method}
+              onChange={(event) => setMethod(event.target.value)}
+              placeholder={"1. Stek kyllingen.\n2. Kok risen.\n3. Server med grønnsaker."}
+              className="motus-recipe-composer-method"
+              rows={8}
+            />
+          </label>
+          <label className="block">
+            <span className="motus-foodbank-field-label">Tips (valgfritt)</span>
+            <TextArea
+              value={tips}
+              onChange={(event) => setTips(event.target.value)}
+              placeholder="F.eks. Lag dobbel porsjon og frys ned."
+              rows={3}
+            />
+          </label>
           {recipeMacros ? (
             <div className="rounded-xl border border-teal-100 bg-teal-50/40 p-3">
               <p className="text-[11px] font-semibold text-teal-900">
-                Næringsinnhold per porsjon
+                Næringsinnhold per person
                 {recipeMacros.matchedCount < recipeMacros.ingredientCount
                   ? ` (${recipeMacros.matchedCount} av ${recipeMacros.ingredientCount} ingredienser)`
                   : null}
               </p>
               <RecipeMacroBlocks result={recipeMacros} />
             </div>
-          ) : body.trim() ? (
+          ) : ingredients.some((row) => row.name.trim()) ? (
             <p className="rounded-xl border border-amber-100 bg-amber-50/80 px-3 py-2 text-xs text-amber-900">
-              Kunne ikke beregne makroer ennå. Bruk en <strong>Ingredienser</strong>-liste med mengder (g, dl, ss, stk) og
-              navn som finnes i matvarebanken.
+              Kunne ikke beregne makroer ennå. Velg matvarer fra banken og bruk mengder (g, dl, ss, stk).
             </p>
           ) : null}
-          {body.trim() ? (
+          {ingredients.some((row) => row.name.trim() && !row.foodId) ? (
             <RecipeIngredientList
               body={draftBody}
               foodItems={foodItemsForMacros}
               recipeId={editItem?.id}
-              servings={Number(servings)}
+              servings={draftServings}
               editable
-              foodOverrides={ingredientFoodOverrides}
+              foodOverrides={composedOverrides}
               onFoodOverrideChange={(ingredientKey, foodId) => {
-                setIngredientFoodOverrides((prev) => {
-                  if (!foodId) {
-                    const next = { ...prev };
-                    delete next[ingredientKey];
-                    return next;
-                  }
-                  return { ...prev, [ingredientKey]: foodId };
-                });
+                const index = Number(ingredientKey.replace(/^ing-/, ""));
+                if (!Number.isFinite(index)) return;
+                setIngredients((prev) =>
+                  prev.map((row, rowIndex) =>
+                    rowIndex === index ? { ...row, foodId: foodId ?? undefined } : row,
+                  ),
+                );
               }}
             />
           ) : null}

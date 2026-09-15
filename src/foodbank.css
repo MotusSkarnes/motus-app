@@ -542,6 +542,12 @@
   line-height: 1.55;
 }
 
+.motus-recipe-composer-method {
+  min-height: 10rem;
+  resize: vertical;
+  line-height: 1.55;
+}
+
 @media (max-width: 640px) {
   .motus-recipe-composer-backdrop {
     align-items: stretch;
@@ -1844,6 +1850,255 @@
 
 .motus-recipe-ingredients-hint {
   margin: 0.65rem 0 0;
+}
+
+.motus-recipe-ingredient-list--extra {
+  margin-top: 0.45rem;
+}
+
+.motus-recipe-ingredient-row--note {
+  background: rgba(248, 250, 252, 0.9);
+}
+
+.motus-recipe-ingredient-row--note .motus-recipe-ingredient-name {
+  font-weight: 500;
+  color: #475569;
+}
+
+.motus-recipe-servings {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem 1rem;
+  border-radius: 1rem;
+  border: 1px solid rgba(48, 227, 190, 0.28);
+  background: linear-gradient(180deg, rgba(48, 227, 190, 0.1), rgba(255, 255, 255, 0.92));
+  padding: 0.85rem 0.95rem;
+}
+
+.motus-recipe-servings__copy h3,
+.motus-recipe-method h3,
+.motus-recipe-ingredient-editor__head h3 {
+  margin: 0;
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.motus-recipe-servings__copy p,
+.motus-recipe-ingredient-editor__head p,
+.motus-recipe-ingredient-editor__hint {
+  margin: 0.2rem 0 0;
+  font-size: 0.75rem;
+  line-height: 1.45;
+  color: #64748b;
+}
+
+.motus-recipe-servings__stepper {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex-shrink: 0;
+}
+
+.motus-recipe-servings__btn {
+  width: 2.1rem;
+  height: 2.1rem;
+  border-radius: 9999px;
+  border: 1px solid rgba(48, 227, 190, 0.5);
+  background: #fff;
+  font-size: 1.15rem;
+  font-weight: 700;
+  line-height: 1;
+  color: #0f766e;
+  cursor: pointer;
+}
+
+.motus-recipe-servings__btn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.motus-recipe-servings__value {
+  min-width: 6.5rem;
+  text-align: center;
+  font-size: 0.9375rem;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.motus-recipe-method {
+  border-radius: 1rem;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  background: #fff;
+  padding: 0.9rem 1rem;
+}
+
+.motus-recipe-method ol {
+  margin: 0.65rem 0 0;
+  padding-left: 1.2rem;
+  display: grid;
+  gap: 0.45rem;
+  color: #334155;
+  font-size: 0.875rem;
+  line-height: 1.5;
+}
+
+.motus-recipe-method__tips {
+  margin: 0.75rem 0 0;
+  font-size: 0.8125rem;
+  line-height: 1.5;
+  color: #475569;
+}
+
+.motus-recipe-ingredient-editor {
+  border-radius: 1rem;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  background: #fff;
+  padding: 0.85rem 0.9rem;
+  display: grid;
+  gap: 0.7rem;
+}
+
+.motus-recipe-ingredient-editor__selected {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  border-radius: 0.85rem;
+  border: 1px solid rgba(48, 227, 190, 0.35);
+  background: rgba(48, 227, 190, 0.08);
+  padding: 0.6rem 0.75rem;
+}
+
+.motus-recipe-ingredient-editor__selected-name {
+  margin: 0;
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.motus-recipe-ingredient-editor__results {
+  display: grid;
+  gap: 0.3rem;
+  max-height: 12rem;
+  overflow-y: auto;
+}
+
+.motus-recipe-ingredient-editor__result {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+  text-align: left;
+  border-radius: 0.75rem;
+  border: 1px solid rgba(15, 23, 42, 0.06);
+  background: #f8fafc;
+  padding: 0.45rem 0.6rem;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: #0f172a;
+  cursor: pointer;
+}
+
+.motus-recipe-ingredient-editor__add-row {
+  display: grid;
+  grid-template-columns: minmax(4.5rem, 0.7fr) minmax(4.5rem, 0.55fr) auto;
+  gap: 0.5rem;
+  align-items: end;
+}
+
+.motus-recipe-ingredient-editor__qty span,
+.motus-recipe-ingredient-editor__unit span {
+  display: block;
+  margin-bottom: 0.2rem;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  color: #64748b;
+}
+
+.motus-recipe-ingredient-editor__unit select,
+.motus-recipe-ingredient-editor__item-fields select {
+  height: 2.5rem;
+  width: 100%;
+  border-radius: 0.5rem;
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  background: #fff;
+  padding: 0 0.6rem;
+  font-size: 0.875rem;
+}
+
+.motus-recipe-ingredient-editor__error {
+  margin: 0;
+  font-size: 0.75rem;
+  color: #b45309;
+}
+
+.motus-recipe-ingredient-editor__empty {
+  margin: 0;
+  font-size: 0.8125rem;
+  color: #64748b;
+}
+
+.motus-recipe-ingredient-editor__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.5rem;
+}
+
+.motus-recipe-ingredient-editor__item {
+  border-radius: 0.85rem;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  background: #f8fafc;
+  padding: 0.55rem 0.6rem;
+}
+
+.motus-recipe-ingredient-editor__item-fields {
+  display: grid;
+  grid-template-columns: 4.5rem 5rem minmax(0, 1fr);
+  gap: 0.4rem;
+}
+
+.motus-recipe-ingredient-editor__item-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-top: 0.35rem;
+  font-size: 0.6875rem;
+  color: #0f766e;
+}
+
+.motus-recipe-ingredient-editor__remove {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.85rem;
+  height: 1.85rem;
+  border: 0;
+  border-radius: 9999px;
+  background: transparent;
+  color: #64748b;
+  cursor: pointer;
+}
+
+.motus-recipe-ingredient-editor__remove:hover {
+  background: rgba(15, 23, 42, 0.06);
+  color: #b91c1c;
+}
+
+@media (max-width: 640px) {
+  .motus-recipe-ingredient-editor__add-row,
+  .motus-recipe-ingredient-editor__item-fields {
+    grid-template-columns: 1fr;
+  }
+
+  .motus-recipe-servings {
+    align-items: flex-start;
+  }
 }
 
 .motus-recipe-ingredient-swap-modal {

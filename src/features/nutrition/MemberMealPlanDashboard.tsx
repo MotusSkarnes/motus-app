@@ -32,8 +32,7 @@ import { buildWeeklyShoppingList } from "../../app/mealPlanShoppingList";
 import { useInspirationRecipeItems } from "../../app/inspirationRecipeItems";
 import type { InspirationRecipeItem } from "../../app/inspirationRecipeItems";
 import { computeRecipeMacros } from "../../app/recipeMacros";
-import { RecipeIngredientList } from "../../components/RecipeIngredientList";
-import { RecipeMacroBlocks } from "../../components/RecipeMacroBlocks";
+import { RecipeCookPanel } from "../../components/RecipeCookPanel";
 import { parseInspirationRecipeFoodId } from "../../app/mealPlanRecipeEntry";
 import {
   MEAL_PLAN_STATE_CHANGED_EVENT,
@@ -172,24 +171,7 @@ export function formatMealEntryAmount(foodId: string, grams: number, note?: stri
   return portions === 1 ? "1 porsjon" : `${formatMacro(portions, 1)} porsjoner`;
 }
 
-export function extractRecipeMethodSteps(body: string): string[] {
-  const lines = body.split(/\r?\n/);
-  const start = lines.findIndex((line) => /slik gjør du/i.test(line));
-  if (start < 0) return [];
-  const steps: string[] = [];
-  for (let i = start + 1; i < lines.length; i += 1) {
-    const raw = lines[i]?.trim() ?? "";
-    if (!raw) continue;
-    if (/^\*\*.*\*\*$/.test(raw)) break;
-    if (/^tips\s*:?/i.test(raw.replace(/^\*\*|\*\*$/g, "").trim())) break;
-    const cleaned = raw
-      .replace(/^[-*]\s+/, "")
-      .replace(/^\d+[\).]?\s+/, "")
-      .trim();
-    if (cleaned) steps.push(cleaned);
-  }
-  return steps;
-}
+export { extractRecipeMethodSteps } from "../../app/recipeBody";
 
 function normalizeMealKey(name: string): string {
   return name.toLowerCase().replace(/\s+/g, "");
@@ -540,10 +522,6 @@ export function MemberMealPlanDashboard({ plan, memberId, onOpenAvoidances, onRe
   );
   const shoppingGroups = shoppingList.groups;
   const activeRecipe = activeRecipeId ? recipesById.get(activeRecipeId) ?? null : null;
-  const activeRecipeSteps = useMemo(
-    () => (activeRecipe ? extractRecipeMethodSteps(activeRecipe.body) : []),
-    [activeRecipe],
-  );
 
   const handleRecipePortionChange = useCallback(
     (entryId: string, next: number) => {
@@ -1458,25 +1436,7 @@ export function MemberMealPlanDashboard({ plan, memberId, onOpenAvoidances, onRe
               style={{ maxHeight: "calc(100dvh - 8rem)", paddingBottom: "max(1.5rem, env(safe-area-inset-bottom))" }}
             >
               {activeRecipe.description ? <p className="text-sm text-slate-600">{activeRecipe.description}</p> : null}
-              <RecipeIngredientList
-                body={activeRecipe.body}
-                foodItems={foodItems}
-                recipeId={activeRecipe.id}
-                servings={activeRecipe.servings}
-              />
-              {activeRecipeSteps.length > 0 ? (
-                <section className="rounded-xl border border-slate-200 bg-slate-50/70 p-3">
-                  <h4 className="text-sm font-semibold text-slate-900">Slik gjør du</h4>
-                  <ol className="mt-2 list-decimal space-y-1 pl-4 text-sm text-slate-700">
-                    {activeRecipeSteps.map((step, index) => (
-                      <li key={`${activeRecipe.id}-step-${index}`}>{step}</li>
-                    ))}
-                  </ol>
-                </section>
-              ) : null}
-              {computeRecipeMacros(activeRecipe.body, foodItems, { servings: activeRecipe.servings }) ? (
-                <RecipeMacroBlocks result={computeRecipeMacros(activeRecipe.body, foodItems, { servings: activeRecipe.servings })!} />
-              ) : null}
+              <RecipeCookPanel item={activeRecipe} foodItems={foodItems} />
             </div>
           </div>
         </div>

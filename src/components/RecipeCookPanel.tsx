@@ -1,0 +1,83 @@
+import { useEffect, useMemo, useState } from "react";
+import type { FoodItem } from "../app/foodBankTypes";
+import type { InspirationRecipeItem } from "../app/inspirationRecipeItems";
+import type { MealPlanTargets } from "../app/mealPlanTypes";
+import { parseRecipeBaseServings } from "../app/recipeBody";
+import { resolveRecipeMealSlot, type RecipeMealSlot } from "../app/recipeMealCategory";
+import { buildScaledRecipeView, resolveRecipeScalingMode } from "../app/recipeMealScaling";
+import { computeRecipeMacros, extractRecipeIngredientLines } from "../app/recipeMacros";
+import { RecipeIngredientList } from "./RecipeIngredientList";
+import { RecipeMacroBlocks } from "./RecipeMacroBlocks";
+import { RecipeMethodSection } from "./RecipeMethodSection";
+import { RecipeServingsStepper } from "./RecipeServingsStepper";
+
+type RecipeCookPanelProps = {
+  item: InspirationRecipeItem;
+  foodItems: FoodItem[];
+  dailyTargets?: MealPlanTargets;
+  mealSlot?: RecipeMealSlot | null;
+};
+
+export function RecipeCookPanel({ item, foodItems, dailyTargets, mealSlot: mealSlotProp }: RecipeCookPanelProps) {
+  const mealSlot = mealSlotProp ?? resolveRecipeMealSlot(item.tag, item.title, item.description);
+  const baseServings = parseRecipeBaseServings(item.body, item.servings);
+  const [viewServings, setViewServings] = useState(baseServings);
+
+  useEffect(() => {
+    setViewServings(baseServings);
+  }, [item.id, baseServings]);
+
+  const scalingMode = resolveRecipeScalingMode({
+    id: item.id,
+    scalingMode: item.scalingMode,
+    body: item.body,
+    title: item.title,
+    tag: item.tag,
+    servings: item.servings,
+  });
+  const scaledView = useMemo(
+    () =>
+      buildScaledRecipeView(item.body, foodItems, {
+        scalingMode,
+        dailyTargets,
+        mealSlot,
+        servings: item.servings,
+        viewServings,
+        ingredientFoodOverrides: item.ingredientFoodOverrides,
+      }),
+    [item.body, item.servings, item.ingredientFoodOverrides, foodItems, scalingMode, dailyTargets, mealSlot, viewServings],
+  );
+  const macros =
+    scaledView?.macros ??
+    computeRecipeMacros(item.body, foodItems, {
+      servings: item.servings,
+      ingredientFoodOverrides: item.ingredientFoodOverrides,
+    });
+  const hasIngredientSection = extractRecipeIngredientLines(item.body, { forEditor: true }).length > 0;
+
+  return (
+    <div className="space-y-4">
+      <RecipeServingsStepper baseServings={baseServings} value={viewServings} onChange={setViewServings} />
+      <RecipeIngredientList
+        body={item.body}
+        foodItems={foodItems}
+        dailyTargets={dailyTargets}
+        mealSlot={mealSlot}
+        scalingMode={scalingMode}
+        recipeId={item.id}
+        servings={item.servings}
+        viewServings={viewServings}
+        foodOverrides={item.ingredientFoodOverrides}
+      />
+      <RecipeMethodSection body={item.body} />
+      {macros ? (
+        <RecipeMacroBlocks result={macros} />
+      ) : hasIngredientSection ? (
+        <p className="rounded-xl border border-amber-100 bg-amber-50/80 px-3 py-2 text-xs text-amber-900">
+          Kunne ikke beregne makroer for alle ingredienser. Sjekk at oppskriften bruker mengder (f.eks. dl, g, ss) og at
+          ingrediensene finnes i matvarebanken.
+        </p>
+      ) : null}
+    </div>
+  );
+}

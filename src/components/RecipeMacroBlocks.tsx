@@ -21,9 +21,9 @@ export function RecipeMacroBlocks({ result }: RecipeMacroBlocksProps) {
   return (
     <div className="motus-recipe-macros mt-6 border-t border-slate-100 pt-5">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <h2 className="text-sm font-semibold text-slate-900">Næringsinnhold per porsjon</h2>
+        <h2 className="text-sm font-semibold text-slate-900">Næringsinnhold per person</h2>
         {servings > 1 ? (
-          <span className="text-[11px] font-medium text-slate-500">Oppskriften er til {servings} porsjoner</span>
+          <span className="text-[11px] font-medium text-slate-500">Beregnet fra {servings} personer</span>
         ) : null}
       </div>
       {partial ? (
