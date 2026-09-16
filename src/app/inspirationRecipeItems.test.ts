@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { filterRecipeInspirationItems } from "./inspirationRecipeItems";
+import { filterRecipeInspirationItems, resolveInspirationFeedForWrite } from "./inspirationRecipeItems";
 
 describe("filterRecipeInspirationItems", () => {
   it("lar lagrede oppskrifter overstyre standardoppskrifter med samme id", () => {
@@ -77,5 +77,26 @@ describe("filterRecipeInspirationItems", () => {
     );
     expect(merged.some((row) => row.id === "default-recipe-1")).toBe(false);
     expect(merged.some((row) => row.id === "custom-recipe-1")).toBe(false);
+  });
+});
+
+describe("resolveInspirationFeedForWrite", () => {
+  const article = { id: "news-1", category: "news", title: "Tips" };
+  const recipe = { id: "recipe-1", category: "recipes", title: "Havregrøt" };
+
+  it("uses a successfully fetched remote snapshot, including an empty one", () => {
+    expect(resolveInspirationFeedForWrite([], [{ id: "stale" }], [article])).toEqual([]);
+    expect(resolveInspirationFeedForWrite([article, recipe], null, [])).toEqual([article, recipe]);
+  });
+
+  it("falls back to a non-empty local or caller snapshot when remote fetch misses", () => {
+    expect(resolveInspirationFeedForWrite(null, [article], [])).toEqual([article]);
+    expect(resolveInspirationFeedForWrite(null, null, [recipe])).toEqual([recipe]);
+  });
+
+  it("refuses to persist when no feed was loaded, so a recipe delete cannot wipe Utforsk", () => {
+    expect(resolveInspirationFeedForWrite(null, null, [])).toBeNull();
+    expect(resolveInspirationFeedForWrite(undefined, null, [])).toBeNull();
+    expect(resolveInspirationFeedForWrite(null, [], [])).toBeNull();
   });
 });
