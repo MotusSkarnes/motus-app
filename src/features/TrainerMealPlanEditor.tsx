@@ -628,6 +628,15 @@ export function TrainerMealPlanEditor({
     setIncludedDayIds((prev) => (prev.includes(dayId) ? prev.filter((id) => id !== dayId) : [...prev, dayId]));
   }
 
+  function toggleAllIncludedDays() {
+    const weekIds = visibleWeekDays.map((day) => day.id);
+    if (!weekIds.length) return;
+    const allOn = weekIds.every((id) => includedDayIds.includes(id));
+    setIncludedDayIds((prev) =>
+      allOn ? prev.filter((id) => !weekIds.includes(id)) : [...new Set([...prev, ...weekIds])],
+    );
+  }
+
   const selectedGridMeal = useMemo(() => {
     if (!plan || !gridSelection) return null;
     const day = plan.days.find((row) => row.id === gridSelection.dayId);
@@ -1351,6 +1360,7 @@ export function TrainerMealPlanEditor({
             onClearMeal={clearGridMeal}
             includedDayIds={includedDayIds}
             onToggleIncludedDay={toggleIncludedDay}
+            onToggleAllIncludedDays={toggleAllIncludedDays}
           />
         ) : null}
 

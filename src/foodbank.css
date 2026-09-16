@@ -3333,6 +3333,31 @@
   padding: 0 0.25rem 0.25rem;
 }
 
+.motus-pt-planner-grid__day-actions {
+  display: flex;
+  justify-content: flex-end;
+  min-width: 44rem;
+  margin: 0 0 0.25rem;
+}
+
+.motus-pt-planner-grid__all-days {
+  border-radius: 999px;
+  border: 1px solid #dbe4ee;
+  background: #fff;
+  padding: 0.18rem 0.6rem;
+  font-size: 0.625rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: #0f766e;
+  cursor: pointer;
+}
+
+.motus-pt-planner-grid__all-days:hover {
+  border-color: #99f6e4;
+  background: #f0fdfa;
+}
+
 .motus-pt-planner-grid {
   display: grid;
   grid-template-columns: 4.5rem repeat(7, minmax(5.5rem, 1fr));
@@ -3912,6 +3937,10 @@
 .motus-meal-plan-builder-modal .motus-pt-planner-grid {
   grid-template-columns: 5rem repeat(7, minmax(6.75rem, 1fr));
   gap: 0.45rem;
+  min-width: 52rem;
+}
+
+.motus-meal-plan-builder-modal .motus-pt-planner-grid__day-actions {
   min-width: 52rem;
 }
 

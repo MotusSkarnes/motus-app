@@ -24,6 +24,7 @@ type TrainerMealPlanWeekGridProps = {
   onClearMeal: (selection: MealGridSelection) => void;
   includedDayIds?: string[];
   onToggleIncludedDay?: (dayId: string) => void;
+  onToggleAllIncludedDays?: () => void;
 };
 
 export function TrainerMealPlanWeekGrid({
@@ -39,10 +40,12 @@ export function TrainerMealPlanWeekGrid({
   onClearMeal,
   includedDayIds,
   onToggleIncludedDay,
+  onToggleAllIncludedDays,
 }: TrainerMealPlanWeekGridProps) {
   const rootRef = useRef<HTMLDivElement | null>(null);
   const mealSlotLabels = getPlannerMealSlotsForPlan(plan);
   const weekdayShort = (label: string) => label.slice(0, 3);
+  const allIncluded = plan.days.length > 0 && plan.days.every((day) => !includedDayIds || includedDayIds.includes(day.id));
   useEffect(() => {
     if (!selection) return;
     const handlePointerDown = (event: MouseEvent) => {
@@ -58,6 +61,17 @@ export function TrainerMealPlanWeekGrid({
 
   return (
     <div className="motus-pt-planner-grid-wrap" ref={rootRef}>
+      {onToggleAllIncludedDays ? (
+        <div className="motus-pt-planner-grid__day-actions">
+          <button
+            type="button"
+            className="motus-pt-planner-grid__all-days"
+            onClick={onToggleAllIncludedDays}
+          >
+            {allIncluded ? "Avmerk alle" : "Merk alle"}
+          </button>
+        </div>
+      ) : null}
       <div className="motus-pt-planner-grid" role="grid" aria-label="Ukematplan">
         <div className="motus-pt-planner-grid__corner" />
         {plan.days.map((day) => {
