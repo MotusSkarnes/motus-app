@@ -66,7 +66,6 @@ import {
   distributeDailyTargetsToMeals,
   previewFoodAddition,
   remainingMacros,
-  suggestMealMacroAdjustments,
   suggestFoodsForMacros,
   sumDayMacros,
 } from "../app/mealPlanTrainerMacros";
@@ -79,8 +78,8 @@ import { RecipeCookPanel } from "../components/RecipeCookPanel";
 import { RecipeIngredientList } from "../components/RecipeIngredientList";
 import { RecipeMacroBlocks } from "../components/RecipeMacroBlocks";
 import { RecipePhoto } from "../components/RecipePhoto";
-import { MealMacroMiniBar, TrainerMealPlanMacroPanel } from "./TrainerMealPlanMacroPanel";
-import { TrainerMealPlanNutritionOverview } from "./nutrition/TrainerMealPlanNutritionOverview";
+import { MealMacroMiniBar } from "./TrainerMealPlanMacroPanel";
+import { TrainerMealPlanNutritionOverview, type MealPlanNutritionScope } from "./nutrition/TrainerMealPlanNutritionOverview";
 import { TrainerMealPlanWeekGrid, type MealGridSelection } from "./nutrition/TrainerMealPlanWeekGrid";
 import { MealPlanNutritionReportModal } from "./nutrition/MealPlanNutritionReportModal";
 import { TrainerMealPlanSlotSetup } from "./nutrition/TrainerMealPlanSlotSetup";
@@ -89,7 +88,7 @@ import {
   toggleMealPlanSlotId,
   type MealPlanSlotId,
 } from "../app/mealPlanMealSlots";
-import { buildMealPlanNutritionReport } from "../app/mealPlanNutritionTotals";
+import { averageMealPlanNutritionForDays, sumMealPlanDayNutrition } from "../app/mealPlanNutritionTotals";
 import { EMPTY_FOOD_LOG_NUTRITION, micronutrientRowsForReport } from "../app/quickFoodLogNutrition";
 import { resolveMealPlanNutritionReferenceContext, resolveNutritionReferenceContext } from "../app/personalizedNutritionReferences";
 import { autoFillWeekFromMonday, resizeMealPlanWeeks } from "../app/mealPlanWeekPlanner";
@@ -188,6 +187,8 @@ export function TrainerMealPlanEditor({
   const [recipeReadOnlyId, setRecipeReadOnlyId] = useState<string | null>(null);
   const [planWeeks, setPlanWeeks] = useState<number>(1);
   const [visibleWeekIndex, setVisibleWeekIndex] = useState(0);
+  const [nutritionScope, setNutritionScope] = useState<MealPlanNutritionScope>("checked");
+  const [includedDayIds, setIncludedDayIds] = useState<string[]>([]);
   const [draftMealSlotIds, setDraftMealSlotIds] = useState<MealPlanSlotId[]>(() => [...DEFAULT_MEAL_PLAN_SLOT_IDS]);
   const loadGenerationRef = useRef(0);
   const creatingPlanRef = useRef(false);
@@ -546,6 +547,19 @@ export function TrainerMealPlanEditor({
     setVisibleWeekIndex((prev) => Math.min(prev, Math.max(0, totalWeeks - 1)));
   }, [totalWeeks]);
 
+  const planDayIdKey = plan?.days.map((day) => day.id).join("|") ?? "";
+  useEffect(() => {
+    if (!planDayIdKey) return;
+    const ids = planDayIdKey.split("|");
+    setIncludedDayIds((prev) => {
+      if (prev.length === 0) return ids;
+      const keep = prev.filter((id) => ids.includes(id));
+      const added = ids.filter((id) => !prev.includes(id));
+      if (keep.length === prev.length && added.length === 0) return prev;
+      return [...keep, ...added];
+    });
+  }, [planDayIdKey]);
+
   useEffect(() => {
     if (!gridSelection || visibleWeekDays.length === 0) return;
     const isVisible = visibleWeekDays.some((day) => day.id === gridSelection.dayId);
@@ -583,23 +597,48 @@ export function TrainerMealPlanEditor({
     [memberBirthDate, memberGender, displayTargets.nutritionReference],
   );
 
-  const planNutritionAverages = useMemo(
-    () => (plan ? buildMealPlanNutritionReport(plan, nutritionContext) : null),
-    [plan, nutritionContext],
+  const markedDayId = gridSelection?.dayId ?? activeDay?.id ?? plan?.days[0]?.id ?? "";
+  const markedDay = useMemo(
+    () => (plan ? plan.days.find((day) => day.id === markedDayId) ?? null : null),
+    [plan, markedDayId],
   );
-  const weekAverageMacros = useMemo(() => {
-    const avg = planNutritionAverages?.dailyAverage;
-    if (!avg || !planNutritionAverages?.daysWithFood) {
-      return { kcal: 0, protein: 0, carbs: 0, fat: 0 };
+  const displayNutritionTotals = useMemo(() => {
+    if (!plan) return EMPTY_FOOD_LOG_NUTRITION;
+    if (nutritionScope === "selected") {
+      return markedDay ? sumMealPlanDayNutrition(markedDay, nutritionContext) : EMPTY_FOOD_LOG_NUTRITION;
     }
-    return { kcal: avg.kcal, protein: avg.protein, carbs: avg.carbs, fat: avg.fat };
-  }, [planNutritionAverages]);
-  const weekAverageMicronutrients = useMemo(() => {
-    const totals = planNutritionAverages?.daysWithFood
-      ? planNutritionAverages.dailyAverage
-      : EMPTY_FOOD_LOG_NUTRITION;
-    return micronutrientRowsForReport(totals, nutritionReferenceContext);
-  }, [planNutritionAverages, nutritionReferenceContext]);
+    return averageMealPlanNutritionForDays(plan, includedDayIds, nutritionContext);
+  }, [plan, nutritionScope, markedDay, includedDayIds, nutritionContext]);
+  const weekAverageMacros = useMemo(
+    () => ({
+      kcal: displayNutritionTotals.kcal,
+      protein: displayNutritionTotals.protein,
+      carbs: displayNutritionTotals.carbs,
+      fat: displayNutritionTotals.fat,
+    }),
+    [displayNutritionTotals],
+  );
+  const weekAverageMicronutrients = useMemo(
+    () => micronutrientRowsForReport(displayNutritionTotals, nutritionReferenceContext),
+    [displayNutritionTotals, nutritionReferenceContext],
+  );
+  const nutritionTableCaption = useMemo(() => {
+    if (nutritionScope === "selected") {
+      return markedDay?.label?.trim() || "Merket dag";
+    }
+    const count = includedDayIds.length;
+    if (count === 0) return "Ingen dager valgt";
+    if (count === 1) {
+      const only = plan?.days.find((day) => day.id === includedDayIds[0]);
+      return only?.label?.trim() || "1 valgt dag";
+    }
+    return `Snitt av ${count} dager`;
+  }, [nutritionScope, markedDay, includedDayIds, plan?.days]);
+
+  function toggleIncludedDay(dayId: string) {
+    setNutritionScope("checked");
+    setIncludedDayIds((prev) => (prev.includes(dayId) ? prev.filter((id) => id !== dayId) : [...prev, dayId]));
+  }
 
   const selectedGridMeal = useMemo(() => {
     if (!plan || !gridSelection) return null;
@@ -633,10 +672,6 @@ export function TrainerMealPlanEditor({
   const dayRemaining = useMemo(
     () => remainingMacros(plan?.targets, dayUsed),
     [plan?.targets, dayUsed],
-  );
-  const macroAdjustmentSuggestions = useMemo(
-    () => (activeDay ? suggestMealMacroAdjustments(activeDay, plan?.targets, foodItems, foodById) : []),
-    [activeDay, plan?.targets, foodItems, foodById],
   );
 
   const pickerMeal = useMemo(() => {
@@ -865,29 +900,6 @@ export function TrainerMealPlanEditor({
     }
     updatePlan(nextPlan);
     setSaveStatus("AI-genererte forslag lagt inn for hele uken.");
-  }
-
-  function applyMacroSuggestion(suggestion: {
-    mealId: string;
-    foodId: string;
-    foodName: string;
-    grams: number;
-  }) {
-    if (!activeDay) return;
-    const food = foodById.get(suggestion.foodId) ?? foodItems.find((row) => row.id === suggestion.foodId);
-    if (!food) {
-      setSaveStatus(`Fant ikke ${suggestion.foodName} i matvarebanken.`);
-      return;
-    }
-    const entry: MealPlanFoodEntry = {
-      id: uid("meal-food"),
-      foodId: food.id,
-      foodName: food.name,
-      grams: suggestion.grams,
-      nutritionPer100g: { ...food.nutritionPer100g },
-    };
-    appendEntryToMeal({ dayId: activeDay.id, mealId: suggestion.mealId }, entry);
-    setSaveStatus(`La til ${suggestion.grams} g ${food.name} i ${activeDay.label}.`);
   }
 
   function updatePlan(next: MealPlan, options?: { flushCloud?: boolean }) {
@@ -1132,36 +1144,6 @@ export function TrainerMealPlanEditor({
     });
   }
 
-  function handleDistributeMeals(mode: "equal" | "standard") {
-    if (!plan || !activeDay || !plan.targets) return;
-    const meals = distributeDailyTargetsToMeals(activeDay, plan.targets, mode);
-    updatePlan({
-      ...plan,
-      days: plan.days.map((day) => (day.id === activeDay.id ? { ...day, meals } : day)),
-    });
-    setSaveStatus(
-      mode === "standard" ? "Makro fordelt på valgte måltider for dagen." : "Makro fordelt likt på alle måltid.",
-    );
-  }
-
-  function handleClearMealTargets() {
-    if (!plan || !activeDay) return;
-    updatePlan({
-      ...plan,
-      days: plan.days.map((day) =>
-        day.id === activeDay.id
-          ? {
-              ...day,
-              meals: day.meals.map((meal) => {
-                const { targets: _removed, ...rest } = meal;
-                return rest;
-              }),
-            }
-          : day,
-      ),
-    });
-  }
-
   function openCopyMeal(dayId: string, meal: MealPlanMeal) {
     if (meal.items.length === 0) {
       setSaveStatus("Legg til matvarer i måltidet før du kopierer.");
@@ -1371,6 +1353,8 @@ export function TrainerMealPlanEditor({
               setRecipeSearch("");
             }}
             onClearMeal={clearGridMeal}
+            includedDayIds={includedDayIds}
+            onToggleIncludedDay={toggleIncludedDay}
           />
         ) : null}
 
@@ -1477,19 +1461,13 @@ export function TrainerMealPlanEditor({
           reference={displayTargets.nutritionReference}
           profileAvailable={profileReferenceAvailable}
           onReferenceChange={handleNutritionReferenceChange}
+          tableCaption={nutritionTableCaption}
+          scope={nutritionScope}
+          onScopeChange={setNutritionScope}
+          days={visibleWeekDays}
+          includedDayIds={includedDayIds}
+          onToggleIncludedDay={toggleIncludedDay}
         />
-        {activeDay ? (
-          <TrainerMealPlanMacroPanel
-            dayLabel={activeDay.label}
-            dailyTargets={plan.targets}
-            dayUsed={dayUsed}
-            dayRemaining={dayRemaining}
-            onDistribute={handleDistributeMeals}
-            onClearMealTargets={handleClearMealTargets}
-            adjustmentSuggestions={macroAdjustmentSuggestions}
-            onApplySuggestion={applyMacroSuggestion}
-          />
-        ) : null}
       </aside>
     </div>
   );
@@ -1643,12 +1621,7 @@ export function TrainerMealPlanEditor({
             <h2 className="motus-pt-planner-step__title">
               <span className="motus-pt-planner-step__num">4</span> Ernæringsoversikt
             </h2>
-            <p className="text-xs text-slate-500 mb-2">
-              Gjennomsnitt per dag
-              {planNutritionAverages?.daysWithFood
-                ? ` · ${planNutritionAverages.daysWithFood} ${planNutritionAverages.daysWithFood === 1 ? "dag" : "dager"} med matvarer`
-                : ""}
-            </p>
+            <p className="text-xs text-slate-500 mb-2">{nutritionTableCaption}</p>
             <TrainerMealPlanNutritionOverview
               averageUsed={weekAverageMacros}
               targets={displayTargets}
@@ -1657,6 +1630,12 @@ export function TrainerMealPlanEditor({
               reference={displayTargets.nutritionReference}
               profileAvailable={profileReferenceAvailable}
               onReferenceChange={handleNutritionReferenceChange}
+              tableCaption={nutritionTableCaption}
+              scope={nutritionScope}
+              onScopeChange={setNutritionScope}
+              days={visibleWeekDays}
+              includedDayIds={includedDayIds}
+              onToggleIncludedDay={toggleIncludedDay}
             />
           </section>
 

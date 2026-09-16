@@ -73,6 +73,29 @@ export type MealPlanNutritionReport = {
   dailyAverage: FoodLogNutritionTotals;
 };
 
+function emptyNutritionTotals(): FoodLogNutritionTotals {
+  return {
+    ...EMPTY_FOOD_LOG_NUTRITION,
+    micronutrients: { ...EMPTY_MICRONUTRIENTS },
+    fattyAcids: { ...EMPTY_FATTY_ACIDS },
+  };
+}
+
+export function averageMealPlanNutritionForDays(
+  plan: MealPlan,
+  dayIds: string[],
+  context?: MealPlanNutritionContext,
+): FoodLogNutritionTotals {
+  const selected = new Set(dayIds);
+  const days = plan.days.filter((day) => selected.has(day.id));
+  if (!days.length) return emptyNutritionTotals();
+  let periodSum = emptyNutritionTotals();
+  for (const day of days) {
+    periodSum = addFoodLogNutritionTotals(periodSum, sumMealPlanDayNutrition(day, context));
+  }
+  return divideFoodLogNutritionTotals(periodSum, days.length);
+}
+
 export function buildMealPlanNutritionReport(plan: MealPlan, context?: MealPlanNutritionContext): MealPlanNutritionReport {
   const dayTotals: MealPlanNutritionReport["dayTotals"] = [];
 

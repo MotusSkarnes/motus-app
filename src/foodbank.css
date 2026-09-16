@@ -3354,6 +3354,30 @@
   padding: 0.25rem 0;
 }
 
+.motus-pt-planner-grid__day-head.is-excluded {
+  color: #cbd5e1;
+}
+
+.motus-pt-planner-grid__day-check {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.22rem;
+  cursor: pointer;
+}
+
+.motus-pt-planner-grid__day-check input {
+  width: 0.8rem;
+  height: 0.8rem;
+  margin: 0;
+  accent-color: #0f766e;
+  flex-shrink: 0;
+}
+
+.motus-pt-planner-grid__cell--excluded {
+  opacity: 0.42;
+}
+
 .motus-pt-planner-grid__row-head {
   display: flex;
   align-items: center;
@@ -3560,6 +3584,48 @@
   color: #0f766e;
 }
 
+.motus-pt-planner-nutrition__scope {
+  margin-bottom: 0.65rem;
+  padding-bottom: 0.55rem;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.motus-pt-planner-nutrition__days {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+  margin-top: 0.5rem;
+}
+
+.motus-pt-planner-nutrition__day {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+  border-radius: 999px;
+  border: 1px solid #dbe4ee;
+  background: #fff;
+  padding: 0.18rem 0.45rem;
+  font-size: 0.625rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: #94a3b8;
+  cursor: pointer;
+}
+
+.motus-pt-planner-nutrition__day.is-on {
+  border-color: #99f6e4;
+  background: #f0fdfa;
+  color: #0f766e;
+}
+
+.motus-pt-planner-nutrition__day input {
+  width: 0.75rem;
+  height: 0.75rem;
+  margin: 0;
+  accent-color: #0f766e;
+}
+
 .motus-pt-planner-nutrition__ref-custom {
   display: grid;
   grid-template-columns: minmax(0, 7rem) minmax(0, 9rem);
@@ -3639,6 +3705,7 @@
   font-weight: 600;
   color: #334155;
   text-align: left;
+  padding-left: 0.45rem;
 }
 
 .motus-pt-planner-nutrition-table td {
@@ -3656,6 +3723,37 @@
 .motus-pt-planner-nutrition-table td:last-child {
   color: #64748b;
   padding-right: 0;
+}
+
+.motus-pt-planner-nutrition-table tbody tr.is-ok td:nth-child(2) {
+  color: #0f766e;
+  font-weight: 700;
+}
+
+.motus-pt-planner-nutrition-table tbody tr.is-warn td:nth-child(2) {
+  color: #b45309;
+  font-weight: 700;
+}
+
+.motus-pt-planner-nutrition-table tbody tr.is-danger td:nth-child(2) {
+  color: #be123c;
+  font-weight: 700;
+}
+
+.motus-pt-planner-nutrition-table tbody tr.is-muted td:nth-child(2) {
+  color: #94a3b8;
+}
+
+.motus-pt-planner-nutrition-table tbody tr.is-ok th {
+  box-shadow: inset 3px 0 0 #14b8a6;
+}
+
+.motus-pt-planner-nutrition-table tbody tr.is-warn th {
+  box-shadow: inset 3px 0 0 #f59e0b;
+}
+
+.motus-pt-planner-nutrition-table tbody tr.is-danger th {
+  box-shadow: inset 3px 0 0 #f43f5e;
 }
 
 .motus-pt-planner-nutrition__footnote {

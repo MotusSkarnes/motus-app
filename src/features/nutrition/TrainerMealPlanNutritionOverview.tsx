@@ -10,6 +10,8 @@ import {
 import { TextInput } from "../../app/ui";
 export { MICRONUTRIENT_DAILY_TARGETS } from "../../app/healthDirectorateNutritionReferences";
 
+export type MealPlanNutritionScope = "selected" | "checked";
+
 export type MicronutrientOverviewRow = {
   key: MicronutrientDailyRow["key"];
   label: string;
@@ -22,6 +24,11 @@ export type MicronutrientOverviewRow = {
   decimals?: number;
 };
 
+type NutritionDayOption = {
+  id: string;
+  label: string;
+};
+
 type TrainerMealPlanNutritionOverviewProps = {
   averageUsed: MacroTotals;
   targets?: MealPlanTargets;
@@ -31,6 +38,12 @@ type TrainerMealPlanNutritionOverviewProps = {
   profileAvailable?: boolean;
   onReferenceChange?: (next: MealPlanNutritionReference) => void;
   compact?: boolean;
+  tableCaption?: string;
+  scope?: MealPlanNutritionScope;
+  onScopeChange?: (scope: MealPlanNutritionScope) => void;
+  days?: NutritionDayOption[];
+  includedDayIds?: string[];
+  onToggleIncludedDay?: (dayId: string) => void;
 };
 
 function defaultReferenceMode(
@@ -45,6 +58,20 @@ function formatTargetMacro(value: number): string {
   return formatMacro(value, 0);
 }
 
+function weekdayShort(label: string): string {
+  return label.slice(0, 3);
+}
+
+export function macroCoverageTone(value: number, target: number): MicronutrientDailyRow["statusTone"] {
+  if (!(target > 0)) return "muted";
+  const pct = (value / target) * 100;
+  if (pct < 50) return "danger";
+  if (pct < 80) return "warn";
+  if (pct > 150) return "danger";
+  if (pct > 120) return "warn";
+  return "ok";
+}
+
 export function TrainerMealPlanNutritionOverview({
   averageUsed,
   targets,
@@ -54,6 +81,12 @@ export function TrainerMealPlanNutritionOverview({
   profileAvailable = false,
   onReferenceChange,
   compact = false,
+  tableCaption,
+  scope,
+  onScopeChange,
+  days = [],
+  includedDayIds,
+  onToggleIncludedDay,
 }: TrainerMealPlanNutritionOverviewProps) {
   const targetKcal = targets?.kcal ?? 0;
   const targetProtein = targets?.protein ?? 0;
@@ -75,14 +108,84 @@ export function TrainerMealPlanNutritionOverview({
   }
 
   const macroRows = [
-    { key: "kcal", label: "Kalorier", unit: "kcal", plan: formatMacro(averageUsed.kcal, 0), recommended: formatTargetMacro(targetKcal) },
-    { key: "protein", label: "Protein", unit: "g", plan: formatMacro(averageUsed.protein, 0), recommended: formatTargetMacro(targetProtein) },
-    { key: "carbs", label: "Karbohydrater", unit: "g", plan: formatMacro(averageUsed.carbs, 0), recommended: formatTargetMacro(targetCarbs) },
-    { key: "fat", label: "Fett", unit: "g", plan: formatMacro(averageUsed.fat, 0), recommended: formatTargetMacro(targetFat) },
+    {
+      key: "kcal",
+      label: "Kalorier",
+      unit: "kcal",
+      plan: formatMacro(averageUsed.kcal, 0),
+      recommended: formatTargetMacro(targetKcal),
+      tone: macroCoverageTone(averageUsed.kcal, targetKcal),
+    },
+    {
+      key: "protein",
+      label: "Protein",
+      unit: "g",
+      plan: formatMacro(averageUsed.protein, 0),
+      recommended: formatTargetMacro(targetProtein),
+      tone: macroCoverageTone(averageUsed.protein, targetProtein),
+    },
+    {
+      key: "carbs",
+      label: "Karbohydrater",
+      unit: "g",
+      plan: formatMacro(averageUsed.carbs, 0),
+      recommended: formatTargetMacro(targetCarbs),
+      tone: macroCoverageTone(averageUsed.carbs, targetCarbs),
+    },
+    {
+      key: "fat",
+      label: "Fett",
+      unit: "g",
+      plan: formatMacro(averageUsed.fat, 0),
+      recommended: formatTargetMacro(targetFat),
+      tone: macroCoverageTone(averageUsed.fat, targetFat),
+    },
   ];
 
   return (
     <div className={`motus-pt-planner-nutrition${compact ? " motus-pt-planner-nutrition--compact" : ""}`}>
+      {onScopeChange ? (
+        <div className="motus-pt-planner-nutrition__scope">
+          <p className="motus-pt-planner-nutrition__ref-label">Visning</p>
+          <div className="motus-pt-planner-nutrition__ref-modes" role="group" aria-label="Velg visning">
+            <button
+              type="button"
+              className={`motus-pt-planner-nutrition__ref-btn ${scope === "selected" ? "is-active" : ""}`}
+              aria-pressed={scope === "selected"}
+              onClick={() => onScopeChange("selected")}
+            >
+              Merket dag
+            </button>
+            <button
+              type="button"
+              className={`motus-pt-planner-nutrition__ref-btn ${scope === "checked" ? "is-active" : ""}`}
+              aria-pressed={scope === "checked"}
+              onClick={() => onScopeChange("checked")}
+            >
+              Snitt av valgte
+            </button>
+          </div>
+          {days.length && onToggleIncludedDay ? (
+            <div className="motus-pt-planner-nutrition__days" role="group" aria-label="Dager i snittet">
+              {days.map((day) => {
+                const included = !includedDayIds || includedDayIds.includes(day.id);
+                return (
+                  <label key={day.id} className={`motus-pt-planner-nutrition__day ${included ? "is-on" : ""}`}>
+                    <input
+                      type="checkbox"
+                      checked={included}
+                      onChange={() => onToggleIncludedDay(day.id)}
+                      aria-label={`Ta med ${day.label} i snittet`}
+                    />
+                    <span>{weekdayShort(day.label)}</span>
+                  </label>
+                );
+              })}
+            </div>
+          ) : null}
+        </div>
+      ) : null}
+
       {onReferenceChange ? (
         <div className="motus-pt-planner-nutrition__ref">
           <p className="motus-pt-planner-nutrition__ref-label">Anbefalinger for mikronæringsstoffer</p>
@@ -155,7 +258,7 @@ export function TrainerMealPlanNutritionOverview({
       ) : null}
 
       <table className="motus-pt-planner-nutrition-table">
-        <caption className="motus-pt-planner-nutrition-table__caption">Snitt per dag</caption>
+        <caption className="motus-pt-planner-nutrition-table__caption">{tableCaption ?? "Snitt per dag"}</caption>
         <thead>
           <tr>
             <th scope="col">Næringsstoff</th>
@@ -165,7 +268,7 @@ export function TrainerMealPlanNutritionOverview({
         </thead>
         <tbody>
           {macroRows.map((row) => (
-            <tr key={row.key}>
+            <tr key={row.key} className={`is-${row.tone}`}>
               <th scope="row">
                 {row.label}
                 <span className="motus-pt-planner-nutrition-table__unit"> {row.unit}</span>
@@ -176,8 +279,9 @@ export function TrainerMealPlanNutritionOverview({
           ))}
           {micronutrients.map((row) => {
             const decimals = row.decimals ?? 1;
+            const tone = row.statusTone ?? "muted";
             return (
-              <tr key={row.key}>
+              <tr key={row.key} className={`is-${tone}`} title={row.statusLabel}>
                 <th scope="row">
                   {row.label}
                   <span className="motus-pt-planner-nutrition-table__unit"> {row.unit}</span>

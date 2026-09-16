@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { createDefaultMealPlan } from "./mealPlanDefaults";
 import { INSPIRATION_RECIPE_FOOD_PREFIX } from "./mealPlanRecipeEntry";
-import { buildMealPlanNutritionReport, sumMealPlanDayNutrition } from "./mealPlanNutritionTotals";
+import { averageMealPlanNutritionForDays, buildMealPlanNutritionReport, sumMealPlanDayNutrition } from "./mealPlanNutritionTotals";
 import type { MealPlanFoodEntry } from "./mealPlanTypes";
 import type { FoodNutrition } from "./foodBankTypes";
 
@@ -50,6 +50,16 @@ describe("mealPlanNutritionTotals", () => {
     const report = buildMealPlanNutritionReport(plan);
     expect(report.daysWithFood).toBe(2);
     expect(report.dailyAverage.kcal).toBe(200);
+  });
+
+  it("averages only the checked days, including empty ones", () => {
+    const plan = createDefaultMealPlan("m1");
+    plan.days[0]!.meals[0]!.items = [entry(200)];
+    plan.days[1]!.meals[0]!.items = [entry(400)];
+    const mondayAndTuesday = averageMealPlanNutritionForDays(plan, [plan.days[0]!.id, plan.days[1]!.id]);
+    expect(mondayAndTuesday.kcal).toBe(300);
+    const mondayOnly = averageMealPlanNutritionForDays(plan, [plan.days[0]!.id]);
+    expect(mondayOnly.kcal).toBe(200);
   });
 
   it("bruker oppskrifts-beregning for mikro når lagret snapshot mangler det", () => {

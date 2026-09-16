@@ -22,6 +22,8 @@ type TrainerMealPlanWeekGridProps = {
   onAddFood: (selection: MealGridSelection) => void;
   onAddRecipe: (selection: MealGridSelection) => void;
   onClearMeal: (selection: MealGridSelection) => void;
+  includedDayIds?: string[];
+  onToggleIncludedDay?: (dayId: string) => void;
 };
 
 export function TrainerMealPlanWeekGrid({
@@ -35,6 +37,8 @@ export function TrainerMealPlanWeekGrid({
   onAddFood,
   onAddRecipe,
   onClearMeal,
+  includedDayIds,
+  onToggleIncludedDay,
 }: TrainerMealPlanWeekGridProps) {
   const rootRef = useRef<HTMLDivElement | null>(null);
   const mealSlotLabels = getPlannerMealSlotsForPlan(plan);
@@ -56,11 +60,26 @@ export function TrainerMealPlanWeekGrid({
     <div className="motus-pt-planner-grid-wrap" ref={rootRef}>
       <div className="motus-pt-planner-grid" role="grid" aria-label="Ukematplan">
         <div className="motus-pt-planner-grid__corner" />
-        {plan.days.map((day) => (
-          <div key={day.id} className="motus-pt-planner-grid__day-head" role="columnheader">
-            {weekdayShort(day.label)}
-          </div>
-        ))}
+        {plan.days.map((day) => {
+          const included = !includedDayIds || includedDayIds.includes(day.id);
+          return (
+            <div key={day.id} className={`motus-pt-planner-grid__day-head ${included ? "" : "is-excluded"}`} role="columnheader">
+              {onToggleIncludedDay ? (
+                <label className="motus-pt-planner-grid__day-check">
+                  <input
+                    type="checkbox"
+                    checked={included}
+                    onChange={() => onToggleIncludedDay(day.id)}
+                    aria-label={`Ta med ${day.label} i snittet`}
+                  />
+                  <span>{weekdayShort(day.label)}</span>
+                </label>
+              ) : (
+                weekdayShort(day.label)
+              )}
+            </div>
+          );
+        })}
 
         {mealSlotLabels.map((slot) => (
           <Fragment key={slot}>
@@ -72,6 +91,7 @@ export function TrainerMealPlanWeekGrid({
               if (!meal) {
                 return <div key={`${day.id}-${slot}`} className="motus-pt-planner-grid__cell motus-pt-planner-grid__cell--empty" />;
               }
+              const included = !includedDayIds || includedDayIds.includes(day.id);
               const selected = selection?.dayId === day.id && selection?.mealId === meal.id;
               const hasFood = meal.items.length > 0;
               const title = mealCellDisplayTitle(meal);
@@ -82,7 +102,7 @@ export function TrainerMealPlanWeekGrid({
               return (
                 <div
                   key={`${day.id}-${meal.id}`}
-                  className={`motus-pt-planner-grid__cell ${selected ? "motus-pt-planner-grid__cell--selected" : ""} ${hasFood ? "motus-pt-planner-grid__cell--filled" : ""}`}
+                  className={`motus-pt-planner-grid__cell ${selected ? "motus-pt-planner-grid__cell--selected" : ""} ${hasFood ? "motus-pt-planner-grid__cell--filled" : ""} ${included ? "" : "motus-pt-planner-grid__cell--excluded"}`}
                   role="gridcell"
                 >
                   <button
