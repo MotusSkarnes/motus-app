@@ -80,7 +80,7 @@ import { RecipeIngredientList } from "../components/RecipeIngredientList";
 import { RecipeMacroBlocks } from "../components/RecipeMacroBlocks";
 import { RecipePhoto } from "../components/RecipePhoto";
 import { MealMacroMiniBar, TrainerMealPlanMacroPanel } from "./TrainerMealPlanMacroPanel";
-import { TrainerMealPlanNutritionOverview, type MicronutrientOverviewRow } from "./nutrition/TrainerMealPlanNutritionOverview";
+import { TrainerMealPlanNutritionOverview } from "./nutrition/TrainerMealPlanNutritionOverview";
 import { TrainerMealPlanWeekGrid, type MealGridSelection } from "./nutrition/TrainerMealPlanWeekGrid";
 import { MealPlanNutritionReportModal } from "./nutrition/MealPlanNutritionReportModal";
 import { TrainerMealPlanSlotSetup } from "./nutrition/TrainerMealPlanSlotSetup";
@@ -90,8 +90,8 @@ import {
   type MealPlanSlotId,
 } from "../app/mealPlanMealSlots";
 import { buildMealPlanNutritionReport } from "../app/mealPlanNutritionTotals";
-import { micronutrientRowsForReport } from "../app/quickFoodLogNutrition";
-import { resolveNutritionReferenceContext } from "../app/personalizedNutritionReferences";
+import { EMPTY_FOOD_LOG_NUTRITION, micronutrientRowsForReport } from "../app/quickFoodLogNutrition";
+import { resolveMealPlanNutritionReferenceContext, resolveNutritionReferenceContext } from "../app/personalizedNutritionReferences";
 import { autoFillWeekFromMonday, resizeMealPlanWeeks } from "../app/mealPlanWeekPlanner";
 import {
   buildInspirationRecipeNutritionById,
@@ -100,7 +100,7 @@ import {
 } from "../app/mealPlanRecipeEntry";
 import { recipeBelongsToMealSlot, recipeMealSlotFor, type RecipeMealSlot } from "../app/recipeMealCategory";
 import { buildScaledRecipeView, resolveRecipeScalingMode } from "../app/recipeMealScaling";
-import type { MealPlan, MealPlanFoodEntry, MealPlanMeal, MealPlanTargets } from "../app/mealPlanTypes";
+import type { MealPlan, MealPlanFoodEntry, MealPlanMeal, MealPlanNutritionReference, MealPlanTargets } from "../app/mealPlanTypes";
 import type { FoodItem } from "../app/foodBankTypes";
 import { useFoodBankItems } from "../app/useFoodBankItems";
 import { uid } from "../app/storage";
@@ -561,10 +561,6 @@ export function TrainerMealPlanEditor({
     () => ({ foodById, foodItems: foodItemsForMacros, recipeNutritionById }),
     [foodById, foodItemsForMacros, recipeNutritionById],
   );
-  const nutritionReferenceContext = useMemo(
-    () => resolveNutritionReferenceContext(memberBirthDate, memberGender),
-    [memberBirthDate, memberGender],
-  );
   const resolvedWeight = useMemo(
     () => resolveMemberBodyWeight(memberWeight, memberPersonalGoals),
     [memberWeight, memberPersonalGoals],
@@ -576,6 +572,16 @@ export function TrainerMealPlanEditor({
       ? displayTargets.planningWeightKg
       : null);
   const weightEditable = resolvedWeight == null;
+  const profileReferenceAvailable = resolveNutritionReferenceContext(memberBirthDate, memberGender).isPersonalized;
+  const nutritionReferenceContext = useMemo(
+    () =>
+      resolveMealPlanNutritionReferenceContext({
+        memberBirthDate,
+        memberGender,
+        stored: displayTargets.nutritionReference,
+      }),
+    [memberBirthDate, memberGender, displayTargets.nutritionReference],
+  );
 
   const planNutritionAverages = useMemo(
     () => (plan ? buildMealPlanNutritionReport(plan, nutritionContext) : null),
@@ -588,16 +594,11 @@ export function TrainerMealPlanEditor({
     }
     return { kcal: avg.kcal, protein: avg.protein, carbs: avg.carbs, fat: avg.fat };
   }, [planNutritionAverages]);
-  const weekAverageMicronutrients = useMemo<MicronutrientOverviewRow[]>(() => {
-    if (!planNutritionAverages?.daysWithFood) return [];
-    return micronutrientRowsForReport(planNutritionAverages.dailyAverage, nutritionReferenceContext).map((row) => ({
-      key: row.key,
-      label: row.label,
-      unit: row.unit,
-      value: row.value,
-      target: row.target,
-      coveragePct: row.coveragePct,
-    }));
+  const weekAverageMicronutrients = useMemo(() => {
+    const totals = planNutritionAverages?.daysWithFood
+      ? planNutritionAverages.dailyAverage
+      : EMPTY_FOOD_LOG_NUTRITION;
+    return micronutrientRowsForReport(totals, nutritionReferenceContext);
   }, [planNutritionAverages, nutritionReferenceContext]);
 
   const selectedGridMeal = useMemo(() => {
@@ -958,6 +959,10 @@ export function TrainerMealPlanEditor({
     setDerivedTargetField(result.derivedField);
     setTargetBalanceWarning(result.warning);
     commitTargets(result.targets);
+  }
+
+  function handleNutritionReferenceChange(next: MealPlanNutritionReference) {
+    commitTargets({ ...displayTargets, nutritionReference: next });
   }
 
   const targetBalanceHint = useMemo(() => {
@@ -1456,7 +1461,7 @@ export function TrainerMealPlanEditor({
               </OutlineButton>
             </div>
           </div>
-        ) : (
+          ) : (
           <p className="text-sm text-slate-500">Klikk en celle i rutenettet for å redigere måltidet.</p>
         )}
       </div>
@@ -1475,6 +1480,25 @@ export function TrainerMealPlanEditor({
           />
         </aside>
       ) : null}
+
+      <section className="motus-meal-plan-builder-modal__workspace-nutrition" aria-label="Ernæringsoversikt">
+        <h3 className="motus-pt-planner-sidebar-title">Makro og mikronæringsstoffer</h3>
+        <p className="mb-2 text-xs text-slate-500">
+          Oppdateres mens du legger til mat
+          {planNutritionAverages?.daysWithFood
+            ? ` · snitt av ${planNutritionAverages.daysWithFood} ${planNutritionAverages.daysWithFood === 1 ? "dag" : "dager"} med matvarer`
+            : ""}
+        </p>
+        <TrainerMealPlanNutritionOverview
+          averageUsed={weekAverageMacros}
+          targets={displayTargets}
+          micronutrients={weekAverageMicronutrients}
+          referenceContext={nutritionReferenceContext}
+          reference={displayTargets.nutritionReference}
+          profileAvailable={profileReferenceAvailable}
+          onReferenceChange={handleNutritionReferenceChange}
+        />
+      </section>
     </div>
   );
 
@@ -1633,7 +1657,15 @@ export function TrainerMealPlanEditor({
                 ? ` · ${planNutritionAverages.daysWithFood} ${planNutritionAverages.daysWithFood === 1 ? "dag" : "dager"} med matvarer`
                 : ""}
             </p>
-            <TrainerMealPlanNutritionOverview averageUsed={weekAverageMacros} targets={plan.targets} micronutrients={weekAverageMicronutrients} />
+            <TrainerMealPlanNutritionOverview
+              averageUsed={weekAverageMacros}
+              targets={displayTargets}
+              micronutrients={weekAverageMicronutrients}
+              referenceContext={nutritionReferenceContext}
+              reference={displayTargets.nutritionReference}
+              profileAvailable={profileReferenceAvailable}
+              onReferenceChange={handleNutritionReferenceChange}
+            />
           </section>
 
           <section className="motus-pt-planner-step">

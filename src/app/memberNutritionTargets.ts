@@ -61,6 +61,7 @@ function serializeNutritionTargets(targets: MealPlanTargets): Record<string, unk
   if (typeof targets.planningWeightKg === "number" && Number.isFinite(targets.planningWeightKg) && targets.planningWeightKg > 0) {
     row.planningWeightKg = targets.planningWeightKg;
   }
+  if (targets.nutritionReference?.mode) row.nutritionReference = targets.nutritionReference;
   if (targets.kcalLocked === true) row.kcalLocked = true;
   if (targets.macroSplitPct) row.macroSplitPct = targets.macroSplitPct;
   if (targets.macroSplitLocked?.length) row.macroSplitLocked = targets.macroSplitLocked;

@@ -1,4 +1,4 @@
-import type { MealPlanTargets } from "./mealPlanTypes";
+import type { MealPlanNutritionReference, MealPlanTargets } from "./mealPlanTypes";
 
 export const KCAL_PER_G_PROTEIN = 4;
 export const KCAL_PER_G_CARB = 4;
@@ -195,7 +195,24 @@ export function parseMealPlanTargets(value: unknown): MealPlanTargets | undefine
   }
   const updatedAt = Number(row.updatedAt ?? row.updated_at);
   if (Number.isFinite(updatedAt) && updatedAt > 0) targets.updatedAt = updatedAt;
+  const nutritionReference = parseNutritionReference(row.nutritionReference ?? row.nutrition_reference);
+  if (nutritionReference) targets.nutritionReference = nutritionReference;
   return Object.keys(targets).length ? targets : undefined;
+}
+
+function parseNutritionReference(value: unknown): MealPlanNutritionReference | undefined {
+  if (!value || typeof value !== "object") return undefined;
+  const row = value as Record<string, unknown>;
+  const mode = String(row.mode ?? "").trim();
+  if (mode !== "profile" && mode !== "highest" && mode !== "custom") return undefined;
+  const ageRaw = Number(row.ageYears ?? row.age_years);
+  const genderRaw = String(row.gender ?? "").trim().toLowerCase();
+  const gender = genderRaw === "female" || genderRaw === "male" ? genderRaw : undefined;
+  return {
+    mode,
+    ...(Number.isFinite(ageRaw) && ageRaw >= 0 && ageRaw < 120 ? { ageYears: Math.round(ageRaw) } : {}),
+    ...(gender ? { gender } : {}),
+  };
 }
 
 export function mealPlanTargetsHaveValues(targets?: MealPlanTargets | null): boolean {
@@ -206,7 +223,8 @@ export function mealPlanTargetsHaveValues(targets?: MealPlanTargets | null): boo
     (typeof targets.carbs === "number" && Number.isFinite(targets.carbs)) ||
     (typeof targets.fat === "number" && Number.isFinite(targets.fat)) ||
     (typeof targets.proteinPerKg === "number" && Number.isFinite(targets.proteinPerKg) && targets.proteinPerKg > 0) ||
-    (typeof targets.planningWeightKg === "number" && Number.isFinite(targets.planningWeightKg) && targets.planningWeightKg > 0)
+    (typeof targets.planningWeightKg === "number" && Number.isFinite(targets.planningWeightKg) && targets.planningWeightKg > 0) ||
+    Boolean(targets.nutritionReference?.mode)
   );
 }
 

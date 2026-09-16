@@ -123,5 +123,13 @@ describe("mealPlanTargetBalance", () => {
     expect(parsed?.planningWeightKg).toBe(72.4);
     expect(parsed?.proteinPerKg).toBe(1.5);
   });
+
+  it("parser lagret mikronæringsanbefaling", () => {
+    const parsed = parseMealPlanTargets({
+      kcal: 2000,
+      nutritionReference: { mode: "custom", ageYears: 42, gender: "male" },
+    });
+    expect(parsed?.nutritionReference).toEqual({ mode: "custom", ageYears: 42, gender: "male" });
+  });
 });
 

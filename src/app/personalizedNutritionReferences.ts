@@ -1,4 +1,5 @@
 import type { FoodMicronutrientKey } from "./foodBankMicronutrients";
+import { FOOD_MICRONUTRIENT_FIELDS } from "./foodBankMicronutrients";
 import {
   gramsFromEnergyPercent,
   HEALTH_DIRECTORATE_MICRONUTRIENT_DAILY,
@@ -9,6 +10,7 @@ import {
 import { parseMemberAgeYears } from "./memberAge";
 import type { MemberGender } from "./memberGender";
 import { memberGenderLabel, normalizeMemberGender } from "./memberGender";
+import type { MealPlanNutritionReference } from "./mealPlanTypes";
 
 export type NutritionReferenceMissingField = "age" | "gender";
 
@@ -24,6 +26,8 @@ export type NutritionReferenceContext = {
 
 type AgeBand = "child" | "teen" | "adult" | "senior";
 type SexKey = "male" | "female";
+const AGE_BANDS: AgeBand[] = ["child", "teen", "adult", "senior"];
+const SEX_KEYS: SexKey[] = ["male", "female"];
 
 function ageBandFromYears(ageYears: number): AgeBand {
   if (ageYears < 10) return "child";
@@ -251,21 +255,24 @@ function resolveSexKey(gender: MemberGender): SexKey | null {
   return null;
 }
 
-export function resolveNutritionReferenceContext(
-  birthDate: string,
+export function resolveNutritionReferenceFromAge(
+  ageYears: number | null,
   genderInput: unknown,
 ): NutritionReferenceContext {
   const gender = normalizeMemberGender(genderInput);
-  const ageYears = parseMemberAgeYears(birthDate);
+  const validAge =
+    typeof ageYears === "number" && Number.isFinite(ageYears) && ageYears >= 0 && ageYears < 120
+      ? Math.round(ageYears)
+      : null;
   const missingFields: NutritionReferenceMissingField[] = [];
-  if (ageYears === null) missingFields.push("age");
+  if (validAge === null) missingFields.push("age");
   if (!gender) missingFields.push("gender");
 
   if (missingFields.length > 0) {
     return {
       isPersonalized: false,
       missingFields,
-      ageYears,
+      ageYears: validAge,
       gender,
       profileLabel: null,
       micronutrientDaily: { ...HEALTH_DIRECTORATE_MICRONUTRIENT_DAILY },
@@ -274,16 +281,69 @@ export function resolveNutritionReferenceContext(
   }
 
   const sex = resolveSexKey(gender)!;
-  const band = ageBandFromYears(ageYears!);
+  const band = ageBandFromYears(validAge!);
   return {
     isPersonalized: true,
     missingFields: [],
-    ageYears,
+    ageYears: validAge,
     gender,
-    profileLabel: `${memberGenderLabel(gender)}, ${ageYears} år`,
+    profileLabel: `${memberGenderLabel(gender)}, ${validAge} år`,
     micronutrientDaily: { ...MICRONUTRIENT_BY_BAND_SEX[band][sex] },
     otherDaily: otherDailyFor(band, sex),
   };
+}
+
+export function resolveNutritionReferenceContext(
+  birthDate: string,
+  genderInput: unknown,
+): NutritionReferenceContext {
+  return resolveNutritionReferenceFromAge(parseMemberAgeYears(birthDate), genderInput);
+}
+
+export function highestMicronutrientDaily(): Record<FoodMicronutrientKey, number> {
+  const out = { ...HEALTH_DIRECTORATE_MICRONUTRIENT_DAILY };
+  for (const band of AGE_BANDS) {
+    for (const sex of SEX_KEYS) {
+      const table = MICRONUTRIENT_BY_BAND_SEX[band][sex];
+      for (const field of FOOD_MICRONUTRIENT_FIELDS) {
+        out[field.key] = Math.max(out[field.key] ?? 0, table[field.key] ?? 0);
+      }
+    }
+  }
+  return out;
+}
+
+export function highestNutritionReferenceContext(): NutritionReferenceContext {
+  const otherCandidates = AGE_BANDS.flatMap((band) => SEX_KEYS.map((sex) => otherDailyFor(band, sex)));
+  return {
+    isPersonalized: false,
+    missingFields: [],
+    ageYears: null,
+    gender: "",
+    profileLabel: "høyeste anbefaling",
+    micronutrientDaily: highestMicronutrientDaily(),
+    otherDaily: {
+      fiber: Math.max(...otherCandidates.map((row) => row.fiber)),
+      sodium: Math.max(...otherCandidates.map((row) => row.sodium)),
+      saturatedFat: Math.max(...otherCandidates.map((row) => row.saturatedFat)),
+      waterLiters: Math.max(...otherCandidates.map((row) => row.waterLiters)),
+      kcalPal16: Math.max(...otherCandidates.map((row) => row.kcalPal16)),
+    },
+  };
+}
+
+export function resolveMealPlanNutritionReferenceContext(input: {
+  memberBirthDate?: string;
+  memberGender?: unknown;
+  stored?: MealPlanNutritionReference | null;
+}): NutritionReferenceContext {
+  const profile = resolveNutritionReferenceContext(input.memberBirthDate ?? "", input.memberGender);
+  const mode = input.stored?.mode ?? (profile.isPersonalized ? "profile" : "highest");
+  if (mode === "highest") return highestNutritionReferenceContext();
+  if (mode === "custom") {
+    return resolveNutritionReferenceFromAge(input.stored?.ageYears ?? null, input.stored?.gender ?? "");
+  }
+  return profile;
 }
 
 export function nutritionReferenceWarningMessage(missingFields: NutritionReferenceMissingField[]): string | null {
@@ -297,6 +357,9 @@ export function nutritionReferenceWarningMessage(missingFields: NutritionReferen
 }
 
 export function nutritionReferenceFootnote(context: NutritionReferenceContext): string {
+  if (context.profileLabel === "høyeste anbefaling") {
+    return "Referanser er det høyeste anbefalte inntaket på tvers av alder og kjønn (Helsedirektoratet / NNR 2023), slik at planen dekker den med størst behov.";
+  }
   if (context.isPersonalized && context.profileLabel) {
     return `Referanser basert på ${context.profileLabel} (Helsedirektoratet / NNR 2023).`;
   }

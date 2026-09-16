@@ -6,6 +6,14 @@ export type MacroSplitPercent = {
   fat: number;
 };
 
+export type MealPlanNutritionReferenceMode = "profile" | "highest" | "custom";
+
+export type MealPlanNutritionReference = {
+  mode: MealPlanNutritionReferenceMode;
+  ageYears?: number;
+  gender?: "female" | "male";
+};
+
 export type MealPlanTargets = {
   kcal?: number;
   protein?: number;
@@ -23,6 +31,8 @@ export type MealPlanTargets = {
   macroSplitLocked?: Array<keyof MacroSplitPercent>;
   /** Sist oppdatert (ms) — brukes når mål lagres utenom matplan. */
   updatedAt?: number;
+  /** Hvilke mikronæringsanbefalinger planen skal måles mot. */
+  nutritionReference?: MealPlanNutritionReference;
 };
 
 export type MealPlanFoodEntry = {
