@@ -121,6 +121,22 @@ export function filterRecipeInspirationItems(
   return patched.filter((item) => !suppressed.has(item.id)).sort((a, b) => b.title.localeCompare(a.title, "no"));
 }
 
+/**
+ * Pick a feed snapshot that is safe to persist after a mutation.
+ * An empty array is valid only when the remote fetch actually returned one.
+ * Never fall back to `[]` — that would overwrite the shared Utforsk feed.
+ */
+export function resolveInspirationFeedForWrite(
+  remote: unknown[] | null | undefined,
+  local: unknown[] | null | undefined,
+  fallback: unknown[] = [],
+): unknown[] | null {
+  if (Array.isArray(remote)) return remote;
+  if (Array.isArray(local) && local.length > 0) return local;
+  if (Array.isArray(fallback) && fallback.length > 0) return fallback;
+  return null;
+}
+
 export async function deleteInspirationRecipe(
   recipeId: string,
   existingItems: unknown[] = [],
@@ -128,10 +144,15 @@ export async function deleteInspirationRecipe(
   const trimmed = recipeId.trim();
   if (!trimmed) return { ok: false, error: "Mangler oppskrift." };
 
-  const latestItems =
-    (await fetchInspirationItemsForHub<unknown>()) ??
-    loadInspirationItemsFromLocalStorage<unknown>() ??
-    existingItems;
+  const remote = await fetchInspirationItemsForHub<unknown>();
+  const latestItems = resolveInspirationFeedForWrite(
+    remote,
+    loadInspirationItemsFromLocalStorage<unknown>(),
+    existingItems,
+  );
+  if (!latestItems) {
+    return { ok: false, error: "Kunne ikke laste oppskriftene. Prøv igjen." };
+  }
   const nextFeed = (latestItems as Array<{ id: string }>).filter((item) => item.id !== trimmed);
   suppressInspirationItemId(trimmed);
   const result = await persistInspirationItems(nextFeed);

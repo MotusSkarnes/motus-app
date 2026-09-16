@@ -245,6 +245,7 @@ import { MemberHomeNextPlanCard, MemberHomeStatusGradientCard } from "./MemberHo
 import { MemberProgressScoresCard } from "./MemberProgressScoresCard";
 import { MemberBodyMetricsSection } from "./MemberBodyMetricsSection";
 import { createMemberBodyMetricEntry, mergeBodyMetricIntoPersonalGoals, applyShareBodyMetricsPreference } from "../app/memberBodyMetrics";
+import { createSerializedAsyncQueue } from "../app/serializedAsyncQueue";
 import {
   computeStopGoalProgress,
   formatStopGoalWithoutLabel,
@@ -1285,6 +1286,10 @@ export function MemberPortal(props: MemberPortalProps) {
   const [pausedWorkoutsTick, setPausedWorkoutsTick] = useState(0);
   const [profileSaveInfo, setProfileSaveInfo] = useState<string | null>(null);
   const [isSavingBodyMetric, setIsSavingBodyMetric] = useState(false);
+  const personalGoalsWriteQueueRef = useRef(createSerializedAsyncQueue());
+  const personalGoalsWriteInFlightRef = useRef(0);
+  const latestPersonalGoalsRef = useRef("");
+  const latestPersonalGoalsMemberIdRef = useRef<string | null>(null);
   const [memberNameDraft, setMemberNameDraft] = useState("");
   const [memberEmailDraft, setMemberEmailDraft] = useState("");
   const [memberPhoneDraft, setMemberPhoneDraft] = useState("");
@@ -2237,6 +2242,13 @@ export function MemberPortal(props: MemberPortalProps) {
     () => (editableMember ? resolveMemberPersonalGoals(editableMember, members) : ""),
     [editableMember, members],
   );
+  const resolvedPersonalGoalsMemberId = editableMember?.id ?? null;
+  if (latestPersonalGoalsMemberIdRef.current !== resolvedPersonalGoalsMemberId) {
+    latestPersonalGoalsMemberIdRef.current = resolvedPersonalGoalsMemberId;
+    latestPersonalGoalsRef.current = resolvedPersonalGoalsForMember;
+  } else if (personalGoalsWriteInFlightRef.current === 0) {
+    latestPersonalGoalsRef.current = resolvedPersonalGoalsForMember;
+  }
   const profileMetricsFromDb = decodeMemberProfileMetrics(resolvedPersonalGoalsForMember);
   const stopGoalFromDb = getStopGoalFromPersonalGoals(resolvedPersonalGoalsForMember);
   const stopGoalsFromDb = useMemo(
@@ -2483,6 +2495,22 @@ export function MemberPortal(props: MemberPortalProps) {
     ],
   );
 
+  const enqueuePersonalGoalsMutation = useCallback(
+    (mutate: (current: string) => string) =>
+      personalGoalsWriteQueueRef.current.enqueue(async () => {
+        if (!editableMember) return;
+        personalGoalsWriteInFlightRef.current += 1;
+        try {
+          const next = mutate(latestPersonalGoalsRef.current);
+          latestPersonalGoalsRef.current = next;
+          await persistMemberPersonalGoals(next);
+        } finally {
+          personalGoalsWriteInFlightRef.current = Math.max(0, personalGoalsWriteInFlightRef.current - 1);
+        }
+      }),
+    [editableMember, persistMemberPersonalGoals],
+  );
+
   const persistBodyMetric = useCallback(
     async (input: { weightKg?: number; bodyFatPct?: number; shareWithTrainer: boolean }) => {
       if (!editableMember) return;
@@ -2490,31 +2518,22 @@ export function MemberPortal(props: MemberPortalProps) {
       if (!entry) return;
       setIsSavingBodyMetric(true);
       try {
-        const personalGoals = applyShareBodyMetricsPreference(
-          mergeBodyMetricIntoPersonalGoals(
-            resolveMemberPersonalGoals(editableMember, members),
-            entry,
-          ),
-          input.shareWithTrainer,
+        await enqueuePersonalGoalsMutation((current) =>
+          applyShareBodyMetricsPreference(mergeBodyMetricIntoPersonalGoals(current, entry), input.shareWithTrainer),
         );
-        await persistMemberPersonalGoals(personalGoals);
       } finally {
         setIsSavingBodyMetric(false);
       }
     },
-    [editableMember, members, persistMemberPersonalGoals],
+    [editableMember, enqueuePersonalGoalsMutation],
   );
 
   const persistShareBodyMetrics = useCallback(
     async (shareWithTrainer: boolean) => {
       if (!editableMember) return;
-      const personalGoals = applyShareBodyMetricsPreference(
-        resolveMemberPersonalGoals(editableMember, members),
-        shareWithTrainer,
-      );
-      await persistMemberPersonalGoals(personalGoals);
+      await enqueuePersonalGoalsMutation((current) => applyShareBodyMetricsPreference(current, shareWithTrainer));
     },
-    [editableMember, members, persistMemberPersonalGoals],
+    [editableMember, enqueuePersonalGoalsMutation],
   );
 
   const completedLogs = useMemo(() => memberLogs.filter((log) => log.status === "Fullført"), [memberLogs]);
