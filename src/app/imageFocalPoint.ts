@@ -1,4 +1,6 @@
 import {
+  isUploadedProgramCoverSrc,
+  PROGRAM_COVER_HERO_CONTAIN_SCALE,
   PROGRAM_COVER_ZOOM_DEFAULT,
   PROGRAM_COVER_ZOOM_MAX,
   PROGRAM_COVER_ZOOM_MIN,
@@ -106,11 +108,19 @@ export type ProgramCustomCoverImageStyle = {
   transformOrigin: string;
 };
 
+/** Opplastet hero tegnes med contain-padding (0.92). Skaler minst så rammen fylles. */
+function displayZoomForCoverSrc(src: string | null | undefined, zoom: number): number {
+  const clamped = clampZoom(zoom);
+  if (!isUploadedProgramCoverSrc(src)) return clamped;
+  return clampZoom(Math.max(clamped, 1 / PROGRAM_COVER_HERO_CONTAIN_SCALE));
+}
+
 /** Trener styrer zoom (fz) + pan (fx/fy). Ved zoom 1: object-position; ved innzoom: scale + translate. */
 export function programCustomCoverImageStyle(src?: string | null): ProgramCustomCoverImageStyle {
   const { focalX, focalY, zoom } = parseProgramCoverFrameFromSrc(src);
+  const displayZoom = displayZoomForCoverSrc(src, zoom);
 
-  if (zoom <= 1.01) {
+  if (displayZoom <= 1.01) {
     return {
       objectFit: "cover",
       objectPosition: `${(focalX * 100).toFixed(1)}% ${(focalY * 100).toFixed(1)}%`,
@@ -119,10 +129,10 @@ export function programCustomCoverImageStyle(src?: string | null): ProgramCustom
     };
   }
 
-  const { x, y } = programCoverPanTranslatePercent(focalX, focalY, zoom);
+  const { x, y } = programCoverPanTranslatePercent(focalX, focalY, displayZoom);
   return {
     objectFit: "cover",
-    transform: `scale(${zoom.toFixed(3)}) translate(${x.toFixed(2)}%, ${y.toFixed(2)}%)`,
+    transform: `scale(${displayZoom.toFixed(3)}) translate(${x.toFixed(2)}%, ${y.toFixed(2)}%)`,
     transformOrigin: "50% 50%",
   };
 }

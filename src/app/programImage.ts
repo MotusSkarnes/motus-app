@@ -260,6 +260,19 @@ export function resolvePeriodPlanEntryCoverImage(
     return isRestPeriodPlanEntry(entry) ? resolveRestDayCoverImage() : resolveNoPlanDayCoverImage();
   }
 
+  const memberProgram = findProgramForPeriodPlanEntry(trimmed, options.memberPrograms ?? []);
+  const isActivityPrefixed = trimmed.toLowerCase().startsWith("aktivitet:");
+  if (memberProgram && !isGroupPeriodPlanEntry(entry) && !isActivityPrefixed) {
+    const coverExercise = resolveFirstProgramCoverExercise(memberProgram, options.exercises ?? []);
+    return resolveProgramImageSrcForPeriodPlan(memberProgram, coverExercise, {
+      subTab: getTrainingProgramSubTab(
+        memberProgram,
+        options.exerciseCategoryById ?? new Map(),
+        options.exercises ?? [],
+      ),
+    });
+  }
+
   const templates = options.activityTemplates ?? [];
   const matchedTemplate = templates.find((template) => activityTemplateMatchesPeriodEntry(template, entry));
   if (matchedTemplate) {
@@ -284,16 +297,8 @@ export function resolvePeriodPlanEntryCoverImage(
     );
   }
 
-  if (trimmed.toLowerCase().startsWith("aktivitet:")) {
+  if (isActivityPrefixed) {
     return MOBILITY_TRAINING_COVER_IMAGE;
-  }
-
-  const program = findProgramForPeriodPlanEntry(entry, options.memberPrograms ?? []);
-  if (program) {
-    const coverExercise = resolveFirstProgramCoverExercise(program, options.exercises ?? []);
-    return resolveProgramImageSrcForPeriodPlan(program, coverExercise, {
-      subTab: getTrainingProgramSubTab(program, options.exerciseCategoryById ?? new Map(), options.exercises ?? []),
-    });
   }
 
   return CONDITIONING_TRAINING_COVER_IMAGE;

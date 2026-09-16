@@ -41,13 +41,19 @@ describe("imageFocalPoint", () => {
     expect(imageObjectPositionFromSrc("https://x/hero.jpg")).toBe("center top");
   });
 
-  it("uses object-position at zoom 1", () => {
-    expect(programCustomCoverImageStyle("https://x/hero.jpg?fx=0.2&fy=0.3&fz=1")).toEqual({
+  it("uses object-position at zoom 1 for bundled covers", () => {
+    expect(programCustomCoverImageStyle("/program-covers/styrketrening.png?fx=0.2&fy=0.3&fz=1")).toEqual({
       objectFit: "cover",
       objectPosition: "20.0% 30.0%",
       transform: "none",
       transformOrigin: "50% 50%",
     });
+  });
+
+  it("crops uploaded contain-padding at zoom 1 so letterbox does not show", () => {
+    const style = programCustomCoverImageStyle("https://x/hero.jpg?fx=0.5&fy=0.5&fz=1");
+    expect(style.objectFit).toBe("cover");
+    expect(style.transform).toMatch(/^scale\(1\.087\)/);
   });
 
   it("uses scale and translate when zoomed in", () => {

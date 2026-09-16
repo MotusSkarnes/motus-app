@@ -215,6 +215,35 @@ describe("resolvePeriodPlanEntryCoverImage", () => {
       }),
     ).toBe(STRENGTH_TRAINING_COVER_IMAGE);
   });
+
+  it("prefers the member program custom cover over a same-titled activity template", () => {
+    const memberProgram: TrainingProgram = {
+      id: "program-1",
+      memberId: "member-1",
+      title: "Helkropp",
+      goal: "",
+      notes: "",
+      createdAt: "",
+      exercises: [],
+      imageUrl: "https://cdn.example/helkropp-hero.jpg?fx=0.500&fy=0.500&fz=1.400",
+    };
+    const template = enrichProgramWithActivityTemplateKind({
+      id: "tpl-helkropp",
+      memberId: "__template__",
+      title: "Helkropp",
+      goal: "",
+      notes: "__motusTemplateKind=group",
+      createdAt: "01.01.2025",
+      exercises: [],
+      imageUrl: "https://cdn.example/template-helkropp.png",
+    });
+    expect(
+      resolvePeriodPlanEntryCoverImage("Helkropp", {
+        memberPrograms: [memberProgram],
+        activityTemplates: [template],
+      }),
+    ).toBe("https://cdn.example/helkropp-hero.jpg?fx=0.500&fy=0.500&fz=1.400");
+  });
 });
 
 describe("resolveGroupWorkoutCoverImage", () => {

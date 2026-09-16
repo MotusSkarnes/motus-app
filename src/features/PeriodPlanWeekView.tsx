@@ -263,12 +263,17 @@ export function PeriodPlanWeekView({
                 exerciseCategoryById,
               })
             : noPlanDayCoverSrc || resolveNoPlanDayCoverImage();
-          const coverProgramForPresentation = activityTemplateForEntry ?? previewProgramForEntry;
-          const coverUsesPhotoStyle = coverProgramForPresentation
-            ? programCoverUsesPhotoStyle(coverProgramForPresentation, coverImageSrc)
-            : isUploadedProgramCoverSrc(coverImageSrc);
+          const coverProgramForPresentation = previewProgramForEntry ?? activityTemplateForEntry;
+          const coverStyleSrc =
+            coverProgramForPresentation?.imageUrl?.trim() || coverImageSrc;
+          const coverUsesPhotoStyle =
+            isUploadedProgramCoverSrc(coverImageSrc) ||
+            isUploadedProgramCoverSrc(coverStyleSrc) ||
+            (coverProgramForPresentation
+              ? programCoverUsesPhotoStyle(coverProgramForPresentation, coverImageSrc)
+              : false);
           const coverImageStyle = coverUsesPhotoStyle
-            ? programCustomCoverImageStyle(coverProgramForPresentation?.imageUrl ?? coverImageSrc)
+            ? programCustomCoverImageStyle(coverStyleSrc)
             : { objectPosition: imageObjectPositionFromSrc(coverImageSrc) };
           const completed = isEntryCompleted(plan.id, week.weekNumber, dayKey);
           const status = resolveDayStatus(visibleEntry, completed);

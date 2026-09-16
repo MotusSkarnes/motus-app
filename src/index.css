@@ -4277,9 +4277,9 @@ button.motus-progress-status-banner {
 .motus-member-program-thumb {
   width: 100%;
   height: 118px;
-  max-height: 118px;
-  aspect-ratio: 390 / 118 !important;
-  align-self: start;
+  /* Full kortbredde × 118px — ikke 390/118, som krymper rammen og viser grå sider. */
+  aspect-ratio: auto !important;
+  align-self: stretch;
   background: #eef2f7;
   border-radius: 0;
 }
@@ -10518,10 +10518,11 @@ html:has(.motus-trainer-app) {
 
 .motus-period-plan-day-cover {
   margin: 0;
+  width: 100%;
   overflow: hidden;
   height: 118px;
-  max-height: 118px;
-  aspect-ratio: 390 / 118 !important;
+  aspect-ratio: auto !important;
+  align-self: stretch;
 }
 
 .motus-period-plan-day-cover::after {
@@ -10529,8 +10530,11 @@ html:has(.motus-trainer-app) {
 }
 
 .motus-period-plan-day-cover .motus-image-media {
+  position: absolute;
+  inset: 0;
   width: 100%;
   height: 100%;
+  max-width: none;
   object-fit: cover;
 }
 

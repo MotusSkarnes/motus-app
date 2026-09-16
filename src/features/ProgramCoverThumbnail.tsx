@@ -95,7 +95,7 @@ export function ProgramCoverThumbnail({ src, alt = "", className = "", onFocalPo
             />
           </label>
           <p className="text-[10px] leading-relaxed text-slate-500">
-            100 % zoom viser hele opplastet bilde. Øk zoom for å beskjære, flytt med venstre/høyre og opp/ned. Lagre
+            100 % zoom fyller bilderammen. Øk zoom for å beskjære mer, flytt med venstre/høyre og opp/ned. Lagre
             programmet etter justering. Last opp på nytt for bilder som ble kuttet for mye tidligere.
           </p>
         </div>
