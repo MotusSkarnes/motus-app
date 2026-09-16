@@ -35,8 +35,9 @@ describe("TrainerMealPlanNutritionOverview", () => {
       />,
     );
 
-    expect(screen.getByText("Jern")).toBeTruthy();
-    expect(screen.getByText(/12 mg av 15 mg/)).toBeTruthy();
+    const ironRow = screen.getByRole("row", { name: /Jern/ });
+    expect(ironRow.textContent).toMatch(/12/);
+    expect(ironRow.textContent).toMatch(/15/);
     await user.click(screen.getByRole("button", { name: "Alder og kjønn" }));
     expect(onReferenceChange).toHaveBeenCalledWith({ mode: "custom", ageYears: 30, gender: "female" });
   });

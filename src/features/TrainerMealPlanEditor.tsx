@@ -1466,8 +1466,19 @@ export function TrainerMealPlanEditor({
         )}
       </div>
 
-      {activeDay ? (
-        <aside className="motus-meal-plan-builder-modal__workspace-side">
+      <aside className="motus-meal-plan-builder-modal__workspace-side" aria-label="Ernæringsoversikt">
+        <h3 className="motus-pt-planner-sidebar-title">Makro og mikronæringsstoffer</h3>
+        <TrainerMealPlanNutritionOverview
+          compact
+          averageUsed={weekAverageMacros}
+          targets={displayTargets}
+          micronutrients={weekAverageMicronutrients}
+          referenceContext={nutritionReferenceContext}
+          reference={displayTargets.nutritionReference}
+          profileAvailable={profileReferenceAvailable}
+          onReferenceChange={handleNutritionReferenceChange}
+        />
+        {activeDay ? (
           <TrainerMealPlanMacroPanel
             dayLabel={activeDay.label}
             dailyTargets={plan.targets}
@@ -1478,27 +1489,8 @@ export function TrainerMealPlanEditor({
             adjustmentSuggestions={macroAdjustmentSuggestions}
             onApplySuggestion={applyMacroSuggestion}
           />
-        </aside>
-      ) : null}
-
-      <section className="motus-meal-plan-builder-modal__workspace-nutrition" aria-label="Ernæringsoversikt">
-        <h3 className="motus-pt-planner-sidebar-title">Makro og mikronæringsstoffer</h3>
-        <p className="mb-2 text-xs text-slate-500">
-          Oppdateres mens du legger til mat
-          {planNutritionAverages?.daysWithFood
-            ? ` · snitt av ${planNutritionAverages.daysWithFood} ${planNutritionAverages.daysWithFood === 1 ? "dag" : "dager"} med matvarer`
-            : ""}
-        </p>
-        <TrainerMealPlanNutritionOverview
-          averageUsed={weekAverageMacros}
-          targets={displayTargets}
-          micronutrients={weekAverageMicronutrients}
-          referenceContext={nutritionReferenceContext}
-          reference={displayTargets.nutritionReference}
-          profileAvailable={profileReferenceAvailable}
-          onReferenceChange={handleNutritionReferenceChange}
-        />
-      </section>
+        ) : null}
+      </aside>
     </div>
   );
 

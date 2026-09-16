@@ -1,16 +1,12 @@
-import { Check } from "lucide-react";
 import { formatMacro } from "../../app/foodBankTypes";
 import { formatMicronutrientValue } from "../../app/foodBankMicronutrients";
 import type { MacroTotals } from "../../app/mealPlanMacros";
-import { planMatchesTargets } from "../../app/mealPlanWeekPlanner";
 import type { MealPlanNutritionReference, MealPlanTargets } from "../../app/mealPlanTypes";
 import type { MicronutrientDailyRow } from "../../app/quickFoodLogNutrition";
 import {
   nutritionReferenceFootnote,
   type NutritionReferenceContext,
 } from "../../app/personalizedNutritionReferences";
-import { MacroProgressBar } from "./MacroProgressBar";
-import { MacroProgressRing } from "./MacroProgressRing";
 import { TextInput } from "../../app/ui";
 export { MICRONUTRIENT_DAILY_TARGETS } from "../../app/healthDirectorateNutritionReferences";
 
@@ -34,6 +30,7 @@ type TrainerMealPlanNutritionOverviewProps = {
   reference?: MealPlanNutritionReference | null;
   profileAvailable?: boolean;
   onReferenceChange?: (next: MealPlanNutritionReference) => void;
+  compact?: boolean;
 };
 
 function defaultReferenceMode(
@@ -41,6 +38,11 @@ function defaultReferenceMode(
   profileAvailable: boolean,
 ): MealPlanNutritionReference["mode"] {
   return stored?.mode ?? (profileAvailable ? "profile" : "highest");
+}
+
+function formatTargetMacro(value: number): string {
+  if (!value) return "–";
+  return formatMacro(value, 0);
 }
 
 export function TrainerMealPlanNutritionOverview({
@@ -51,14 +53,12 @@ export function TrainerMealPlanNutritionOverview({
   reference,
   profileAvailable = false,
   onReferenceChange,
+  compact = false,
 }: TrainerMealPlanNutritionOverviewProps) {
   const targetKcal = targets?.kcal ?? 0;
   const targetProtein = targets?.protein ?? 0;
   const targetCarbs = targets?.carbs ?? 0;
   const targetFat = targets?.fat ?? 0;
-  const onTrack = planMatchesTargets(averageUsed, targets);
-  const hasFood = averageUsed.kcal > 0 || micronutrients.some((row) => row.value > 0);
-  const withinCount = micronutrients.filter((row) => row.statusTone === "ok").length;
   const mode = defaultReferenceMode(reference, profileAvailable);
   const customAge = reference?.ageYears ?? referenceContext?.ageYears ?? 30;
   const customGender = reference?.gender ?? (referenceContext?.gender === "male" || referenceContext?.gender === "female"
@@ -74,8 +74,15 @@ export function TrainerMealPlanNutritionOverview({
     onReferenceChange({ mode: nextMode });
   }
 
+  const macroRows = [
+    { key: "kcal", label: "Kalorier", unit: "kcal", plan: formatMacro(averageUsed.kcal, 0), recommended: formatTargetMacro(targetKcal) },
+    { key: "protein", label: "Protein", unit: "g", plan: formatMacro(averageUsed.protein, 0), recommended: formatTargetMacro(targetProtein) },
+    { key: "carbs", label: "Karbohydrater", unit: "g", plan: formatMacro(averageUsed.carbs, 0), recommended: formatTargetMacro(targetCarbs) },
+    { key: "fat", label: "Fett", unit: "g", plan: formatMacro(averageUsed.fat, 0), recommended: formatTargetMacro(targetFat) },
+  ];
+
   return (
-    <div className="motus-pt-planner-nutrition">
+    <div className={`motus-pt-planner-nutrition${compact ? " motus-pt-planner-nutrition--compact" : ""}`}>
       {onReferenceChange ? (
         <div className="motus-pt-planner-nutrition__ref">
           <p className="motus-pt-planner-nutrition__ref-label">Anbefalinger for mikronæringsstoffer</p>
@@ -147,85 +154,44 @@ export function TrainerMealPlanNutritionOverview({
         </div>
       ) : null}
 
-      {targetKcal ? (
-        <>
-          <div className="motus-pt-planner-nutrition__body">
-            <MacroProgressRing
-              label="Kalorier"
-              current={averageUsed.kcal}
-              target={targetKcal}
-              unit="kcal"
-              size="xl"
-              hideLabel
-            />
-            <div className="motus-pt-planner-nutrition__bars">
-              <MacroProgressBar label="Protein" current={averageUsed.protein} target={targetProtein} />
-              <MacroProgressBar label="Karbohydrater" current={averageUsed.carbs} target={targetCarbs} />
-              <MacroProgressBar label="Fett" current={averageUsed.fat} target={targetFat} />
-            </div>
-          </div>
-          <p className={`motus-pt-planner-nutrition__status ${onTrack ? "is-ok" : ""}`}>
-            {onTrack ? (
-              <>
-                <Check className="h-4 w-4" aria-hidden />
-                Planen er i tråd med makromålene
-              </>
-            ) : (
-              <>
-                Gjennomsnitt: {formatMacro(averageUsed.kcal, 0)} kcal · mål {formatMacro(targetKcal, 0)} kcal
-              </>
-            )}
-          </p>
-        </>
-      ) : (
-        <p className="text-sm text-slate-600">
-          Fyll inn daglige makromål i steg 1 for å sammenligne kalorier og makroer. Mikronæringsstoffer oppdateres
-          likevel etter hvert som du legger til mat.
-        </p>
-      )}
-
-      <div className="motus-pt-planner-nutrition__micros">
-        <div className="flex flex-wrap items-baseline justify-between gap-2">
-          <p className="text-xs font-semibold uppercase tracking-wide text-slate-600">Mikronæringsstoffer (snitt per dag)</p>
-          {hasFood && micronutrients.length ? (
-            <p className="text-[11px] text-slate-500">
-              {withinCount} av {micronutrients.length} innenfor anbefalt
-            </p>
-          ) : null}
-        </div>
-        {!hasFood ? (
-          <p className="mt-2 text-xs text-slate-500">Legg til matvarer — da fylles stolpene mot anbefalt inntak.</p>
-        ) : (
-          <div className="mt-2 space-y-1.5">
-            {micronutrients.map((row) => {
-              const pct = Math.max(0, Math.round(row.coveragePct));
-              const barPct = Math.min(100, pct);
-              const tone = row.statusTone ?? (pct >= 80 ? "ok" : pct >= 50 ? "warn" : "danger");
-              const decimals = row.decimals ?? 1;
-              return (
-                <div key={row.key} className="motus-pt-planner-micro">
-                  <div className="motus-pt-planner-micro__head">
-                    <span className="motus-pt-planner-micro__label">{row.label}</span>
-                    <span className={`motus-pt-planner-micro__status is-${tone}`}>
-                      {row.statusLabel ?? `${pct}%`}
-                    </span>
-                  </div>
-                  <div className="motus-pt-planner-micro__track" aria-hidden>
-                    <div className={`motus-pt-planner-micro__fill is-${tone}`} style={{ width: `${barPct}%` }} />
-                  </div>
-                  <p className="motus-pt-planner-micro__values">
-                    {formatMicronutrientValue(row.value, decimals)} {row.unit} av{" "}
-                    {formatMicronutrientValue(row.target, decimals)} {row.unit} ({formatMacro(row.coveragePct, 0)}%)
-                  </p>
-                </div>
-              );
-            })}
-          </div>
-        )}
-        <p className="mt-2 text-[11px] text-slate-500">
-          {referenceContext ? nutritionReferenceFootnote(referenceContext) : "Anbefalte dagsmengder er generelle voksenreferanser."}
-        </p>
-      </div>
+      <table className="motus-pt-planner-nutrition-table">
+        <caption className="motus-pt-planner-nutrition-table__caption">Snitt per dag</caption>
+        <thead>
+          <tr>
+            <th scope="col">Næringsstoff</th>
+            <th scope="col">Plan</th>
+            <th scope="col">Anbefalt</th>
+          </tr>
+        </thead>
+        <tbody>
+          {macroRows.map((row) => (
+            <tr key={row.key}>
+              <th scope="row">
+                {row.label}
+                <span className="motus-pt-planner-nutrition-table__unit"> {row.unit}</span>
+              </th>
+              <td>{row.plan}</td>
+              <td>{row.recommended}</td>
+            </tr>
+          ))}
+          {micronutrients.map((row) => {
+            const decimals = row.decimals ?? 1;
+            return (
+              <tr key={row.key}>
+                <th scope="row">
+                  {row.label}
+                  <span className="motus-pt-planner-nutrition-table__unit"> {row.unit}</span>
+                </th>
+                <td>{formatMicronutrientValue(row.value, decimals)}</td>
+                <td>{formatMicronutrientValue(row.target, decimals)}</td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+      <p className="motus-pt-planner-nutrition__footnote">
+        {referenceContext ? nutritionReferenceFootnote(referenceContext) : "Anbefalte dagsmengder er generelle voksenreferanser."}
+      </p>
     </div>
   );
 }

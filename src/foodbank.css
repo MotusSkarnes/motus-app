@@ -3519,37 +3519,15 @@
   padding: 0.85rem;
 }
 
-.motus-pt-planner-nutrition__body {
-  display: flex;
-  align-items: center;
-  gap: 0.85rem;
-}
-
-.motus-pt-planner-nutrition__bars {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 0.55rem;
-}
-
-.motus-pt-planner-nutrition__status {
-  display: flex;
-  align-items: center;
-  gap: 0.35rem;
-  margin: 0.65rem 0 0;
-  font-size: 0.75rem;
-  font-weight: 700;
-  color: #64748b;
-}
-
-.motus-pt-planner-nutrition__status.is-ok {
-  color: #0f766e;
+.motus-pt-planner-nutrition--compact {
+  border: 0;
+  background: transparent;
+  padding: 0;
 }
 
 .motus-pt-planner-nutrition__ref {
-  margin-bottom: 0.85rem;
-  padding-bottom: 0.75rem;
+  margin-bottom: 0.65rem;
+  padding-bottom: 0.55rem;
   border-bottom: 1px solid #e2e8f0;
 }
 
@@ -3589,6 +3567,10 @@
   margin-top: 0.55rem;
 }
 
+.motus-pt-planner-nutrition--compact .motus-pt-planner-nutrition__ref-custom {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+}
+
 .motus-pt-planner-nutrition__ref-field {
   display: grid;
   gap: 0.2rem;
@@ -3606,86 +3588,81 @@
   color: #0f172a;
 }
 
-.motus-pt-planner-nutrition__micros {
-  margin-top: 0.85rem;
-  border-radius: 0.75rem;
-  border: 1px solid #e2e8f0;
-  background: #fff;
-  padding: 0.75rem;
+.motus-pt-planner-nutrition-table {
+  width: 100%;
+  table-layout: fixed;
+  border-collapse: collapse;
+  font-size: 0.6875rem;
 }
 
-.motus-pt-planner-micro__head {
-  display: flex;
-  justify-content: space-between;
-  gap: 0.5rem;
-  font-size: 0.75rem;
-}
-
-.motus-pt-planner-micro__label {
+.motus-pt-planner-nutrition-table__caption {
+  caption-side: top;
+  text-align: left;
+  margin: 0 0 0.35rem;
+  font-size: 0.625rem;
   font-weight: 600;
-  color: #334155;
-}
-
-.motus-pt-planner-micro__status {
-  font-size: 0.625rem;
-  font-weight: 700;
-  text-transform: uppercase;
   letter-spacing: 0.04em;
-}
-
-.motus-pt-planner-micro__status.is-ok {
-  color: #0f766e;
-}
-
-.motus-pt-planner-micro__status.is-warn {
-  color: #b45309;
-}
-
-.motus-pt-planner-micro__status.is-danger {
-  color: #be123c;
-}
-
-.motus-pt-planner-micro__status.is-muted {
-  color: #94a3b8;
-}
-
-.motus-pt-planner-micro__track {
-  margin-top: 0.2rem;
-  height: 0.4rem;
-  overflow: hidden;
-  border-radius: 999px;
-  background: #e2e8f0;
-}
-
-.motus-pt-planner-micro__fill {
-  height: 100%;
-  border-radius: 999px;
-}
-
-.motus-pt-planner-micro__fill.is-ok {
-  background: #14b8a6;
-}
-
-.motus-pt-planner-micro__fill.is-warn {
-  background: #f59e0b;
-}
-
-.motus-pt-planner-micro__fill.is-danger {
-  background: #f43f5e;
-}
-
-.motus-pt-planner-micro__fill.is-muted {
-  background: #94a3b8;
-}
-
-.motus-pt-planner-micro__values {
-  margin: 0.15rem 0 0;
-  font-size: 0.625rem;
+  text-transform: uppercase;
   color: #64748b;
 }
 
-.motus-meal-plan-builder-modal__workspace-nutrition {
-  grid-column: 1 / -1;
+.motus-pt-planner-nutrition-table th,
+.motus-pt-planner-nutrition-table td {
+  padding: 0.22rem 0.25rem 0.22rem 0;
+  border-bottom: 1px solid #f1f5f9;
+  vertical-align: baseline;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.motus-pt-planner-nutrition-table th:first-child,
+.motus-pt-planner-nutrition-table td:first-child {
+  width: 48%;
+}
+
+.motus-pt-planner-nutrition-table th:nth-child(2),
+.motus-pt-planner-nutrition-table td:nth-child(2),
+.motus-pt-planner-nutrition-table th:nth-child(3),
+.motus-pt-planner-nutrition-table td:nth-child(3) {
+  width: 26%;
+}
+
+.motus-pt-planner-nutrition-table thead th {
+  font-size: 0.625rem;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: #94a3b8;
+}
+
+.motus-pt-planner-nutrition-table tbody th {
+  font-weight: 600;
+  color: #334155;
+  text-align: left;
+}
+
+.motus-pt-planner-nutrition-table td {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  color: #0f172a;
+}
+
+.motus-pt-planner-nutrition-table__unit {
+  font-weight: 500;
+  color: #94a3b8;
+}
+
+.motus-pt-planner-nutrition-table td:last-child {
+  color: #64748b;
+  padding-right: 0;
+}
+
+.motus-pt-planner-nutrition__footnote {
+  margin: 0.5rem 0 0;
+  font-size: 0.625rem;
+  line-height: 1.35;
+  color: #64748b;
 }
 
 .motus-pt-planner-ai-banner {
@@ -3857,11 +3834,23 @@
 
 .motus-meal-plan-builder-modal__workspace-side {
   min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
   border-radius: 1rem;
   border: 1px solid rgba(15, 23, 42, 0.06);
   background: #fff;
   padding: 1rem;
   box-shadow: 0 4px 24px -14px rgba(15, 23, 42, 0.1);
+}
+
+@media (min-width: 1100px) {
+  .motus-meal-plan-builder-modal__workspace-side {
+    position: sticky;
+    top: 0;
+    max-height: calc(96vh - 7.5rem);
+    overflow: auto;
+  }
 }
 
 .motus-meal-plan-builder-modal .motus-pt-planner-grid {
