@@ -11705,6 +11705,53 @@ html:has(.motus-trainer-app) {
   color: #be185d;
 }
 
+.motus-body-metric-share {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  border-radius: 0.9rem;
+  background: #f8fafc;
+  padding: 0.7rem 0.85rem;
+  text-align: left;
+}
+
+.motus-body-metric-share:disabled {
+  opacity: 0.65;
+}
+
+.motus-body-metric-share-track {
+  position: relative;
+  width: 2.5rem;
+  height: 1.35rem;
+  flex-shrink: 0;
+  border-radius: 9999px;
+  background: #cbd5e1;
+  transition: background-color 160ms ease;
+}
+
+.motus-body-metric-share-track.is-on {
+  background: #30e3be;
+}
+
+.motus-body-metric-share-thumb {
+  position: absolute;
+  top: 0.15rem;
+  left: 0.15rem;
+  width: 1.05rem;
+  height: 1.05rem;
+  border-radius: 9999px;
+  background: #ffffff;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.18);
+  transition: transform 160ms ease;
+}
+
+.motus-body-metric-share-track.is-on .motus-body-metric-share-thumb {
+  transform: translateX(1.15rem);
+}
+
 /* PT Statistikk dashboard — hvit bakgrunn, kort og grafer */
 .motus-trainer-stats {
   padding: 0.25rem 0 1.5rem;

@@ -7218,6 +7218,7 @@ function pickFirstName(value: unknown): string {
                     memberName={selectedMemberProfile?.name ?? selectedMember.name}
                     logs={selectedLogs}
                     exercises={exercises}
+                    personalGoals={selectedMemberProfile?.personalGoals ?? selectedMember.personalGoals}
                   />
                 ) : null}
 

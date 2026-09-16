@@ -1,11 +1,15 @@
 import { describe, expect, it } from "vitest";
 import {
+  applyShareBodyMetricsPreference,
   buildBodyMetricsTimeline,
   computeMetricChange,
   createMemberBodyMetricEntry,
   getBodyMetricsFromPersonalGoals,
+  getShareBodyMetricsWithTrainer,
   mergeBodyMetricIntoPersonalGoals,
+  mergeBodyMetricsAcrossCandidates,
 } from "./memberBodyMetrics";
+import { mergePersonalGoalsFromCandidates } from "./memberOnboarding";
 import { mergeCheckInIntoPersonalGoals } from "./memberMonthlyCheckIn";
 
 const onboardingDone = `MOTUS_PROFILE_V1:${JSON.stringify({
@@ -101,5 +105,44 @@ describe("memberBodyMetrics", () => {
     expect(merged).toContain("Snus");
     expect(merged).toContain("2026-09-01");
     expect(getBodyMetricsFromPersonalGoals(merged)).toHaveLength(1);
+  });
+
+  it("keeps body metrics when merging a stale onboarding-rich blob with a newer measurement blob", () => {
+    const entry = createMemberBodyMetricEntry({
+      weightKg: 77.2,
+      loggedAt: new Date(2026, 8, 16, 7, 0, 0),
+    })!;
+    const withMetric = mergeBodyMetricIntoPersonalGoals(onboardingDone, entry);
+    const staleOnboarding = `MOTUS_PROFILE_V1:${JSON.stringify({
+      onboarding: { version: 1, completedAt: "2026-01-01T00:00:00.000Z", skipped: false, trainingGoals: ["Styrke"] },
+      onboardingCompletedAt: "2026-01-01T00:00:00.000Z",
+      notificationPreferences: { seenHiddenBadgeIds: ["badge-1"] },
+      targetWeight: "75",
+    })}`;
+    const merged = mergePersonalGoalsFromCandidates([staleOnboarding, withMetric]);
+    expect(getBodyMetricsFromPersonalGoals(merged).map((row) => row.weightKg)).toEqual([77.2]);
+    expect(merged).toContain("onboardingCompletedAt");
+  });
+
+  it("keeps the newest share preference when merging stale remote profile", () => {
+    const shared = applyShareBodyMetricsPreference(onboardingDone, true, "2026-09-16T06:00:00.000Z");
+    const privateLater = applyShareBodyMetricsPreference(shared, false, "2026-09-16T06:10:00.000Z");
+    const merged = mergePersonalGoalsFromCandidates([shared, privateLater]);
+    expect(getShareBodyMetricsWithTrainer(merged)).toBe(false);
+  });
+
+  it("unions body metrics from duplicate profile blobs", () => {
+    const first = createMemberBodyMetricEntry({
+      weightKg: 80,
+      loggedAt: new Date(2026, 5, 1, 8, 0, 0),
+    })!;
+    const second = createMemberBodyMetricEntry({
+      weightKg: 79,
+      loggedAt: new Date(2026, 5, 8, 8, 0, 0),
+    })!;
+    const a = mergeBodyMetricIntoPersonalGoals(onboardingDone, first);
+    const b = mergeBodyMetricIntoPersonalGoals(onboardingDone, second);
+    const merged = mergeBodyMetricsAcrossCandidates([a, b]);
+    expect(merged.map((row) => row.weightKg).sort()).toEqual([79, 80]);
   });
 });

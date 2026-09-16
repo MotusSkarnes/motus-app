@@ -277,6 +277,90 @@ export function mergeBodyMetricIntoPersonalGoals(
   return buildPayloadFromExisting(existingPersonalGoals, next);
 }
 
+/** Union body metrics from duplicate profile blobs — newest same-day member log wins. */
+export function mergeBodyMetricsAcrossCandidates(
+  candidates: Array<string | undefined | null>,
+): MemberBodyMetricEntry[] {
+  const byId = new Map<string, MemberBodyMetricEntry>();
+  for (const value of candidates) {
+    for (const entry of getBodyMetricsFromPersonalGoals(value)) {
+      const existing = byId.get(entry.id);
+      if (!existing || entry.loggedAt.localeCompare(existing.loggedAt) >= 0) {
+        byId.set(entry.id, entry);
+      }
+    }
+  }
+  const memberByDay = new Map<string, MemberBodyMetricEntry>();
+  const rest: MemberBodyMetricEntry[] = [];
+  for (const entry of byId.values()) {
+    if (entry.source !== "member") {
+      rest.push(entry);
+      continue;
+    }
+    const existing = memberByDay.get(entry.dateKey);
+    if (!existing || entry.loggedAt.localeCompare(existing.loggedAt) >= 0) {
+      memberByDay.set(entry.dateKey, entry);
+    }
+  }
+  return [...rest, ...memberByDay.values()]
+    .sort((a, b) => a.loggedAt.localeCompare(b.loggedAt))
+    .slice(-MAX_BODY_METRICS_ENTRIES);
+}
+
+export function mergeBodyMetricsIntoPersonalGoals(
+  personalGoals: string,
+  entries: MemberBodyMetricEntry[],
+): string {
+  if (!entries.length) return personalGoals;
+  const existing = getBodyMetricsFromPersonalGoals(personalGoals);
+  if (JSON.stringify(existing) === JSON.stringify(entries)) return personalGoals;
+  return patchPersonalGoalsJson(personalGoals, { bodyMetrics: entries });
+}
+
+export function getShareBodyMetricsWithTrainer(personalGoals: string | undefined): boolean {
+  const payload = parsePersonalGoalsJson(personalGoals);
+  return payload?.shareBodyMetricsWithTrainer === true;
+}
+
+export function pickShareBodyMetricsPreference(
+  candidates: Array<string | undefined | null>,
+): { share: boolean; updatedAt?: string } | undefined {
+  let chosen: { share: boolean; stamp: string; updatedAt?: string } | null = null;
+  for (const value of candidates) {
+    const raw = String(value ?? "");
+    const payload = parsePersonalGoalsJson(raw);
+    if (!payload || typeof payload.shareBodyMetricsWithTrainer !== "boolean") continue;
+    const updatedAt = String(payload.shareBodyMetricsUpdatedAt ?? "").trim() || undefined;
+    const latestMetric = getBodyMetricsFromPersonalGoals(raw).at(-1)?.loggedAt ?? "";
+    const stamp = updatedAt || latestMetric;
+    if (!chosen || stamp.localeCompare(chosen.stamp) > 0) {
+      chosen = { share: payload.shareBodyMetricsWithTrainer, stamp, updatedAt };
+    }
+  }
+  return chosen ? { share: chosen.share, updatedAt: chosen.updatedAt } : undefined;
+}
+
+export function mergeShareBodyMetricsPreferenceIntoPersonalGoals(
+  personalGoals: string,
+  preference: { share: boolean; updatedAt?: string },
+): string {
+  return patchPersonalGoalsJson(personalGoals, {
+    shareBodyMetricsWithTrainer: preference.share,
+    ...(preference.updatedAt ? { shareBodyMetricsUpdatedAt: preference.updatedAt } : {}),
+  });
+}
+
+export function applyShareBodyMetricsPreference(
+  existingPersonalGoals: string | undefined,
+  shareWithTrainer: boolean,
+  updatedAt = new Date().toISOString(),
+): string {
+  return mergeShareBodyMetricsPreferenceIntoPersonalGoals(existingPersonalGoals ?? "", {
+    share: shareWithTrainer,
+    updatedAt,
+  });
+}
+
 export function bodyMetricSourceLabel(source: BodyMetricSource): string {
   return source === "check-in" ? "Tanita (sjekk-inn)" : "Egen logging";
 }

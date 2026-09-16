@@ -244,7 +244,7 @@ import { MemberHomeWeeklyProgress } from "./MemberHomeWeeklyProgress";
 import { MemberHomeNextPlanCard, MemberHomeStatusGradientCard } from "./MemberHomeNextPlanCard";
 import { MemberProgressScoresCard } from "./MemberProgressScoresCard";
 import { MemberBodyMetricsSection } from "./MemberBodyMetricsSection";
-import { createMemberBodyMetricEntry, mergeBodyMetricIntoPersonalGoals } from "../app/memberBodyMetrics";
+import { createMemberBodyMetricEntry, mergeBodyMetricIntoPersonalGoals, applyShareBodyMetricsPreference } from "../app/memberBodyMetrics";
 import {
   computeStopGoalProgress,
   formatStopGoalWithoutLabel,
@@ -2439,15 +2439,18 @@ export function MemberPortal(props: MemberPortalProps) {
   }, []);
 
   const persistBodyMetric = useCallback(
-    async (input: { weightKg?: number; bodyFatPct?: number }) => {
+    async (input: { weightKg?: number; bodyFatPct?: number; shareWithTrainer: boolean }) => {
       if (!editableMember) return;
       const entry = createMemberBodyMetricEntry(input);
       if (!entry) return;
       setIsSavingBodyMetric(true);
       try {
-        const personalGoals = mergeBodyMetricIntoPersonalGoals(
-          resolveMemberPersonalGoals(editableMember, members),
-          entry,
+        const personalGoals = applyShareBodyMetricsPreference(
+          mergeBodyMetricIntoPersonalGoals(
+            resolveMemberPersonalGoals(editableMember, members),
+            entry,
+          ),
+          input.shareWithTrainer,
         );
         const targetIds = Array.from(new Set([editableMember.id, ...relatedMemberIds].filter(Boolean)));
         targetIds.forEach((memberId) => {
@@ -8534,7 +8537,7 @@ export function MemberPortal(props: MemberPortalProps) {
                   pushRegisterStatus={pushRegisterStatus}
                 />
                 <MemberBodyMetricsSection
-                  personalGoals={editableMember?.personalGoals}
+                  personalGoals={resolvedPersonalGoalsForMember}
                   targetWeight={profileTargetWeight}
                   onLog={persistBodyMetric}
                   isSaving={isSavingBodyMetric}

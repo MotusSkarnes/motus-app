@@ -1,173 +1,26 @@
-import { useMemo, useState, type FormEvent } from "react";
-import { LineChart, Plus, Scale, ShieldCheck, Trash2 } from "lucide-react";
+import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { Plus, Scale, ShieldCheck, Trash2 } from "lucide-react";
 import { MOTUS } from "../app/data";
 import {
-  bodyMetricSourceLabel,
   buildBodyMetricsTimeline,
-  buildMetricChartGeometry,
-  computeMetricChange,
-  type BodyMetricChartPoint,
+  getShareBodyMetricsWithTrainer,
 } from "../app/memberBodyMetrics";
 import { MEMBER_STOP_GOAL_OPTIONS, type MemberStopGoal } from "../app/memberStopGoal";
 import { GradientButton, OutlineButton, SelectBox, TextInput } from "../app/ui";
+import { BodyMetricsCharts, formatBodyMetricValue } from "./BodyMetricsCharts";
 
-const CHART_WIDTH = 340;
-const CHART_HEIGHT = 180;
 const MOTUS_GRADIENT = `${MOTUS.gradient}`;
 
 type MemberBodyMetricsSectionProps = {
   personalGoals: string | undefined;
   targetWeight?: string;
-  onLog: (input: { weightKg?: number; bodyFatPct?: number }) => void | Promise<void>;
+  onLog: (input: { weightKg?: number; bodyFatPct?: number; shareWithTrainer: boolean }) => void | Promise<void>;
   isSaving?: boolean;
   stopGoals: MemberStopGoal[];
   setStopGoals: (value: MemberStopGoal[]) => void;
   onSaveStopGoals: () => void | Promise<void>;
   stopGoalsSaveStatus?: string | null;
 };
-
-function MetricLineChart({
-  title,
-  unit,
-  series,
-  gradientId,
-  strokeColor,
-}: {
-  title: string;
-  unit: "kg" | "%";
-  series: BodyMetricChartPoint[];
-  gradientId: string;
-  strokeColor: string;
-}) {
-  const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
-  const geometry = useMemo(
-    () => buildMetricChartGeometry(series, CHART_WIDTH, CHART_HEIGHT, unit),
-    [series, unit],
-  );
-  const hoveredPoint = hoveredIndex !== null ? series[hoveredIndex] : series[series.length - 1] ?? null;
-  const change = computeMetricChange(series);
-
-  if (series.length === 0) {
-    return (
-      <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50 px-4 py-5 text-center text-sm text-slate-600">
-        Ingen {title.toLowerCase()} registrert ennå.
-      </div>
-    );
-  }
-
-  if (series.length === 1) {
-    const point = series[0];
-    return (
-      <div className="space-y-2">
-        <p className="text-xs text-slate-500">Én måling — logg flere for å se utviklingen som graf.</p>
-        <div className="rounded-xl border bg-teal-50 px-4 py-3 text-sm text-teal-950" style={{ borderColor: "rgba(48,227,190,0.25)" }}>
-          <div className="font-semibold">{point.dateLabel}</div>
-          <div className="mt-1">
-            {title}: <span className="font-bold">{formatValue(point.value, unit)}</span>
-            <span className="ml-2 text-xs text-teal-800">({bodyMetricSourceLabel(point.source)})</span>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div>
-      <div className="mb-2 grid grid-cols-3 gap-2 text-center">
-        <div className="rounded-xl bg-slate-50 px-2 py-2">
-          <div className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">Siste</div>
-          <div className="mt-0.5 text-sm font-bold text-slate-900">{formatValue(series[series.length - 1].value, unit)}</div>
-        </div>
-        <div className="rounded-xl bg-slate-50 px-2 py-2">
-          <div className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">Målinger</div>
-          <div className="mt-0.5 text-sm font-bold text-slate-900">{series.length}</div>
-        </div>
-        <div className="rounded-xl bg-slate-50 px-2 py-2">
-          <div className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">Endring</div>
-          <div className={`mt-0.5 text-sm font-bold ${change !== null && change <= 0 ? "text-emerald-700" : "text-amber-700"}`}>
-            {change === null ? "–" : `${change >= 0 ? "+" : ""}${formatValue(change, unit, true)}`}
-          </div>
-        </div>
-      </div>
-
-      {hoveredPoint ? (
-        <div className="mb-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-700">
-          <span className="font-semibold">{hoveredPoint.dateLabel}</span>
-          {" · "}
-          {title} <span className="font-bold text-slate-900">{formatValue(hoveredPoint.value, unit)}</span>
-          {" · "}
-          {bodyMetricSourceLabel(hoveredPoint.source)}
-        </div>
-      ) : null}
-
-      <div className="overflow-x-auto">
-        <svg
-          viewBox={`0 0 ${CHART_WIDTH} ${CHART_HEIGHT}`}
-          className="w-full min-w-[260px]"
-          role="img"
-          aria-label={`Graf over ${title.toLowerCase()}`}
-        >
-          <defs>
-            <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor={strokeColor} stopOpacity="0.35" />
-              <stop offset="100%" stopColor={MOTUS.pink} stopOpacity="0.05" />
-            </linearGradient>
-          </defs>
-          {geometry?.yTicks.map((tick) => (
-            <g key={tick.label}>
-              <line x1={40} x2={CHART_WIDTH - 12} y1={tick.y} y2={tick.y} stroke="rgba(148,163,184,0.35)" strokeDasharray="4 4" />
-              <text x={36} y={tick.y + 4} textAnchor="end" className="fill-slate-400 text-[9px]">
-                {tick.label}
-              </text>
-            </g>
-          ))}
-          {geometry ? (
-            <>
-              <path d={geometry.areaPath} fill={`url(#${gradientId})`} />
-              <path
-                d={geometry.linePath}
-                fill="none"
-                stroke={strokeColor}
-                strokeWidth="2.5"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-              {geometry.dots.map((dot, index) => (
-                <g
-                  key={dot.point.entryId}
-                  onMouseEnter={() => setHoveredIndex(index)}
-                  onMouseLeave={() => setHoveredIndex(null)}
-                >
-                  <circle cx={dot.x} cy={dot.y} r="12" fill="transparent" />
-                  <circle
-                    cx={dot.x}
-                    cy={dot.y}
-                    r={hoveredIndex === index ? 5.5 : 4}
-                    fill={hoveredIndex === index ? MOTUS.pink : "#fff"}
-                    stroke={strokeColor}
-                    strokeWidth="2"
-                  />
-                </g>
-              ))}
-            </>
-          ) : null}
-          {geometry?.xLabels.map((label) => (
-            <text key={label.label} x={label.x} y={CHART_HEIGHT - 8} textAnchor="middle" className="fill-slate-500 text-[9px]">
-              {label.label}
-            </text>
-          ))}
-        </svg>
-      </div>
-    </div>
-  );
-}
-
-function formatValue(value: number, unit: "kg" | "%", signed = false): string {
-  const rounded = Math.round(value * 10) / 10;
-  const text = String(rounded).replace(".", ",");
-  if (unit === "kg") return signed ? `${text} kg` : `${text} kg`;
-  return signed ? `${text} %` : `${text} %`;
-}
 
 function parseDecimalInput(raw: string): number | undefined {
   const trimmed = raw.trim().replace(",", ".");
@@ -193,12 +46,18 @@ export function MemberBodyMetricsSection({
 }: MemberBodyMetricsSectionProps) {
   const [weightInput, setWeightInput] = useState("");
   const [bodyFatInput, setBodyFatInput] = useState("");
+  const [shareWithTrainer, setShareWithTrainer] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const timeline = useMemo(() => buildBodyMetricsTimeline(personalGoals), [personalGoals]);
+  const storedShare = getShareBodyMetricsWithTrainer(personalGoals);
   const latestWeight = timeline.weightSeries[timeline.weightSeries.length - 1]?.value ?? null;
   const latestBodyFat = timeline.bodyFatSeries[timeline.bodyFatSeries.length - 1]?.value ?? null;
   const targetWeightNum = parseDecimalInput(targetWeight ?? "");
+
+  useEffect(() => {
+    setShareWithTrainer(storedShare);
+  }, [storedShare]);
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault();
@@ -213,7 +72,7 @@ export function MemberBodyMetricsSection({
       return;
     }
     setError(null);
-    await onLog({ weightKg, bodyFatPct });
+    await onLog({ weightKg, bodyFatPct, shareWithTrainer });
     setWeightInput("");
     setBodyFatInput("");
   }
@@ -262,15 +121,15 @@ export function MemberBodyMetricsSection({
         <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
           <div className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">Siste vekt</div>
           <div className="mt-1 text-xl font-bold text-slate-900">
-            {latestWeight !== null ? formatValue(latestWeight, "kg") : "–"}
+            {latestWeight !== null ? formatBodyMetricValue(latestWeight, "kg") : "–"}
           </div>
           {targetWeightNum !== undefined ? (
             <div className="mt-1 text-xs text-slate-600">
-              Målvekt: <span className="font-semibold">{formatValue(targetWeightNum, "kg")}</span>
+              Målvekt: <span className="font-semibold">{formatBodyMetricValue(targetWeightNum, "kg")}</span>
               {latestWeight !== null ? (
                 <span className="ml-1 text-slate-500">
                   ({latestWeight - targetWeightNum >= 0 ? "+" : ""}
-                  {formatValue(latestWeight - targetWeightNum, "kg", true).replace(" kg", "")} kg)
+                  {formatBodyMetricValue(latestWeight - targetWeightNum, "kg", true).replace(" kg", "")} kg)
                 </span>
               ) : null}
             </div>
@@ -279,7 +138,7 @@ export function MemberBodyMetricsSection({
         <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
           <div className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">Siste fettprosent</div>
           <div className="mt-1 text-xl font-bold text-slate-900">
-            {latestBodyFat !== null ? formatValue(latestBodyFat, "%") : "–"}
+            {latestBodyFat !== null ? formatBodyMetricValue(latestBodyFat, "%") : "–"}
           </div>
           <div className="mt-1 text-xs text-slate-500">Ofte fra Tanita ved sjekk-inn</div>
         </div>
@@ -309,39 +168,38 @@ export function MemberBodyMetricsSection({
             />
           </label>
         </div>
+        <button
+          type="button"
+          role="switch"
+          aria-checked={shareWithTrainer}
+          disabled={isSaving}
+          onClick={() => setShareWithTrainer((value) => !value)}
+          className="motus-body-metric-share"
+        >
+          <span className="min-w-0 text-left">
+            <span className="block text-sm font-semibold text-slate-800">Del med trener</span>
+            <span className="mt-0.5 block text-xs text-slate-500">
+              {shareWithTrainer
+                ? "Treneren kan se vekt og fettprosent i progresjon."
+                : "Treneren ser ikke vekt og fettprosent før du slår på deling."}
+            </span>
+          </span>
+          <span className={`motus-body-metric-share-track${shareWithTrainer ? " is-on" : ""}`} aria-hidden>
+            <span className="motus-body-metric-share-thumb" />
+          </span>
+        </button>
         {error ? <p className="text-sm text-rose-600">{error}</p> : null}
         <GradientButton type="submit" disabled={isSaving}>
           {isSaving ? "Lagrer…" : "Lagre måling"}
         </GradientButton>
       </form>
 
-      <div className="mt-5 space-y-5">
-        <div>
-          <div className="mb-2 flex items-center gap-2 text-sm font-semibold text-slate-800">
-            <LineChart className="h-4 w-4 text-teal-600" />
-            Vekt over tid
-          </div>
-          <MetricLineChart
-            title="Vekt"
-            unit="kg"
-            series={timeline.weightSeries}
-            gradientId="body-weight-gradient"
-            strokeColor={MOTUS.turquoise}
-          />
-        </div>
-        <div>
-          <div className="mb-2 flex items-center gap-2 text-sm font-semibold text-slate-800">
-            <LineChart className="h-4 w-4 text-teal-600" />
-            Fettprosent over tid
-          </div>
-          <MetricLineChart
-            title="Fettprosent"
-            unit="%"
-            series={timeline.bodyFatSeries}
-            gradientId="body-fat-gradient"
-            strokeColor={MOTUS.pink}
-          />
-        </div>
+      <div className="mt-5">
+        <BodyMetricsCharts
+          weightSeries={timeline.weightSeries}
+          bodyFatSeries={timeline.bodyFatSeries}
+          idPrefix="member-body"
+        />
       </div>
     </section>
     <section className="motus-progress-section-card">

@@ -55,6 +55,12 @@ export function readProfileExtensions(personalGoals: string | undefined): Record
   if (Array.isArray(payload.bodyMetrics)) {
     extensions.bodyMetrics = payload.bodyMetrics;
   }
+  if (typeof payload.shareBodyMetricsWithTrainer === "boolean") {
+    extensions.shareBodyMetricsWithTrainer = payload.shareBodyMetricsWithTrainer;
+  }
+  if (typeof payload.shareBodyMetricsUpdatedAt === "string" && payload.shareBodyMetricsUpdatedAt.trim()) {
+    extensions.shareBodyMetricsUpdatedAt = payload.shareBodyMetricsUpdatedAt.trim();
+  }
   if (payload.homeVisibility && typeof payload.homeVisibility === "object") {
     extensions.homeVisibility = payload.homeVisibility;
   }

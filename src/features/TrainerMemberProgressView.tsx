@@ -14,9 +14,14 @@ import { resolveProgressExerciseDisplayName } from "../app/progressImagery";
 import type { HistoryPeriodWeeks } from "../app/memberTrainingHistory";
 import { buildComebackStreakMessage } from "../app/memberProgressGamification";
 import { buildTrainerMemberProgressSnapshot } from "../app/trainerMemberProgress";
+import {
+  buildBodyMetricsTimeline,
+  getShareBodyMetricsWithTrainer,
+} from "../app/memberBodyMetrics";
 import type { Exercise, WorkoutLog } from "../app/types";
 import { EmptyState } from "../app/ui";
 import { PersonalRecordProgressModal } from "./PersonalRecordProgressModal";
+import { BodyMetricsCharts } from "./BodyMetricsCharts";
 
 const PERIOD_OPTIONS: Array<{ value: HistoryPeriodWeeks; label: string }> = [
   { value: 4, label: "Siste 4 uker" },
@@ -30,6 +35,7 @@ type TrainerMemberProgressViewProps = {
   memberName: string;
   logs: WorkoutLog[];
   exercises: Exercise[];
+  personalGoals?: string;
   nowTimestamp?: number;
 };
 
@@ -68,6 +74,7 @@ export function TrainerMemberProgressView({
   memberName,
   logs,
   exercises,
+  personalGoals,
   nowTimestamp = Date.now(),
 }: TrainerMemberProgressViewProps) {
   const [periodWeeks, setPeriodWeeks] = useState<HistoryPeriodWeeks>(12);
@@ -76,6 +83,8 @@ export function TrainerMemberProgressView({
     () => buildTrainerMemberProgressSnapshot({ logs, exercises, periodWeeks, nowTimestamp }),
     [logs, exercises, periodWeeks, nowTimestamp],
   );
+  const bodyMetrics = useMemo(() => buildBodyMetricsTimeline(personalGoals), [personalGoals]);
+  const sharesBodyMetrics = getShareBodyMetricsWithTrainer(personalGoals);
   const maxWeekly = Math.max(1, ...snapshot.weeklyBars.map((bar) => bar.count));
   const openLift = snapshot.strengthLifts.find((lift) => lift.name === openExerciseName) ?? null;
   const firstName = memberName.trim().split(/\s+/)[0] || "kunden";
@@ -298,6 +307,27 @@ export function TrainerMemberProgressView({
           <span className="motus-member-history-heatmap-cell level-4" />
           <span>Flere</span>
         </div>
+      </section>
+
+      <section className="motus-member-history-card">
+        <div className="motus-member-history-card-head">
+          <h3 className="motus-member-history-section-title">Vekt og fettprosent</h3>
+          <span className="motus-member-history-chip">Fra kundens logging</span>
+        </div>
+        {sharesBodyMetrics ? (
+          <BodyMetricsCharts
+            weightSeries={bodyMetrics.weightSeries}
+            bodyFatSeries={bodyMetrics.bodyFatSeries}
+            idPrefix="trainer-body"
+          />
+        ) : (
+          <EmptyState
+            icon="⚖️"
+            title={`${firstName} har ikke aktivert deling`}
+            description="Kunden kan slå på «Del med trener» når hen logger vekt eller fettprosent. Da vises utviklingen her."
+            className="mt-3 bg-slate-50/80"
+          />
+        )}
       </section>
 
       {openLift ? (

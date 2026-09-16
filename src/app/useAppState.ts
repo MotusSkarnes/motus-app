@@ -259,6 +259,13 @@ function mergeMembersById(primary: AppState["members"] | null, secondary: AppSta
   return Array.from(merged.values());
 }
 
+/** Keep locally saved profile blobs (vekt, stopp, …) when hydrate still has a stale copy. */
+function enrichSessionMembersWithLocalProfile(sessionMembers: Member[], localMembers: Member[]): Member[] {
+  if (!sessionMembers.length) return sessionMembers;
+  const pool = [...sessionMembers, ...localMembers];
+  return sessionMembers.map((member) => enrichMemberWithBestProfile(member, pool));
+}
+
 /** Nylig opprettede kunder kan mangle i sky-listen i noen sekunder etter create. */
 const TRAINER_MEMBER_PIN_MS = 120_000;
 
@@ -1210,7 +1217,7 @@ export function useAppState() {
           const remoteForEmail = filterMembersForSessionEmail(edgeMembers, sessionEmail);
           const sessionMembers = remoteForEmail.length > 0 ? remoteForEmail : (edgeMembers.length > 0 ? edgeMembers : localForEmail);
           if (sessionMembers.length > 0) {
-            next.members = sessionMembers.map((member) => enrichMemberWithBestProfile(member, sessionMembers));
+            next.members = enrichSessionMembersWithLocalProfile(sessionMembers, localForEmail);
           }
           const memberIds = memberIdsForSessionEmail(next.members, sessionEmail);
           const authUserId = String(prevStripped.currentUser.id ?? sessionUser?.id ?? "").trim();
@@ -1502,7 +1509,7 @@ export function useAppState() {
             const remoteForEmail = filterMembersForSessionEmail(mergedMembers, normalizedUserEmail);
             const localForEmail = filterMembersForSessionEmail(prevStripped.members, normalizedUserEmail);
             const sessionMembers = remoteForEmail.length > 0 ? remoteForEmail : localForEmail;
-            mergedMembers = sessionMembers.map((member) => enrichMemberWithBestProfile(member, sessionMembers));
+            mergedMembers = enrichSessionMembersWithLocalProfile(sessionMembers, localForEmail);
           }
           if (currentUser?.role === "trainer") {
             const trainerOwnerUserId = String(currentUser.id ?? ownerUserId ?? "").trim();

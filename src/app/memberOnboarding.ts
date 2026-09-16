@@ -3,6 +3,12 @@ import {
   mergeFoodAvoidancesIntoPersonalGoals,
 } from "./memberFoodAvoidances";
 import { mergeStopGoalsAcrossCandidates, mergeStopGoalsIntoPersonalGoals } from "./memberStopGoal";
+import {
+  mergeBodyMetricsAcrossCandidates,
+  mergeBodyMetricsIntoPersonalGoals,
+  mergeShareBodyMetricsPreferenceIntoPersonalGoals,
+  pickShareBodyMetricsPreference,
+} from "./memberBodyMetrics";
 import { readMemberAppUiState, readProfileDisplayName } from "./memberAppUiState";
 import {
   parsePersonalGoalsJson,
@@ -357,16 +363,32 @@ function pickPreferredNonEmptyProfileField(values: Array<string | undefined | nu
   return "";
 }
 
+function finishPersonalGoalsMerge(merged: string, values: string[]): string {
+  const withAvoidances = mergeFoodAvoidancesIntoPersonalGoals(
+    merged,
+    mergeFoodAvoidancesAcrossCandidates(values),
+  );
+  const withStopGoals = mergeStopGoalsIntoPersonalGoals(
+    withAvoidances,
+    mergeStopGoalsAcrossCandidates(values),
+  );
+  const withMetrics = mergeBodyMetricsIntoPersonalGoals(
+    withStopGoals,
+    mergeBodyMetricsAcrossCandidates(values),
+  );
+  const sharePreference = pickShareBodyMetricsPreference(values);
+  return sharePreference
+    ? mergeShareBodyMetricsPreferenceIntoPersonalGoals(withMetrics, sharePreference)
+    : withMetrics;
+}
+
 /** Slå sammen personal_goals på tvers av duplikat-rader — bevar oppstartsskjema fra hvilken som helst rad. */
 export function mergePersonalGoalsFromCandidates(candidates: Array<string | undefined | null>): string {
   const values = candidates.map((value) => String(value ?? "").trim()).filter(Boolean);
   if (!values.length) return "";
-  const mergedAvoidances = mergeFoodAvoidancesAcrossCandidates(values);
-  const mergedStopGoals = mergeStopGoalsAcrossCandidates(values);
   let merged = pickBestPersonalGoals(values);
   if (onboardingAnswersAreSubstantive(getOnboardingFromPersonalGoals(merged))) {
-    merged = mergeFoodAvoidancesIntoPersonalGoals(merged, mergedAvoidances);
-    return mergeStopGoalsIntoPersonalGoals(merged, mergedStopGoals);
+    return finishPersonalGoalsMerge(merged, values);
   }
   for (const value of values) {
     const onboarding = getOnboardingFromPersonalGoals(value);
@@ -375,8 +397,7 @@ export function mergePersonalGoalsFromCandidates(candidates: Array<string | unde
       break;
     }
   }
-  merged = mergeFoodAvoidancesIntoPersonalGoals(merged, mergedAvoidances);
-  return mergeStopGoalsIntoPersonalGoals(merged, mergedStopGoals);
+  return finishPersonalGoalsMerge(merged, values);
 }
 
 export function resolveMemberPersonalGoals(
