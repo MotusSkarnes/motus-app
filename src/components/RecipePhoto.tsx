@@ -1,5 +1,5 @@
 import { Soup } from "lucide-react";
-import "../foodbank.css";
+import "./recipePhoto.css";
 
 export type RecipePhotoSize = "hero" | "card" | "preview" | "tile" | "thumb" | "swap";
 

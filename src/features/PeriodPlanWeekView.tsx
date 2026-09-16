@@ -319,7 +319,7 @@ export function PeriodPlanWeekView({
                     aria-label={canOpenPreview ? `Se økt for ${dayLabel}` : undefined}
                   >
                     {coverImageSrc ? (
-                      <div className="motus-period-plan-day-cover motus-member-program-thumb motus-image-frame" aria-hidden>
+                      <div className="motus-period-plan-day-cover motus-member-program-thumb motus-image-frame motus-image-frame--program-cover" aria-hidden>
                         <img
                           src={coverImageSrc}
                           alt=""

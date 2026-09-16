@@ -38,7 +38,7 @@ export function ProgramCoverThumbnail({ src, alt = "", className = "", onFocalPo
 
   return (
     <div className={`motus-program-cover-trainer-preview ${className}`.trim()}>
-      <div className="motus-member-program-thumb motus-image-frame">
+      <div className="motus-member-program-thumb motus-image-frame motus-image-frame--program-cover">
         <img
           src={displaySrc}
           alt={alt}

@@ -7556,7 +7556,7 @@ export function MemberPortal(props: MemberPortalProps) {
 	                        className="motus-member-program-card motus-card overflow-hidden"
 	                      >
 	                        <div className="motus-member-program-layout">
-	                        <div className="motus-member-program-thumb motus-image-frame">
+	                        <div className="motus-member-program-thumb motus-image-frame motus-image-frame--program-cover">
 	                          {programCoverSrc ? (
 	                            <img
 	                              src={programCoverSrc}

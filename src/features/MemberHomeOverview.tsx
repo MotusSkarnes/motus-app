@@ -184,7 +184,7 @@ export function MemberHomeOverview({
 
       <article className="motus-home-workout-card motus-home-workout-card--stacked">
         <div className="motus-home-workout-media">
-          <div className="motus-member-program-thumb motus-image-frame">
+          <div className="motus-member-program-thumb motus-image-frame motus-image-frame--program-cover">
             {workoutImageSrc ? (
               <img
                 className={`motus-member-program-cover motus-image-media${

@@ -95,7 +95,7 @@ export function MemberTrainingOverview({
   return (
     <div className="motus-training-overview motus-fade-in-up">
       <article className="motus-training-hero motus-training-hero--stacked">
-        <div className="motus-member-program-thumb motus-image-frame">
+        <div className="motus-member-program-thumb motus-image-frame motus-image-frame--program-cover">
           {imageSrc ? (
             <img
               className={`motus-member-program-cover motus-image-media${
@@ -193,7 +193,7 @@ export function MemberTrainingOverview({
                 onClick={program.onOpen}
                 className="motus-training-program-card motus-training-program-card--stacked motus-pressable"
               >
-                <div className="motus-member-program-thumb motus-image-frame">
+                <div className="motus-member-program-thumb motus-image-frame motus-image-frame--program-cover">
                   {program.imageSrc ? (
                     <img
                       src={program.imageSrc}
