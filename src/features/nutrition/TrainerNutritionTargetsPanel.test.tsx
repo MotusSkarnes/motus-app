@@ -21,6 +21,24 @@ function PanelHarness() {
   return <TrainerNutritionTargetsPanel targets={targets} bodyWeightKg={80} onEdit={onEdit} />;
 }
 
+function TemplateWeightHarness() {
+  const [targets, setTargets] = useState<MealPlanTargets>({});
+  const weight = typeof targets.planningWeightKg === "number" ? targets.planningWeightKg : null;
+
+  function onEdit(field: NutritionTargetEditField, value: string | boolean) {
+    setTargets(applyNutritionTargetEdit(targets, field, value, weight).targets);
+  }
+
+  return (
+    <TrainerNutritionTargetsPanel
+      targets={targets}
+      bodyWeightKg={weight}
+      weightEditable
+      onEdit={onEdit}
+    />
+  );
+}
+
 describe("TrainerNutritionTargetsPanel", () => {
   it("lar comma og punktum stå i protein g/kg til desimalen er ferdig", async () => {
     const user = userEvent.setup();
@@ -45,5 +63,18 @@ describe("TrainerNutritionTargetsPanel", () => {
     expect(proteinG).toHaveValue("120.5");
     await user.tab();
     expect(proteinG).toHaveValue("120,5");
+  });
+
+  it("lar treneren skrive vekt på mal og beregne protein i g/kg", async () => {
+    const user = userEvent.setup();
+    render(<TemplateWeightHarness />);
+
+    const weight = screen.getByLabelText("Vekt (kg)");
+    await user.type(weight, "75");
+    const perKg = screen.getByLabelText("Protein (g/kg)");
+    await user.type(perKg, "1,6");
+
+    expect(weight).toHaveValue("75");
+    expect(screen.getByLabelText(/Protein \(g\)/)).toHaveValue("120");
   });
 });

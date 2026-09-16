@@ -13,6 +13,7 @@ type TrainerNutritionTargetsPanelProps = {
   targets?: MealPlanTargets;
   bodyWeightKg: number | null;
   weightSource?: MemberWeightSource | null;
+  weightEditable?: boolean;
   derivedField?: MacroTargetField | null;
   warning?: string | null;
   hint?: string | null;
@@ -65,6 +66,7 @@ export function TrainerNutritionTargetsPanel({
   targets,
   bodyWeightKg,
   weightSource,
+  weightEditable = false,
   derivedField = null,
   warning,
   hint,
@@ -91,13 +93,29 @@ export function TrainerNutritionTargetsPanel({
         </div>
       </div>
 
-      <p className="motus-nutrition-targets__weight">
-        {weightLabel ? (
-          <>Vekt: {weightLabel}</>
-        ) : (
-          <>Ingen vekt funnet — sett vekt på klientkortet eller i kroppsmål for å bruke g/kg.</>
-        )}
-      </p>
+      {weightEditable ? (
+        <div className="motus-nutrition-targets__weight">
+          <label className="motus-nutrition-targets__weight-field">
+            <span>Vekt (kg)</span>
+            <TargetNumberInput
+              numericValue={bodyWeightKg ?? undefined}
+              onCommit={(raw) => onEdit("planningWeightKg", raw)}
+              placeholder="f.eks. 75"
+            />
+          </label>
+          <p className="motus-nutrition-targets__weight-hint">
+            Skriv inn vekt for å bruke protein i g/kg. Når malen brukes på en klient, brukes klientens vekt.
+          </p>
+        </div>
+      ) : (
+        <p className="motus-nutrition-targets__weight">
+          {weightLabel ? (
+            <>Vekt: {weightLabel}</>
+          ) : (
+            <>Ingen vekt funnet — sett vekt på klientkortet eller i kroppsmål for å bruke g/kg.</>
+          )}
+        </p>
+      )}
 
       <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3">
         <label className="space-y-1 text-[11px] font-medium text-slate-600">

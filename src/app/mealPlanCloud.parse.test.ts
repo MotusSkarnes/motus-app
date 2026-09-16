@@ -30,4 +30,15 @@ describe("mealPlanFromRow days parsing", () => {
     expect(plan.targets?.proteinPerKg).toBe(1.6);
     expect(plan.targets?.protein).toBe(120);
   });
+
+  it("parses planningWeightKg on targets", () => {
+    const plan = mealPlanFromRow("template-1", {
+      member_id: "template-1",
+      title: "Mal",
+      days: JSON.stringify([]),
+      targets: { planningWeightKg: 75, proteinPerKg: 1.6, protein: 120 },
+    });
+    expect(plan.targets?.planningWeightKg).toBe(75);
+    expect(plan.targets?.proteinPerKg).toBe(1.6);
+  });
 });

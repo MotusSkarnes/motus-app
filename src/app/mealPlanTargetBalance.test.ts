@@ -114,5 +114,14 @@ describe("mealPlanTargetBalance", () => {
     expect(parsed?.kcalLocked).toBe(true);
     expect(parsed?.proteinPerKg).toBe(1.75);
   });
+
+  it("lagrer planleggingsvekt og oppdaterer protein fra g/kg", () => {
+    const withWeight = applyNutritionTargetEdit({ proteinPerKg: 1.6 }, "planningWeightKg", "75", null);
+    expect(withWeight.targets.planningWeightKg).toBe(75);
+    expect(withWeight.targets.protein).toBe(120);
+    const parsed = parseMealPlanTargets({ planningWeightKg: 72.4, proteinPerKg: 1.5 });
+    expect(parsed?.planningWeightKg).toBe(72.4);
+    expect(parsed?.proteinPerKg).toBe(1.5);
+  });
 });
 

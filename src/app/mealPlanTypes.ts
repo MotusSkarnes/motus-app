@@ -13,6 +13,8 @@ export type MealPlanTargets = {
   fat?: number;
   /** Proteinmål i gram per kg kroppsvekt. Gram regnes ut fra klientens vekt. */
   proteinPerKg?: number;
+  /** Vekt brukt til g/kg når planen ikke er knyttet til en klient (mal). */
+  planningWeightKg?: number;
   /** Når true: kcal holdes fast, og karbo/fett fyller resten etter protein. */
   kcalLocked?: boolean;
   /** Andel av daglige kalorier fra P/K/F (summerer til 100). */

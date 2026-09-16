@@ -297,10 +297,14 @@ export function TrainerMealPlanEditor({
         setPlanLoadStatus("none");
         return;
       }
+      const loadedPlanningWeight =
+        typeof loadedPlan.targets?.planningWeightKg === "number" && loadedPlan.targets.planningWeightKg > 0
+          ? loadedPlan.targets.planningWeightKg
+          : null;
       const mergedTargets =
         syncProteinGramsFromPerKg(
           resolveDailyNutritionTargets(personalGoalsRef.current, loadedPlan.targets),
-          resolveMemberBodyWeight(memberWeight, personalGoalsRef.current)?.kg ?? null,
+          resolveMemberBodyWeight(memberWeight, personalGoalsRef.current)?.kg ?? loadedPlanningWeight,
         ) ?? resolveDailyNutritionTargets(personalGoalsRef.current, loadedPlan.targets);
       if (
         mealPlanTargetsHaveValues(mergedTargets) &&
@@ -565,8 +569,13 @@ export function TrainerMealPlanEditor({
     () => resolveMemberBodyWeight(memberWeight, memberPersonalGoals),
     [memberWeight, memberPersonalGoals],
   );
-  const bodyWeightKg = resolvedWeight?.kg ?? null;
   const displayTargets = mealPlanTargetsHaveValues(plan?.targets) ? (plan?.targets ?? {}) : standaloneTargets;
+  const bodyWeightKg =
+    resolvedWeight?.kg ??
+    (typeof displayTargets.planningWeightKg === "number" && displayTargets.planningWeightKg > 0
+      ? displayTargets.planningWeightKg
+      : null);
+  const weightEditable = resolvedWeight == null;
 
   const planNutritionAverages = useMemo(
     () => (plan ? buildMealPlanNutritionReport(plan, nutritionContext) : null),
@@ -1227,6 +1236,7 @@ export function TrainerMealPlanEditor({
           targets={displayTargets}
           bodyWeightKg={bodyWeightKg}
           weightSource={resolvedWeight?.source}
+          weightEditable={weightEditable}
           derivedField={derivedTargetField}
           warning={targetBalanceWarning}
           hint={targetBalanceHint}
@@ -1544,6 +1554,7 @@ export function TrainerMealPlanEditor({
                 targets={displayTargets}
                 bodyWeightKg={bodyWeightKg}
                 weightSource={resolvedWeight?.source}
+                weightEditable={weightEditable}
                 derivedField={derivedTargetField}
                 warning={targetBalanceWarning}
                 hint={targetBalanceHint}

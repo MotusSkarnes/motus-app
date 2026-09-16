@@ -58,6 +58,9 @@ function serializeNutritionTargets(targets: MealPlanTargets): Record<string, unk
   if (typeof targets.proteinPerKg === "number" && Number.isFinite(targets.proteinPerKg) && targets.proteinPerKg > 0) {
     row.proteinPerKg = targets.proteinPerKg;
   }
+  if (typeof targets.planningWeightKg === "number" && Number.isFinite(targets.planningWeightKg) && targets.planningWeightKg > 0) {
+    row.planningWeightKg = targets.planningWeightKg;
+  }
   if (targets.kcalLocked === true) row.kcalLocked = true;
   if (targets.macroSplitPct) row.macroSplitPct = targets.macroSplitPct;
   if (targets.macroSplitLocked?.length) row.macroSplitLocked = targets.macroSplitLocked;

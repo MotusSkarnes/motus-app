@@ -48,6 +48,17 @@ describe("memberNutritionTargets", () => {
     expect(stored?.kcalLocked).toBe(true);
   });
 
+  it("lagrer planleggingsvekt sammen med daglige mål", () => {
+    const next = patchNutritionTargetsInPersonalGoals("", {
+      planningWeightKg: 75,
+      proteinPerKg: 1.6,
+      protein: 120,
+    });
+    const stored = readNutritionTargetsFromPersonalGoals(next);
+    expect(stored?.planningWeightKg).toBe(75);
+    expect(stored?.proteinPerKg).toBe(1.6);
+  });
+
   it("foretrekker nyere profilmål fremfor matplan", () => {
     const goals = patchNutritionTargetsInPersonalGoals("", {
       kcal: 1800,

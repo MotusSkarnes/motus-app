@@ -133,7 +133,13 @@ const MACRO_LABELS: Record<MacroTargetField, string> = {
   fat: "fett",
 };
 
-export type NutritionTargetEditField = MacroTargetField | "kcal" | "proteinPerKg" | "kcalLocked";
+export type NutritionTargetEditField = MacroTargetField | "kcal" | "proteinPerKg" | "kcalLocked" | "planningWeightKg";
+
+export function parsePlanningWeightKg(value: unknown): number | undefined {
+  const n = typeof value === "number" ? value : Number(String(value ?? "").trim().replace(",", "."));
+  if (!Number.isFinite(n) || n < 20 || n > 400) return undefined;
+  return Math.round(n * 10) / 10;
+}
 
 function roundGrams(n: number): number {
   return Math.round(n * 10) / 10;
@@ -166,6 +172,8 @@ export function parseMealPlanTargets(value: unknown): MealPlanTargets | undefine
     const snake = row.protein_per_kg;
     if (typeof snake === "number" && Number.isFinite(snake) && snake > 0) targets.proteinPerKg = snake;
   }
+  const planningWeight = parsePlanningWeightKg(row.planningWeightKg ?? row.planning_weight_kg);
+  if (planningWeight != null) targets.planningWeightKg = planningWeight;
   if (row.kcalLocked === true || row.kcal_locked === true) targets.kcalLocked = true;
   const split = row.macroSplitPct ?? row.macro_split_pct;
   if (split && typeof split === "object") {
@@ -197,7 +205,8 @@ export function mealPlanTargetsHaveValues(targets?: MealPlanTargets | null): boo
     (typeof targets.protein === "number" && Number.isFinite(targets.protein)) ||
     (typeof targets.carbs === "number" && Number.isFinite(targets.carbs)) ||
     (typeof targets.fat === "number" && Number.isFinite(targets.fat)) ||
-    (typeof targets.proteinPerKg === "number" && Number.isFinite(targets.proteinPerKg) && targets.proteinPerKg > 0)
+    (typeof targets.proteinPerKg === "number" && Number.isFinite(targets.proteinPerKg) && targets.proteinPerKg > 0) ||
+    (typeof targets.planningWeightKg === "number" && Number.isFinite(targets.planningWeightKg) && targets.planningWeightKg > 0)
   );
 }
 
@@ -312,6 +321,8 @@ export function applyNutritionTargetEdit(
       delete next.carbs;
     } else if (field === "fat") {
       delete next.fat;
+    } else if (field === "planningWeightKg") {
+      delete next.planningWeightKg;
     }
     return { targets: next, derivedField: null, remainingKcal: null, warning: null };
   }
@@ -332,10 +343,20 @@ export function applyNutritionTargetEdit(
     next.carbs = parsed;
   } else if (field === "fat") {
     next.fat = parsed;
+  } else if (field === "planningWeightKg") {
+    const kg = parsePlanningWeightKg(parsed);
+    if (kg == null) {
+      return { targets: current, derivedField: null, remainingKcal: null, warning: null };
+    }
+    next.planningWeightKg = kg;
+    bodyWeightKg = kg;
+    if (typeof next.proteinPerKg === "number" && next.proteinPerKg > 0) {
+      next.protein = proteinGramsFromPerKg(next.proteinPerKg, kg);
+    }
   }
 
   if (next.kcalLocked) {
-    if (field === "protein" || field === "proteinPerKg" || field === "kcal") {
+    if (field === "protein" || field === "proteinPerKg" || field === "kcal" || field === "planningWeightKg") {
       return redistributeCarbsAndFatForLockedKcal(next);
     }
     const toDerive: MacroTargetField = field === "carbs" ? "fat" : "carbs";
@@ -359,7 +380,8 @@ export function applyNutritionTargetEdit(
     return { targets: next, derivedField: null, remainingKcal: null, warning: null };
   }
 
-  const balanceField: keyof MealPlanTargets = field === "proteinPerKg" ? "protein" : field;
+  const balanceField: keyof MealPlanTargets =
+    field === "proteinPerKg" || field === "planningWeightKg" ? "protein" : field;
   return balanceMealPlanTargets(next, balanceField);
 }
 
