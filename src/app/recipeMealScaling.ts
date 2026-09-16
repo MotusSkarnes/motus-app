@@ -11,7 +11,6 @@ import {
   type RecipeIngredientFoodOverrides,
   type RecipeMacroResult,
 } from "./recipeMacros";
-import { EMPTY_MICRONUTRIENTS } from "./foodBankMicronutrients";
 
 export type RecipeScalingMode = "flexible" | "fixed";
 
@@ -44,7 +43,7 @@ export function targetKcalForRecipeMeal(
   return Math.round(daily * share);
 }
 
-/** Kaloriskalering er av: mengdene følger oppskriften. Flere personer styres av peopleScale. */
+/** Kaloriskalering er av: mengdene følger oppskriften. Flere porsjoner styres av peopleScale. */
 export function computeIngredientScaleFactor(
   _basePerServingKcal?: number,
   _targetMealKcal?: number | null,
@@ -88,31 +87,6 @@ function scaleIngredientRows(ingredients: RecipeIngredient[], factor: number): R
   });
 }
 
-function macrosFromIngredients(ingredients: RecipeIngredient[], servings: number): RecipeMacroResult {
-  const totals = ingredients.reduce(
-    (acc, row) => ({
-      kcal: acc.kcal + row.macros.kcal,
-      protein: acc.protein + row.macros.protein,
-      carbs: acc.carbs + row.macros.carbs,
-      fat: acc.fat + row.macros.fat,
-    }),
-    { kcal: 0, protein: 0, carbs: 0, fat: 0 },
-  );
-  const safeServings = servings > 0 ? servings : 1;
-  return {
-    perServing: {
-      kcal: totals.kcal / safeServings,
-      protein: totals.protein / safeServings,
-      carbs: totals.carbs / safeServings,
-      fat: totals.fat / safeServings,
-    },
-    servings: safeServings,
-    matchedCount: ingredients.length,
-    ingredientCount: ingredients.length,
-    perServingMicronutrients: { ...EMPTY_MICRONUTRIENTS },
-  };
-}
-
 export function buildScaledRecipeView(
   body: string,
   foodItems: FoodItem[],
@@ -145,7 +119,9 @@ export function buildScaledRecipeView(
   const peopleScale = viewServings / baseServings;
   const scaleFactor = kcalScale * peopleScale;
   const ingredients = scaleIngredientRows(baseIngredients, scaleFactor);
-  const macros = macrosFromIngredients(ingredients, viewServings);
+  // Per-portion macros stay on the unscaled recipe. Rounding scaled grams must not
+  // change "næringsinnhold per porsjon" when the member only changes portion count.
+  const macros = baseMacros;
 
   return {
     ingredients,

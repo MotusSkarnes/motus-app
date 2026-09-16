@@ -406,8 +406,8 @@ export function NutritionRecipesPanel({
   return (
     <div className="space-y-4">
       <p className="text-sm text-slate-600">
-        Oppskrifter med næringsinnhold per person. Mengdene er de samme som i oppskriften. Velg hvor mange du skal lage
-        til inne på oppskriften — da oppdateres mengdene.
+        Oppskrifter med næringsinnhold per porsjon. Velg antall porsjoner inne på oppskriften — da oppdateres mengdene,
+        ikke næringsinnholdet per porsjon.
       </p>
       <div className="flex flex-wrap gap-2">
         <PillButton

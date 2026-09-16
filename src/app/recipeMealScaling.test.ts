@@ -57,7 +57,7 @@ describe("recipeMealScaling", () => {
     expect(computeIngredientScaleFactor(500, 700, "fixed")).toBe(1);
   });
 
-  it("dobler ingrediensmengder når kunden lager til flere personer", () => {
+  it("dobler ingrediensmengder når kunden lager til flere porsjoner", () => {
     const body = `**Til 2 porsjoner**
 
 **Ingredienser**
@@ -75,7 +75,8 @@ describe("recipeMealScaling", () => {
     expect(doubled?.viewServings).toBe(4);
     expect(doubled?.peopleScale).toBe(2);
     expect(doubled!.ingredients[0]!.grams).toBeCloseTo(base!.ingredients[0]!.grams * 2, 0);
-    expect(doubled!.macros.perServing.kcal).toBeCloseTo(base!.macros.perServing.kcal, 0);
+    expect(doubled!.macros.perServing).toEqual(base!.macros.perServing);
+    expect(doubled!.macros.servings).toBe(2);
   });
 
   it("beregner makro for nye standardmiddager", () => {

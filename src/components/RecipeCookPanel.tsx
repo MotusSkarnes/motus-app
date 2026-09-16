@@ -62,12 +62,14 @@ export function RecipeCookPanel({
       }),
     [item.body, item.servings, item.ingredientFoodOverrides, foodItems, scalingMode, dailyTargets, mealSlot, viewServings],
   );
-  const macros =
-    scaledView?.macros ??
-    computeRecipeMacros(item.body, foodItems, {
-      servings: item.servings,
-      ingredientFoodOverrides: item.ingredientFoodOverrides,
-    });
+  const macros = useMemo(
+    () =>
+      computeRecipeMacros(item.body, foodItems, {
+        servings: item.servings,
+        ingredientFoodOverrides: item.ingredientFoodOverrides,
+      }),
+    [item.body, item.servings, item.ingredientFoodOverrides, foodItems],
+  );
   const hasIngredientSection = extractRecipeIngredientLines(item.body, { forEditor: true }).length > 0;
 
   return (

@@ -6,6 +6,7 @@ import {
   formatRecipeIngredientLine,
   parseRecipeIngredientDrafts,
   recipePeopleLabel,
+  recipePortionsLabel,
   suggestRecipeDisplayName,
 } from "./recipeBody";
 
@@ -60,9 +61,10 @@ describe("recipeBody", () => {
     );
   });
 
-  it("beskriver antall personer", () => {
-    expect(recipePeopleLabel(1)).toBe("1 person");
-    expect(recipePeopleLabel(4)).toBe("4 personer");
+  it("beskriver antall porsjoner", () => {
+    expect(recipePortionsLabel(1)).toBe("1 porsjon");
+    expect(recipePortionsLabel(4)).toBe("4 porsjoner");
+    expect(recipePeopleLabel(2)).toBe("2 porsjoner");
   });
 
   it("korter ned lange matvarenavn til visningsnavn", () => {

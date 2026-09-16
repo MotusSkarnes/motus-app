@@ -418,7 +418,7 @@ export function TrainerRecipeComposer({
             </p>
           </fieldset>
           <label className="block">
-            <span className="motus-foodbank-field-label">Oppskriften er ment for (antall personer)</span>
+            <span className="motus-foodbank-field-label">Oppskriften er ment for (antall porsjoner)</span>
             <TextInput
               type="number"
               min={1}
@@ -483,7 +483,7 @@ export function TrainerRecipeComposer({
           {recipeMacros ? (
             <div className="rounded-xl border border-teal-100 bg-teal-50/40 p-3">
               <p className="text-[11px] font-semibold text-teal-900">
-                Næringsinnhold per person
+                Næringsinnhold per porsjon
                 {recipeMacros.matchedCount < recipeMacros.ingredientCount
                   ? ` (${recipeMacros.matchedCount} av ${recipeMacros.ingredientCount} ingredienser)`
                   : null}

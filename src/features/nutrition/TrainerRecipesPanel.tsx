@@ -79,7 +79,7 @@ export function TrainerRecipesPanel({ members, authorName = "Motus PT" }: Traine
       <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="text-sm text-slate-600">
           Oppskrifter for medlemmer og matplan. Klikk <strong>Ny oppskrift</strong> for å legge til ingredienser, antall
-          personer og fremgangsmåte — næringsinnhold oppdateres automatisk.
+          porsjoner og fremgangsmåte — næringsinnhold per porsjon oppdateres automatisk.
         </p>
         <GradientButton type="button" className="text-sm" onClick={openCreate}>
           <Plus className="mr-1.5 h-4 w-4" aria-hidden />

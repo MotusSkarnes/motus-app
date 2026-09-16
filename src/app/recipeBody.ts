@@ -149,8 +149,14 @@ export function buildRecipeBody(input: {
   return parts.join("\n");
 }
 
+export function recipePortionsLabel(count: number): string {
+  const n = Math.max(1, Math.round(Number.isFinite(count) ? count : 1));
+  return n === 1 ? "1 porsjon" : `${n} porsjoner`;
+}
+
+/** @deprecated Use recipePortionsLabel — recipes are scaled by portions, not people. */
 export function recipePeopleLabel(count: number): string {
-  return count === 1 ? "1 person" : `${count} personer`;
+  return recipePortionsLabel(count);
 }
 
 export function clampRecipeServings(value: number, min = 1, max = 24): number {
