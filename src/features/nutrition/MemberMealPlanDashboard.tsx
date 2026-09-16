@@ -11,6 +11,7 @@ import {
   Plus,
   Share2,
   ShoppingCart,
+  UtensilsCrossed,
   Wheat,
   X,
 } from "lucide-react";
@@ -33,6 +34,9 @@ import type { InspirationRecipeItem } from "../../app/inspirationRecipeItems";
 import { computeRecipeMacros } from "../../app/recipeMacros";
 import { RecipeCookPanel } from "../../components/RecipeCookPanel";
 import { RecipePhoto } from "../../components/RecipePhoto";
+import { parseRecipeBaseServings } from "../../app/recipeBody";
+import { buildRecipeMealDraftItems, memberMealSlotIdFromRecipe } from "../../app/recipeMealDraft";
+import { LogRecipeAsMealModal } from "./LogRecipeAsMealModal";
 import { parseInspirationRecipeFoodId } from "../../app/mealPlanRecipeEntry";
 import {
   MEAL_PLAN_STATE_CHANGED_EVENT,
@@ -71,7 +75,7 @@ import {
 import type { MemberSavedMeal } from "../../app/memberSavedMeals";
 import type { MealPlan, MealPlanDay, MealPlanFoodEntry, MealPlanMeal, MealPlanTargets } from "../../app/mealPlanTypes";
 import { useFoodBankItems } from "../../app/useFoodBankItems";
-import { Card } from "../../app/ui";
+import { Card, GradientButton } from "../../app/ui";
 import { MotusFlameIcon } from "../MotusFlameIcon";
 import { MacroProgressBar } from "./MacroProgressBar";
 import { MacroProgressRing } from "./MacroProgressRing";
@@ -285,6 +289,10 @@ export function MemberMealPlanDashboard({ plan, memberId, onOpenAvoidances, onRe
     entries: MemberQuickFoodLogEntry[];
   } | null>(null);
   const [activeRecipeId, setActiveRecipeId] = useState<string | null>(null);
+  const [activeRecipeMealSlotId, setActiveRecipeMealSlotId] = useState<string | undefined>();
+  const [recipeLogOpen, setRecipeLogOpen] = useState(false);
+  const [recipeLogDraft, setRecipeLogDraft] = useState<MealDraftItem[]>([]);
+  const [recipeViewServings, setRecipeViewServings] = useState(1);
   const [draftByMealId, setDraftByMealId] = useState<Record<string, MealDraftItem[]>>({});
   const mealSectionRef = useRef<HTMLDivElement | null>(null);
 
@@ -522,6 +530,15 @@ export function MemberMealPlanDashboard({ plan, memberId, onOpenAvoidances, onRe
   );
   const shoppingGroups = shoppingList.groups;
   const activeRecipe = activeRecipeId ? recipesById.get(activeRecipeId) ?? null : null;
+
+  useEffect(() => {
+    if (!activeRecipeId) {
+      setRecipeLogOpen(false);
+      return;
+    }
+    if (!activeRecipe) return;
+    setRecipeViewServings(parseRecipeBaseServings(activeRecipe.body, activeRecipe.servings));
+  }, [activeRecipeId, activeRecipe]);
 
   const handleRecipePortionChange = useCallback(
     (entryId: string, next: number) => {
@@ -985,6 +1002,7 @@ export function MemberMealPlanDashboard({ plan, memberId, onOpenAvoidances, onRe
                               className="motus-pressable"
                               onClick={() => {
                                 setActiveRecipeId(recipeId);
+                                setActiveRecipeMealSlotId(canonicalMemberMealSlotId(meal.id, meal.name));
                                 setMealMenuId(null);
                               }}
                             >
@@ -1425,10 +1443,41 @@ export function MemberMealPlanDashboard({ plan, memberId, onOpenAvoidances, onRe
             >
               <RecipePhoto src={activeRecipe.imageUrl} size="hero" alt="" />
               {activeRecipe.description ? <p className="text-sm text-slate-600">{activeRecipe.description}</p> : null}
-              <RecipeCookPanel item={activeRecipe} foodItems={foodItems} />
+              <GradientButton
+                type="button"
+                className="w-full sm:w-auto"
+                onClick={() => {
+                  setRecipeLogDraft(
+                    buildRecipeMealDraftItems(activeRecipe, foodItems, { viewServings: recipeViewServings }),
+                  );
+                  setRecipeLogOpen(true);
+                }}
+              >
+                <UtensilsCrossed className="mr-1.5 h-4 w-4" aria-hidden />
+                Logg som måltid
+              </GradientButton>
+              <RecipeCookPanel
+                item={activeRecipe}
+                foodItems={foodItems}
+                viewServings={recipeViewServings}
+                onViewServingsChange={setRecipeViewServings}
+              />
             </div>
           </div>
         </div>
+      ) : null}
+
+      {activeRecipe && recipeLogOpen ? (
+        <LogRecipeAsMealModal
+          open
+          memberId={memberId}
+          recipeTitle={activeRecipe.title}
+          initialDraftItems={recipeLogDraft}
+          defaultMealSlotId={activeRecipeMealSlotId ?? memberMealSlotIdFromRecipe(activeRecipe)}
+          dateKey={selectedDateKey}
+          foodItems={foodItems}
+          onClose={() => setRecipeLogOpen(false)}
+        />
       ) : null}
 
       {saveLoggedMeal ? (

@@ -1,7 +1,8 @@
-import { useMemo, useState } from "react";
-import { ArrowLeft, Copy, Pencil, Trash2 } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { ArrowLeft, Copy, Pencil, Trash2, UtensilsCrossed } from "lucide-react";
 import { buildDefaultFoodBankItems } from "../../app/foodBankSeed";
 import type { MealPlanTargets } from "../../app/mealPlanTypes";
+import { parseRecipeBaseServings } from "../../app/recipeBody";
 import { buildScaledRecipeView, resolveRecipeScalingMode } from "../../app/recipeMealScaling";
 import { computeRecipeMacros } from "../../app/recipeMacros";
 import {
@@ -23,7 +24,11 @@ import { useFoodBankItems } from "../../app/useFoodBankItems";
 import { RecipeCookPanel } from "../../components/RecipeCookPanel";
 import { RecipeMacroSummary } from "../../components/RecipeMacroSummary";
 import { RecipePhoto } from "../../components/RecipePhoto";
-import { Card, EmptyState, OutlineButton, PillButton } from "../../app/ui";
+import { Card, EmptyState, GradientButton, OutlineButton, PillButton } from "../../app/ui";
+import { buildRecipeMealDraftItems, memberMealSlotIdFromRecipe } from "../../app/recipeMealDraft";
+import { memberMealSlotLabel } from "../../app/memberMealSlots";
+import type { MealDraftItem } from "../../app/mealDraft";
+import { LogRecipeAsMealModal } from "./LogRecipeAsMealModal";
 import "../../foodbank.css";
 
 function useFoodItemsForMacros() {
@@ -60,6 +65,7 @@ function RecipeDetail({
   onDuplicate,
   onDelete,
   preferredMealSlot,
+  memberId,
 }: {
   item: InspirationRecipeItem;
   onBack: () => void;
@@ -69,11 +75,29 @@ function RecipeDetail({
   onDuplicate?: (item: InspirationRecipeItem) => void;
   onDelete?: (item: InspirationRecipeItem) => void;
   preferredMealSlot?: RecipeMealSlot | null;
+  memberId?: string;
 }) {
   const foodItems = useFoodItemsForMacros();
   const mealSlots = recipeMealSlotsFor(item);
   const mealSlot = recipeMealSlotFor(item, preferredMealSlot);
   const proteinCategory = resolveRecipeProteinCategory(item);
+  const baseServings = parseRecipeBaseServings(item.body, item.servings);
+  const [viewServings, setViewServings] = useState(baseServings);
+  const [logOpen, setLogOpen] = useState(false);
+  const [logDraft, setLogDraft] = useState<MealDraftItem[]>([]);
+  const [logStatus, setLogStatus] = useState<string | null>(null);
+
+  useEffect(() => {
+    setViewServings(baseServings);
+    setLogOpen(false);
+  }, [item.id, baseServings]);
+
+  const canLogAsMeal = Boolean(memberId?.trim());
+
+  function openLogAsMeal() {
+    setLogDraft(buildRecipeMealDraftItems(item, foodItems, { viewServings, mealSlot }));
+    setLogOpen(true);
+  }
 
   return (
     <div className="space-y-4">
@@ -117,11 +141,44 @@ function RecipeDetail({
           </div>
           <h2 className="mt-3 text-xl font-bold tracking-tight text-slate-950 sm:text-2xl">{item.title}</h2>
           {item.description ? <p className="mt-2 text-sm text-slate-600 sm:text-base">{item.description}</p> : null}
+          {canLogAsMeal ? (
+            <div className="mt-4">
+              <GradientButton type="button" className="w-full sm:w-auto" onClick={openLogAsMeal}>
+                <UtensilsCrossed className="mr-1.5 h-4 w-4" aria-hidden />
+                Logg som måltid
+              </GradientButton>
+              {logStatus ? <p className="mt-2 text-sm font-medium text-slate-600">{logStatus}</p> : null}
+            </div>
+          ) : null}
           <div className="mt-4">
-            <RecipeCookPanel item={item} foodItems={foodItems} dailyTargets={dailyTargets} mealSlot={mealSlot} />
+            <RecipeCookPanel
+              item={item}
+              foodItems={foodItems}
+              dailyTargets={dailyTargets}
+              mealSlot={mealSlot}
+              viewServings={viewServings}
+              onViewServingsChange={setViewServings}
+            />
           </div>
         </div>
       </article>
+      {canLogAsMeal && logOpen && memberId ? (
+        <LogRecipeAsMealModal
+          open
+          memberId={memberId}
+          recipeTitle={item.title}
+          initialDraftItems={logDraft}
+          defaultMealSlotId={memberMealSlotIdFromRecipe(item, preferredMealSlot)}
+          foodItems={foodItems}
+          onClose={() => setLogOpen(false)}
+          onLogged={({ mealSlotId, itemCount }) => {
+            const slotLabel = memberMealSlotLabel(mealSlotId);
+            setLogStatus(
+              `${itemCount === 1 ? "1 vare" : `${itemCount} varer`} logget til ${slotLabel.toLowerCase()}.`,
+            );
+          }}
+        />
+      ) : null}
     </div>
   );
 }
@@ -234,12 +291,20 @@ function RecipeCard({
 type NutritionRecipesPanelProps = {
   mealPlanTargets?: MealPlanTargets;
   canManage?: boolean;
+  memberId?: string;
   onEdit?: (item: InspirationRecipeItem) => void;
   onDuplicate?: (item: InspirationRecipeItem) => void;
   onDelete?: (item: InspirationRecipeItem) => void;
 };
 
-export function NutritionRecipesPanel({ mealPlanTargets, canManage, onEdit, onDuplicate, onDelete }: NutritionRecipesPanelProps) {
+export function NutritionRecipesPanel({
+  mealPlanTargets,
+  canManage,
+  memberId,
+  onEdit,
+  onDuplicate,
+  onDelete,
+}: NutritionRecipesPanelProps) {
   const { items, loading } = useInspirationRecipeItems();
   const foodItems = useFoodItemsForMacros();
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -322,6 +387,7 @@ export function NutritionRecipesPanel({ mealPlanTargets, canManage, onEdit, onDu
         onDuplicate={onDuplicate}
         onDelete={onDelete}
         preferredMealSlot={mealTab === "all" ? null : mealTab}
+        memberId={memberId}
       />
     );
   }

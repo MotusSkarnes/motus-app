@@ -16,16 +16,31 @@ type RecipeCookPanelProps = {
   foodItems: FoodItem[];
   dailyTargets?: MealPlanTargets;
   mealSlot?: RecipeMealSlot | null;
+  viewServings?: number;
+  onViewServingsChange?: (value: number) => void;
 };
 
-export function RecipeCookPanel({ item, foodItems, dailyTargets, mealSlot: mealSlotProp }: RecipeCookPanelProps) {
+export function RecipeCookPanel({
+  item,
+  foodItems,
+  dailyTargets,
+  mealSlot: mealSlotProp,
+  viewServings: viewServingsProp,
+  onViewServingsChange,
+}: RecipeCookPanelProps) {
   const mealSlot = mealSlotProp ?? recipeMealSlotFor(item);
   const baseServings = parseRecipeBaseServings(item.body, item.servings);
-  const [viewServings, setViewServings] = useState(baseServings);
+  const [internalServings, setInternalServings] = useState(baseServings);
+  const viewServings = viewServingsProp ?? internalServings;
 
   useEffect(() => {
-    setViewServings(baseServings);
-  }, [item.id, baseServings]);
+    if (viewServingsProp == null) setInternalServings(baseServings);
+  }, [item.id, baseServings, viewServingsProp]);
+
+  function setViewServings(next: number) {
+    onViewServingsChange?.(next);
+    if (viewServingsProp == null) setInternalServings(next);
+  }
 
   const scalingMode = resolveRecipeScalingMode({
     id: item.id,

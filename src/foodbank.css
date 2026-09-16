@@ -525,6 +525,16 @@
   width: min(100%, 40rem);
 }
 
+.motus-log-recipe-meal-modal {
+  max-height: min(92vh, 780px);
+}
+
+.motus-log-recipe-meal-modal__body {
+  max-height: min(72vh, 620px);
+  overflow-y: auto;
+  padding-bottom: max(1.25rem, env(safe-area-inset-bottom));
+}
+
 .motus-recipe-composer-modal {
   width: min(96vw, 72rem);
   max-height: min(94vh, 860px);

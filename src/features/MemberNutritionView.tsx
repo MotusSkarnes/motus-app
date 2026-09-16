@@ -197,6 +197,7 @@ export function MemberNutritionView({
         </>
       }
       mealPlanTargets={dailyTargets}
+      memberId={memberId}
       avoidances={
         <MemberFoodAvoidancesPanel
           memberId={profileMember.id}
