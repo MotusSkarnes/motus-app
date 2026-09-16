@@ -10,8 +10,6 @@ import {
 import { TextInput } from "../../app/ui";
 export { MICRONUTRIENT_DAILY_TARGETS } from "../../app/healthDirectorateNutritionReferences";
 
-export type MealPlanNutritionScope = "selected" | "checked";
-
 export type MicronutrientOverviewRow = {
   key: MicronutrientDailyRow["key"];
   label: string;
@@ -24,11 +22,6 @@ export type MicronutrientOverviewRow = {
   decimals?: number;
 };
 
-type NutritionDayOption = {
-  id: string;
-  label: string;
-};
-
 type TrainerMealPlanNutritionOverviewProps = {
   averageUsed: MacroTotals;
   targets?: MealPlanTargets;
@@ -39,11 +32,6 @@ type TrainerMealPlanNutritionOverviewProps = {
   onReferenceChange?: (next: MealPlanNutritionReference) => void;
   compact?: boolean;
   tableCaption?: string;
-  scope?: MealPlanNutritionScope;
-  onScopeChange?: (scope: MealPlanNutritionScope) => void;
-  days?: NutritionDayOption[];
-  includedDayIds?: string[];
-  onToggleIncludedDay?: (dayId: string) => void;
 };
 
 function defaultReferenceMode(
@@ -56,10 +44,6 @@ function defaultReferenceMode(
 function formatTargetMacro(value: number): string {
   if (!value) return "–";
   return formatMacro(value, 0);
-}
-
-function weekdayShort(label: string): string {
-  return label.slice(0, 3);
 }
 
 export function macroCoverageTone(value: number, target: number): MicronutrientDailyRow["statusTone"] {
@@ -82,11 +66,6 @@ export function TrainerMealPlanNutritionOverview({
   onReferenceChange,
   compact = false,
   tableCaption,
-  scope,
-  onScopeChange,
-  days = [],
-  includedDayIds,
-  onToggleIncludedDay,
 }: TrainerMealPlanNutritionOverviewProps) {
   const targetKcal = targets?.kcal ?? 0;
   const targetProtein = targets?.protein ?? 0;
@@ -144,48 +123,6 @@ export function TrainerMealPlanNutritionOverview({
 
   return (
     <div className={`motus-pt-planner-nutrition${compact ? " motus-pt-planner-nutrition--compact" : ""}`}>
-      {onScopeChange ? (
-        <div className="motus-pt-planner-nutrition__scope">
-          <p className="motus-pt-planner-nutrition__ref-label">Visning</p>
-          <div className="motus-pt-planner-nutrition__ref-modes" role="group" aria-label="Velg visning">
-            <button
-              type="button"
-              className={`motus-pt-planner-nutrition__ref-btn ${scope === "selected" ? "is-active" : ""}`}
-              aria-pressed={scope === "selected"}
-              onClick={() => onScopeChange("selected")}
-            >
-              Merket dag
-            </button>
-            <button
-              type="button"
-              className={`motus-pt-planner-nutrition__ref-btn ${scope === "checked" ? "is-active" : ""}`}
-              aria-pressed={scope === "checked"}
-              onClick={() => onScopeChange("checked")}
-            >
-              Snitt av valgte
-            </button>
-          </div>
-          {days.length && onToggleIncludedDay ? (
-            <div className="motus-pt-planner-nutrition__days" role="group" aria-label="Dager i snittet">
-              {days.map((day) => {
-                const included = !includedDayIds || includedDayIds.includes(day.id);
-                return (
-                  <label key={day.id} className={`motus-pt-planner-nutrition__day ${included ? "is-on" : ""}`}>
-                    <input
-                      type="checkbox"
-                      checked={included}
-                      onChange={() => onToggleIncludedDay(day.id)}
-                      aria-label={`Ta med ${day.label} i snittet`}
-                    />
-                    <span>{weekdayShort(day.label)}</span>
-                  </label>
-                );
-              })}
-            </div>
-          ) : null}
-        </div>
-      ) : null}
-
       {onReferenceChange ? (
         <div className="motus-pt-planner-nutrition__ref">
           <p className="motus-pt-planner-nutrition__ref-label">Anbefalinger for mikronæringsstoffer</p>

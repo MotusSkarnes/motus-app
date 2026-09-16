@@ -513,6 +513,11 @@ export type TrainerMealPlanLoadResult =
   | { status: "none" }
   | { status: "uncertain" };
 
+/** Sky-rad med dager betyr publisert, også når samme plan allerede ligger lokalt. */
+export function resolveTrainerMealPlanLoadStatus(remote: MealPlan | null | undefined): "cloud" | "local" {
+  return remote?.days?.length ? "cloud" : "local";
+}
+
 /** PT-redigering: ikke opprett tom standardplan automatisk — vis «Lag matplan» når status er none. */
 export async function loadMealPlanForTrainerEditor(
   memberId: string,
@@ -540,11 +545,13 @@ export async function loadMealPlanForTrainerEditor(
     );
     if (preferred) {
       const normalized = { ...preferred, memberId: trimmedMemberId };
-      const fromLocal = local && mealPlansEqual(preferred, local);
       if (!mealPlansEqual(loadMealPlanForMember(trimmedMemberId), normalized)) {
         persistMealPlan(normalized, { notify: false });
       }
-      return { status: fromLocal ? "local" : "cloud", plan: normalized };
+      return {
+        status: resolveTrainerMealPlanLoadStatus(resolvedRemote),
+        plan: normalized,
+      };
     }
 
     if (hadFetchErrors) {
@@ -607,15 +614,32 @@ export async function persistMealPlanBundle(
   plan: MealPlan,
   options?: { notify?: boolean; memberEmail?: string },
 ): Promise<{ cloudSynced: boolean; warning?: string }> {
-  await persistMealPlanForLookupIds(plan, plan.memberId, options?.memberEmail, { notify: options?.notify });
-  if (!ownerUserId?.trim() || !isSupabaseConfigured) {
-    return { cloudSynced: false };
+  const ids = await persistMealPlanForLookupIds(plan, plan.memberId, options?.memberEmail, {
+    notify: options?.notify,
+  });
+  if (!ownerUserId?.trim()) {
+    return {
+      cloudSynced: false,
+      warning:
+        "Kunne ikke synke til skyen. Logg inn som PT, så klienten og andre PCer får matplanen.",
+    };
   }
-  const cloudSynced = await saveMealPlanToSupabase(ownerUserId, plan);
+  if (!isSupabaseConfigured) {
+    return {
+      cloudSynced: false,
+      warning: "Kunne ikke synke til skyen. Sky er ikke konfigurert i denne økten.",
+    };
+  }
+  let cloudSynced = false;
+  for (const id of ids.length ? ids : [plan.memberId.trim()].filter(Boolean)) {
+    const ok = await saveMealPlanToSupabase(ownerUserId, { ...plan, memberId: id });
+    if (ok) cloudSynced = true;
+  }
   if (!cloudSynced) {
     return {
       cloudSynced: false,
-      warning: "Lagret lokalt. Kjør member_meal_plans_schema.sql i Supabase for sky-synk.",
+      warning:
+        "Kunne ikke synke til skyen. Planen er bare på denne PC-en, så klienten og andre PCer får den ikke.",
     };
   }
   return { cloudSynced: true };

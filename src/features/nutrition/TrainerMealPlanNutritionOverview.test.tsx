@@ -41,28 +41,7 @@ describe("TrainerMealPlanNutritionOverview", () => {
     expect(ironRow.textContent).toMatch(/15/);
     await user.click(screen.getByRole("button", { name: "Alder og kjønn" }));
     expect(onReferenceChange).toHaveBeenCalledWith({ mode: "custom", ageYears: 30, gender: "female" });
-  });
-
-  it("lar treneren bytte mellom merket dag og snitt av valgte dager", async () => {
-    const user = userEvent.setup();
-    const onScopeChange = vi.fn();
-    const onToggleIncludedDay = vi.fn();
-    render(
-      <TrainerMealPlanNutritionOverview
-        averageUsed={{ kcal: 400, protein: 20, carbs: 40, fat: 10 }}
-        targets={{ kcal: 2000, protein: 120, carbs: 200, fat: 70 }}
-        tableCaption="Mandag"
-        scope="checked"
-        onScopeChange={onScopeChange}
-        days={[{ id: "day-mon", label: "Mandag" }]}
-        includedDayIds={["day-mon"]}
-        onToggleIncludedDay={onToggleIncludedDay}
-      />,
-    );
-
-    await user.click(screen.getByRole("button", { name: "Merket dag" }));
-    expect(onScopeChange).toHaveBeenCalledWith("selected");
-    await user.click(screen.getByRole("checkbox", { name: "Ta med Mandag i snittet" }));
-    expect(onToggleIncludedDay).toHaveBeenCalledWith("day-mon");
+    expect(screen.queryByRole("button", { name: "Merket dag" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Snitt av valgte" })).toBeNull();
   });
 });

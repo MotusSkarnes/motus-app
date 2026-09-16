@@ -568,6 +568,7 @@ export function TrainerMealPlanHubView({
                 memberId={activeTemplate.id}
                 memberName={`${activeTemplate.name} (malbibliotek)`}
                 memberGoal="Bygg en gjenbrukbar mal som kan brukes som utgangspunkt for klientplaner."
+                trainerOwnerUserId={trainerOwnerUserId}
               />
             </div>
           </section>

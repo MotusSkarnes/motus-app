@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { createDefaultMealPlan } from "./mealPlanDefaults";
-import { pickPreferredMealPlan } from "./mealPlanCloud";
+import { pickPreferredMealPlan, resolveTrainerMealPlanLoadStatus } from "./mealPlanCloud";
 import type { MealPlan } from "./mealPlanTypes";
 
 describe("pickPreferredMealPlan for trainer load", () => {
@@ -40,5 +40,11 @@ describe("pickPreferredMealPlan for trainer load", () => {
 
     const preferred = pickPreferredMealPlan([remoteShell, localRich]);
     expect(preferred).toBe(localRich);
+  });
+
+  it("marks a plan as cloud when the same content already exists locally", () => {
+    const plan = createDefaultMealPlan("member-test");
+    expect(resolveTrainerMealPlanLoadStatus(plan)).toBe("cloud");
+    expect(resolveTrainerMealPlanLoadStatus(null)).toBe("local");
   });
 });
