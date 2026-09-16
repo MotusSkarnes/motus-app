@@ -2438,6 +2438,51 @@ export function MemberPortal(props: MemberPortalProps) {
     }
   }, []);
 
+  const persistMemberPersonalGoals = useCallback(
+    async (personalGoals: string) => {
+      if (!editableMember) return;
+      const targetIds = Array.from(new Set([editableMember.id, ...relatedMemberIds].filter(Boolean)));
+      targetIds.forEach((memberId) => {
+        updateMember({
+          memberId,
+          changes: { personalGoals },
+        });
+      });
+      if (supabaseClient) {
+        await syncProfileToPtBackend({
+          email: normalizedCurrentUserEmail || editableMember.email.trim().toLowerCase(),
+          emails: Array.from(
+            new Set(
+              [normalizedCurrentUserEmail, editableMember.email.trim().toLowerCase()]
+                .map((value) => value.trim().toLowerCase())
+                .filter((value) => value && value.includes("@")),
+            ),
+          ),
+          memberId: editableMember.id,
+          memberIds: targetIds,
+          targetName: editableMember.name,
+          expectedMinUpdated: 1,
+          changes: {
+            name: editableMember.name,
+            phone: editableMember.phone,
+            birthDate: editableMember.birthDate,
+            goal: editableMember.goal,
+            focus: editableMember.focus,
+            injuries: editableMember.injuries,
+            personalGoals,
+          },
+        });
+      }
+    },
+    [
+      editableMember,
+      relatedMemberIds,
+      updateMember,
+      normalizedCurrentUserEmail,
+      syncProfileToPtBackend,
+    ],
+  );
+
   const persistBodyMetric = useCallback(
     async (input: { weightKg?: number; bodyFatPct?: number; shareWithTrainer: boolean }) => {
       if (!editableMember) return;
@@ -2452,50 +2497,24 @@ export function MemberPortal(props: MemberPortalProps) {
           ),
           input.shareWithTrainer,
         );
-        const targetIds = Array.from(new Set([editableMember.id, ...relatedMemberIds].filter(Boolean)));
-        targetIds.forEach((memberId) => {
-          updateMember({
-            memberId,
-            changes: { personalGoals },
-          });
-        });
-        if (supabaseClient) {
-          await syncProfileToPtBackend({
-            email: normalizedCurrentUserEmail || editableMember.email.trim().toLowerCase(),
-            emails: Array.from(
-              new Set(
-                [normalizedCurrentUserEmail, editableMember.email.trim().toLowerCase()]
-                  .map((value) => value.trim().toLowerCase())
-                  .filter((value) => value && value.includes("@")),
-              ),
-            ),
-            memberId: editableMember.id,
-            memberIds: targetIds,
-            targetName: editableMember.name,
-            expectedMinUpdated: 1,
-            changes: {
-              name: editableMember.name,
-              phone: editableMember.phone,
-              birthDate: editableMember.birthDate,
-              goal: editableMember.goal,
-              focus: editableMember.focus,
-              injuries: editableMember.injuries,
-              personalGoals,
-            },
-          });
-        }
+        await persistMemberPersonalGoals(personalGoals);
       } finally {
         setIsSavingBodyMetric(false);
       }
     },
-    [
-      editableMember,
-      members,
-      relatedMemberIds,
-      updateMember,
-      normalizedCurrentUserEmail,
-      syncProfileToPtBackend,
-    ],
+    [editableMember, members, persistMemberPersonalGoals],
+  );
+
+  const persistShareBodyMetrics = useCallback(
+    async (shareWithTrainer: boolean) => {
+      if (!editableMember) return;
+      const personalGoals = applyShareBodyMetricsPreference(
+        resolveMemberPersonalGoals(editableMember, members),
+        shareWithTrainer,
+      );
+      await persistMemberPersonalGoals(personalGoals);
+    },
+    [editableMember, members, persistMemberPersonalGoals],
   );
 
   const completedLogs = useMemo(() => memberLogs.filter((log) => log.status === "Fullført"), [memberLogs]);
@@ -8540,6 +8559,7 @@ export function MemberPortal(props: MemberPortalProps) {
                   personalGoals={resolvedPersonalGoalsForMember}
                   targetWeight={profileTargetWeight}
                   onLog={persistBodyMetric}
+                  onShareChange={persistShareBodyMetrics}
                   isSaving={isSavingBodyMetric}
                   stopGoals={stopGoalsForEditor}
                   setStopGoals={updateStopGoalsDraft}

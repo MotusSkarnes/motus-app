@@ -15,6 +15,7 @@ type MemberBodyMetricsSectionProps = {
   personalGoals: string | undefined;
   targetWeight?: string;
   onLog: (input: { weightKg?: number; bodyFatPct?: number; shareWithTrainer: boolean }) => void | Promise<void>;
+  onShareChange: (shareWithTrainer: boolean) => void | Promise<void>;
   isSaving?: boolean;
   stopGoals: MemberStopGoal[];
   setStopGoals: (value: MemberStopGoal[]) => void;
@@ -38,6 +39,7 @@ export function MemberBodyMetricsSection({
   personalGoals,
   targetWeight,
   onLog,
+  onShareChange,
   isSaving = false,
   stopGoals,
   setStopGoals,
@@ -46,11 +48,11 @@ export function MemberBodyMetricsSection({
 }: MemberBodyMetricsSectionProps) {
   const [weightInput, setWeightInput] = useState("");
   const [bodyFatInput, setBodyFatInput] = useState("");
-  const [shareWithTrainer, setShareWithTrainer] = useState(false);
+  const storedShare = getShareBodyMetricsWithTrainer(personalGoals);
+  const [shareWithTrainer, setShareWithTrainer] = useState(storedShare);
   const [error, setError] = useState<string | null>(null);
 
   const timeline = useMemo(() => buildBodyMetricsTimeline(personalGoals), [personalGoals]);
-  const storedShare = getShareBodyMetricsWithTrainer(personalGoals);
   const latestWeight = timeline.weightSeries[timeline.weightSeries.length - 1]?.value ?? null;
   const latestBodyFat = timeline.bodyFatSeries[timeline.bodyFatSeries.length - 1]?.value ?? null;
   const targetWeightNum = parseDecimalInput(targetWeight ?? "");
@@ -58,6 +60,13 @@ export function MemberBodyMetricsSection({
   useEffect(() => {
     setShareWithTrainer(storedShare);
   }, [storedShare]);
+
+  function handleShareToggle() {
+    if (isSaving) return;
+    const next = !shareWithTrainer;
+    setShareWithTrainer(next);
+    void onShareChange(next);
+  }
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault();
@@ -173,7 +182,7 @@ export function MemberBodyMetricsSection({
           role="switch"
           aria-checked={shareWithTrainer}
           disabled={isSaving}
-          onClick={() => setShareWithTrainer((value) => !value)}
+          onClick={handleShareToggle}
           className="motus-body-metric-share"
         >
           <span className="min-w-0 text-left">
