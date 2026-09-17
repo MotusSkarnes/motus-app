@@ -39,7 +39,7 @@ import {
   NUTRIENT_COVERAGE_FOOTNOTE,
   type NutrientCoverageLookup,
 } from "./nutritionReportCoverage";
-import { printHtmlDocument } from "./printHtmlDocument";
+import { watchPrintWindowSettled } from "./printHtmlDocument";
 
 export type NutritionReportPrintAudience = "trainer" | "client";
 
@@ -754,6 +754,13 @@ export function openNutritionReportPrintWindow(
   payload: NutritionReportPrintPayload,
   onSettled?: () => void,
 ): boolean {
-  const result = printHtmlDocument(buildNutritionReportPrintHtml(payload), onSettled);
-  return result.ok;
+  const printTab = window.open("", "_blank");
+  if (!printTab) return false;
+
+  const html = buildNutritionReportPrintHtml(payload);
+  printTab.document.open();
+  printTab.document.write(html);
+  printTab.document.close();
+  watchPrintWindowSettled(printTab, onSettled);
+  return true;
 }

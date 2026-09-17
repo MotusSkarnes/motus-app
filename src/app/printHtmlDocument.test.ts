@@ -4,6 +4,7 @@ import {
   printHtmlDocument,
   printHtmlViaHiddenFrame,
   restoreAppInteractivityAfterPrint,
+  schedulePrintWhenReady,
   shouldPreferInlineProgramPrint,
   stripProgramPrintScript,
   watchPrintWindowSettled,
@@ -77,6 +78,23 @@ describe("printHtmlDocument", () => {
     expect(field.disabled).toBe(false);
     expect(field.readOnly).toBe(false);
     field.remove();
+  });
+
+  it("prints only once when images load before the safety timeout", () => {
+    vi.useFakeTimers();
+    const print = vi.fn();
+    const printWindow = {
+      document: {
+        readyState: "complete",
+        images: [{ complete: true, addEventListener: vi.fn() }],
+      },
+      addEventListener: vi.fn(),
+      focus: vi.fn(),
+      print,
+    };
+    schedulePrintWhenReady(printWindow as unknown as Window);
+    vi.advanceTimersByTime(3000);
+    expect(print).toHaveBeenCalledTimes(1);
   });
 
   it("settles when the print window is closed", () => {

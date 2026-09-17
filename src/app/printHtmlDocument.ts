@@ -133,7 +133,10 @@ export function watchPrintWindowSettled(printWindow: Window, onSettled?: () => v
 }
 
 export function schedulePrintWhenReady(targetWindow: Window, onAfterPrint?: () => void): void {
+  let started = false;
   const runPrint = () => {
+    if (started) return;
+    started = true;
     if (onAfterPrint) {
       try {
         targetWindow.addEventListener("afterprint", onAfterPrint, { once: true });
@@ -149,7 +152,10 @@ export function schedulePrintWhenReady(targetWindow: Window, onAfterPrint?: () =
     }
   };
 
+  let waiting = false;
   const waitForImages = () => {
+    if (started || waiting) return;
+    waiting = true;
     let doc: Document | null = null;
     try {
       doc = targetWindow.document;
