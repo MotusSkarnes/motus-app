@@ -112,6 +112,9 @@ describe("buildNutritionReportPrintHtml", () => {
     expect(html).toContain("https://motus.example/logo.svg");
     expect(html).toContain("@page { size: A4;");
     expect(html).toContain("grid-template-columns: 1fr 1fr 1fr");
+    expect(html).toContain("page-break-before: always");
+    expect(html).toContain('class="sheet-cards"');
+    expect(html).toContain('class="sheet-viz"');
     expect(html).toContain("Energi, makro og vann");
     expect(html).toContain('class="kicker">Motus');
     expect(html).toContain("linear-gradient(90deg, #30E3BE 0%, #D91278 100%)");
