@@ -81,6 +81,26 @@ export function skipFoodItem(
   return persistFoodLogState(memberId, nextState, dateKey, meals);
 }
 
+export function skipMealItems(
+  memberId: string,
+  state: MemberMealPlanState,
+  dateKey: string,
+  meals: MealPlanMeal[],
+  meal: MealPlanMeal,
+): MemberMealPlanState {
+  const ids = meal.items.map((item) => item.id).filter(Boolean);
+  if (!ids.length) return state;
+  const skipped = [...new Set([...(state.skippedFoodIds[dateKey] ?? []), ...ids])];
+  const remove = new Set(ids);
+  const logged = (state.loggedFoodIds[dateKey] ?? []).filter((id) => !remove.has(id));
+  const nextState: MemberMealPlanState = {
+    ...state,
+    skippedFoodIds: { ...state.skippedFoodIds, [dateKey]: skipped },
+    loggedFoodIds: { ...state.loggedFoodIds, [dateKey]: logged },
+  };
+  return persistFoodLogState(memberId, nextState, dateKey, meals);
+}
+
 export function unskipFoodItem(
   memberId: string,
   state: MemberMealPlanState,

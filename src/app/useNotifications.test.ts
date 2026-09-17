@@ -1002,3 +1002,82 @@ describe("useNotifications period plan alerts", () => {
     expect(result.current.memberUnreadCount).toBe(0);
   });
 });
+
+describe("useNotifications meal plan alerts", () => {
+  afterEach(() => {
+    window.localStorage.removeItem("motus.notifications.memberSeenMealPlanKeys");
+    window.localStorage.removeItem("motus.notifications.memberOpenedAlertIds");
+    window.localStorage.removeItem("motus_meal_plans_v1");
+  });
+
+  it("counts unread meal plan alerts and opens the nutrition tab", () => {
+    window.localStorage.setItem(
+      "motus_meal_plans_v1",
+      JSON.stringify({
+        "member-1": {
+          id: "mealplan-1",
+          memberId: "member-1",
+          title: "Uke 38",
+          notes: "Høyprotein",
+          createdAt: "2026-09-17",
+          updatedAt: new Date().toISOString(),
+          days: [
+            {
+              id: "day-1",
+              label: "Mandag",
+              meals: [
+                {
+                  id: "meal-1",
+                  name: "Frokost",
+                  items: [
+                    {
+                      id: "food-1",
+                      foodId: "havre",
+                      foodName: "Havregryn",
+                      grams: 80,
+                      nutritionPer100g: {
+                        kcal: 370,
+                        protein: 13,
+                        carbs: 60,
+                        fat: 7,
+                        fiber: 8,
+                        sugar: 1,
+                        saturatedFat: 1,
+                        sodium: 0,
+                      },
+                    },
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+      }),
+    );
+
+    let memberTab: MemberTab = "programs";
+    const { result } = renderHook(() =>
+      useNotifications({
+        messages: [],
+        programs: [],
+        logs: [],
+        members: [{ id: "member-1", name: "Test", email: "test@example.com" } as never],
+        memberViewId: "member-1",
+        setMemberTab: (tab) => {
+          memberTab = tab;
+        },
+      }),
+    );
+
+    const alert = result.current.memberVisibleAlerts.find((item) => item.kind === "meal-plan");
+    expect(alert).toBeDefined();
+    expect(alert?.isUnread).toBe(true);
+
+    act(() => {
+      result.current.openAlert(alert!);
+    });
+
+    expect(memberTab).toBe("nutrition");
+    expect(result.current.memberVisibleAlerts.find((item) => item.kind === "meal-plan")).toBeUndefined();
+  });
+});

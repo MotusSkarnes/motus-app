@@ -13,6 +13,7 @@ export type MemberNotificationPreferences = {
   openedMemberAlertIds: string[];
   seenMemberInspirationIds: string[];
   seenMemberPeriodPlanKeys: string[];
+  seenMemberMealPlanKeys: string[];
   dismissedMemberCheckInMonths: string[];
   memberInspirationBaselineAt: number;
   /** Skjulte badges som er «sett» (ingen popup på nytt på annen enhet). */
@@ -31,6 +32,7 @@ export function emptyMemberNotificationPreferences(): MemberNotificationPreferen
     openedMemberAlertIds: [],
     seenMemberInspirationIds: [],
     seenMemberPeriodPlanKeys: [],
+    seenMemberMealPlanKeys: [],
     dismissedMemberCheckInMonths: [],
     memberInspirationBaselineAt: 0,
     seenHiddenBadgeIds: [],
@@ -95,6 +97,11 @@ function normalizeMemberNotificationPreferences(raw: unknown): MemberNotificatio
     seenMemberPeriodPlanKeys: uniqueStrings(
       Array.isArray(record.seenMemberPeriodPlanKeys)
         ? record.seenMemberPeriodPlanKeys.filter((item): item is string => typeof item === "string")
+        : [],
+    ),
+    seenMemberMealPlanKeys: uniqueStrings(
+      Array.isArray(record.seenMemberMealPlanKeys)
+        ? record.seenMemberMealPlanKeys.filter((item): item is string => typeof item === "string")
         : [],
     ),
     dismissedMemberCheckInMonths: uniqueStrings(
@@ -199,6 +206,10 @@ export function syncMemberNotificationPrefsToLocalStorage(preferences: MemberNot
     JSON.stringify(preferences.seenMemberPeriodPlanKeys),
   );
   window.localStorage.setItem(
+    "motus.notifications.memberSeenMealPlanKeys",
+    JSON.stringify(preferences.seenMemberMealPlanKeys ?? []),
+  );
+  window.localStorage.setItem(
     "motus.notifications.memberDismissedCheckInMonths",
     JSON.stringify(preferences.dismissedMemberCheckInMonths),
   );
@@ -241,6 +252,10 @@ export function mergeMemberNotificationPreferences(
     seenMemberPeriodPlanKeys: uniqueStrings([
       ...(base.seenMemberPeriodPlanKeys ?? []),
       ...(other.seenMemberPeriodPlanKeys ?? []),
+    ]),
+    seenMemberMealPlanKeys: uniqueStrings([
+      ...(base.seenMemberMealPlanKeys ?? []),
+      ...(other.seenMemberMealPlanKeys ?? []),
     ]),
     dismissedMemberCheckInMonths: uniqueStrings([
       ...(base.dismissedMemberCheckInMonths ?? []),

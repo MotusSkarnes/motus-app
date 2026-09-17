@@ -6,7 +6,6 @@ import {
   Dumbbell,
   Droplets,
   Flame,
-  MoreHorizontal,
   Play,
   Plus,
   Share2,
@@ -63,6 +62,7 @@ import {
   setRecipePortionMultiplier,
   toggleShoppingChecked,
   skipFoodItem,
+  skipMealItems,
   unskipFoodItem,
   addMemberSavedMeal,
   addQuickFoodLogs,
@@ -75,7 +75,7 @@ import {
 import type { MemberSavedMeal } from "../../app/memberSavedMeals";
 import type { MealPlan, MealPlanDay, MealPlanFoodEntry, MealPlanMeal, MealPlanTargets } from "../../app/mealPlanTypes";
 import { useFoodBankItems } from "../../app/useFoodBankItems";
-import { Card, GradientButton } from "../../app/ui";
+import { Card, GradientButton, OutlineButton } from "../../app/ui";
 import { MotusFlameIcon } from "../MotusFlameIcon";
 import { MacroProgressBar } from "./MacroProgressBar";
 import { MacroProgressRing } from "./MacroProgressRing";
@@ -281,8 +281,7 @@ export function MemberMealPlanDashboard({ plan, memberId, onOpenAvoidances, onRe
   const [swapMeal, setSwapMeal] = useState<MealPlanMeal | null>(null);
   const [showShopping, setShowShopping] = useState(false);
   const [showCoachTips, setShowCoachTips] = useState(false);
-  const [expandedMealId, setExpandedMealId] = useState<string | null>(null);
-  const [mealMenuId, setMealMenuId] = useState<string | null>(null);
+  const [detailMealId, setDetailMealId] = useState<string | null>(null);
   const [saveLoggedMeal, setSaveLoggedMeal] = useState<{
     mealSlotId: string;
     mealLabel: string;
@@ -540,6 +539,14 @@ export function MemberMealPlanDashboard({ plan, memberId, onOpenAvoidances, onRe
     setRecipeViewServings(parseRecipeBaseServings(activeRecipe.body, activeRecipe.servings));
   }, [activeRecipeId, activeRecipe]);
 
+  useEffect(() => {
+    if (!detailMeal) return;
+    const recipeId = firstRecipeIdFromMeal(detailMeal, recipesById, recipeIdByTitleKey);
+    const recipe = recipeId ? recipesById.get(recipeId) : null;
+    if (!recipe) return;
+    setRecipeViewServings(parseRecipeBaseServings(recipe.body, recipe.servings));
+  }, [detailMeal, recipeIdByTitleKey, recipesById]);
+
   const handleRecipePortionChange = useCallback(
     (entryId: string, next: number) => {
       setTracking((prev) => setRecipePortionMultiplier(memberId, prev, entryId, next));
@@ -632,6 +639,14 @@ export function MemberMealPlanDashboard({ plan, memberId, onOpenAvoidances, onRe
     [memberId, selectedDateKey, selectedMealsResolved],
   );
 
+  const handleSkipMeal = useCallback(
+    (meal: MealPlanMeal) => {
+      setTracking((prev) => skipMealItems(memberId, prev, selectedDateKey, selectedMealsResolved, meal));
+      setDetailMealId(null);
+    },
+    [memberId, selectedDateKey, selectedMealsResolved],
+  );
+
   const handleUnskipFood = useCallback(
     (foodEntryId: string) => {
       setTracking((prev) =>
@@ -668,7 +683,6 @@ export function MemberMealPlanDashboard({ plan, memberId, onOpenAvoidances, onRe
       });
       setTracking((prev) => addQuickFoodLogs(memberId, prev, selectedDateKey, entries));
       setDraftByMealId((prev) => ({ ...prev, [mealId]: [] }));
-      setExpandedMealId(mealId);
     },
     [foodItems, memberId, selectedDateKey],
   );
@@ -709,6 +723,7 @@ export function MemberMealPlanDashboard({ plan, memberId, onOpenAvoidances, onRe
   const displayMacros = isSelectedToday ? displayMacrosToday : displayMacrosProgress;
   const planMealIds = useMemo(() => new Set(displayMeals.map((meal) => meal.id)), [displayMeals]);
   const outsidePlanLogs = useMemo(() => logsOutsidePlanMeals(displayQuickLogs, planMealIds), [displayQuickLogs, planMealIds]);
+  const detailMeal = detailMealId ? displayMeals.find((meal) => meal.id === detailMealId) ?? null : null;
 
   const handleShareDay = useCallback(async () => {
     const summary = `${isSelectedToday ? "I dag" : selectedDay?.label ?? "Dagen"}: ${mealsCompletedCount}/${mealsTotalCount || 0} måltider logget · ${formatMacro(displayMacrosToday.kcal, 0)} kcal · ${formatMacro(displayMacrosToday.protein, 0)} g protein`;
@@ -733,7 +748,7 @@ export function MemberMealPlanDashboard({ plan, memberId, onOpenAvoidances, onRe
   ]);
 
   useEffect(() => {
-    const modalOpen = Boolean(activeRecipe || showCoachTips || swapMeal);
+    const modalOpen = Boolean(activeRecipe || showCoachTips || swapMeal || detailMealId);
     if (!modalOpen) return;
     const previousOverflow = document.body.style.overflow;
     const previousOverscroll = document.body.style.overscrollBehavior;
@@ -743,20 +758,11 @@ export function MemberMealPlanDashboard({ plan, memberId, onOpenAvoidances, onRe
       document.body.style.overflow = previousOverflow;
       document.body.style.overscrollBehavior = previousOverscroll;
     };
-  }, [activeRecipe, showCoachTips, swapMeal]);
+  }, [activeRecipe, detailMealId, showCoachTips, swapMeal]);
 
   useEffect(() => {
-    if (!mealMenuId) return;
-    const handlePointerDown = (event: MouseEvent) => {
-      const root = mealSectionRef.current;
-      if (!root) return;
-      const target = event.target;
-      if (!(target instanceof Node)) return;
-      if (!root.contains(target)) setMealMenuId(null);
-    };
-    document.addEventListener("mousedown", handlePointerDown);
-    return () => document.removeEventListener("mousedown", handlePointerDown);
-  }, [mealMenuId]);
+    setDetailMealId(null);
+  }, [selectedDateKey]);
 
   return (
     <div className="motus-matplan motus-matplan--v2 motus-fade-in-up">
@@ -904,7 +910,6 @@ export function MemberMealPlanDashboard({ plan, memberId, onOpenAvoidances, onRe
         <div className="motus-matplan-meals motus-matplan-meals--v2">
           {displayMeals.map((meal) => {
             const activeItems = meal.items.filter((item) => !displaySkippedFood.has(item.id));
-            const skippedItems = meal.items.filter((item) => displaySkippedFood.has(item.id));
             const selfLogs = mealSelfLogs(displayQuickLogs, meal.id);
             const saveEntries = loggedMealEntriesFromPlanMeal(meal, displayLoggedFood, displaySkippedFood, selfLogs);
             const slotLabel = mealSlotLabel(meal.name);
@@ -919,13 +924,9 @@ export function MemberMealPlanDashboard({ plan, memberId, onOpenAvoidances, onRe
             const logged = isMealComplete(meal, displaySkippedFood, displayLoggedFood, selfLogs);
             const hasPartialLog =
               (activeItems.length > 0 && loggedFoodCount > 0 && !logged) || (hasSelfLogs && !logged);
-            const recipeId = firstRecipeIdFromMeal(meal, recipesById, recipeIdByTitleKey);
-            const hasRecipe = Boolean(recipeId && recipesById.has(recipeId));
             const imageSrc = resolveMealImage(meal);
             const isSwapped = Boolean(tracking.mealSwaps[mealSwapKey(selectedDateKey, meal.id)]);
             const prepMeta = mealPrepMeta(activeItems.length || selfLogs.length);
-            const isExpanded = expandedMealId === meal.id;
-            const menuOpen = mealMenuId === meal.id;
             const cardTitle = hasSelfLogs && !hasPlanFood
               ? selfLogs.length === 1
                 ? selfLogs[0].name
@@ -937,7 +938,8 @@ export function MemberMealPlanDashboard({ plan, memberId, onOpenAvoidances, onRe
             return (
               <article
                 key={meal.id}
-                className={`motus-matplan-meal-card motus-matplan-meal-card--v2 ${isExpanded ? "motus-matplan-meal-card--expanded" : ""} ${logged ? "motus-matplan-meal-card--logged" : ""} ${hasPartialLog ? "motus-matplan-meal-card--partial" : ""}`}
+                className={`motus-matplan-meal-card motus-matplan-meal-card--v2 ${logged ? "motus-matplan-meal-card--logged" : ""} ${hasPartialLog ? "motus-matplan-meal-card--partial" : ""}`}
+                onClick={() => setDetailMealId(meal.id)}
               >
                 <div className="motus-matplan-meal-card__media">
                   <RecipePhoto src={imageSrc} size="thumb" alt="" />
@@ -949,67 +951,14 @@ export function MemberMealPlanDashboard({ plan, memberId, onOpenAvoidances, onRe
                       {saveEntries.length > 0 ? (
                         <SaveLoggedMealCopyButton
                           mealLabel={slotLabel}
-                          onClick={() =>
+                          onClick={() => {
                             setSaveLoggedMeal({
                               mealSlotId: canonicalMemberMealSlotId(meal.id, meal.name) ?? meal.id,
                               mealLabel: slotLabel,
                               entries: saveEntries,
-                            })
-                          }
+                            });
+                          }}
                         />
-                      ) : null}
-                    </div>
-                    <div className="relative">
-                      <button
-                        type="button"
-                        className="motus-matplan-meal-card__menu motus-pressable"
-                        aria-label={`Meny for ${meal.name}`}
-                        aria-expanded={menuOpen}
-                        onClick={() => setMealMenuId(menuOpen ? null : meal.id)}
-                      >
-                        <MoreHorizontal className="h-4 w-4" aria-hidden />
-                      </button>
-                      {menuOpen ? (
-                        <div className="motus-matplan-meal-card__dropdown">
-                          {hasPlanFood ? (
-                            <button type="button" className="motus-pressable" onClick={() => { setSwapMeal(meal); setMealMenuId(null); }}>
-                              Bytt måltid
-                            </button>
-                          ) : null}
-                          <button
-                            type="button"
-                            className="motus-pressable"
-                            onClick={() => {
-                              setExpandedMealId(isExpanded ? null : meal.id);
-                              setMealMenuId(null);
-                            }}
-                          >
-                            {isExpanded ? "Skjul detaljer" : hasFood ? "Vis matvarer" : "Logg mat"}
-                          </button>
-                          <button
-                            type="button"
-                            className="motus-pressable"
-                            onClick={() => {
-                              setExpandedMealId(meal.id);
-                              setMealMenuId(null);
-                            }}
-                          >
-                            Logg noe annet
-                          </button>
-                          {hasRecipe && recipeId && hasPlanFood ? (
-                            <button
-                              type="button"
-                              className="motus-pressable"
-                              onClick={() => {
-                                setActiveRecipeId(recipeId);
-                                setActiveRecipeMealSlotId(canonicalMemberMealSlotId(meal.id, meal.name));
-                                setMealMenuId(null);
-                              }}
-                            >
-                              Se oppskrift
-                            </button>
-                          ) : null}
-                        </div>
                       ) : null}
                     </div>
                   </div>
@@ -1038,121 +987,22 @@ export function MemberMealPlanDashboard({ plan, memberId, onOpenAvoidances, onRe
                     </>
                   ) : (
                     <p className="motus-matplan-meal-card__macros motus-matplan-meal-card__macros--muted">
-                      Trykk ⋮ for å logge det du spiste
+                      Trykk for å se retten og logge
                     </p>
                   )}
                 </div>
                 <button
                   type="button"
                   className={`motus-matplan-meal-card__check motus-pressable ${logged ? "motus-matplan-meal-card__check--done" : ""}`}
-                  onClick={() => hasPlanFood && handleToggleMeal(meal)}
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    if (hasPlanFood) handleToggleMeal(meal);
+                  }}
                   disabled={!hasPlanFood}
                   aria-label={logged ? `Måltid fullført` : hasPlanFood ? `Logg ${meal.name}` : `Logg mat for ${meal.name}`}
                 >
                   {logged ? <Check className="h-4 w-4" strokeWidth={3} aria-hidden /> : null}
                 </button>
-                {isExpanded ? (
-                  <div className="motus-matplan-meal-detail">
-                      {hasPlanFood ? (
-                        <ul className="motus-matplan-meal-foods">
-                          {activeItems.map((item) => {
-                            const foodLogged = displayLoggedFood.has(item.id);
-                            return (
-                              <li
-                                key={item.id}
-                                className={`motus-matplan-meal-food ${foodLogged ? "motus-matplan-meal-food--logged" : ""}`}
-                              >
-                                <div className="motus-matplan-meal-food-main">
-                                  <span className="motus-matplan-meal-food-name">{item.foodName}</span>
-                                  <span className="motus-matplan-meal-food-grams">
-                                    {formatMealEntryAmount(item.foodId, item.grams, item.note)}
-                                  </span>
-                                </div>
-                                <div className="motus-matplan-meal-food-actions">
-                                  {foodLogged ? (
-                                    <button
-                                      type="button"
-                                      className="motus-matplan-food-remove motus-pressable"
-                                      onClick={() => handleRemoveFood(item.id)}
-                                      aria-label={`Fjern ${item.foodName} fra logg`}
-                                    >
-                                      Fjern
-                                    </button>
-                                  ) : (
-                                    <>
-                                      <button
-                                        type="button"
-                                        className="motus-matplan-food-log motus-pressable"
-                                        onClick={() => handleToggleFood(item.id)}
-                                        aria-label={`Logg ${item.foodName}`}
-                                      >
-                                        Logg
-                                      </button>
-                                      <button
-                                        type="button"
-                                        className="motus-matplan-food-skip motus-pressable"
-                                        onClick={() => handleSkipFood(item.id)}
-                                        aria-label={`Hopp over ${item.foodName} fra planen`}
-                                      >
-                                        Hopp over
-                                      </button>
-                                    </>
-                                  )}
-                                </div>
-                              </li>
-                            );
-                          })}
-                        </ul>
-                      ) : null}
-                      {skippedItems.length > 0 ? (
-                        <ul className="motus-matplan-meal-foods motus-matplan-meal-foods--skipped">
-                          {skippedItems.map((item) => (
-                            <li key={item.id} className="motus-matplan-meal-food motus-matplan-meal-food--skipped">
-                              <div className="motus-matplan-meal-food-main">
-                                <span className="motus-matplan-meal-food-name">{item.foodName}</span>
-                                <span className="motus-matplan-meal-food-grams">Hoppet over</span>
-                              </div>
-                              <div className="motus-matplan-meal-food-actions">
-                                <button
-                                  type="button"
-                                  className="motus-matplan-food-log motus-pressable"
-                                  onClick={() => handleUnskipFood(item.id)}
-                                  aria-label={`Legg ${item.foodName} tilbake i planen`}
-                                >
-                                  Legg tilbake
-                                </button>
-                              </div>
-                            </li>
-                          ))}
-                        </ul>
-                      ) : null}
-                      {selfLogs.length > 0 ? (
-                        <ul className="motus-matplan-meal-foods motus-matplan-meal-foods--self">
-                          {selfLogs.map((entry) => (
-                            <LoggedQuickFoodEntryRow
-                              key={entry.id}
-                              entry={entry}
-                              compact
-                              onSave={(patch) => handleUpdateSelfLog(entry.id, patch)}
-                              onRemove={() => handleRemoveSelfLog(entry)}
-                            />
-                          ))}
-                        </ul>
-                      ) : null}
-                      <MealDraftComposer
-                        compact
-                        mealSlotId={meal.id}
-                        mealSlotLabel={mealSlotLabel(meal.name)}
-                        draftItems={draftByMealId[meal.id] ?? []}
-                        onDraftChange={(items) => setDraftByMealId((prev) => ({ ...prev, [meal.id]: items }))}
-                        savedMeals={savedMeals}
-                        onSaveTemplate={handleSaveSavedMeal}
-                        onDeleteSaved={handleDeleteSavedMeal}
-                        onCommitLog={() => handleCommitMealDraft(meal.id, draftByMealId[meal.id] ?? [])}
-                        foodItems={foodItems}
-                      />
-                  </div>
-                ) : null}
               </article>
             );
           })}
@@ -1328,6 +1178,183 @@ export function MemberMealPlanDashboard({ plan, memberId, onOpenAvoidances, onRe
       ) : null}
 
       {/* Swap modal */}
+      {/* Meal detail modal */}
+      {detailMeal ? (() => {
+        const meal = detailMeal;
+        const activeItems = meal.items.filter((item) => !displaySkippedFood.has(item.id));
+        const skippedItems = meal.items.filter((item) => displaySkippedFood.has(item.id));
+        const selfLogs = mealSelfLogs(displayQuickLogs, meal.id);
+        const hasPlanFood = activeItems.length > 0;
+        const logged = isMealComplete(meal, displaySkippedFood, displayLoggedFood, selfLogs);
+        const recipeId = firstRecipeIdFromMeal(meal, recipesById, recipeIdByTitleKey);
+        const detailRecipe = recipeId ? recipesById.get(recipeId) ?? null : null;
+        const slotLabel = mealSlotLabel(meal.name);
+        const imageSrc = resolveMealImage(meal);
+        return (
+          <div className="motus-foodbank-modal-backdrop motus-modal-insets motus-matplan-meal-detail-backdrop" role="presentation" onClick={() => setDetailMealId(null)}>
+            <div
+              className="motus-foodbank-modal motus-foodbank-modal--wide motus-matplan-meal-detail-modal"
+              role="dialog"
+              aria-label={mealDisplayTitle(meal)}
+              onClick={(event) => event.stopPropagation()}
+            >
+              <div className="motus-foodbank-modal-head">
+                <div className="min-w-0">
+                  <p className="motus-matplan-meal-card__slot">{slotLabel}</p>
+                  <h3>{mealDisplayTitle({ ...meal, items: activeItems.length ? activeItems : meal.items })}</h3>
+                </div>
+                <button
+                  type="button"
+                  className="motus-foodbank-icon-btn"
+                  onClick={() => setDetailMealId(null)}
+                  aria-label="Lukk"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+              <div className="motus-foodbank-modal-body motus-matplan-meal-detail-modal__body">
+                <div className="motus-matplan-meal-detail-modal__actions">
+                  {hasPlanFood ? (
+                    <OutlineButton
+                      type="button"
+                      onClick={() => {
+                        setSwapMeal(meal);
+                        setDetailMealId(null);
+                      }}
+                    >
+                      Bytt måltid
+                    </OutlineButton>
+                  ) : null}
+                  {hasPlanFood ? (
+                    <OutlineButton type="button" onClick={() => handleSkipMeal(meal)}>
+                      Fjern fra i dag
+                    </OutlineButton>
+                  ) : null}
+                  <GradientButton
+                    type="button"
+                    disabled={!hasPlanFood}
+                    onClick={() => {
+                      if (!hasPlanFood) return;
+                      handleToggleMeal(meal);
+                      if (!logged) setDetailMealId(null);
+                    }}
+                  >
+                    {logged ? "Angre fullført" : "Fullfør"}
+                  </GradientButton>
+                </div>
+                {imageSrc ? <RecipePhoto src={imageSrc} size="hero" alt="" /> : null}
+                {hasPlanFood ? (
+                  <ul className="motus-matplan-meal-foods">
+                    {activeItems.map((item) => {
+                      const foodLogged = displayLoggedFood.has(item.id);
+                      return (
+                        <li
+                          key={item.id}
+                          className={`motus-matplan-meal-food ${foodLogged ? "motus-matplan-meal-food--logged" : ""}`}
+                        >
+                          <div className="motus-matplan-meal-food-main">
+                            <span className="motus-matplan-meal-food-name">{item.foodName}</span>
+                            <span className="motus-matplan-meal-food-grams">
+                              {formatMealEntryAmount(item.foodId, item.grams, item.note)}
+                            </span>
+                          </div>
+                          <div className="motus-matplan-meal-food-actions">
+                            {foodLogged ? (
+                              <button
+                                type="button"
+                                className="motus-matplan-food-remove motus-pressable"
+                                onClick={() => handleRemoveFood(item.id)}
+                                aria-label={`Fjern ${item.foodName} fra logg`}
+                              >
+                                Fjern
+                              </button>
+                            ) : (
+                              <>
+                                <button
+                                  type="button"
+                                  className="motus-matplan-food-log motus-pressable"
+                                  onClick={() => handleToggleFood(item.id)}
+                                  aria-label={`Logg ${item.foodName}`}
+                                >
+                                  Logg
+                                </button>
+                                <button
+                                  type="button"
+                                  className="motus-matplan-food-skip motus-pressable"
+                                  onClick={() => handleSkipFood(item.id)}
+                                  aria-label={`Hopp over ${item.foodName} fra planen`}
+                                >
+                                  Hopp over
+                                </button>
+                              </>
+                            )}
+                          </div>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                ) : null}
+                {skippedItems.length > 0 ? (
+                  <ul className="motus-matplan-meal-foods motus-matplan-meal-foods--skipped">
+                    {skippedItems.map((item) => (
+                      <li key={item.id} className="motus-matplan-meal-food motus-matplan-meal-food--skipped">
+                        <div className="motus-matplan-meal-food-main">
+                          <span className="motus-matplan-meal-food-name">{item.foodName}</span>
+                          <span className="motus-matplan-meal-food-grams">Hoppet over</span>
+                        </div>
+                        <div className="motus-matplan-meal-food-actions">
+                          <button
+                            type="button"
+                            className="motus-matplan-food-log motus-pressable"
+                            onClick={() => handleUnskipFood(item.id)}
+                            aria-label={`Legg ${item.foodName} tilbake i planen`}
+                          >
+                            Legg tilbake
+                          </button>
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                ) : null}
+                {selfLogs.length > 0 ? (
+                  <ul className="motus-matplan-meal-foods motus-matplan-meal-foods--self">
+                    {selfLogs.map((entry) => (
+                      <LoggedQuickFoodEntryRow
+                        key={entry.id}
+                        entry={entry}
+                        compact
+                        onSave={(patch) => handleUpdateSelfLog(entry.id, patch)}
+                        onRemove={() => handleRemoveSelfLog(entry)}
+                      />
+                    ))}
+                  </ul>
+                ) : null}
+                {detailRecipe ? (
+                  <RecipeCookPanel
+                    item={detailRecipe}
+                    foodItems={foodItems}
+                    viewServings={recipeViewServings}
+                    onViewServingsChange={setRecipeViewServings}
+                  />
+                ) : null}
+                <MealDraftComposer
+                  compact
+                  mealSlotId={meal.id}
+                  mealSlotLabel={mealSlotLabel(meal.name)}
+                  draftItems={draftByMealId[meal.id] ?? []}
+                  onDraftChange={(items) => setDraftByMealId((prev) => ({ ...prev, [meal.id]: items }))}
+                  savedMeals={savedMeals}
+                  onSaveTemplate={handleSaveSavedMeal}
+                  onDeleteSaved={handleDeleteSavedMeal}
+                  onCommitLog={() => handleCommitMealDraft(meal.id, draftByMealId[meal.id] ?? [])}
+                  foodItems={foodItems}
+                />
+              </div>
+            </div>
+          </div>
+        );
+      })() : null}
+
       {swapMeal ? (
         <div className="motus-foodbank-modal-backdrop" role="presentation" onClick={() => setSwapMeal(null)}>
           <div

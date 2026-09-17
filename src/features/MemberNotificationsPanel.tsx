@@ -1,4 +1,4 @@
-import { CalendarDays, ChevronRight, ClipboardList, ClipboardPenLine, MessageSquare, Sparkles, TrendingUp } from "lucide-react";
+import { CalendarDays, ChevronRight, ClipboardList, ClipboardPenLine, MessageSquare, Sparkles, TrendingUp, UtensilsCrossed } from "lucide-react";
 import { MOTUS } from "../app/data";
 import { formatNotificationTimestamp } from "../app/dateFormat";
 import type { MemberAlert } from "../app/useNotifications";
@@ -62,7 +62,9 @@ export function MemberNotificationsPanel({
                   ? ClipboardPenLine
                   : alert.kind === "period-plan"
                     ? CalendarDays
-                    : ClipboardList;
+                    : alert.kind === "meal-plan"
+                      ? UtensilsCrossed
+                      : ClipboardList;
         const isUnread = alert.isUnread;
         const isOpened = alert.isOpened && !isUnread;
         const isRead = !isUnread;

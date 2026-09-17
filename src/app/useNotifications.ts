@@ -37,6 +37,9 @@ import {
   type TrainerNotificationPreferences,
 } from "./notificationPreferences";
 import { isSupabaseConfigured, supabaseClient } from "../services/supabaseClient";
+import { countMealPlanFoodItems } from "./mealPlanCloud";
+import { MEAL_PLAN_CHANGED_EVENT, loadMealPlanForMember } from "./mealPlanStorage";
+import type { MealPlan } from "./mealPlanTypes";
 
 const MEMBER_INSPIRATION_BASELINE_KEY = "motus.notifications.memberInspirationBaselineAt";
 const TRAINER_NOTIFICATIONS_BASELINE_KEY = "motus.notifications.trainerBaselineAt";
@@ -51,12 +54,12 @@ const TRAINER_OPERATIONAL_ALERT_IDS = {
 
 export type MemberAlert = {
   id: string;
-  kind: "message" | "program" | "workout-comment" | "inspiration" | "check-in" | "period-plan";
+  kind: "message" | "program" | "workout-comment" | "inspiration" | "check-in" | "period-plan" | "meal-plan";
   title: string;
   text: string;
   detail: string;
   timestamp: number;
-  targetTab: "messages" | "programs" | "progress" | "inspiration";
+  targetTab: "messages" | "programs" | "progress" | "inspiration" | "overview" | "nutrition";
   isUnread: boolean;
   isOpened: boolean;
   inspirationItemId?: string;
@@ -136,6 +139,25 @@ function memberPeriodPlanSeenKey(plan: PeriodSchedulePlan): string {
   return `${plan.id}:${version}`;
 }
 
+function memberMealPlanSeenKey(plan: MealPlan): string {
+  return plan.memberId.trim() || plan.id;
+}
+
+function mealPlanAlertTimestamp(plan: MealPlan, fallbackOrder: number): number {
+  const iso = plan.updatedAt?.trim() || plan.createdAt?.trim();
+  if (iso) {
+    const parsed = Date.parse(iso);
+    if (Number.isFinite(parsed) && parsed > 0) return Math.min(parsed, Date.now());
+  }
+  return alertTimestamp(plan.createdAt, fallbackOrder);
+}
+
+function loadMemberMealPlanForAlert(memberId: string): MealPlan | null {
+  const plan = loadMealPlanForMember(memberId);
+  if (!plan || countMealPlanFoodItems(plan) === 0) return null;
+  return plan;
+}
+
 function periodPlanAlertTimestamp(plan: PeriodSchedulePlan, fallbackOrder: number): number {
   const iso = plan.trainerSavedAtIso?.trim();
   if (iso) {
@@ -148,7 +170,7 @@ function periodPlanAlertTimestamp(plan: PeriodSchedulePlan, fallbackOrder: numbe
 function readMemberTabFromLocation(): MemberTab | null {
   if (typeof window === "undefined") return null;
   const tab = new URLSearchParams(window.location.search).get("memberTab")?.trim();
-  if (tab === "overview" || tab === "programs" || tab === "progress" || tab === "messages" || tab === "profile" || tab === "inspiration") {
+  if (tab === "overview" || tab === "programs" || tab === "progress" || tab === "messages" || tab === "profile" || tab === "inspiration" || tab === "nutrition") {
     return tab;
   }
   return null;
@@ -323,8 +345,29 @@ export function useNotifications({
       return [];
     }
   });
+  const [seenMemberMealPlanKeys, setSeenMemberMealPlanKeys] = useState<string[]>(() => {
+    if (typeof window === "undefined") return [];
+    try {
+      const raw = window.localStorage.getItem("motus.notifications.memberSeenMealPlanKeys");
+      const parsed = JSON.parse(raw ?? "[]");
+      return Array.isArray(parsed) ? parsed.filter((item): item is string => typeof item === "string") : [];
+    } catch {
+      return [];
+    }
+  });
 
   const lastMergedTrainerRemoteUpdatedAtRef = useRef(0);
+  const [memberMealPlan, setMemberMealPlan] = useState<MealPlan | null>(() =>
+    loadMemberMealPlanForAlert(memberViewId),
+  );
+
+  useEffect(() => {
+    const refresh = () => setMemberMealPlan(loadMemberMealPlanForAlert(memberViewId));
+    refresh();
+    if (typeof window === "undefined") return;
+    window.addEventListener(MEAL_PLAN_CHANGED_EVENT, refresh);
+    return () => window.removeEventListener(MEAL_PLAN_CHANGED_EVENT, refresh);
+  }, [memberViewId]);
 
   const buildMemberNotificationSnapshot = useCallback((): MemberNotificationPreferences => {
     return {
@@ -335,6 +378,7 @@ export function useNotifications({
       openedMemberAlertIds,
       seenMemberInspirationIds,
       seenMemberPeriodPlanKeys,
+      seenMemberMealPlanKeys,
       dismissedMemberCheckInMonths,
       memberInspirationBaselineAt: readMemberInspirationBaselineAt(),
       updatedAt: Date.now(),
@@ -346,6 +390,7 @@ export function useNotifications({
     openedMemberAlertIds,
     seenMemberInspirationIds,
     seenMemberPeriodPlanKeys,
+    seenMemberMealPlanKeys,
     dismissedMemberCheckInMonths,
   ]);
 
@@ -362,6 +407,7 @@ export function useNotifications({
     setOpenedMemberAlertIds(preferences.openedMemberAlertIds);
     setSeenMemberInspirationIds(preferences.seenMemberInspirationIds);
     setSeenMemberPeriodPlanKeys(preferences.seenMemberPeriodPlanKeys ?? []);
+    setSeenMemberMealPlanKeys(preferences.seenMemberMealPlanKeys ?? []);
     setDismissedMemberCheckInMonths(preferences.dismissedMemberCheckInMonths);
     if (typeof window !== "undefined") {
       syncMemberNotificationPrefsToLocalStorage(preferences);
@@ -765,6 +811,25 @@ export function useNotifications({
     [memberAlertsSeenAt, remoteMemberPeriodPlanRows, memberViewId, seenMemberPeriodPlanKeys],
   );
 
+  const memberMealPlanAlerts = useMemo(() => {
+    if (!memberMealPlan) return [];
+    const seenKey = memberMealPlanSeenKey(memberMealPlan);
+    const timestamp = mealPlanAlertTimestamp(memberMealPlan, 1);
+    return [
+      {
+        id: `member-meal-plan-${seenKey}`,
+        kind: "meal-plan" as const,
+        title: "Ny matplan",
+        text: memberMealPlan.title.trim() || "Matplan",
+        detail: memberMealPlan.notes.trim() || "Planen er klar under Ernæring.",
+        timestamp,
+        targetTab: "nutrition" as const,
+        unread: timestamp > memberAlertsSeenAt && !seenMemberMealPlanKeys.includes(seenKey),
+        seenKey,
+      },
+    ];
+  }, [memberAlertsSeenAt, memberMealPlan, seenMemberMealPlanKeys]);
+
   const memberInspirationBaselineAt = readMemberInspirationBaselineAt();
   const memberInspirationAlerts = useMemo(
     () =>
@@ -878,6 +943,18 @@ export function useNotifications({
         isOpened: openedMemberAlertIds.includes(alert.id),
         seenKey: alert.seenKey,
       })),
+      ...memberMealPlanAlerts.map((alert) => ({
+        id: alert.id,
+        kind: alert.kind,
+        title: alert.title,
+        text: alert.text,
+        detail: alert.detail,
+        timestamp: alert.timestamp,
+        targetTab: alert.targetTab,
+        isUnread: alert.unread,
+        isOpened: openedMemberAlertIds.includes(alert.id),
+        seenKey: alert.seenKey,
+      })),
     ];
     return sortAlertsForDisplay(combined.filter((alert) => alert.isUnread)).slice(0, ALERT_HISTORY_LIMIT);
   }, [
@@ -886,6 +963,7 @@ export function useNotifications({
     memberWorkoutCommentAlerts,
     memberInspirationAlerts,
     memberPeriodPlanAlerts,
+    memberMealPlanAlerts,
     memberCheckInAlert,
     openedMemberAlertIds,
   ]);
@@ -1006,6 +1084,7 @@ export function useNotifications({
     const nextWorkoutCommentKeys = new Set(seenMemberWorkoutCommentKeys);
     const nextInspirationIds = new Set(seenMemberInspirationIds);
     const nextPeriodPlanKeys = new Set(seenMemberPeriodPlanKeys);
+    const nextMealPlanKeys = new Set(seenMemberMealPlanKeys);
     const nextDismissedCheckInMonths = new Set(dismissedMemberCheckInMonths);
 
     for (const alert of memberUnreadAlerts) {
@@ -1029,6 +1108,10 @@ export function useNotifications({
       } else if (alert.kind === "period-plan") {
         const periodAlert = memberPeriodPlanAlerts.find((item) => item.id === alert.id);
         if (periodAlert?.seenKey) nextPeriodPlanKeys.add(periodAlert.seenKey);
+      } else if (alert.kind === "meal-plan") {
+        const mealAlert = memberMealPlanAlerts.find((item) => item.id === alert.id);
+        if (mealAlert?.seenKey) nextMealPlanKeys.add(mealAlert.seenKey);
+        if (alert.seenKey) nextMealPlanKeys.add(alert.seenKey);
       }
     }
 
@@ -1038,16 +1121,19 @@ export function useNotifications({
     setSeenMemberWorkoutCommentKeys(Array.from(nextWorkoutCommentKeys));
     setSeenMemberInspirationIds(Array.from(nextInspirationIds));
     setSeenMemberPeriodPlanKeys(Array.from(nextPeriodPlanKeys));
+    setSeenMemberMealPlanKeys(Array.from(nextMealPlanKeys));
     setDismissedMemberCheckInMonths(Array.from(nextDismissedCheckInMonths));
   }, [
     dismissedMemberCheckInMonths,
     memberAlertsSeenAt,
     memberPeriodPlanAlerts,
+    memberMealPlanAlerts,
     memberUnreadAlerts,
     memberWorkoutCommentAlerts,
     openedMemberAlertIds,
     seenMemberInspirationIds,
     seenMemberPeriodPlanKeys,
+    seenMemberMealPlanKeys,
     seenMemberProgramIds,
     seenMemberWorkoutCommentKeys,
   ]);
@@ -1091,6 +1177,13 @@ export function useNotifications({
       const periodAlert = memberPeriodPlanAlerts.find((item) => item.id === alert.id);
       if (periodAlert?.seenKey) {
         setSeenMemberPeriodPlanKeys((prev) => Array.from(new Set([...prev, periodAlert.seenKey])));
+      }
+      setOpenedMemberAlertIds((prev) => Array.from(new Set([...prev, alert.id])));
+    } else if (alert.kind === "meal-plan") {
+      const mealAlert = memberMealPlanAlerts.find((item) => item.id === alert.id);
+      const key = mealAlert?.seenKey ?? alert.seenKey;
+      if (key) {
+        setSeenMemberMealPlanKeys((prev) => Array.from(new Set([...prev, key])));
       }
       setOpenedMemberAlertIds((prev) => Array.from(new Set([...prev, alert.id])));
     }
@@ -1146,6 +1239,11 @@ export function useNotifications({
     if (typeof window === "undefined") return;
     window.localStorage.setItem("motus.notifications.memberSeenPeriodPlanKeys", JSON.stringify(seenMemberPeriodPlanKeys));
   }, [seenMemberPeriodPlanKeys]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    window.localStorage.setItem("motus.notifications.memberSeenMealPlanKeys", JSON.stringify(seenMemberMealPlanKeys));
+  }, [seenMemberMealPlanKeys]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -1209,6 +1307,7 @@ export function useNotifications({
     openedMemberAlertIds,
     seenMemberInspirationIds,
     seenMemberPeriodPlanKeys,
+    seenMemberMealPlanKeys,
     seenMemberProgramIds,
     seenMemberWorkoutCommentKeys,
   ]);

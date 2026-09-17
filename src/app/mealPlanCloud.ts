@@ -380,7 +380,32 @@ export async function saveMealPlanToSupabase(
     }
     return false;
   }
+  notifyMemberMealPlanPush(plan);
   return true;
+}
+
+const mealPlanPushAtByMember = new Map<string, number>();
+const MEAL_PLAN_PUSH_DEBOUNCE_MS = 2 * 60 * 1000;
+
+function isNotifiableMealPlanMemberId(memberId: string): boolean {
+  const id = memberId.trim();
+  return Boolean(id) && id !== "__template__" && !id.startsWith("auth-");
+}
+
+/** Push once per member within a short window so autosave does not spam. */
+export function notifyMemberMealPlanPush(plan: MealPlan): void {
+  if (!supabaseClient || !isSupabaseConfigured) return;
+  if (!isNotifiableMealPlanMemberId(plan.memberId)) return;
+  if (countMealPlanFoodItems(plan) === 0) return;
+  const memberId = plan.memberId.trim();
+  const now = Date.now();
+  const last = mealPlanPushAtByMember.get(memberId) ?? 0;
+  if (now - last < MEAL_PLAN_PUSH_DEBOUNCE_MS) return;
+  mealPlanPushAtByMember.set(memberId, now);
+  const title = plan.title.trim() || "Matplan";
+  void supabaseClient.functions.invoke("send-meal-plan-push", {
+    body: { memberId, planTitle: title },
+  });
 }
 
 let saveTimer: ReturnType<typeof setTimeout> | null = null;

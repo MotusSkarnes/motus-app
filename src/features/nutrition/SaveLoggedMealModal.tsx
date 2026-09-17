@@ -25,7 +25,10 @@ export function SaveLoggedMealCopyButton({ mealLabel, onClick, className = "" }:
     <button
       type="button"
       className={`motus-save-logged-meal__copy motus-pressable ${className}`.trim()}
-      onClick={onClick}
+      onClick={(event) => {
+        event.stopPropagation();
+        onClick();
+      }}
       aria-label={`Lagre ${mealLabel} som måltid`}
       title="Lagre som måltid"
     >
