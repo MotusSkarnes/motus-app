@@ -63,7 +63,7 @@ export function TrainerRecipesPanel({ members, authorName = "Motus PT" }: Traine
     );
     setDeleting(false);
     if (!result.ok) {
-      setStatus(result.error ?? "Kunne ikke slette oppskriften.");
+      setStatus(result.error ?? "Kunne ikke slette måltidet.");
       return;
     }
     if (editItem?.id === pendingDelete.id || duplicateFromItem?.id === pendingDelete.id) {
@@ -78,12 +78,12 @@ export function TrainerRecipesPanel({ members, authorName = "Motus PT" }: Traine
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="text-sm text-slate-600">
-          Oppskrifter for medlemmer og matplan. Klikk <strong>Ny oppskrift</strong> for å legge til ingredienser, antall
+          Måltider for medlemmer og matplan. Klikk <strong>Nytt måltid</strong> for å legge til ingredienser, antall
           porsjoner og fremgangsmåte — næringsinnhold per porsjon oppdateres automatisk.
         </p>
         <GradientButton type="button" className="text-sm" onClick={openCreate}>
           <Plus className="mr-1.5 h-4 w-4" aria-hidden />
-          Ny oppskrift
+          Nytt måltid
         </GradientButton>
       </div>
       {status ? <StatusMessage message={status} tone={status.includes("slettet") ? "success" : "error"} /> : null}
@@ -107,13 +107,13 @@ export function TrainerRecipesPanel({ members, authorName = "Motus PT" }: Traine
       />
       <ConfirmDialog
         open={pendingDelete !== null}
-        title="Slette oppskrift?"
+        title="Slette måltid?"
         message={
           pendingDelete
             ? `«${pendingDelete.title}» fjernes fra listen for alle medlemmer. Dette kan ikke angres.`
             : ""
         }
-        confirmLabel={deleting ? "Sletter…" : "Slett oppskrift"}
+        confirmLabel={deleting ? "Sletter…" : "Slett måltid"}
         cancelLabel="Avbryt"
         tone="danger"
         onCancel={() => {

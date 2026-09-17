@@ -905,16 +905,16 @@ export function TrainerMealPlanEditor({
     }
     const next = suggestAiPlanForDay(activeDay.id);
     if (!next) {
-      setSaveStatus("AI-forslag krever tilgjengelige oppskrifter.");
+      setSaveStatus("AI-forslag krever tilgjengelige måltider.");
       return;
     }
     updatePlan(next);
-    setSaveStatus(`AI-forslag la inn oppskriftsforslag for ${activeDay.label}.`);
+    setSaveStatus(`AI-forslag la inn måltidsforslag for ${activeDay.label}.`);
   }
 
   function suggestAiWeekPlan() {
     if (!plan || recipeItems.length === 0) {
-      setSaveStatus("AI-generer uke krever tilgjengelige oppskrifter.");
+      setSaveStatus("AI-generer uke krever tilgjengelige måltider.");
       return;
     }
     const usedRecipeIds = new Set<string>();
@@ -1136,7 +1136,7 @@ export function TrainerMealPlanEditor({
     if (!target) return;
     const recipe = recipeItems.find((row) => row.id === recipeId);
     if (!recipe) {
-      setSaveStatus("Fant ikke oppskriften. Prøv å laste siden på nytt.");
+      setSaveStatus("Fant ikke måltidet. Prøv å laste siden på nytt.");
       return;
     }
     const pickerMeal = plan?.days
@@ -1481,7 +1481,7 @@ export function TrainerMealPlanEditor({
                 }}
               >
                 <Soup className="h-4 w-4" aria-hidden />
-                Oppskrift
+                Måltid
               </OutlineButton>
               <OutlineButton
                 type="button"
@@ -1844,7 +1844,7 @@ export function TrainerMealPlanEditor({
                   }}
                 >
                   <Soup className="h-3.5 w-3.5" aria-hidden />
-                  Velg oppskrift i stedet
+                  Velg måltid i stedet
                 </OutlineButton>
               </div>
               <label className="motus-foodbank-search">
@@ -1953,11 +1953,11 @@ export function TrainerMealPlanEditor({
           <div
             className="motus-foodbank-modal motus-foodbank-modal--wide"
             role="dialog"
-            aria-label="Velg oppskrift"
+            aria-label="Velg måltid"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="motus-foodbank-modal-head">
-              <h3>Velg oppskrift</h3>
+              <h3>Velg måltid</h3>
               <button
                 type="button"
                 className="motus-foodbank-icon-btn"
@@ -1972,7 +1972,7 @@ export function TrainerMealPlanEditor({
             </div>
             <div className="motus-foodbank-modal-body space-y-3">
               <p className="text-xs text-slate-600">
-                Oppskrifter fra Ernæring legges inn som 1 porsjon med beregnet makro fra ingredienslisten.
+                Måltider fra Ernæring legges inn som 1 porsjon med beregnet makro fra ingredienslisten.
               </p>
               <div className="flex flex-wrap gap-2">
                 <OutlineButton
@@ -1997,17 +1997,17 @@ export function TrainerMealPlanEditor({
                     setRecipeSearch(e.target.value);
                     setRecipePreviewId(null);
                   }}
-                  placeholder="Søk oppskrift …"
-                  aria-label="Søk oppskrift"
+                  placeholder="Søk måltid …"
+                  aria-label="Søk måltid"
                 />
               </label>
               <div className="motus-recipe-picker-grid">
                 <div className="max-h-[min(52vh,28rem)] space-y-1 overflow-y-auto">
                   {recipesLoading ? (
-                    <p className="text-sm text-slate-500">Laster oppskrifter …</p>
+                    <p className="text-sm text-slate-500">Laster måltider …</p>
                   ) : filteredRecipes.length === 0 ? (
                     <p className="text-sm text-slate-500">
-                      Ingen oppskrifter funnet. Legg ut oppskrifter under Ernæring først.
+                      Ingen måltider funnet. Legg ut måltider under Ernæring først.
                     </p>
                   ) : (
                     filteredRecipes.map((recipe) => {
@@ -2066,7 +2066,7 @@ export function TrainerMealPlanEditor({
                       {previewRecipeAvoidanceConflicts.length > 0 ? (
                         <RecipeAvoidanceWarning
                           conflicts={previewRecipeAvoidanceConflicts}
-                          title={`${memberName} unngår ingredienser i denne oppskriften`}
+                          title={`${memberName} unngår ingredienser i dette måltidet`}
                         />
                       ) : null}
                       {previewRecipeMacros ? <RecipeMacroBlocks result={previewRecipeMacros} /> : null}
@@ -2081,7 +2081,7 @@ export function TrainerMealPlanEditor({
                     </div>
                   ) : (
                     <p className="rounded-xl border border-dashed border-slate-200 bg-slate-50/80 px-3 py-6 text-center text-xs text-slate-500">
-                      Velg en oppskrift for å se ingredienser, mengder og bytteforslag før du legger den i matplanen.
+                      Velg et måltid for å se ingredienser, mengder og bytteforslag før du legger det i matplanen.
                     </p>
                   )}
                 </div>
@@ -2204,7 +2204,7 @@ export function TrainerMealPlanEditor({
                         </div>
                         {hasRecipe && recipeId ? (
                           <OutlineButton type="button" className="text-xs" onClick={() => setRecipeReadOnlyId(recipeId)}>
-                            Se oppskrift
+                            Se måltid
                           </OutlineButton>
                         ) : null}
                       </li>
@@ -2228,7 +2228,7 @@ export function TrainerMealPlanEditor({
           <div
             className="motus-foodbank-modal motus-foodbank-modal--wide"
             role="dialog"
-            aria-label="Se oppskrift"
+            aria-label="Se måltid"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="motus-foodbank-modal-head">

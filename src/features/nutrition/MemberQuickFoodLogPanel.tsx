@@ -111,7 +111,7 @@ export function MemberQuickFoodLogPanel({ memberId, readOnly = false, onRefreshF
     (source: "recipe" | "ai") => {
       const pool = recipes.filter((recipe) => Boolean(computeRecipeMacros(recipe.body, foodItems, { servings: recipe.servings })));
       if (!pool.length) {
-        setStatus("Fant ingen oppskrifter med beregnede makroer.");
+        setStatus("Fant ingen måltider med beregnede makroer.");
         return;
       }
       const picked = source === "ai" ? pool[Math.floor(Math.random() * pool.length)] : pool[0];
@@ -184,7 +184,7 @@ export function MemberQuickFoodLogPanel({ memberId, readOnly = false, onRefreshF
           </div>
           <div className="flex flex-wrap gap-2">
             <OutlineButton type="button" onClick={() => addRecipe("recipe")}>
-              Logg oppskrift
+              Logg måltid
             </OutlineButton>
             <OutlineButton type="button" onClick={() => addRecipe("ai")}>
               <Sparkles className="h-4 w-4" aria-hidden />

@@ -41,7 +41,7 @@ export function NutritionHub({
           {mealPlanTabLabel}
         </PillButton>
         <PillButton active={tab === "recipes"} onClick={() => setTab("recipes")}>
-          Oppskrifter
+          Måltider
         </PillButton>
         {avoidances ? (
           <PillButton active={tab === "avoidances"} onClick={() => setTab("avoidances")}>

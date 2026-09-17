@@ -23,7 +23,7 @@ export function RecipeMacroBlocks({ result }: RecipeMacroBlocksProps) {
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <h2 className="text-sm font-semibold text-slate-900">Næringsinnhold per porsjon</h2>
         {servings > 1 ? (
-          <span className="text-[11px] font-medium text-slate-500">Oppskriften er for {servings} porsjoner</span>
+          <span className="text-[11px] font-medium text-slate-500">Måltidet er for {servings} porsjoner</span>
         ) : null}
       </div>
       {partial ? (

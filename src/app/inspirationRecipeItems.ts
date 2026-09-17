@@ -75,12 +75,13 @@ function normalizeRecipeItem(raw: unknown): InspirationRecipeItem | null {
         )
       : undefined;
   const mealSlots = parseRecipeMealSlots(row.mealSlots, row.mealSlot);
+  const rawTag = String(row.tag ?? "").trim();
   return {
     id,
-    title: String(row.title ?? "").trim() || "Oppskrift",
+    title: String(row.title ?? "").trim() || "Måltid",
     description,
     body: body || description,
-    tag: String(row.tag ?? "").trim() || "Oppskrift",
+    tag: !rawTag || rawTag === "Oppskrift" ? "Måltid" : rawTag,
     ...(scalingMode ? { scalingMode } : {}),
     ...(isRecipeProteinCategory(row.proteinCategory) ? { proteinCategory: row.proteinCategory } : {}),
     ...(mealSlots.length ? { mealSlots, mealSlot: mealSlots[0] } : {}),
@@ -126,7 +127,7 @@ export async function deleteInspirationRecipe(
   existingItems: unknown[] = [],
 ): Promise<InspirationSaveResult> {
   const trimmed = recipeId.trim();
-  if (!trimmed) return { ok: false, error: "Mangler oppskrift." };
+  if (!trimmed) return { ok: false, error: "Mangler måltid." };
 
   const latestItems =
     (await fetchInspirationItemsForHub<unknown>()) ??

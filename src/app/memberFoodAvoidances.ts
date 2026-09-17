@@ -247,7 +247,7 @@ export function summarizeRecipeFoodAvoidanceConflicts(
   const memberCount = byMember.size;
   const header =
     memberCount === 1
-      ? "1 medlem har mat de unngår i denne oppskriften"
-      : `${memberCount} medlemmer har mat de unngår i denne oppskriften`;
+      ? "1 medlem har mat de unngår i dette måltidet"
+      : `${memberCount} medlemmer har mat de unngår i dette måltidet`;
   return `${header}:\n${lines.join("\n")}`;
 }

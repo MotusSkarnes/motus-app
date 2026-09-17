@@ -104,24 +104,24 @@ function RecipeDetail({
       <div className="flex flex-wrap items-center gap-2">
         <OutlineButton type="button" onClick={onBack} className="text-sm">
           <ArrowLeft className="mr-1.5 inline h-4 w-4" aria-hidden />
-          Tilbake til oppskrifter
+          Tilbake til måltider
         </OutlineButton>
         {canManage && onEdit ? (
           <OutlineButton type="button" className="text-sm" onClick={() => onEdit(item)}>
             <Pencil className="mr-1.5 inline h-4 w-4" aria-hidden />
-            Rediger oppskrift
+            Rediger måltid
           </OutlineButton>
         ) : null}
         {canManage && onDuplicate ? (
           <OutlineButton type="button" className="text-sm" onClick={() => onDuplicate(item)}>
             <Copy className="mr-1.5 inline h-4 w-4" aria-hidden />
-            Dupliser oppskrift
+            Dupliser måltid
           </OutlineButton>
         ) : null}
         {canManage && onDelete ? (
           <OutlineButton type="button" className="text-sm text-rose-700" onClick={() => onDelete(item)}>
             <Trash2 className="mr-1.5 inline h-4 w-4" aria-hidden />
-            Slett oppskrift
+            Slett måltid
           </OutlineButton>
         ) : null}
       </div>
@@ -373,7 +373,7 @@ export function NutritionRecipesPanel({
       : mealItems;
 
   if (loading) {
-    return <Card className="p-6 text-center text-sm text-slate-600">Laster oppskrifter …</Card>;
+    return <Card className="p-6 text-center text-sm text-slate-600">Laster måltider …</Card>;
   }
 
   if (selected) {
@@ -396,8 +396,8 @@ export function NutritionRecipesPanel({
     return (
       <EmptyState
         icon="🥗"
-        title="Ingen oppskrifter ennå"
-        description="Treneren legger ut oppskrifter under Ernæring. De vises her når de er publisert."
+        title="Ingen måltider ennå"
+        description="Treneren legger ut måltider under Ernæring. De vises her når de er publisert."
         className="bg-white"
       />
     );
@@ -406,7 +406,7 @@ export function NutritionRecipesPanel({
   return (
     <div className="space-y-4">
       <p className="text-sm text-slate-600">
-        Oppskrifter med næringsinnhold per porsjon. Velg antall porsjoner inne på oppskriften — da oppdateres mengdene,
+        Måltider med næringsinnhold per porsjon. Velg antall porsjoner inne på måltidet — da oppdateres mengdene,
         ikke næringsinnholdet per porsjon.
       </p>
       <div className="flex flex-wrap gap-2">
@@ -457,8 +457,8 @@ export function NutritionRecipesPanel({
       {visibleItems.length === 0 ? (
         <EmptyState
           icon="🍽️"
-          title={`Ingen ${RECIPE_MEAL_SLOTS.find((s) => s.id === mealTab)?.label?.toLowerCase() ?? "oppskrifter"}`}
-          description="Velg Alle, eller en annen kategori. Nye oppskrifter vises under alle måltidene du huker av når du lagrer."
+          title={`Ingen ${RECIPE_MEAL_SLOTS.find((s) => s.id === mealTab)?.label?.toLowerCase() ?? "måltider"}`}
+          description="Velg Alle, eller en annen kategori. Nye måltider vises under alle kategoriene du huker av når du lagrer."
           className="bg-white"
         />
       ) : (

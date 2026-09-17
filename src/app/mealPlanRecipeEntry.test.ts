@@ -19,7 +19,7 @@ describe("recipeToMealPlanEntry", () => {
   it("beregner makroer med standardbank", () => {
     const entry = recipeToMealPlanEntry(EGG_RECIPE, []);
     expect(entry.nutritionPer100g.kcal).toBeGreaterThan(0);
-    expect(entry.note).toContain("Oppskrift");
+    expect(entry.note).toContain("Måltid");
   });
 
   it("legger til uten makro når ingrediensliste mangler", () => {

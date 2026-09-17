@@ -112,8 +112,8 @@ export function recipeToMealPlanEntry(
       grams: RECIPE_PORTION_GRAMS,
       imageUrl: recipe.imageUrl?.trim() || undefined,
       note: partial
-        ? `Oppskrift · ${partial}${adjustedNote}`
-        : `Oppskrift · 1 porsjon${adjustedNote}`,
+        ? `Måltid · ${partial}${adjustedNote}`
+        : `Måltid · 1 porsjon${adjustedNote}`,
       nutritionPer100g: {
         kcal: Math.round(per.kcal),
         protein: Math.round(per.protein * 10) / 10,
@@ -130,8 +130,8 @@ export function recipeToMealPlanEntry(
 
   const note =
     ingredientLines.length === 0
-      ? "Oppskrift · legg til **Ingredienser** med punktliste under Ernæring for makro"
-      : "Oppskrift · makro ikke beregnet (sjekk ingrediensformat)";
+      ? "Måltid · legg til **Ingredienser** med punktliste under Ernæring for makro"
+      : "Måltid · makro ikke beregnet (sjekk ingrediensformat)";
 
   return {
     id: uid("meal-food"),

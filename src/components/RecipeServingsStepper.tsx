@@ -24,7 +24,7 @@ export function RecipeServingsStepper({
       <div className="motus-recipe-servings__copy">
         <h3>Antall porsjoner</h3>
         <p>
-          Oppskriften er skrevet for {recipePeopleLabel(baseServings)}. Endre antallet — mengdene oppdateres.
+          Måltidet er skrevet for {recipePeopleLabel(baseServings)}. Endre antallet — mengdene oppdateres.
           Næringsinnhold per porsjon er det samme.
         </p>
       </div>

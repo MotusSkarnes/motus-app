@@ -615,7 +615,7 @@ export function TrainerFoodBankView({
             {section === "foods"
               ? "Din database med matvarer og næringsinnhold."
               : section === "recipes"
-                ? "Oppskrifter for medlemmer og matplan — ikke i Utforsk."
+                ? "Måltider for medlemmer og matplan — ikke i Utforsk."
                 : "Matvarer fjernet fra listen Gode matkilder i næringsrapporten."}
           </p>
         </div>
@@ -667,7 +667,7 @@ export function TrainerFoodBankView({
           onClick={() => setSection("recipes")}
         >
           <BookOpen className="h-3.5 w-3.5" aria-hidden />
-          Oppskrifter
+          Måltider
         </button>
         <button
           type="button"

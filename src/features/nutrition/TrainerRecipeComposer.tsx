@@ -72,7 +72,7 @@ function buildRecipeDraftFromSource(
   return {
     title: duplicateTitle || (source?.title ?? ""),
     description: source?.description ?? "",
-    tag: source?.tag ?? "Oppskrift",
+    tag: source?.tag && source.tag.trim() !== "Oppskrift" ? source.tag : "Måltid",
     mealSlots: source ? recipeMealSlotsFor(source) : [],
     proteinCategory: source?.proteinCategory ?? "",
     servings: String(source?.servings ?? (body ? parseRecipeBaseServings(body) : "2")),
@@ -139,7 +139,7 @@ export function TrainerRecipeComposer({
 
   const [title, setTitle] = useState(sourceItem?.title ?? "");
   const [description, setDescription] = useState(sourceItem?.description ?? "");
-  const [tag, setTag] = useState(sourceItem?.tag ?? "Oppskrift");
+  const [tag, setTag] = useState(sourceItem?.tag && sourceItem.tag.trim() !== "Oppskrift" ? sourceItem.tag : "Måltid");
   const [mealSlots, setMealSlots] = useState<RecipeMealSlot[]>(
     sourceItem ? recipeMealSlotsFor(sourceItem) : [],
   );
@@ -310,7 +310,7 @@ export function TrainerRecipeComposer({
     const storedImageUrl = await resolveInspirationImageForStorage(imageUrl);
     const scalingMode = "fixed";
 
-    const tagValue = tag.trim() && tag.trim() !== "Oppskrift" ? tag.trim() : mealSlotsLabel(mealSlots);
+    const tagValue = tag.trim() && tag.trim() !== "Oppskrift" && tag.trim() !== "Måltid" ? tag.trim() : mealSlotsLabel(mealSlots);
     const recipeRow: Record<string, unknown> = {
       id: recipeId,
       category: "recipes",
@@ -364,11 +364,11 @@ export function TrainerRecipeComposer({
       <div
         className="motus-foodbank-modal motus-foodbank-modal--wide motus-recipe-composer-modal"
         role="dialog"
-        aria-label={editItem && !duplicateFromItem ? "Rediger oppskrift" : "Ny oppskrift"}
+        aria-label={editItem && !duplicateFromItem ? "Rediger måltid" : "Nytt måltid"}
         aria-modal="true"
       >
         <div className="motus-foodbank-modal-head">
-          <h3>{editItem && !duplicateFromItem ? "Rediger oppskrift" : duplicateFromItem ? "Dupliser oppskrift" : "Ny oppskrift"}</h3>
+          <h3>{editItem && !duplicateFromItem ? "Rediger måltid" : duplicateFromItem ? "Dupliser måltid" : "Nytt måltid"}</h3>
           <button type="button" className="motus-foodbank-icon-btn" onClick={requestClose} aria-label="Lukk">
             <X className="h-4 w-4" />
           </button>
@@ -380,8 +380,8 @@ export function TrainerRecipeComposer({
             </p>
           ) : null}
           <p className="text-xs text-slate-600">
-            Oppskrifter vises kun under <strong>Ernæring</strong> for medlemmer og i matplan — ikke i Utforsk. Legg til
-            ingredienser fra matvarebanken, og skriv fremgangsmåten under <strong>Slik gjør du</strong>.
+            Måltider vises kun under <strong>Ernæring</strong> for medlemmer og i matplan — ikke i Utforsk. Legg til
+            ingredienser fra matvarebanken, og skriv fremgangsmåten (oppskriften) under <strong>Slik gjør du</strong>.
           </p>
           <TextInput value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Tittel" />
           <TextInput value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Kort beskrivelse" />
@@ -414,11 +414,11 @@ export function TrainerRecipeComposer({
               })}
             </div>
             <p className="mt-1 text-xs text-slate-500">
-              Velg én eller flere faner. Samme oppskrift kan ligge både under frokost og lunsj.
+              Velg én eller flere faner. Samme måltid kan ligge både under frokost og lunsj.
             </p>
           </fieldset>
           <label className="block">
-            <span className="motus-foodbank-field-label">Oppskriften er ment for (antall porsjoner)</span>
+            <span className="motus-foodbank-field-label">Måltidet er ment for (antall porsjoner)</span>
             <TextInput
               type="number"
               min={1}
@@ -536,7 +536,7 @@ export function TrainerRecipeComposer({
                 onClick={() => onDelete(editItem)}
               >
                 <Trash2 className="mr-1.5 inline h-4 w-4" aria-hidden />
-                Slett oppskrift
+                Slett måltid
               </DangerButton>
             ) : (
               <span />
@@ -546,7 +546,7 @@ export function TrainerRecipeComposer({
                 Avbryt
               </OutlineButton>
               <GradientButton type="button" onClick={() => void handleSave()} disabled={saving || isImageProcessing}>
-                {saving ? "Lagrer…" : editItem && !duplicateFromItem ? "Lagre endringer" : duplicateFromItem ? "Opprett kopi" : "Publiser oppskrift"}
+                {saving ? "Lagrer…" : editItem && !duplicateFromItem ? "Lagre endringer" : duplicateFromItem ? "Opprett kopi" : "Publiser måltid"}
               </GradientButton>
             </div>
           </div>
@@ -555,7 +555,7 @@ export function TrainerRecipeComposer({
     </div>
     <ConfirmDialog
       open={confirmCloseOpen}
-      title="Forkaste ulagret oppskrift?"
+      title="Forkaste ulagret måltid?"
       message="Du har endringer som ikke er lagret. Vil du lukke uten å publisere?"
       confirmLabel="Forkast endringer"
       cancelLabel="Fortsett redigering"

@@ -191,7 +191,7 @@ export function buildWeeklyShoppingList(input: BuildWeeklyShoppingListInput): We
         if (recipeId) {
           const recipe = recipesById.get(recipeId);
           if (!recipe) {
-            warnings.push(`«${item.foodName}» finnes ikke i oppskriftsbiblioteket.`);
+            warnings.push(`«${item.foodName}» finnes ikke i måltidsbiblioteket.`);
             continue;
           }
           const controlKey = `${item.id}:${day.id}`;

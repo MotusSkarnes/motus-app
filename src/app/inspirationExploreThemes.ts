@@ -189,7 +189,7 @@ export const INSPO_TOP_NAV_THEMES: readonly InspoThemeConfig[] = [
     label: "Kosthold",
     icon: Apple,
     tone: "mintSoft",
-    description: "Kunnskapsartikler om kosthold — ikke oppskrifter.",
+    description: "Kunnskapsartikler om kosthold — ikke måltider.",
     showInTopNav: true,
     match: (item) => resolvePrimaryTopNavTheme(item) === "nutrition",
   },

@@ -140,7 +140,7 @@ export function MemberFoodAvoidancesPanel({
   );
 
   const handleSave = useCallback(() => {
-    persistDraft(draftRef.current, "Lagret. Treneren får varsel hvis oppskrifter inneholder dette.");
+    persistDraft(draftRef.current, "Lagret. Treneren får varsel hvis måltider inneholder dette.");
   }, [persistDraft]);
 
   const handleReset = useCallback(() => {
@@ -162,8 +162,8 @@ export function MemberFoodAvoidancesPanel({
         <h2 className="text-base font-bold text-slate-900">Mat jeg unngår / ikke tåler</h2>
         <p className="mt-1 text-sm text-slate-600">
           {readOnly
-            ? "Medlemmets registrerte matvarer og intoleranser. Du får varsel i oppskrifter og matplan som inneholder dette."
-            : "Trykk på matvarer under for å legge til. Treneren får varsel når oppskrifter inneholder dette."}
+            ? "Medlemmets registrerte matvarer og intoleranser. Du får varsel i måltider og matplan som inneholder dette."
+            : "Trykk på matvarer under for å legge til. Treneren får varsel når måltider inneholder dette."}
         </p>
       </div>
 

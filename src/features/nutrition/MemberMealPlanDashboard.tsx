@@ -156,7 +156,7 @@ function firstRecipeIdFromMeal(
 
 export function isRecipeEntry(foodId: string, note?: string): boolean {
   if (Boolean(parseInspirationRecipeFoodId(foodId))) return true;
-  return String(note ?? "").toLowerCase().includes("oppskrift");
+  return String(note ?? "").toLowerCase().includes("oppskrift") || String(note ?? "").toLowerCase().includes("måltid ·");
 }
 
 export function formatMealEntryAmount(foodId: string, grams: number, note?: string): string {
@@ -1015,7 +1015,7 @@ export function MemberMealPlanDashboard({ plan, memberId, onOpenAvoidances, onRe
                 <div className="motus-matplan-shopping-portions">
                   <h3 className="motus-matplan-shopping-group-title">Porsjoner (familie / ekstra)</h3>
                   <p className="motus-matplan-shopping-portions-hint">
-                    Juster hvor mange ganger du skal lage hver oppskrift — ingrediensene oppdateres under.
+                    Juster hvor mange ganger du skal lage hvert måltid — ingrediensene oppdateres under.
                   </p>
                   <ul className="motus-matplan-shopping-portions-list">
                     {shoppingList.recipeControls.map((row) => {
@@ -1084,7 +1084,7 @@ export function MemberMealPlanDashboard({ plan, memberId, onOpenAvoidances, onRe
                 ))
               ) : (
                 <p className="text-sm text-slate-600">
-                  Ingen ingredienser kunne beregnes ennå. Sjekk at oppskriftene har en ingrediensliste under Ernæring.
+                  Ingen ingredienser kunne beregnes ennå. Sjekk at måltidene har en ingrediensliste under Ernæring.
                 </p>
               )}
             </div>
@@ -1267,7 +1267,7 @@ export function MemberMealPlanDashboard({ plan, memberId, onOpenAvoidances, onRe
           <div
             className="motus-foodbank-modal motus-foodbank-modal--wide"
             role="dialog"
-            aria-label="Se oppskrift"
+            aria-label="Se måltid"
             onClick={(e) => e.stopPropagation()}
             style={{ maxHeight: "calc(100dvh - 2rem)", overflow: "hidden" }}
           >

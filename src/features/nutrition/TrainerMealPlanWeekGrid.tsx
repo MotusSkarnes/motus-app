@@ -187,7 +187,7 @@ export function TrainerMealPlanWeekGrid({
                           }}
                         >
                           <Soup className="h-3.5 w-3.5" aria-hidden />
-                          Oppskrift
+                          Måltid
                         </button>
                         {hasFood ? (
                           <button

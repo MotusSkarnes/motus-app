@@ -21,8 +21,8 @@ export function RecipeAvoidanceWarning({ conflicts, title, className = "" }: Rec
   const heading =
     title ??
     (memberCount === 1
-      ? "Medlem unngår ingredienser i denne oppskriften"
-      : `${memberCount} medlemmer unngår ingredienser i denne oppskriften`);
+      ? "Medlem unngår ingredienser i dette måltidet"
+      : `${memberCount} medlemmer unngår ingredienser i dette måltidet`);
 
   return (
     <div
@@ -42,7 +42,7 @@ export function RecipeAvoidanceWarning({ conflicts, title, className = "" }: Rec
             ))}
           </ul>
           <p className="text-[11px] text-amber-900/80">
-            Du kan fortsatt publisere — sjekk med medlemmet eller bytt ingredienser i oppskriften.
+            Du kan fortsatt publisere — sjekk med medlemmet eller bytt ingredienser i måltidet.
           </p>
         </div>
       </div>

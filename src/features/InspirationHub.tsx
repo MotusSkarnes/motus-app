@@ -140,7 +140,7 @@ function badgeToneForCategory(category: InspirationCategory): InspoBadgeTone {
 }
 
 const CATEGORY_META: Record<InspirationCategory, { label: string; plural: string; icon: typeof Soup }> = {
-  recipes: { label: "Oppskrift", plural: "Oppskrifter", icon: Soup },
+  recipes: { label: "Måltid", plural: "Måltider", icon: Soup },
   programs: { label: "Trening", plural: "Treningsprogram", icon: ClipboardList },
   tips: { label: "Tips", plural: "Råd og tips", icon: Lightbulb },
   news: { label: "Info", plural: "Info fra senteret", icon: Newspaper },
@@ -599,7 +599,7 @@ const DEFAULT_ITEMS: InspirationItem[] = [
     kind: "article",
     title: "Utforsk og meldinger",
     description: "Finn tips, nyheter og svar fra trener på ett sted.",
-    body: "**Utforsk-fanen** har to deler:\n- **Utforsk** – info fra senteret, treningsprogram og råd og tips.\n- **App-guide** – steg-for-steg om hvordan du bruker Motus (øktmodus, egne programmer, hjemskjerm osv.).\n\nOppskrifter finner du under **Mat / Ernæring**.\n\nBytt mellom dem med knappene øverst under overskriften. Trykk på et kort for å lese hele teksten. Nye innlegg kan også dukke opp som **varsler** – da hopper du rett til innlegget.\n\nHar du spørsmål om program eller skader? Bruk **melding** til trener i stedet for å gjette – da får du svar tilpasset deg.",
+    body: "**Utforsk-fanen** har to deler:\n- **Utforsk** – info fra senteret, treningsprogram og råd og tips.\n- **App-guide** – steg-for-steg om hvordan du bruker Motus (øktmodus, egne programmer, hjemskjerm osv.).\n\nMåltider finner du under **Mat / Ernæring**.\n\nBytt mellom dem med knappene øverst under overskriften. Trykk på et kort for å lese hele teksten. Nye innlegg kan også dukke opp som **varsler** – da hopper du rett til innlegget.\n\nHar du spørsmål om program eller skader? Bruk **melding** til trener i stedet for å gjette – da får du svar tilpasset deg.",
     tag: "App-guide",
     author: "Motus",
     createdAt: "2026-05-16",
@@ -610,7 +610,7 @@ const DEFAULT_ITEMS: InspirationItem[] = [
     kind: "article",
     title: "Protein etter trening",
     description: "Hvorfor og hvor mye du bør spise for restitusjon.",
-    body: "Etter styrkeøkt hjelper protein kroppen å reparere muskelfibre. Som tommelfingerregel: 20–40 g protein innen noen timer etter økta, avhengig av kroppsvekt og mål.\n\n**Enkelt i praksis**\n- Yogurt, cottage cheese eller et eggemåltid hjemme.\n- En shake kan være praktisk når du har dårlig tid.\n\nDette er generell kunnskap — spør treneren din hvis du vil ha anbefalinger tilpasset deg. Oppskrifter finner du under **Mat / Ernæring**.",
+    body: "Etter styrkeøkt hjelper protein kroppen å reparere muskelfibre. Som tommelfingerregel: 20–40 g protein innen noen timer etter økta, avhengig av kroppsvekt og mål.\n\n**Enkelt i praksis**\n- Yogurt, cottage cheese eller et eggemåltid hjemme.\n- En shake kan være praktisk når du har dårlig tid.\n\nDette er generell kunnskap — spør treneren din hvis du vil ha anbefalinger tilpasset deg. Måltider finner du under **Mat / Ernæring**.",
     tag: "Kosthold",
     author: "Motus",
     createdAt: "2026-05-01",
