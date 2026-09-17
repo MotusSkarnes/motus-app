@@ -26,53 +26,54 @@ function cleanupPrintFrame(iframe: HTMLIFrameElement, delayMs = 4000): void {
   }, delayMs);
 }
 
-/** Chromium can leave the opener unable to type in inputs after a print popup. */
-export function restoreAppInteractivityAfterPrint(): void {
+/** Chromium can leave html/body inert or pointer-events:none after print preview. */
+export function clearPrintOverlayLocks(): void {
   if (typeof document === "undefined") return;
   for (const node of [document.documentElement, document.body, document.getElementById("root")]) {
     if (!node) continue;
     node.style.removeProperty("pointer-events");
     node.removeAttribute("inert");
   }
+}
 
-  const iframe = document.createElement("iframe");
-  iframe.setAttribute("aria-hidden", "true");
-  iframe.tabIndex = -1;
-  iframe.style.cssText = "position:fixed;width:1px;height:1px;left:0;top:0;opacity:0;border:0;pointer-events:none;";
-  document.body.appendChild(iframe);
-  try {
-    iframe.contentWindow?.focus();
-  } catch {
-    // ignore
-  }
+/** Re-enable text controls without stealing focus (dummy focus blocks the next click). */
+export function cyclePrintLockedControls(root: ParentNode = document): void {
+  const fields = root.querySelectorAll<HTMLInputElement | HTMLTextAreaElement>(
+    "textarea, input:not([type='hidden']):not([type='button']):not([type='submit']):not([type='checkbox']):not([type='radio'])",
+  );
+  fields.forEach((el) => {
+    const disabled = el.disabled;
+    const readOnly = el.readOnly;
+    el.readOnly = true;
+    el.disabled = true;
+    void el.offsetHeight;
+    el.disabled = disabled;
+    el.readOnly = readOnly;
+  });
+}
+
+/** Chromium can leave the opener unable to type in inputs after a print dialog. */
+export function restoreAppInteractivityAfterPrint(): void {
+  if (typeof document === "undefined") return;
+  clearPrintOverlayLocks();
+  cyclePrintLockedControls();
   try {
     window.focus();
   } catch {
     // ignore
   }
+}
 
-  const dummy = document.createElement("input");
-  dummy.setAttribute("aria-hidden", "true");
-  dummy.tabIndex = -1;
-  dummy.style.cssText = "position:fixed;left:0;top:0;width:1px;height:1px;opacity:0;border:0;";
-  document.body.appendChild(dummy);
-  try {
-    dummy.focus({ preventScroll: true });
-    dummy.blur();
-  } catch {
-    // ignore
-  }
-  dummy.remove();
-  iframe.remove();
+function runAfterPrintSettled(onSettled?: () => void): void {
+  restoreAppInteractivityAfterPrint();
+  onSettled?.();
+  window.setTimeout(restoreAppInteractivityAfterPrint, 50);
+  window.setTimeout(restoreAppInteractivityAfterPrint, 400);
 }
 
 export function watchPrintWindowSettled(printWindow: Window, onSettled?: () => void): void {
   let settled = false;
-  const finish = () => {
-    restoreAppInteractivityAfterPrint();
-    onSettled?.();
-    window.setTimeout(restoreAppInteractivityAfterPrint, 0);
-  };
+  const finish = () => runAfterPrintSettled(onSettled);
   const settle = () => {
     if (settled) return;
     settled = true;
@@ -200,7 +201,7 @@ export function schedulePrintWhenReady(targetWindow: Window, onAfterPrint?: () =
 }
 
 /** Skriver HTML i skjult iframe og starter utskrift fra foreldrevinduet. */
-export function printHtmlViaHiddenFrame(html: string): boolean {
+export function printHtmlViaHiddenFrame(html: string, onSettled?: () => void): boolean {
   if (typeof document === "undefined") return false;
 
   const iframe = document.createElement("iframe");
@@ -224,13 +225,29 @@ export function printHtmlViaHiddenFrame(html: string): boolean {
     return false;
   }
 
-  const scheduleCleanup = () => cleanupPrintFrame(iframe);
+  let settled = false;
+  const scheduleCleanup = () => {
+    if (settled) return;
+    settled = true;
+    try {
+      window.removeEventListener("afterprint", scheduleCleanup);
+    } catch {
+      // ignore
+    }
+    runAfterPrintSettled(onSettled);
+    cleanupPrintFrame(iframe);
+  };
   const preparedHtml = stripProgramPrintScript(html);
 
   try {
     frameDoc.open();
     frameDoc.write(preparedHtml);
     frameDoc.close();
+    try {
+      window.addEventListener("afterprint", scheduleCleanup);
+    } catch {
+      // ignore
+    }
     schedulePrintWhenReady(frameWindow, scheduleCleanup);
     return true;
   } catch (error) {
@@ -240,7 +257,7 @@ export function printHtmlViaHiddenFrame(html: string): boolean {
   }
 }
 
-function printHtmlViaPopup(html: string): PrintHtmlResult {
+function printHtmlViaPopup(html: string, onSettled?: () => void): PrintHtmlResult {
   const printTab = window.open("about:blank", "_blank");
   if (!printTab) {
     return {
@@ -256,7 +273,7 @@ function printHtmlViaPopup(html: string): PrintHtmlResult {
     printTab.document.open();
     printTab.document.write(preparedHtml);
     printTab.document.close();
-    schedulePrintWhenReady(printTab);
+    watchPrintWindowSettled(printTab, onSettled);
     return { ok: true, method: "popup" };
   } catch (writeError) {
     console.warn("printHtmlDocument: popup write failed, trying blob.", writeError);
@@ -266,7 +283,7 @@ function printHtmlViaPopup(html: string): PrintHtmlResult {
     const blob = new Blob([preparedHtml], { type: "text/html;charset=utf-8" });
     const blobUrl = URL.createObjectURL(blob);
     printTab.location.href = blobUrl;
-    printTab.addEventListener("load", () => schedulePrintWhenReady(printTab), { once: true });
+    printTab.addEventListener("load", () => watchPrintWindowSettled(printTab, onSettled), { once: true });
     window.setTimeout(() => URL.revokeObjectURL(blobUrl), 60_000);
     return { ok: true, method: "blob" };
   } catch (error) {
@@ -288,16 +305,16 @@ function printHtmlViaPopup(html: string): PrintHtmlResult {
  * Åpner utskrift/PDF uten å navigere bort fra appen på mobil.
  * Prøver skjult iframe først (PWA/mobil), deretter popup på desktop.
  */
-export function printHtmlDocument(html: string): PrintHtmlResult {
+export function printHtmlDocument(html: string, onSettled?: () => void): PrintHtmlResult {
   if (typeof window === "undefined" || typeof document === "undefined") {
     return { ok: false, reason: "failed", message: "Utskrift er ikke tilgjengelig her." };
   }
 
-  if (printHtmlViaHiddenFrame(html)) {
+  if (printHtmlViaHiddenFrame(html, onSettled)) {
     return { ok: true, method: "iframe" };
   }
 
-  const popupResult = printHtmlViaPopup(html);
+  const popupResult = printHtmlViaPopup(html, onSettled);
   if (popupResult.ok) return popupResult;
 
   return {

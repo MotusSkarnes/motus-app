@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
+  cyclePrintLockedControls,
   printHtmlDocument,
   printHtmlViaHiddenFrame,
   restoreAppInteractivityAfterPrint,
@@ -55,13 +56,27 @@ describe("printHtmlDocument", () => {
     expect(ok).toBe(true);
   });
 
-  it("clears stuck pointer-events after print", () => {
+  it("clears stuck pointer-events after print and re-enables text fields", () => {
     document.body.style.pointerEvents = "none";
     document.body.setAttribute("inert", "");
+    const field = document.createElement("textarea");
+    field.value = "kommentar";
+    document.body.appendChild(field);
     restoreAppInteractivityAfterPrint();
     expect(document.body.style.pointerEvents).toBe("");
     expect(document.body.hasAttribute("inert")).toBe(false);
-    expect(document.querySelectorAll("input[aria-hidden='true']")).toHaveLength(0);
+    expect(field.disabled).toBe(false);
+    expect(field.readOnly).toBe(false);
+    field.remove();
+  });
+
+  it("cycles locked controls without leaving them disabled", () => {
+    const field = document.createElement("textarea");
+    document.body.appendChild(field);
+    cyclePrintLockedControls();
+    expect(field.disabled).toBe(false);
+    expect(field.readOnly).toBe(false);
+    field.remove();
   });
 
   it("settles when the print window is closed", () => {

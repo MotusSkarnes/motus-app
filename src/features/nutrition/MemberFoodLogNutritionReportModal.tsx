@@ -6,7 +6,7 @@ import {
   openNutritionReportPrintWindow,
   type NutritionReportPrintAudience,
 } from "../../app/memberFoodLogNutritionReportPrint";
-import { restoreAppInteractivityAfterPrint } from "../../app/printHtmlDocument";
+import { clearPrintOverlayLocks, restoreAppInteractivityAfterPrint } from "../../app/printHtmlDocument";
 import { buildDailyVariationTable, type DailyVariationGroupId } from "../../app/nutritionReportDailyVariation";
 import {
   buildMemberFoodLogNutritionPeriodReport,
@@ -251,7 +251,7 @@ export function MemberFoodLogNutritionReportModal({
       className="motus-nutrition-report-backdrop"
       role="presentation"
       onClick={onClose}
-      onPointerDownCapture={restoreAppInteractivityAfterPrint}
+      onPointerDownCapture={clearPrintOverlayLocks}
     >
       <div
         className="motus-nutrition-report-modal"

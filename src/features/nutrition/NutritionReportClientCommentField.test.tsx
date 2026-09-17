@@ -17,5 +17,6 @@ describe("NutritionReportClientCommentField", () => {
     await user.click(field);
     await user.type(field, "Hold igjen på kveldsmaten.");
     expect(field).toHaveValue("Hold igjen på kveldsmaten.");
+    expect(field).not.toHaveAttribute("readonly");
   });
 });

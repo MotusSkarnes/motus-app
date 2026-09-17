@@ -6,7 +6,7 @@ import {
   openNutritionReportPrintWindow,
   type NutritionReportPrintAudience,
 } from "../../app/memberFoodLogNutritionReportPrint";
-import { restoreAppInteractivityAfterPrint } from "../../app/printHtmlDocument";
+import { clearPrintOverlayLocks, restoreAppInteractivityAfterPrint } from "../../app/printHtmlDocument";
 import type { MealPlanNutritionContext } from "../../app/mealPlanFoodNutrition";
 import { buildMealPlanNutritionReport } from "../../app/mealPlanNutritionTotals";
 import type { MealPlan } from "../../app/mealPlanTypes";
@@ -233,7 +233,7 @@ export function MealPlanNutritionReportModal({
       className="motus-nutrition-report-backdrop"
       role="presentation"
       onClick={onClose}
-      onPointerDownCapture={restoreAppInteractivityAfterPrint}
+      onPointerDownCapture={clearPrintOverlayLocks}
     >
       <div
         className="motus-nutrition-report-modal"
