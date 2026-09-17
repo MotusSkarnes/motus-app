@@ -15,7 +15,10 @@ import {
 } from "./nutritionReportDisplay";
 import {
   buildDailyVariationTable,
+  DAILY_VARIATION_MINERAL_IDS,
+  DAILY_VARIATION_VITAMIN_IDS,
   formatVariationDayLabel,
+  pickDailyVariationColumns,
   type DailyVariationTable,
 } from "./nutritionReportDailyVariation";
 import { buildClientReportCommentHtml, buildClientReportGraphicsHtml } from "./nutritionReportClientGraphics";
@@ -212,7 +215,8 @@ function dailyOverviewHtml(payload: NutritionReportPrintPayload): string {
     const macro = buildDailyVariationTable(payload.dailyTotals, payload.dailyAverage, "macro", refs);
     const micro = buildDailyVariationTable(payload.dailyTotals, payload.dailyAverage, "micro", refs);
     return `${dailyVariationTableHtml(macro, "Dagsvariasjon")}
-      ${dailyVariationTableHtml(micro, "Dagsvariasjon – vitaminer og mineraler")}`;
+      ${dailyVariationTableHtml(pickDailyVariationColumns(micro, DAILY_VARIATION_VITAMIN_IDS), "Dagsvariasjon – vitaminer")}
+      ${dailyVariationTableHtml(pickDailyVariationColumns(micro, DAILY_VARIATION_MINERAL_IDS), "Dagsvariasjon – mineraler")}`;
   }
   return dailyKcalHtml(payload.dailyKcal);
 }

@@ -33,11 +33,11 @@ export type DailyVariationRefs = {
 
 const WEEKDAY_SHORT = ["søn", "man", "tir", "ons", "tor", "fre", "lør"] as const;
 
-function micronutrientColumn(key: FoodMicronutrientKey, shortLabel: string): DailyVariationColumn {
+function micronutrientColumn(key: FoodMicronutrientKey): DailyVariationColumn {
   const field = FOOD_MICRONUTRIENT_FIELDS.find((item) => item.key === key);
   return {
     id: key,
-    shortLabel,
+    shortLabel: field?.matvaretabellId ?? key,
     label: field?.label ?? key,
     unit: field?.unit ?? "",
     decimals: field?.decimals ?? 0,
@@ -51,7 +51,10 @@ export const DAILY_VARIATION_MACRO_COLUMNS: DailyVariationColumn[] = [
   { id: "protein", shortLabel: "Prot.", label: "Protein", unit: "g", decimals: 0, targetLabel: "", read: (totals) => totals.protein },
   { id: "carbs", shortLabel: "Karbo", label: "Karbohydrater", unit: "g", decimals: 0, targetLabel: "", read: (totals) => totals.carbs },
   { id: "fat", shortLabel: "Fett", label: "Fett", unit: "g", decimals: 0, targetLabel: "", read: (totals) => totals.fat },
-  { id: "fiber", shortLabel: "Fiber", label: "Fiber", unit: "g", decimals: 0, targetLabel: "", read: (totals) => totals.fiber },
+  { id: "fiber", shortLabel: "Fiber", label: "Fiber", unit: "g", decimals: 1, targetLabel: "", read: (totals) => totals.fiber },
+  { id: "sugar", shortLabel: "Sukker", label: "Sukker", unit: "g", decimals: 1, targetLabel: "", read: (totals) => totals.sugar },
+  { id: "saturatedFat", shortLabel: "Mettet", label: "Mettet fett", unit: "g", decimals: 1, targetLabel: "", read: (totals) => totals.saturatedFat },
+  { id: "sodium", shortLabel: "Na", label: "Natrium", unit: "mg", decimals: 0, targetLabel: "", read: (totals) => totals.sodium },
   {
     id: "waterTotal",
     shortLabel: "Vann",
@@ -63,16 +66,16 @@ export const DAILY_VARIATION_MACRO_COLUMNS: DailyVariationColumn[] = [
   },
 ];
 
-export const DAILY_VARIATION_MICRO_COLUMNS: DailyVariationColumn[] = [
-  micronutrientColumn("vitaminD", "D"),
-  micronutrientColumn("vitaminC", "C"),
-  micronutrientColumn("folate", "Folat"),
-  micronutrientColumn("vitaminB12", "B12"),
-  micronutrientColumn("calcium", "Ca"),
-  micronutrientColumn("iron", "Fe"),
-  micronutrientColumn("magnesium", "Mg"),
-  micronutrientColumn("zinc", "Zn"),
-];
+export const DAILY_VARIATION_MICRO_COLUMNS: DailyVariationColumn[] = FOOD_MICRONUTRIENT_FIELDS.map((field) =>
+  micronutrientColumn(field.key),
+);
+
+export const DAILY_VARIATION_VITAMIN_IDS = FOOD_MICRONUTRIENT_FIELDS.filter((field) => field.group === "vitamins").map(
+  (field) => field.key,
+);
+export const DAILY_VARIATION_MINERAL_IDS = FOOD_MICRONUTRIENT_FIELDS.filter((field) => field.group === "minerals").map(
+  (field) => field.key,
+);
 
 export function dailyVariationColumns(group: DailyVariationGroupId): DailyVariationColumn[] {
   return group === "micro" ? DAILY_VARIATION_MICRO_COLUMNS : DAILY_VARIATION_MACRO_COLUMNS;
@@ -86,6 +89,17 @@ function resolveColumnTarget(column: DailyVariationColumn, refs?: DailyVariation
   if (column.id === "kcal") return resolveReportKcalTarget(targets, context);
   if (column.id === "waterTotal") return resolveReportWaterTarget(context);
   if (column.id === "fiber") return context?.otherDaily.fiber ?? HEALTH_DIRECTORATE_OTHER_DAILY.fiber;
+  if (column.id === "sodium") return context?.otherDaily.sodium ?? HEALTH_DIRECTORATE_OTHER_DAILY.sodium;
+  if (column.id === "sugar") {
+    return gramsFromEnergyPercent(resolveReportKcalTarget(targets, context), HEALTH_DIRECTORATE_MACRO_ENERGY_PERCENT.sugarMax, 4);
+  }
+  if (column.id === "saturatedFat") {
+    return gramsFromEnergyPercent(
+      resolveReportKcalTarget(targets, context),
+      HEALTH_DIRECTORATE_MACRO_ENERGY_PERCENT.saturatedFatMax,
+      9,
+    );
+  }
   if (column.id === "protein" || column.id === "carbs" || column.id === "fat") {
     const planned = targets?.[column.id];
     if (planned && planned > 0) return planned;
@@ -172,6 +186,19 @@ function cellFor(column: DailyVariationColumn, value: number, average: number): 
     display: formatDailyVariationValue(value, column.decimals),
     tone: classifyDailyVariation(value, average),
     barPct: dailyVariationBarPct(value, average),
+  };
+}
+
+export function pickDailyVariationColumns(table: DailyVariationTable, columnIds: string[]): DailyVariationTable {
+  const idSet = new Set(columnIds);
+  return {
+    ...table,
+    columns: table.columns.filter((column) => idSet.has(column.id)),
+    rows: table.rows.map((row) => ({
+      ...row,
+      cells: row.cells.filter((cell) => idSet.has(cell.columnId)),
+    })),
+    averageCells: table.averageCells.filter((cell) => idSet.has(cell.columnId)),
   };
 }
 

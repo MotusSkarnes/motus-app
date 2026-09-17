@@ -40,14 +40,39 @@ describe("nutritionReportDailyVariation", () => {
     expect(kcal[1]?.tone).toBe("high");
     expect(kcal[0]?.display).toBe("1400");
     expect(table.averageCells.find((cell) => cell.columnId === "kcal")?.display).toBe("1800");
-    const vitaminD = buildDailyVariationTable(
+    expect(table.columns.map((column) => column.id)).toEqual(
+      expect.arrayContaining(["kcal", "protein", "sugar", "saturatedFat", "sodium", "waterTotal"]),
+    );
+    const micro = buildDailyVariationTable(
       [
         { dateKey: "2026-09-13", totals: EMPTY_FOOD_LOG_NUTRITION },
         { dateKey: "2026-09-14", totals: EMPTY_FOOD_LOG_NUTRITION },
       ],
       EMPTY_FOOD_LOG_NUTRITION,
       "micro",
-    ).columns.find((column) => column.id === "vitaminD");
+    );
+    expect(micro.columns.map((column) => column.id)).toEqual([
+      "vitaminA",
+      "vitaminD",
+      "vitaminE",
+      "vitaminC",
+      "vitaminB1",
+      "vitaminB2",
+      "niacin",
+      "vitaminB6",
+      "folate",
+      "vitaminB12",
+      "calcium",
+      "iron",
+      "potassium",
+      "magnesium",
+      "phosphorus",
+      "zinc",
+      "selenium",
+      "iodine",
+      "copper",
+    ]);
+    const vitaminD = micro.columns.find((column) => column.id === "vitaminD");
     expect(vitaminD?.label).toBe("Vitamin D");
     expect(vitaminD?.targetLabel).toBe("10 µg");
   });

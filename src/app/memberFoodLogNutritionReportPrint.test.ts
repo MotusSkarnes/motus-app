@@ -155,8 +155,12 @@ describe("buildNutritionReportPrintHtml", () => {
     expect(html).toContain("man 14.09");
     expect(html).toContain("var--low");
     expect(html).toContain("var--high");
-    expect(html).toContain("Dagsvariasjon – vitaminer og mineraler");
+    expect(html).toContain("Dagsvariasjon – vitaminer");
+    expect(html).toContain("Dagsvariasjon – mineraler");
     expect(html).toContain("Vitamin D");
+    expect(html).toContain("Vitamin A");
+    expect(html).toContain("Jod");
+    expect(html).toContain("Sukker");
     expect(html).toContain("10 µg");
   });
 

@@ -54,7 +54,9 @@ describe("NutritionReportDailyVariation", () => {
     expect(screen.getByText("2200")).toBeTruthy();
 
     await user.click(screen.getByRole("button", { name: "Vitaminer og mineraler" }));
+    expect(screen.getByRole("columnheader", { name: /Vitamin A/ })).toBeTruthy();
     expect(screen.getByRole("columnheader", { name: /Vitamin D/ })).toBeTruthy();
+    expect(screen.getByRole("columnheader", { name: /Jod/ })).toBeTruthy();
     expect(screen.getByText("10 µg")).toBeTruthy();
     expect(screen.getByText("2,0")).toBeTruthy();
     expect(screen.getByText("12,0")).toBeTruthy();

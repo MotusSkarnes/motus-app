@@ -16,7 +16,7 @@ export function NutritionReportDailyVariation({
       <h3 className="motus-nutrition-report-modal__subheading">Dagsvariasjon</h3>
       <p className="motus-nutrition-report-modal__footnote">
         Enkel oversikt over dagene i perioden. Tallet under navnet er anbefalt dagsinntak. Fargen viser avvik fra
-        periodens snitt.
+        periodens snitt. Scroll sidelengs for å se alle næringsstoffene.
       </p>
       <div className="motus-nutrition-report-modal__chips" role="group" aria-label="Næringsstoffer i dagsvariasjon">
         <button
