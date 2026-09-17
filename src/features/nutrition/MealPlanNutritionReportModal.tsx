@@ -6,6 +6,7 @@ import {
   openNutritionReportPrintWindow,
   type NutritionReportPrintAudience,
 } from "../../app/memberFoodLogNutritionReportPrint";
+import { restoreAppInteractivityAfterPrint } from "../../app/printHtmlDocument";
 import type { MealPlanNutritionContext } from "../../app/mealPlanFoodNutrition";
 import { buildMealPlanNutritionReport } from "../../app/mealPlanNutritionTotals";
 import type { MealPlan } from "../../app/mealPlanTypes";
@@ -170,6 +171,11 @@ export function MealPlanNutritionReportModal({
     return `Planlagt inntak · ${label}`;
   }, [report, selectedDayId, viewMode]);
 
+  const reviveCommentField = useCallback(() => {
+    restoreAppInteractivityAfterPrint();
+    setCommentFieldEpoch((value) => value + 1);
+  }, []);
+
   const handlePrint = useCallback(
     (audience: NutritionReportPrintAudience) => {
       if (!displayTotals) return;
@@ -194,7 +200,7 @@ export function MealPlanNutritionReportModal({
           logoUrl: motusLogo,
           clientComment: audience === "client" ? clientComment : undefined,
         },
-        () => setCommentFieldEpoch((value) => value + 1),
+        () => reviveCommentField(),
       );
       if (!ok) {
         setPrintError("Kunne ikke åpne utskrift. Tillat popup-vinduer for Motus i nettleseren.");
@@ -215,13 +221,20 @@ export function MealPlanNutritionReportModal({
       contributionLookup,
       coverageLookup,
       clientComment,
+      reviveCommentField,
     ],
   );
 
   if (!open || typeof document === "undefined") return null;
 
   return createPortal(
-    <div className="motus-nutrition-report-backdrop" role="presentation" onClick={onClose}>
+    <div
+      key={commentFieldEpoch}
+      className="motus-nutrition-report-backdrop"
+      role="presentation"
+      onClick={onClose}
+      onPointerDownCapture={restoreAppInteractivityAfterPrint}
+    >
       <div
         className="motus-nutrition-report-modal"
         role="dialog"

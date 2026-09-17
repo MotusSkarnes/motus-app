@@ -5727,7 +5727,9 @@
 .motus-nutrition-report-backdrop {
   position: fixed;
   inset: 0;
-  z-index: 10120;
+  z-index: 11050;
+  isolation: isolate;
+  transform: translateZ(0);
   display: flex;
   align-items: flex-end;
   justify-content: center;

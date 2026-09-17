@@ -29,30 +29,84 @@ function cleanupPrintFrame(iframe: HTMLIFrameElement, delayMs = 4000): void {
 /** Chromium can leave the opener unable to type in inputs after a print popup. */
 export function restoreAppInteractivityAfterPrint(): void {
   if (typeof document === "undefined") return;
-  for (const node of [document.documentElement, document.body]) {
+  for (const node of [document.documentElement, document.body, document.getElementById("root")]) {
+    if (!node) continue;
     node.style.removeProperty("pointer-events");
     node.removeAttribute("inert");
+  }
+
+  const iframe = document.createElement("iframe");
+  iframe.setAttribute("aria-hidden", "true");
+  iframe.tabIndex = -1;
+  iframe.style.cssText = "position:fixed;width:1px;height:1px;left:0;top:0;opacity:0;border:0;pointer-events:none;";
+  document.body.appendChild(iframe);
+  try {
+    iframe.contentWindow?.focus();
+  } catch {
+    // ignore
   }
   try {
     window.focus();
   } catch {
     // ignore
   }
+
+  const dummy = document.createElement("input");
+  dummy.setAttribute("aria-hidden", "true");
+  dummy.tabIndex = -1;
+  dummy.style.cssText = "position:fixed;left:0;top:0;width:1px;height:1px;opacity:0;border:0;";
+  document.body.appendChild(dummy);
+  try {
+    dummy.focus({ preventScroll: true });
+    dummy.blur();
+  } catch {
+    // ignore
+  }
+  dummy.remove();
+  iframe.remove();
 }
 
 export function watchPrintWindowSettled(printWindow: Window, onSettled?: () => void): void {
   let settled = false;
+  const finish = () => {
+    restoreAppInteractivityAfterPrint();
+    onSettled?.();
+    window.setTimeout(restoreAppInteractivityAfterPrint, 0);
+  };
   const settle = () => {
     if (settled) return;
     settled = true;
     window.clearInterval(closedPoll);
+    window.removeEventListener("focus", onOpenerResume);
+    window.removeEventListener("pageshow", onOpenerResume);
+    document.removeEventListener("visibilitychange", onVisibility);
+    try {
+      printWindow.removeEventListener("afterprint", settle);
+      printWindow.removeEventListener("unload", settle);
+      printWindow.removeEventListener("pagehide", settle);
+    } catch {
+      // ignore
+    }
     try {
       if (!printWindow.closed) printWindow.close();
     } catch {
       // ignore
     }
-    restoreAppInteractivityAfterPrint();
-    onSettled?.();
+    window.requestAnimationFrame(() => {
+      window.requestAnimationFrame(finish);
+    });
+  };
+
+  const onOpenerResume = () => {
+    try {
+      if (printWindow.closed) settle();
+      else finish();
+    } catch {
+      settle();
+    }
+  };
+  const onVisibility = () => {
+    if (document.visibilityState === "visible") onOpenerResume();
   };
 
   const closedPoll = window.setInterval(() => {
@@ -61,7 +115,18 @@ export function watchPrintWindowSettled(printWindow: Window, onSettled?: () => v
     } catch {
       settle();
     }
-  }, 250);
+  }, 200);
+
+  try {
+    printWindow.addEventListener("afterprint", settle);
+    printWindow.addEventListener("unload", settle);
+    printWindow.addEventListener("pagehide", settle);
+  } catch {
+    // ignore
+  }
+  window.addEventListener("focus", onOpenerResume);
+  window.addEventListener("pageshow", onOpenerResume);
+  document.addEventListener("visibilitychange", onVisibility);
 
   schedulePrintWhenReady(printWindow, settle);
 }

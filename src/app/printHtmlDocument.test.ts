@@ -61,11 +61,17 @@ describe("printHtmlDocument", () => {
     restoreAppInteractivityAfterPrint();
     expect(document.body.style.pointerEvents).toBe("");
     expect(document.body.hasAttribute("inert")).toBe(false);
+    expect(document.querySelectorAll("input[aria-hidden='true']")).toHaveLength(0);
   });
 
   it("settles when the print window is closed", () => {
     vi.useFakeTimers();
     const onSettled = vi.fn();
+    const raf = window.requestAnimationFrame.bind(window);
+    window.requestAnimationFrame = ((cb: FrameRequestCallback) => {
+      cb(0);
+      return 0;
+    }) as typeof window.requestAnimationFrame;
     const printWindow = {
       closed: false,
       close: vi.fn(function (this: { closed: boolean }) {
@@ -73,6 +79,7 @@ describe("printHtmlDocument", () => {
       }),
       document: { readyState: "complete", images: [] },
       addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
       focus: vi.fn(),
       print: vi.fn(),
     };
@@ -80,6 +87,7 @@ describe("printHtmlDocument", () => {
     printWindow.closed = true;
     vi.advanceTimersByTime(300);
     expect(onSettled).toHaveBeenCalledTimes(1);
+    window.requestAnimationFrame = raf;
     vi.useRealTimers();
   });
 });

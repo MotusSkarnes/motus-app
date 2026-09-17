@@ -6,6 +6,7 @@ import {
   openNutritionReportPrintWindow,
   type NutritionReportPrintAudience,
 } from "../../app/memberFoodLogNutritionReportPrint";
+import { restoreAppInteractivityAfterPrint } from "../../app/printHtmlDocument";
 import { buildDailyVariationTable, type DailyVariationGroupId } from "../../app/nutritionReportDailyVariation";
 import {
   buildMemberFoodLogNutritionPeriodReport,
@@ -193,6 +194,11 @@ export function MemberFoodLogNutritionReportModal({
       ? `Dagsvariasjon · ${report.daysWithLogs} dager (${formatPeriodLabel(report.dateKeys)})`
       : aggregateSummary;
 
+  const reviveCommentField = useCallback(() => {
+    restoreAppInteractivityAfterPrint();
+    setCommentFieldEpoch((value) => value + 1);
+  }, []);
+
   const handlePrint = useCallback(
     (audience: NutritionReportPrintAudience) => {
       const ok = openNutritionReportPrintWindow(
@@ -211,7 +217,7 @@ export function MemberFoodLogNutritionReportModal({
           logoUrl: motusLogo,
           clientComment: audience === "client" ? clientComment : undefined,
         },
-        () => setCommentFieldEpoch((value) => value + 1),
+        () => reviveCommentField(),
       );
       if (!ok) {
         setPrintError("Kunne ikke åpne utskrift. Tillat popup-vinduer for Motus i nettleseren.");
@@ -233,13 +239,20 @@ export function MemberFoodLogNutritionReportModal({
       contributionLookup,
       coverageLookup,
       clientComment,
+      reviveCommentField,
     ],
   );
 
   if (!open || typeof document === "undefined") return null;
 
   return createPortal(
-    <div className="motus-nutrition-report-backdrop" role="presentation" onClick={onClose}>
+    <div
+      key={commentFieldEpoch}
+      className="motus-nutrition-report-backdrop"
+      role="presentation"
+      onClick={onClose}
+      onPointerDownCapture={restoreAppInteractivityAfterPrint}
+    >
       <div
         className="motus-nutrition-report-modal"
         role="dialog"
