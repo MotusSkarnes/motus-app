@@ -369,9 +369,14 @@ function clientRowMeta(tone: NutritionReportStatusTone, extra = ""): string {
   }</p>`;
 }
 
+function clientCardGridHtml(cardMarkup: string[], count: number): string {
+  const tracks = Math.max(1, Math.ceil(count / 3));
+  return `<div class="card-grid" style="flex:${tracks} 1 0">${cardMarkup.join("")}</div>`;
+}
+
 function clientMacroCardsHtml(rows: ReturnType<typeof buildMacroDisplayRows>): string {
-  return `<div class="card-grid">${rows
-    .map((row) => {
+  return clientCardGridHtml(
+    rows.map((row) => {
       const status = classifyMacroDisplayStatus(row);
       const target = row.target > 0
         ? `Anbefalt ${formatMacro(row.target, row.decimals)} ${row.unit}${row.referenceSource ? ` · ${row.referenceSource}` : ""}`
@@ -384,16 +389,17 @@ function clientMacroCardsHtml(rows: ReturnType<typeof buildMacroDisplayRows>): s
         ${clientBarHtml(status.barPct, status.tone)}
         ${clientRowMeta(status.tone, target)}
       </article>`;
-    })
-    .join("")}</div>`;
+    }),
+    rows.length,
+  );
 }
 
 function clientMicroCardsHtml(rows: MicronutrientDailyRow[]): string {
   if (!rows.length) {
     return `<p class="muted">Ingen mikronæringsdata i perioden.</p>`;
   }
-  return `<div class="card-grid">${rows
-    .map((row) => {
+  return clientCardGridHtml(
+    rows.map((row) => {
       const target =
         row.target > 0 ? `Anbefalt ${formatMicronutrientWithUnit(row.target, row.decimals, row.unit)}` : "";
       return `<article class="card card--${row.statusTone}">
@@ -404,8 +410,9 @@ function clientMicroCardsHtml(rows: MicronutrientDailyRow[]): string {
         ${clientBarHtml(row.coveragePct, row.statusTone)}
         ${clientRowMeta(row.statusTone, target)}
       </article>`;
-    })
-    .join("")}</div>`;
+    }),
+    rows.length,
+  );
 }
 
 function buildClientPrintHtml(payload: NutritionReportPrintPayload): string {
@@ -503,16 +510,33 @@ function buildClientPrintHtml(payload: NutritionReportPrintPayload): string {
       border-bottom: 1px solid rgba(48, 227, 190, 0.35);
       padding-bottom: 2px;
     }
+    .sheet-cards {
+      box-sizing: border-box;
+      height: 277mm;
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+    }
+    .sheet-cards > .header,
+    .sheet-cards > .legend,
+    .sheet-cards > h2 {
+      flex: 0 0 auto;
+    }
     .card-grid {
       display: grid;
       grid-template-columns: 1fr 1fr 1fr;
-      gap: 3px;
+      gap: 4px;
+      min-height: 0;
     }
     .card {
       background: #fff;
       border: 1px solid rgba(15, 23, 42, 0.08);
-      border-radius: 7px;
-      padding: 3px 6px 4px;
+      border-radius: 8px;
+      padding: 6px 8px 7px;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
       break-inside: avoid;
       page-break-inside: avoid;
     }
@@ -529,7 +553,7 @@ function buildClientPrintHtml(payload: NutritionReportPrintPayload): string {
     }
     .card-label {
       min-width: 0;
-      font-size: 8px;
+      font-size: 9px;
       font-weight: 700;
       letter-spacing: 0.03em;
       text-transform: uppercase;
@@ -546,7 +570,7 @@ function buildClientPrintHtml(payload: NutritionReportPrintPayload): string {
       margin: 1px 0 0;
       min-width: 0;
     }
-    .card-status { font-size: 7.5px; font-weight: 700; white-space: nowrap; }
+    .card-status { font-size: 8px; font-weight: 700; white-space: nowrap; }
     .card-status--ok { color: #047857; }
     .card-status--warn { color: #a16207; }
     .card-status--danger { color: #b91c1c; }
@@ -554,14 +578,15 @@ function buildClientPrintHtml(payload: NutritionReportPrintPayload): string {
     .card-ref {
       min-width: 0;
       margin: 0;
-      font-size: 7.5px;
+      font-size: 8px;
       color: #94a3b8;
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
     }
     .bar {
-      height: 3px;
+      height: 4px;
+      margin: 4px 0 2px;
       background: rgba(15, 23, 42, 0.08);
       border-radius: 99px;
       overflow: hidden;

@@ -112,6 +112,8 @@ describe("buildNutritionReportPrintHtml", () => {
     expect(html).toContain("https://motus.example/logo.svg");
     expect(html).toContain("@page { size: A4;");
     expect(html).toContain("grid-template-columns: 1fr 1fr 1fr");
+    expect(html).toContain("height: 277mm");
+    expect(html).toContain("flex:");
     expect(html).toContain("page-break-before: always");
     expect(html).toContain('class="sheet-cards"');
     expect(html).toContain('class="sheet-viz"');

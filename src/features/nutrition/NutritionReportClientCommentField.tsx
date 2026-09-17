@@ -1,4 +1,4 @@
-import { TextArea } from "../../app/ui";
+const COMMENT_FIELD_ID = "motus-nutrition-report-client-comment";
 
 type NutritionReportClientCommentFieldProps = {
   value: string;
@@ -7,14 +7,24 @@ type NutritionReportClientCommentFieldProps = {
 
 export function NutritionReportClientCommentField({ value, onChange }: NutritionReportClientCommentFieldProps) {
   return (
-    <label className="motus-nutrition-report-modal__comment">
-      <span>Kommentar til kunderapporten</span>
-      <TextArea
+    <div
+      className="motus-nutrition-report-modal__comment"
+      onMouseDown={(event) => event.stopPropagation()}
+      onPointerDown={(event) => event.stopPropagation()}
+    >
+      <label htmlFor={COMMENT_FIELD_ID}>Kommentar til kunderapporten</label>
+      <textarea
+        id={COMMENT_FIELD_ID}
         rows={3}
         value={value}
         onChange={(event) => onChange(event.target.value)}
-        placeholder="Vises nederst på utskriften til kunden. La feltet stå tomt for et tomt notatfelt på papiret."
+        onMouseDown={(event) => {
+          event.stopPropagation();
+          event.currentTarget.focus();
+        }}
+        onPointerDown={(event) => event.stopPropagation()}
+        placeholder="Skriv her. Teksten vises nederst på utskriften til kunden."
       />
-    </label>
+    </div>
   );
 }

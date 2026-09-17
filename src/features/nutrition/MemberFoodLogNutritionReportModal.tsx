@@ -350,7 +350,11 @@ export function MemberFoodLogNutritionReportModal({
           )}
         </div>
 
-        <div className="motus-nutrition-report-modal__comment-wrap motus-nutrition-report-no-print">
+        <div
+          className="motus-nutrition-report-modal__comment-wrap motus-nutrition-report-no-print"
+          onMouseDown={(event) => event.stopPropagation()}
+          onPointerDown={(event) => event.stopPropagation()}
+        >
           <NutritionReportClientCommentField value={clientComment} onChange={setClientComment} />
         </div>
 
