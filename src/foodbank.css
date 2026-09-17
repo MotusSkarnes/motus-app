@@ -1694,10 +1694,53 @@
 
 .motus-matplan-meal-detail-modal {
   max-height: min(92vh, 820px);
+  overflow: hidden;
+  padding: 0;
 }
 
 .motus-matplan-meal-detail-backdrop {
   z-index: 10040;
+}
+
+.motus-matplan-meal-detail-modal__head {
+  align-items: flex-start;
+  margin: 0;
+  padding: 1rem 1.1rem 0.9rem;
+  background:
+    linear-gradient(135deg, rgba(48, 227, 190, 0.22) 0%, rgba(217, 18, 120, 0.12) 52%, rgba(48, 227, 190, 0.08) 100%);
+  border-bottom: 1px solid rgba(48, 227, 190, 0.28);
+}
+
+.motus-matplan-meal-detail-modal__kicker {
+  display: inline-flex;
+  margin: 0 0 0.4rem;
+  padding: 0.18rem 0.58rem;
+  border-radius: 9999px;
+  background: linear-gradient(90deg, #30e3be 0%, #d91278 100%);
+  color: #fff;
+  font-size: 0.625rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.motus-matplan-meal-detail-modal__title {
+  margin: 0;
+  font-size: 1.2rem;
+  font-weight: 800;
+  letter-spacing: -0.025em;
+  line-height: 1.25;
+  color: #0f766e;
+}
+
+.motus-matplan-meal-detail-modal__close {
+  color: #0f766e;
+  background: rgba(255, 255, 255, 0.72);
+}
+
+.motus-matplan-meal-detail-modal__close:hover {
+  color: #d91278;
+  background: #fff;
 }
 
 .motus-matplan-meal-detail-modal__body {
@@ -1706,7 +1749,7 @@
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
-  padding-bottom: max(1.25rem, env(safe-area-inset-bottom));
+  padding: 0.9rem 1.1rem max(1.25rem, env(safe-area-inset-bottom));
 }
 
 .motus-matplan-meal-detail-modal__actions {
