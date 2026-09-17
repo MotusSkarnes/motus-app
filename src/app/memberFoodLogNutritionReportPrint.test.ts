@@ -124,6 +124,11 @@ describe("buildNutritionReportPrintHtml", () => {
     expect(html).not.toContain("Laks, oppdrett, rå 100%");
     expect(html).not.toContain("AR 540");
     expect(html).not.toContain("andel matvarer med kjent verdi");
+    expect(html).not.toContain("Dagsvariasjon");
+    expect(html).toContain("Slik ligger kosten an");
+    expect(html).toContain("<svg");
+    expect(html).toContain("Kommentar fra trener");
+    expect(html).toContain("comment-lines");
   });
 
   it("prints day-by-day nutrient variation for a multi-day period", () => {
@@ -148,5 +153,30 @@ describe("buildNutritionReportPrintHtml", () => {
     expect(html).toContain("Dagsvariasjon – vitaminer og mineraler");
     expect(html).toContain("Vitamin D");
     expect(html).toContain("10 µg");
+  });
+
+  it("replaces daily variation with graphics and a trainer comment on the client print", () => {
+    const low = { ...EMPTY_FOOD_LOG_NUTRITION, kcal: 1400, protein: 70 };
+    const high = { ...EMPTY_FOOD_LOG_NUTRITION, kcal: 2200, protein: 130 };
+    const html = buildNutritionReportPrintHtml({
+      memberName: "Ola Nordmann",
+      periodSummary: "Snitt per dag · 2 dager",
+      totals: { ...EMPTY_FOOD_LOG_NUTRITION, kcal: 1800, protein: 100, carbs: 180, fat: 60 },
+      microRows: [],
+      dailyTotals: [
+        { dateKey: "2026-09-13", totals: low },
+        { dateKey: "2026-09-14", totals: high },
+      ],
+      dailyAverage: { ...EMPTY_FOOD_LOG_NUTRITION, kcal: 1800, protein: 100 },
+      audience: "client",
+      clientComment: "Fint proteininntak – hold igjen litt på kveldsmaten.",
+    });
+    expect(html).not.toContain("Dagsvariasjon");
+    expect(html).toContain("Slik ligger kosten an");
+    expect(html).toContain("Energi gjennom perioden");
+    expect(html).toContain("<svg");
+    expect(html).toContain("Kommentar fra trener");
+    expect(html).toContain("Fint proteininntak – hold igjen litt på kveldsmaten.");
+    expect(html.indexOf("Kommentar fra trener")).toBeGreaterThan(html.indexOf("Slik ligger kosten an"));
   });
 });

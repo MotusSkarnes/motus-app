@@ -5927,6 +5927,26 @@
   line-height: 1.45;
 }
 
+.motus-nutrition-report-modal__comment-wrap {
+  padding: 0.75rem 1rem 0.25rem;
+  border-top: 1px solid #f1f5f9;
+}
+
+.motus-nutrition-report-modal__comment {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #334155;
+}
+
+.motus-nutrition-report-modal__comment textarea {
+  min-height: 4.5rem;
+  resize: vertical;
+  font-weight: 400;
+}
+
 .motus-nutrition-report-modal__footer {
   display: flex;
   flex-wrap: wrap;

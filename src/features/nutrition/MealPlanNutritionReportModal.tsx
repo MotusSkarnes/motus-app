@@ -31,6 +31,7 @@ import {
 } from "../../app/nutritionReportContributors";
 import { buildNutrientCoverageLookup } from "../../app/nutritionReportCoverage";
 import { GradientButton, OutlineButton } from "../../app/ui";
+import { NutritionReportClientCommentField } from "./NutritionReportClientCommentField";
 import { NutritionReportStackedBody } from "./NutritionReportTables";
 
 type ViewMode = "activeDay" | "average";
@@ -67,11 +68,13 @@ export function MealPlanNutritionReportModal({
   const [selectedDayId, setSelectedDayId] = useState(activeDayId);
   const [microFilter, setMicroFilter] = useState<MicronutrientReportFilterMode>("all");
   const [printError, setPrintError] = useState<string | null>(null);
+  const [clientComment, setClientComment] = useState("");
 
   useEffect(() => {
     if (!open) return;
     setMicroFilter("all");
     setPrintError(null);
+    setClientComment("");
   }, [open]);
 
   useEffect(() => {
@@ -177,7 +180,7 @@ export function MealPlanNutritionReportModal({
         contributionLookup: audience === "trainer" ? contributionLookup : undefined,
         coverageLookup: audience === "trainer" ? coverageLookup : undefined,
         dailyKcal:
-          audience === "trainer" && report.daysWithFood > 1
+          report.daysWithFood > 1
             ? report.dayTotals.map(({ label, totals }) => ({
                 dateLabel: label,
                 kcal: totals.kcal,
@@ -185,6 +188,7 @@ export function MealPlanNutritionReportModal({
             : undefined,
         audience,
         logoUrl: motusLogo,
+        clientComment: audience === "client" ? clientComment : undefined,
       });
       if (!ok) {
         setPrintError("Kunne ikke åpne utskrift. Tillat popup-vinduer for Motus i nettleseren.");
@@ -204,6 +208,7 @@ export function MealPlanNutritionReportModal({
       report.daysWithFood,
       contributionLookup,
       coverageLookup,
+      clientComment,
     ],
   );
 
@@ -298,6 +303,10 @@ export function MealPlanNutritionReportModal({
               }
             />
           )}
+        </div>
+
+        <div className="motus-nutrition-report-modal__comment-wrap motus-nutrition-report-no-print">
+          <NutritionReportClientCommentField value={clientComment} onChange={setClientComment} />
         </div>
 
         <footer className="motus-nutrition-report-modal__footer motus-nutrition-report-no-print">

@@ -1,0 +1,52 @@
+import { describe, expect, it } from "vitest";
+import {
+  buildClientReportCommentHtml,
+  buildClientReportGraphicsHtml,
+  countClientStatusTones,
+  energySplitFromTotals,
+} from "./nutritionReportClientGraphics";
+import { EMPTY_FOOD_LOG_NUTRITION } from "./quickFoodLogNutrition";
+import { buildMacroDisplayRows } from "./nutritionReportDisplay";
+import { micronutrientRowsForReport } from "./quickFoodLogNutrition";
+
+describe("nutritionReportClientGraphics", () => {
+  it("splits energy from protein, carbs and fat", () => {
+    const split = energySplitFromTotals({ protein: 50, carbs: 100, fat: 20 });
+    expect(split.proteinKcal).toBe(200);
+    expect(split.carbsKcal).toBe(400);
+    expect(split.fatKcal).toBe(180);
+    expect(split.totalKcal).toBe(780);
+  });
+
+  it("counts status tones from macros and micros", () => {
+    const totals = { ...EMPTY_FOOD_LOG_NUTRITION, kcal: 2000, protein: 120, carbs: 200, fat: 70 };
+    const counts = countClientStatusTones(buildMacroDisplayRows(totals, { kcal: 2000, protein: 120, carbs: 200, fat: 70 }), []);
+    expect(counts.ok + counts.warn + counts.danger).toBeGreaterThan(0);
+  });
+
+  it("renders donuts, gauges and a period sparkline", () => {
+    const totals = { ...EMPTY_FOOD_LOG_NUTRITION, kcal: 1800, protein: 90, carbs: 180, fat: 60 };
+    const html = buildClientReportGraphicsHtml({
+      totals,
+      mealPlanTargets: { kcal: 2000, protein: 120, carbs: 200, fat: 70 },
+      microRows: micronutrientRowsForReport(totals),
+      dailyKcal: [
+        { dateLabel: "man 01.09", kcal: 1600 },
+        { dateLabel: "tir 02.09", kcal: 2100 },
+        { dateLabel: "ons 03.09", kcal: 1800 },
+      ],
+    });
+    expect(html).toContain("Slik ligger kosten an");
+    expect(html).toContain("Energifordeling");
+    expect(html).toContain("Mot anbefaling");
+    expect(html).toContain("Energi gjennom perioden");
+    expect(html).toContain("<svg");
+    expect(html).toContain("Kalorier");
+  });
+
+  it("prints trainer comments and keeps an empty lined box when missing", () => {
+    expect(buildClientReportCommentHtml("Hold igjen på kveldsmat.")).toContain("Hold igjen på kveldsmat.");
+    expect(buildClientReportCommentHtml("")).toContain("comment-lines");
+    expect(buildClientReportCommentHtml("Linje 1\nLinje 2")).toContain("<br />");
+  });
+});

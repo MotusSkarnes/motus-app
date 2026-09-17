@@ -15,8 +15,10 @@ import {
 } from "./nutritionReportDisplay";
 import {
   buildDailyVariationTable,
+  formatVariationDayLabel,
   type DailyVariationTable,
 } from "./nutritionReportDailyVariation";
+import { buildClientReportCommentHtml, buildClientReportGraphicsHtml } from "./nutritionReportClientGraphics";
 import type { MealPlanTargets } from "./mealPlanTypes";
 import type { NutritionReferenceContext } from "./personalizedNutritionReferences";
 import { nutritionReferenceFootnote, nutritionReferenceWarningMessage } from "./personalizedNutritionReferences";
@@ -52,6 +54,7 @@ export type NutritionReportPrintPayload = {
   coverageLookup?: NutrientCoverageLookup;
   audience?: NutritionReportPrintAudience;
   logoUrl?: string;
+  clientComment?: string;
 };
 
 function escapeHtml(value: string): string {
@@ -192,6 +195,15 @@ function dailyVariationTableHtml(table: DailyVariationTable, title: string): str
       <tbody>${body}</tbody>
       <tfoot><tr><th>Snitt</th>${average}</tr></tfoot>
     </table>`;
+}
+
+function clientDailyKcal(payload: NutritionReportPrintPayload): Array<{ dateLabel: string; kcal: number }> {
+  if (payload.dailyKcal?.length) return payload.dailyKcal;
+  if (!payload.dailyTotals?.length) return [];
+  return payload.dailyTotals.map((row) => ({
+    dateLabel: formatVariationDayLabel(row.dateKey),
+    kcal: row.totals.kcal,
+  }));
 }
 
 function dailyOverviewHtml(payload: NutritionReportPrintPayload): string {
@@ -557,6 +569,69 @@ function buildClientPrintHtml(payload: NutritionReportPrintPayload): string {
       color: #94a3b8;
       text-align: center;
     }
+    .viz { margin: 8px 0 4px; }
+    .viz-board {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 6px;
+    }
+    .viz-card {
+      background: linear-gradient(180deg, #f8fffd 0%, #f8fafc 100%);
+      border: 1px solid #e2e8f0;
+      border-radius: 12px;
+      padding: 8px;
+      break-inside: avoid;
+    }
+    .viz-card--gauges { grid-column: 1 / -1; }
+    .viz-card--spark { grid-column: 1 / -1; padding: 8px 10px 2px; }
+    .viz-title {
+      margin: 0 0 4px;
+      font-size: 9px;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: #64748b;
+    }
+    .viz-svg { width: 100%; height: auto; max-height: 108px; display: block; }
+    .viz-gauge .viz-svg { max-height: 72px; }
+    .viz-spark { width: 100%; height: auto; display: block; }
+    .viz-center { font-size: 13px; font-weight: 800; fill: #0f172a; }
+    .viz-center-sub { font-size: 8px; fill: #64748b; }
+    .viz-gauge-pct { font-size: 11px; font-weight: 800; fill: #0f172a; }
+    .viz-spark-label { font-size: 8px; fill: #94a3b8; }
+    .viz-legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 3px 8px;
+      margin: 6px 0 0;
+      font-size: 8px;
+      color: #475569;
+    }
+    .viz-legend span { display: inline-flex; align-items: center; gap: 4px; }
+    .viz-gauges { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 4px; }
+    .viz-gauge { margin: 0; text-align: center; }
+    .viz-gauge figcaption {
+      display: flex;
+      flex-direction: column;
+      font-size: 8px;
+      color: #64748b;
+    }
+    .viz-gauge strong { color: #0f172a; font-size: 9px; }
+    .comment {
+      margin-top: 10px;
+      break-inside: avoid;
+      border: 1px solid rgba(48, 227, 190, 0.4);
+      border-radius: 12px;
+      padding: 10px 12px 12px;
+      background: #f0fdfa;
+    }
+    .comment h2 { margin-top: 0; border: 0; padding-bottom: 0; }
+    .comment p { margin: 8px 0 0; font-size: 12px; line-height: 1.5; color: #0f172a; }
+    .comment-lines {
+      height: 68px;
+      margin-top: 6px;
+      background: repeating-linear-gradient(to bottom, transparent 0, transparent 16px, #cbd5e1 16px, #cbd5e1 17px);
+    }
     .report-table { width: 100%; border-collapse: collapse; margin: 0 0 8px; font-size: 9px; }
     .report-table th, .report-table td {
       border: 1px solid #e2e8f0;
@@ -575,7 +650,7 @@ function buildClientPrintHtml(payload: NutritionReportPrintPayload): string {
     .muted { color: #64748b; font-size: 8px; margin: 0 0 4px; }
     @media print {
       body { background: #fff; }
-      .header, .card { break-inside: avoid; }
+      .header, .card, .viz-card, .comment { break-inside: avoid; }
     }
   </style>
 </head>
@@ -606,9 +681,17 @@ function buildClientPrintHtml(payload: NutritionReportPrintPayload): string {
     <h2>Omega-fettsyrer</h2>
     ${clientMacroCardsHtml(buildOmegaOverviewRows(payload.totals.fattyAcids, kcalTarget))}
 
-    ${dailyOverviewHtml(payload)}
+    ${buildClientReportGraphicsHtml({
+      totals: payload.totals,
+      mealPlanTargets: payload.mealPlanTargets,
+      microRows: payload.microRows,
+      referenceContext: payload.referenceContext,
+      dailyKcal: clientDailyKcal(payload),
+    })}
 
-    <p class="footer">Motus · Kortfargene viser om inntaket er innenfor anbefalingen. Dagsvariasjon viser avvik fra periodens snitt.</p>
+    ${buildClientReportCommentHtml(payload.clientComment)}
+
+    <p class="footer">Motus · Kortfargene viser om inntaket er innenfor anbefalingen.</p>
   </div>
 </body>
 </html>`;
