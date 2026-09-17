@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { createPortal } from "react-dom";
 import { Printer, X } from "lucide-react";
 import motusLogo from "../../assets/motus-logo-transparent.svg";
 import {
@@ -212,9 +213,9 @@ export function MealPlanNutritionReportModal({
     ],
   );
 
-  if (!open) return null;
+  if (!open || typeof document === "undefined") return null;
 
-  return (
+  return createPortal(
     <div className="motus-nutrition-report-backdrop" role="presentation" onClick={onClose}>
       <div
         className="motus-nutrition-report-modal"
@@ -305,11 +306,7 @@ export function MealPlanNutritionReportModal({
           )}
         </div>
 
-        <div
-          className="motus-nutrition-report-modal__comment-wrap motus-nutrition-report-no-print"
-          onMouseDown={(event) => event.stopPropagation()}
-          onPointerDown={(event) => event.stopPropagation()}
-        >
+        <div className="motus-nutrition-report-modal__comment-wrap motus-nutrition-report-no-print">
           <NutritionReportClientCommentField value={clientComment} onChange={setClientComment} />
         </div>
 
@@ -338,6 +335,7 @@ export function MealPlanNutritionReportModal({
           </GradientButton>
         </footer>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

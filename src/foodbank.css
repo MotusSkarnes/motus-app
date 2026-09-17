@@ -5727,12 +5727,19 @@
 .motus-nutrition-report-backdrop {
   position: fixed;
   inset: 0;
-  z-index: 10080;
+  z-index: 10120;
   display: flex;
   align-items: flex-end;
   justify-content: center;
   padding: 0.75rem;
+  padding-bottom: max(0.75rem, env(safe-area-inset-bottom, 0px));
   background: rgba(15, 23, 42, 0.45);
+}
+
+@media (max-width: 1279px) {
+  .motus-nutrition-report-backdrop {
+    padding-bottom: calc(5.5rem + env(safe-area-inset-bottom, 0px));
+  }
 }
 
 .motus-nutrition-report-modal {
@@ -5948,18 +5955,21 @@
 
 .motus-nutrition-report-modal__comment textarea {
   width: 100%;
-  min-height: 4.75rem;
+  min-height: 5rem;
   resize: vertical;
   font-weight: 400;
   font-size: 0.875rem;
-  line-height: 1.4;
+  line-height: 1.45;
   color: #0f172a;
   background: #fff;
-  border: 1px solid #cbd5e1;
+  border: 1px solid #94a3b8;
   border-radius: 0.65rem;
-  padding: 0.6rem 0.75rem;
+  padding: 0.65rem 0.75rem;
   pointer-events: auto;
   caret-color: #0f172a;
+  -webkit-user-select: text;
+  user-select: text;
+  touch-action: manipulation;
 }
 
 .motus-nutrition-report-modal__comment textarea:focus {
