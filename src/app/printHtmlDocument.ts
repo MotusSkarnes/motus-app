@@ -26,6 +26,46 @@ function cleanupPrintFrame(iframe: HTMLIFrameElement, delayMs = 4000): void {
   }, delayMs);
 }
 
+/** Chromium can leave the opener unable to type in inputs after a print popup. */
+export function restoreAppInteractivityAfterPrint(): void {
+  if (typeof document === "undefined") return;
+  for (const node of [document.documentElement, document.body]) {
+    node.style.removeProperty("pointer-events");
+    node.removeAttribute("inert");
+  }
+  try {
+    window.focus();
+  } catch {
+    // ignore
+  }
+}
+
+export function watchPrintWindowSettled(printWindow: Window, onSettled?: () => void): void {
+  let settled = false;
+  const settle = () => {
+    if (settled) return;
+    settled = true;
+    window.clearInterval(closedPoll);
+    try {
+      if (!printWindow.closed) printWindow.close();
+    } catch {
+      // ignore
+    }
+    restoreAppInteractivityAfterPrint();
+    onSettled?.();
+  };
+
+  const closedPoll = window.setInterval(() => {
+    try {
+      if (printWindow.closed) settle();
+    } catch {
+      settle();
+    }
+  }, 250);
+
+  schedulePrintWhenReady(printWindow, settle);
+}
+
 export function schedulePrintWhenReady(targetWindow: Window, onAfterPrint?: () => void): void {
   const runPrint = () => {
     if (onAfterPrint) {

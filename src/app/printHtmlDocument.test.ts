@@ -2,8 +2,10 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   printHtmlDocument,
   printHtmlViaHiddenFrame,
+  restoreAppInteractivityAfterPrint,
   shouldPreferInlineProgramPrint,
   stripProgramPrintScript,
+  watchPrintWindowSettled,
 } from "./printHtmlDocument";
 
 const SAMPLE_HTML = `<!doctype html><html><body><p>Test</p><script>window.print()</script></body></html>`;
@@ -12,6 +14,7 @@ describe("printHtmlDocument", () => {
   afterEach(() => {
     vi.unstubAllGlobals();
     vi.restoreAllMocks();
+    vi.useRealTimers();
     document.querySelectorAll("iframe[title='Utskrift']").forEach((node) => node.remove());
   });
 
@@ -50,5 +53,33 @@ describe("printHtmlDocument", () => {
   it("iframe write returns true when document is available", () => {
     const ok = printHtmlViaHiddenFrame(SAMPLE_HTML);
     expect(ok).toBe(true);
+  });
+
+  it("clears stuck pointer-events after print", () => {
+    document.body.style.pointerEvents = "none";
+    document.body.setAttribute("inert", "");
+    restoreAppInteractivityAfterPrint();
+    expect(document.body.style.pointerEvents).toBe("");
+    expect(document.body.hasAttribute("inert")).toBe(false);
+  });
+
+  it("settles when the print window is closed", () => {
+    vi.useFakeTimers();
+    const onSettled = vi.fn();
+    const printWindow = {
+      closed: false,
+      close: vi.fn(function (this: { closed: boolean }) {
+        this.closed = true;
+      }),
+      document: { readyState: "complete", images: [] },
+      addEventListener: vi.fn(),
+      focus: vi.fn(),
+      print: vi.fn(),
+    };
+    watchPrintWindowSettled(printWindow as unknown as Window, onSettled);
+    printWindow.closed = true;
+    vi.advanceTimersByTime(300);
+    expect(onSettled).toHaveBeenCalledTimes(1);
+    vi.useRealTimers();
   });
 });

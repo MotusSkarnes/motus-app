@@ -83,6 +83,7 @@ export function MemberFoodLogNutritionReportModal({
   const [microFilter, setMicroFilter] = useState<MicronutrientReportFilterMode>("all");
   const [printError, setPrintError] = useState<string | null>(null);
   const [clientComment, setClientComment] = useState("");
+  const [commentFieldEpoch, setCommentFieldEpoch] = useState(0);
 
   useEffect(() => {
     if (!open) return;
@@ -94,6 +95,7 @@ export function MemberFoodLogNutritionReportModal({
     setMicroFilter("all");
     setPrintError(null);
     setClientComment("");
+    setCommentFieldEpoch(0);
   }, [open, selectedDateKey]);
 
   const periodDateKeys = useMemo(() => {
@@ -193,21 +195,24 @@ export function MemberFoodLogNutritionReportModal({
 
   const handlePrint = useCallback(
     (audience: NutritionReportPrintAudience) => {
-      const ok = openNutritionReportPrintWindow({
-        memberName: displayName,
-        periodSummary: viewMode === "variation" ? aggregateSummary : periodSummary,
-        totals: displayTotals,
-        mealPlanTargets,
-        microRows: audience === "client" ? microRows : visibleMicroRows,
-        referenceContext,
-        contributionLookup: audience === "trainer" ? contributionLookup : undefined,
-        coverageLookup: audience === "trainer" ? coverageLookup : undefined,
-        dailyTotals: report.daysWithLogs > 1 ? report.dailyTotals : undefined,
-        dailyAverage: report.daysWithLogs > 1 ? report.dailyAverage : undefined,
-        audience,
-        logoUrl: motusLogo,
-        clientComment: audience === "client" ? clientComment : undefined,
-      });
+      const ok = openNutritionReportPrintWindow(
+        {
+          memberName: displayName,
+          periodSummary: viewMode === "variation" ? aggregateSummary : periodSummary,
+          totals: displayTotals,
+          mealPlanTargets,
+          microRows: audience === "client" ? microRows : visibleMicroRows,
+          referenceContext,
+          contributionLookup: audience === "trainer" ? contributionLookup : undefined,
+          coverageLookup: audience === "trainer" ? coverageLookup : undefined,
+          dailyTotals: report.daysWithLogs > 1 ? report.dailyTotals : undefined,
+          dailyAverage: report.daysWithLogs > 1 ? report.dailyAverage : undefined,
+          audience,
+          logoUrl: motusLogo,
+          clientComment: audience === "client" ? clientComment : undefined,
+        },
+        () => setCommentFieldEpoch((value) => value + 1),
+      );
       if (!ok) {
         setPrintError("Kunne ikke åpne utskrift. Tillat popup-vinduer for Motus i nettleseren.");
         return;
@@ -352,7 +357,11 @@ export function MemberFoodLogNutritionReportModal({
         </div>
 
         <div className="motus-nutrition-report-modal__comment-wrap motus-nutrition-report-no-print">
-          <NutritionReportClientCommentField value={clientComment} onChange={setClientComment} />
+          <NutritionReportClientCommentField
+            key={commentFieldEpoch}
+            value={clientComment}
+            onChange={setClientComment}
+          />
         </div>
 
         <footer className="motus-nutrition-report-modal__footer motus-nutrition-report-no-print">

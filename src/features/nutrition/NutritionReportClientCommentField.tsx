@@ -16,6 +16,7 @@ export function NutritionReportClientCommentField({ value, onChange }: Nutrition
         rows={4}
         autoComplete="off"
         spellCheck
+        data-motus-client-comment="true"
         value={value}
         onChange={(event) => onChange(event.target.value)}
         placeholder="Skriv her. Teksten vises nederst på utskriften til kunden."
