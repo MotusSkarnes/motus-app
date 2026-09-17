@@ -43,7 +43,7 @@ import {
   Wand2,
   X,
 } from "lucide-react";
-import { MEAL_PLAN_CHANGED_EVENT } from "../app/mealPlanStorage";
+import { MEAL_PLAN_CHANGED_EVENT, loadMealPlanForMember } from "../app/mealPlanStorage";
 import { createDefaultMealPlan } from "../app/mealPlanDefaults";
 import {
   countMealPlanFoodItems,
@@ -56,7 +56,6 @@ import {
   persistMealPlanLocalAndScheduleCloud,
   pickPreferredMealPlan,
 } from "../app/mealPlanCloud";
-import { loadMealPlanForMember } from "../app/mealPlanStorage";
 import { useInspirationRecipeItems } from "../app/inspirationRecipeItems";
 import { defaultPortionGramsForFood } from "../app/foodPortionDefaults";
 import { hydrateMealPlanFoodNutrition } from "../app/mealPlanFoodNutrition";
@@ -140,6 +139,10 @@ type FoodPickerState = MealPickerTarget | null;
 type RecipePickerState = MealPickerTarget | null;
 const RECIPE_PORTION_GRAMS = 100;
 
+function cloneMealPlan(plan: MealPlan): MealPlan {
+  return JSON.parse(JSON.stringify(plan)) as MealPlan;
+}
+
 export function TrainerMealPlanEditor({
   memberId,
   memberEmail = "",
@@ -168,6 +171,10 @@ export function TrainerMealPlanEditor({
   const [deletingPlan, setDeletingPlan] = useState(false);
   const [nutritionReportOpen, setNutritionReportOpen] = useState(false);
   const [builderWorkspaceOpen, setBuilderWorkspaceOpen] = useState(false);
+  const builderWorkspaceOpenRef = useRef(false);
+  const builderSnapshotRef = useRef<MealPlan | null>(null);
+  const planRef = useRef<MealPlan | null>(null);
+  planRef.current = plan;
   const [saveStatus, setSaveStatus] = useState<string | null>(null);
   const [foodPicker, setFoodPicker] = useState<FoodPickerState>(null);
   const [recipePicker, setRecipePicker] = useState<RecipePickerState>(null);
@@ -206,6 +213,31 @@ export function TrainerMealPlanEditor({
   const foodItemsForMacrosRef = useRef(foodItemsForMacros);
   foodItemsForMacrosRef.current = foodItemsForMacros;
   const recipesById = useMemo(() => new Map(recipeItems.map((recipe) => [recipe.id, recipe])), [recipeItems]);
+
+  const openBuilderWorkspace = useCallback(() => {
+    const current = planRef.current;
+    if (current) builderSnapshotRef.current = cloneMealPlan(current);
+    builderWorkspaceOpenRef.current = true;
+    setBuilderWorkspaceOpen(true);
+  }, []);
+
+  const closeBuilderWorkspace = useCallback(() => {
+    const snapshot = builderSnapshotRef.current;
+    const current = planRef.current;
+    if (snapshot && current && !mealPlansEqual(snapshot, current)) {
+      const discard = window.confirm(
+        "Du har ulagrede endringer i planleggeren. Lukke uten å lagre?\n\nEndringene blir ikke synlige for klienten.",
+      );
+      if (!discard) return;
+      setPlan(snapshot);
+      setSaveStatus("Endringer i planleggeren ble ikke lagret.");
+    }
+    builderWorkspaceOpenRef.current = false;
+    builderSnapshotRef.current = null;
+    setFoodPicker(null);
+    setRecipePicker(null);
+    setBuilderWorkspaceOpen(false);
+  }, []);
 
   const applyPendingFood = useCallback(
     (currentPlan: MealPlan) => {
@@ -487,7 +519,10 @@ export function TrainerMealPlanEditor({
   }, [foodItemsForMacros]);
 
   useEffect(() => {
-    const handler = () => void reload();
+    const handler = () => {
+      if (builderWorkspaceOpenRef.current) return;
+      void reload();
+    };
     window.addEventListener(MEAL_PLAN_CHANGED_EVENT, handler);
     return () => window.removeEventListener(MEAL_PLAN_CHANGED_EVENT, handler);
   }, [reload]);
@@ -497,14 +532,14 @@ export function TrainerMealPlanEditor({
     const prevOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") setBuilderWorkspaceOpen(false);
+      if (event.key === "Escape") closeBuilderWorkspace();
     };
     window.addEventListener("keydown", onKeyDown);
     return () => {
       document.body.style.overflow = prevOverflow;
       window.removeEventListener("keydown", onKeyDown);
     };
-  }, [builderWorkspaceOpen]);
+  }, [builderWorkspaceOpen, closeBuilderWorkspace]);
 
   const activeDay = useMemo(
     () => plan?.days.find((day) => day.id === activeDayId) ?? plan?.days[0] ?? null,
@@ -899,11 +934,16 @@ export function TrainerMealPlanEditor({
     setSaveStatus("AI-genererte forslag lagt inn for hele uken.");
   }
 
+  function persistEditorPlan(next: MealPlan, options?: { flushCloud?: boolean }) {
+    if (builderWorkspaceOpenRef.current) return;
+    persistMealPlanLocalAndScheduleCloud(trainerOwnerUserId, next, { notify: false });
+    if (options?.flushCloud) flushMealPlanCloudSave(trainerOwnerUserId ?? "");
+  }
+
   function updatePlan(next: MealPlan, options?: { flushCloud?: boolean }) {
     const stamped: MealPlan = { ...next, updatedAt: new Date().toISOString() };
     setPlan(stamped);
-    persistMealPlanLocalAndScheduleCloud(trainerOwnerUserId, stamped, { notify: false });
-    if (options?.flushCloud) flushMealPlanCloudSave(trainerOwnerUserId ?? "");
+    persistEditorPlan(stamped, options);
   }
 
   function appendEntryToMeal(target: MealPickerTarget, entry: MealPlanFoodEntry, options?: { flushCloud?: boolean }) {
@@ -919,8 +959,7 @@ export function TrainerMealPlanEditor({
         };
       });
       const next: MealPlan = { ...current, days: nextDays, updatedAt: new Date().toISOString() };
-      persistMealPlanLocalAndScheduleCloud(trainerOwnerUserId, next, { notify: false });
-      if (options?.flushCloud) flushMealPlanCloudSave(trainerOwnerUserId ?? "");
+      persistEditorPlan(next, options);
       return next;
     });
   }
@@ -932,6 +971,9 @@ export function TrainerMealPlanEditor({
     const result = await persistMealPlanBundle(trainerOwnerUserId, plan, {
       memberEmail: memberEmailRef.current,
     });
+    if (builderWorkspaceOpenRef.current) {
+      builderSnapshotRef.current = cloneMealPlan(plan);
+    }
     if (result.cloudSynced) {
       setPlanSource("cloud");
       setSaveStatus(`Matplan lagret for ${memberName} og synkronisert til skyen.`);
@@ -1604,7 +1646,7 @@ export function TrainerMealPlanEditor({
               <h2 className="motus-pt-planner-step__title !mb-0">
                 <span className="motus-pt-planner-step__num">3</span> Bygg matplan
               </h2>
-              <GradientButton type="button" className="shrink-0 text-xs" onClick={() => setBuilderWorkspaceOpen(true)}>
+              <GradientButton type="button" className="shrink-0 text-xs" onClick={openBuilderWorkspace}>
                 <Maximize2 className="h-4 w-4" aria-hidden />
                 Åpne planlegger
               </GradientButton>
@@ -1614,7 +1656,8 @@ export function TrainerMealPlanEditor({
               {builderWorkspaceOpen ? " · planleggeren er åpen i stort vindu" : ""}
             </p>
             <p className="mt-1 text-xs text-slate-500">
-              Bruk stort vindu for ukeplanen — enkelt å flytte til egen skjerm. Lukk med Esc eller «Lukk».
+              Bruk stort vindu for ukeplanen — enkelt å flytte til egen skjerm. Trykk Lagre for å publisere til
+              klienten. Kryss eller Esc lukker uten å lagre.
             </p>
           </section>
 
@@ -2213,7 +2256,7 @@ export function TrainerMealPlanEditor({
             <div
               className="motus-meal-plan-builder-backdrop"
               role="presentation"
-              onClick={() => setBuilderWorkspaceOpen(false)}
+              onClick={closeBuilderWorkspace}
             >
               <div
                 className="motus-meal-plan-builder-modal"
@@ -2230,6 +2273,7 @@ export function TrainerMealPlanEditor({
                     <p className="motus-meal-plan-builder-modal__subtitle">
                       {memberName}
                       {planWeeks > 0 ? ` · ${planWeeks} ${planWeeks === 1 ? "uke" : "uker"}` : ""}
+                      {" · Lagre publiserer til klienten"}
                     </p>
                   </div>
                   <div className="motus-meal-plan-builder-modal__actions">
@@ -2249,8 +2293,9 @@ export function TrainerMealPlanEditor({
                     <button
                       type="button"
                       className="motus-meal-plan-builder-modal__close motus-pressable"
-                      onClick={() => setBuilderWorkspaceOpen(false)}
-                      aria-label="Lukk planlegger"
+                      onClick={closeBuilderWorkspace}
+                      aria-label="Lukk uten å lagre"
+                      title="Lukk uten å lagre"
                     >
                       <X className="h-5 w-5" aria-hidden />
                     </button>
