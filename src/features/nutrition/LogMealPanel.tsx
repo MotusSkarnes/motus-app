@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ChevronLeft, ChevronRight, Plus, UtensilsCrossed } from "lucide-react";
 import { formatMacro } from "../../app/foodBankTypes";
 import { MEMBER_MEAL_SLOTS, memberMealSlotLabel } from "../../app/memberMealSlots";
@@ -95,6 +95,7 @@ export function LogMealPanel({
   const [dateKey, setDateKey] = useState(() =>
     clampLogDateKey(preferredDateKey?.trim() || todayKey()),
   );
+  const formWrapRef = useRef<HTMLDivElement | null>(null);
 
   const logsForDate = state.quickFoodLogs[dateKey] ?? [];
   const hasLogs = logsForDate.length > 0;
@@ -109,6 +110,11 @@ export function LogMealPanel({
     if (!preferred) return;
     setDateKey(clampLogDateKey(preferred));
   }, [preferredDateKey]);
+
+  useEffect(() => {
+    if (!open) return;
+    formWrapRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, [open]);
 
   useEffect(() => {
     onRefreshFoodBank?.();
@@ -313,6 +319,56 @@ export function LogMealPanel({
     <div className="motus-log-meal-panel">
       {dateNav}
 
+      {open ? (
+        <div ref={formWrapRef} className="motus-log-meal-panel__form-wrap">
+          {hasLogs ? (
+            <div className="motus-log-meal-panel__form-head">
+              <h2 className="motus-log-meal-panel__title">Logg et måltid</h2>
+              <button type="button" className="motus-log-meal-panel__close motus-pressable" onClick={() => setOpen(false)}>
+                Lukk
+              </button>
+            </div>
+          ) : (
+            <h2 className="motus-log-meal-panel__title">Logg et måltid</h2>
+          )}
+
+          {!isToday ? (
+            <p className="motus-log-meal-panel__backfill-hint">Logger til {dateLabel}</p>
+          ) : null}
+
+          <p className="motus-log-meal-panel__step-label">1. Velg måltid</p>
+          <div className="motus-log-meal-panel__slots" role="tablist" aria-label="Måltidstype">
+            {MEMBER_MEAL_SLOTS.map((slot) => (
+              <button
+                key={slot.id}
+                type="button"
+                role="tab"
+                aria-selected={mealSlotId === slot.id}
+                className={`motus-log-meal-panel__slot ${mealSlotId === slot.id ? "motus-log-meal-panel__slot--active" : ""}`}
+                onClick={() => setMealSlotId(slot.id)}
+              >
+                {slot.label}
+                {(draftBySlot[slot.id]?.length ?? 0) > 0 ? (
+                  <span className="motus-log-meal-panel__slot-badge">{draftBySlot[slot.id]!.length}</span>
+                ) : null}
+              </button>
+            ))}
+          </div>
+
+          <MealDraftComposer
+            mealSlotId={mealSlotId}
+            mealSlotLabel={memberMealSlotLabel(mealSlotId)}
+            draftItems={draftItems}
+            onDraftChange={(items) => setDraftForSlot(mealSlotId, items)}
+            savedMeals={state.savedMeals ?? []}
+            onSaveTemplate={handleSaveTemplate}
+            onDeleteSaved={handleDeleteSaved}
+            onCommitLog={handleCommitLog}
+            foodItems={foodItems}
+          />
+        </div>
+      ) : null}
+
       {hasLogs && !hasMealPlan ? (
         <DailyLoggedMacrosSummary
           macros={macrosForDate}
@@ -392,54 +448,6 @@ export function LogMealPanel({
             ) : null}
           </div>
         </section>
-      ) : null}
-
-      {open || !hasLogs ? (
-        <div className="motus-log-meal-panel__form-wrap">
-          {hasLogs ? (
-            <div className="motus-log-meal-panel__form-head">
-              <h2 className="motus-log-meal-panel__title">Logg et måltid</h2>
-              <button type="button" className="motus-log-meal-panel__close motus-pressable" onClick={() => setOpen(false)}>
-                Lukk
-              </button>
-            </div>
-          ) : null}
-
-          {!isToday ? (
-            <p className="motus-log-meal-panel__backfill-hint">Logger til {dateLabel}</p>
-          ) : null}
-
-          <p className="motus-log-meal-panel__step-label">1. Velg måltid</p>
-          <div className="motus-log-meal-panel__slots" role="tablist" aria-label="Måltidstype">
-            {MEMBER_MEAL_SLOTS.map((slot) => (
-              <button
-                key={slot.id}
-                type="button"
-                role="tab"
-                aria-selected={mealSlotId === slot.id}
-                className={`motus-log-meal-panel__slot ${mealSlotId === slot.id ? "motus-log-meal-panel__slot--active" : ""}`}
-                onClick={() => setMealSlotId(slot.id)}
-              >
-                {slot.label}
-                {(draftBySlot[slot.id]?.length ?? 0) > 0 ? (
-                  <span className="motus-log-meal-panel__slot-badge">{draftBySlot[slot.id]!.length}</span>
-                ) : null}
-              </button>
-            ))}
-          </div>
-
-          <MealDraftComposer
-            mealSlotId={mealSlotId}
-            mealSlotLabel={memberMealSlotLabel(mealSlotId)}
-            draftItems={draftItems}
-            onDraftChange={(items) => setDraftForSlot(mealSlotId, items)}
-            savedMeals={state.savedMeals ?? []}
-            onSaveTemplate={handleSaveTemplate}
-            onDeleteSaved={handleDeleteSaved}
-            onCommitLog={handleCommitLog}
-            foodItems={foodItems}
-          />
-        </div>
       ) : null}
 
       {showWaterSection ? (
