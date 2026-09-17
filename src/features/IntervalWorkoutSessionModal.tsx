@@ -5,6 +5,7 @@ import { MOTUS } from "../app/data";
 import { useIntervalTimerFocusLayout } from "../app/useIntervalTimerFocusLayout";
 import { useDeadlineIntervalTimer } from "../app/useDeadlineIntervalTimer";
 import { useScreenWakeLock } from "../app/useScreenWakeLock";
+import { beginForegroundWorkoutSession } from "../app/foregroundWorkoutSession";
 import { expandProgramExercisesToWorkoutResults } from "../app/programBlocks";
 import { buildIntervalProgramSteps, type IntervalTimerStep } from "../app/intervalWorkoutSteps";
 import { GradientButton, OutlineButton, StatusMessage, TextArea, TextInput } from "../app/ui";
@@ -119,6 +120,10 @@ export function IntervalWorkoutSessionModal({
   logIntervalWorkout,
 }: IntervalWorkoutSessionModalProps) {
   useScreenWakeLock(open);
+  useEffect(() => {
+    if (!open) return;
+    return beginForegroundWorkoutSession();
+  }, [open]);
   const intervalProgramSteps = useMemo(
     () => (program ? buildIntervalProgramSteps(program, exercises) : []),
     [program, exercises],

@@ -57,6 +57,7 @@ import {
   resumePausedWorkoutInState,
 } from "./pausedWorkoutSession";
 import { getPausedWorkoutById, purgeExpiredPausedWorkouts } from "./pausedWorkoutStorage";
+import { isForegroundWorkoutSessionActive, onForegroundWorkoutSessionIdle } from "./foregroundWorkoutSession";
 import { syncMemberFoodBankFromTrainer, syncTrainerFoodBankFromRemote } from "./foodBankCloud";
 import { applyHydratedMealPlan } from "./mealPlanCloud";
 import { applyHydratedMemberMealPlanState } from "./memberMealPlanStateCloud";
@@ -867,6 +868,7 @@ export function useAppState() {
   const [appState, setAppState] = useState<AppState>(() => loadState());
   const liveWorkoutActive = Boolean(appState.workoutMode);
   liveWorkoutActiveRef.current = liveWorkoutActive;
+  const shouldDeferRemoteHydrate = () => liveWorkoutActiveRef.current || isForegroundWorkoutSessionActive();
   const [loginEmail, setLoginEmail] = useState("");
   const [loginPassword, setLoginPassword] = useState("");
   const [loginError, setLoginError] = useState<string | null>(null);
@@ -1149,6 +1151,7 @@ export function useAppState() {
 
     let cancelled = false;
     async function verifyMemberAccess() {
+      if (isForegroundWorkoutSessionActive()) return;
       if (await checkMemberAccessBlocked(email)) {
         if (!cancelled) await blockArchivedMemberAccess(MEMBER_ARCHIVED_APP_MESSAGE, email);
       }
@@ -1169,7 +1172,7 @@ export function useAppState() {
     let cancelled = false;
 
     async function hydrateRemoteData() {
-      if (liveWorkoutActiveRef.current) return;
+      if (shouldDeferRemoteHydrate()) return;
       const {
         data: { session },
       } = supabaseClient ? await supabaseClient.auth.getSession() : { data: { session: null } };
@@ -1195,7 +1198,7 @@ export function useAppState() {
       const isTrainerSession = sessionRole === "trainer";
       const isMemberLikeSession = Boolean(sessionUser) && !isTrainerSession;
       function applyEarlyMemberHydrate(hydratedMember: HydratedMemberData | null, sessionEmail: string) {
-        if (liveWorkoutActiveRef.current) return;
+        if (shouldDeferRemoteHydrate()) return;
         if (!hydratedMember || !sessionEmail || cancelled) return;
         const edgeMembers = hydratedMember.members ?? [];
         const edgePrograms = hydratedMember.programs ?? [];
@@ -1421,7 +1424,7 @@ export function useAppState() {
         const directExercises = await fetchExercisesFromSupabase();
         if (directExercises?.length) remoteExercises = directExercises;
       }
-      if (cancelled || liveWorkoutActiveRef.current) return;
+      if (cancelled || shouldDeferRemoteHydrate()) return;
 
       if (
         isMemberLikeSession &&
@@ -1710,16 +1713,21 @@ export function useAppState() {
 
     void hydrateRemoteData();
     const interval = window.setInterval(() => {
-      if (liveWorkoutActiveRef.current) return;
+      if (shouldDeferRemoteHydrate()) return;
       void hydrateRemoteData();
     }, 8000);
 
     const onVisibility = () => {
       if (document.visibilityState !== "visible") return;
-      if (liveWorkoutActiveRef.current) return;
+      if (shouldDeferRemoteHydrate()) return;
       void hydrateRemoteData();
     };
     document.addEventListener("visibilitychange", onVisibility);
+
+    const stopForegroundIdle = onForegroundWorkoutSessionIdle(() => {
+      if (cancelled) return;
+      void hydrateRemoteData();
+    });
 
     return () => {
       cancelled = true;
@@ -1727,6 +1735,7 @@ export function useAppState() {
       registerMessagesPersistedListener(null);
       window.clearInterval(interval);
       document.removeEventListener("visibilitychange", onVisibility);
+      stopForegroundIdle();
     };
   }, []);
 
