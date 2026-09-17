@@ -539,14 +539,6 @@ export function MemberMealPlanDashboard({ plan, memberId, onOpenAvoidances, onRe
     setRecipeViewServings(parseRecipeBaseServings(activeRecipe.body, activeRecipe.servings));
   }, [activeRecipeId, activeRecipe]);
 
-  useEffect(() => {
-    if (!detailMeal) return;
-    const recipeId = firstRecipeIdFromMeal(detailMeal, recipesById, recipeIdByTitleKey);
-    const recipe = recipeId ? recipesById.get(recipeId) : null;
-    if (!recipe) return;
-    setRecipeViewServings(parseRecipeBaseServings(recipe.body, recipe.servings));
-  }, [detailMeal, recipeIdByTitleKey, recipesById]);
-
   const handleRecipePortionChange = useCallback(
     (entryId: string, next: number) => {
       setTracking((prev) => setRecipePortionMultiplier(memberId, prev, entryId, next));
@@ -724,6 +716,14 @@ export function MemberMealPlanDashboard({ plan, memberId, onOpenAvoidances, onRe
   const planMealIds = useMemo(() => new Set(displayMeals.map((meal) => meal.id)), [displayMeals]);
   const outsidePlanLogs = useMemo(() => logsOutsidePlanMeals(displayQuickLogs, planMealIds), [displayQuickLogs, planMealIds]);
   const detailMeal = detailMealId ? displayMeals.find((meal) => meal.id === detailMealId) ?? null : null;
+
+  useEffect(() => {
+    if (!detailMeal) return;
+    const recipeId = firstRecipeIdFromMeal(detailMeal, recipesById, recipeIdByTitleKey);
+    const recipe = recipeId ? recipesById.get(recipeId) : null;
+    if (!recipe) return;
+    setRecipeViewServings(parseRecipeBaseServings(recipe.body, recipe.servings));
+  }, [detailMeal, recipeIdByTitleKey, recipesById]);
 
   const handleShareDay = useCallback(async () => {
     const summary = `${isSelectedToday ? "I dag" : selectedDay?.label ?? "Dagen"}: ${mealsCompletedCount}/${mealsTotalCount || 0} måltider logget · ${formatMacro(displayMacrosToday.kcal, 0)} kcal · ${formatMacro(displayMacrosToday.protein, 0)} g protein`;
