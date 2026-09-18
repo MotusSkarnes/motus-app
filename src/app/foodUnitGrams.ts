@@ -219,6 +219,37 @@ const LOOKUP_NAME_ALIASES: Record<string, string> = {
 };
 
 const UNIT_GRAMS_LOOKUP = (unitGramsData as { lookup?: Record<string, Record<string, number>> }).lookup ?? {};
+const UNIT_GRAMS_LOOKUP_KEYS = Object.keys(UNIT_GRAMS_LOOKUP).sort();
+const UNIT_GRAMS_LOOKUP_CACHE = new Map<string, FoodItem["unitGrams"] | undefined>();
+
+function keysStartingWith(prefix: string): string[] {
+  if (!prefix) return [];
+  let lo = 0;
+  let hi = UNIT_GRAMS_LOOKUP_KEYS.length;
+  while (lo < hi) {
+    const mid = (lo + hi) >> 1;
+    if (UNIT_GRAMS_LOOKUP_KEYS[mid] < prefix) lo = mid + 1;
+    else hi = mid;
+  }
+  const matches: string[] = [];
+  for (let index = lo; index < UNIT_GRAMS_LOOKUP_KEYS.length; index += 1) {
+    const key = UNIT_GRAMS_LOOKUP_KEYS[index];
+    if (!key.startsWith(prefix)) break;
+    matches.push(key);
+  }
+  return matches;
+}
+
+function scoreUnitGramsMatch(queryKey: string, candidateKey: string, units: Record<string, number>): number {
+  const exact = candidateKey === queryKey ? 1000 : 0;
+  const unitCount = Object.keys(units).length;
+  const prefix = candidateKey.startsWith(queryKey)
+    ? queryKey.length
+    : queryKey.startsWith(candidateKey)
+      ? candidateKey.length
+      : 0;
+  return exact + unitCount * 10 + prefix;
+}
 
 function gramsFromPortion(portion: MatvaretabellenPortion): number | null {
   const grams = Number(portion.quantity);
@@ -261,26 +292,52 @@ function lookupKeysForName(name: string): string[] {
 }
 
 export function lookupUnitGramsForFoodName(name: string): FoodItem["unitGrams"] | undefined {
+  const cacheKey = normalizeFoodBankNameKey(name);
+  if (!cacheKey) return undefined;
+  if (UNIT_GRAMS_LOOKUP_CACHE.has(cacheKey)) return UNIT_GRAMS_LOOKUP_CACHE.get(cacheKey);
+
   const keys = lookupKeysForName(name);
-  if (!keys.length) return undefined;
+  if (!keys.length) {
+    UNIT_GRAMS_LOOKUP_CACHE.set(cacheKey, undefined);
+    return undefined;
+  }
+
+  for (const key of keys) {
+    const exact = UNIT_GRAMS_LOOKUP[key];
+    if (exact) {
+      const result = sanitizeUnitGrams(exact);
+      UNIT_GRAMS_LOOKUP_CACHE.set(cacheKey, result);
+      return result;
+    }
+  }
 
   let best: Record<string, number> | undefined;
   let bestScore = -1;
-  for (const [candidateKey, units] of Object.entries(UNIT_GRAMS_LOOKUP)) {
-    const matchedKey = keys.find(
-      (key) => candidateKey === key || candidateKey.startsWith(key) || key.startsWith(candidateKey),
-    );
-    if (!matchedKey) continue;
-    const unitCount = Object.keys(units).length;
-    const exact = keys.includes(candidateKey) ? 1000 : 0;
-    const prefix = candidateKey.startsWith(matchedKey) ? matchedKey.length : 0;
-    const score = exact + unitCount * 10 + prefix;
-    if (score > bestScore) {
-      best = units;
-      bestScore = score;
+  for (const key of keys) {
+    for (const candidateKey of keysStartingWith(key)) {
+      const units = UNIT_GRAMS_LOOKUP[candidateKey];
+      if (!units) continue;
+      const score = scoreUnitGramsMatch(key, candidateKey, units);
+      if (score > bestScore) {
+        best = units;
+        bestScore = score;
+      }
+    }
+    for (let length = key.length - 1; length >= 3; length -= 1) {
+      const prefix = key.slice(0, length);
+      const units = UNIT_GRAMS_LOOKUP[prefix];
+      if (!units) continue;
+      const score = scoreUnitGramsMatch(key, prefix, units);
+      if (score > bestScore) {
+        best = units;
+        bestScore = score;
+      }
     }
   }
-  return sanitizeUnitGrams(best);
+
+  const result = sanitizeUnitGrams(best);
+  UNIT_GRAMS_LOOKUP_CACHE.set(cacheKey, result);
+  return result;
 }
 
 export function enrichFoodItemUnitGrams(item: FoodItem): FoodItem {

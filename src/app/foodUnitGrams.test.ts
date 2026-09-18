@@ -111,6 +111,7 @@ describe("foodUnitGrams", () => {
 
   it("fyller inn Matvaretabellen-vekter uten å overskrive lagrede enheter", () => {
     expect(lookupUnitGramsForFoodName("Agurk")?.stk).toBe(325);
+    expect(lookupUnitGramsForFoodName("Agurk, norsk")?.stk).toBe(325);
     expect(lookupUnitGramsForFoodName("Avokado")?.["stk liten"]).toBe(130);
     expect(lookupUnitGramsForFoodName("Avokado")?.["stk stor"]).toBe(220);
     expect(lookupUnitGramsForFoodName("Havregryn")?.ss).toBe(6);
@@ -137,5 +138,14 @@ describe("foodUnitGrams", () => {
     expect(missingRecipeUnitsForFood(avocado)).toContain("ss");
     expect(missingRecipeUnitsForFood(avocado)).not.toContain("g");
     expect(missingRecipeUnitsForFood(avocado)).not.toContain("stk liten");
+  });
+
+  it("slår opp enhetsvekter uten å skanne hele tabellen for hvert navn", () => {
+    const names = ["Agurk", "Avokado", "Havregryn", "Egg", "Kyllingbryst", "Lettmelk"];
+    const started = Date.now();
+    for (let index = 0; index < 400; index += 1) {
+      for (const name of names) lookupUnitGramsForFoodName(name);
+    }
+    expect(Date.now() - started).toBeLessThan(200);
   });
 });
