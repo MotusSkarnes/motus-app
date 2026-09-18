@@ -8,6 +8,7 @@ import {
   type FoodMeasureMode,
 } from "../../app/foodPortionMeasure";
 import { defaultPortionGramsForFood } from "../../app/foodPortionDefaults";
+import { searchFoodBankItems } from "../../app/foodBankSearch";
 import { useFoodBankItems } from "../../app/useFoodBankItems";
 import { OutlineButton, TextInput } from "../../app/ui";
 
@@ -51,13 +52,9 @@ export function FoodLogFormFields({ onSubmit, submitLabel = "Logg", compact = fa
   const hasSearchQuery = search.trim().length > 0;
 
   const filteredFoods = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    const matches = (item: FoodItem) => {
-      const haystack = `${item.name} ${item.origin} ${item.createdBy}`.toLowerCase();
-      return !q || haystack.includes(q);
-    };
-    const matched = q ? foodItems.filter(matches) : foodItems;
-    return matched.slice(0, 24);
+    const q = search.trim();
+    if (!q) return foodItems.slice(0, 24);
+    return searchFoodBankItems(foodItems, q, 24);
   }, [foodItems, search]);
 
   // Keep selection sticky across food-bank sync/dedupe (id may change for duplicates).

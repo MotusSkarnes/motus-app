@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { Search, X } from "lucide-react";
-import { filterFoodBankItems } from "../app/foodBankFilter";
+import { searchFoodBankItems } from "../app/foodBankSearch";
 import { formatMacro } from "../app/foodBankTypes";
 import type { FoodItem } from "../app/foodBankTypes";
 import { OutlineButton } from "../app/ui";
@@ -25,27 +25,7 @@ export function RecipeFoodSelectModal({
   const [search, setSearch] = useState("");
 
   const filteredFoods = useMemo(
-    () =>
-      filterFoodBankItems(foodItems, {
-        chip: "all",
-        search,
-        favoriteIds: new Set(),
-        recentIds: [],
-        sources: [],
-        favoritesOnly: false,
-        mineOnly: false,
-        macro: {
-          kcalMin: "",
-          kcalMax: "",
-          proteinMin: "",
-          proteinMax: "",
-          carbsMin: "",
-          carbsMax: "",
-          fatMin: "",
-          fatMax: "",
-        },
-        trainerName: "",
-      }).slice(0, 80),
+    () => (search.trim() ? searchFoodBankItems(foodItems, search, 80) : foodItems.slice(0, 80)),
     [foodItems, search],
   );
 

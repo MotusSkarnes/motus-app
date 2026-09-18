@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Plus, Search, X } from "lucide-react";
 import { buildDefaultFoodBankItems } from "../../app/foodBankSeed";
+import { searchFoodBankItems } from "../../app/foodBankSearch";
 import type { FoodItem } from "../../app/foodBankTypes";
 import {
   foodAvoidanceFromFoodItem,
@@ -73,10 +74,8 @@ export function MemberFoodAvoidancesPanel({
       const q = query.trim().toLowerCase();
       const existingIds = new Set(draft.items.map((row) => row.foodId).filter(Boolean));
       const existingKeys = new Set(draft.items.map((row) => row.key));
-      let list = foodItems.filter((item) => !existingIds.has(item.id));
-      if (q) {
-        list = list.filter((item) => item.name.toLowerCase().includes(q));
-      }
+      let list = q ? searchFoodBankItems(foodItems, q, limit * 3) : foodItems;
+      list = list.filter((item) => !existingIds.has(item.id));
       return list
         .filter((item) => !existingKeys.has(foodAvoidanceFromFoodItem(item).key))
         .slice(0, limit);

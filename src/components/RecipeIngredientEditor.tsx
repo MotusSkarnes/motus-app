@@ -14,6 +14,7 @@ import {
   suggestRecipeDisplayName,
   type RecipeIngredientDraft,
 } from "../app/recipeBody";
+import { searchFoodBankItems } from "../app/foodBankSearch";
 import { uid } from "../app/storage";
 import { OutlineButton, TextInput } from "../app/ui";
 
@@ -148,13 +149,7 @@ export function RecipeIngredientEditor({
   const [error, setError] = useState<string | null>(null);
   const [weightPrompt, setWeightPrompt] = useState<WeightPrompt | null>(null);
 
-  const filteredFoods = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    if (!q) return [];
-    return foodItems
-      .filter((item) => `${item.name} ${item.origin}`.toLowerCase().includes(q))
-      .slice(0, 12);
-  }, [foodItems, search]);
+  const filteredFoods = useMemo(() => searchFoodBankItems(foodItems, search, 20), [foodItems, search]);
 
   const selectedFoodLive = selectedFood
     ? foodItems.find((item) => item.id === selectedFood.id) ?? selectedFood

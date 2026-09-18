@@ -1,3 +1,4 @@
+import { foodItemMatchesSearch } from "./foodBankSearch";
 import type { FoodBankFilterChip, FoodItem, FoodMacroFilter, FoodSource } from "./foodBankTypes";
 
 export type FoodBankListFilters = {
@@ -33,8 +34,7 @@ export function filterFoodBankItems(items: FoodItem[], filters: FoodBankListFilt
 
   return items.filter((item) => {
     if (query) {
-      const haystack = `${item.name} ${item.origin} ${item.category}`.toLowerCase();
-      if (!haystack.includes(query)) return false;
+      if (!foodItemMatchesSearch(item, filters.search)) return false;
     }
 
     if (filters.favoritesOnly && !filters.favoriteIds.has(item.id)) return false;

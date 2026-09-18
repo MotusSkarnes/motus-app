@@ -5,6 +5,7 @@ import { formatMacro, type FoodItem } from "../../app/foodBankTypes";
 import { toIsoDateKey, type MemberQuickFoodLogEntry } from "../../app/memberMealPlanState";
 import { loadMemberMealPlanState } from "../../app/memberMealPlanState";
 import { persistMemberMealPlanStateLocalAndScheduleCloud, syncMemberMealPlanState } from "../../app/memberMealPlanStateCloud";
+import { searchFoodBankItems } from "../../app/foodBankSearch";
 import { useFoodBankItems } from "../../app/useFoodBankItems";
 import { useInspirationRecipeItems } from "../../app/inspirationRecipeItems";
 import { computeRecipeMacros } from "../../app/recipeMacros";
@@ -48,13 +49,9 @@ export function MemberQuickFoodLogPanel({ memberId, readOnly = false, onRefreshF
   }, [memberId]);
 
   const filteredFoods = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    const matches = (item: FoodItem) => {
-      const haystack = `${item.name} ${item.origin}`.toLowerCase();
-      return !q || haystack.includes(q);
-    };
-    const matched = q ? foodItems.filter(matches) : foodItems;
-    return matched.slice(0, 25);
+    const q = search.trim();
+    if (!q) return foodItems.slice(0, 25);
+    return searchFoodBankItems(foodItems, q, 25);
   }, [foodItems, search]);
 
   useEffect(() => {
