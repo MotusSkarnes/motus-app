@@ -283,12 +283,30 @@ function lookupKeysForName(name: string): string[] {
   const key = normalizeFoodBankNameKey(name);
   if (!key) return [];
   const keys = [key];
-  const alias = LOOKUP_NAME_ALIASES[key];
+  const short = normalizeFoodBankNameKey(name.split(",")[0] ?? "");
+  if (short) keys.push(short);
+  const alias = LOOKUP_NAME_ALIASES[key] ?? LOOKUP_NAME_ALIASES[short];
   if (alias) keys.push(normalizeFoodBankNameKey(alias));
   for (const [from, to] of Object.entries(LOOKUP_NAME_ALIASES)) {
-    if (to === key) keys.push(from);
+    if (to === key || to === short) keys.push(from);
   }
   return [...new Set(keys.filter(Boolean))];
+}
+
+function isTrainerCreatedFood(item: Pick<FoodItem, "isCustom" | "source">): boolean {
+  return item.isCustom === true || item.source === "egen";
+}
+
+/** Kortnøkler som «brød» inni «brødkrutonger» — bare for å fjerne feilpåførte vekter. */
+function reversePrefixLookupUnits(name: string): Record<string, number> | undefined {
+  const key = normalizeFoodBankNameKey(name);
+  if (key.length < 4) return undefined;
+  for (let length = key.length - 1; length >= 3; length -= 1) {
+    const prefix = key.slice(0, length);
+    const units = UNIT_GRAMS_LOOKUP[prefix];
+    if (units) return units;
+  }
+  return undefined;
 }
 
 export function lookupUnitGramsForFoodName(name: string): FoodItem["unitGrams"] | undefined {
@@ -314,20 +332,12 @@ export function lookupUnitGramsForFoodName(name: string): FoodItem["unitGrams"] 
   let best: Record<string, number> | undefined;
   let bestScore = -1;
   for (const key of keys) {
+    if (key.length < 4) continue;
     for (const candidateKey of keysStartingWith(key)) {
+      if (candidateKey === key) continue;
       const units = UNIT_GRAMS_LOOKUP[candidateKey];
       if (!units) continue;
       const score = scoreUnitGramsMatch(key, candidateKey, units);
-      if (score > bestScore) {
-        best = units;
-        bestScore = score;
-      }
-    }
-    for (let length = key.length - 1; length >= 3; length -= 1) {
-      const prefix = key.slice(0, length);
-      const units = UNIT_GRAMS_LOOKUP[prefix];
-      if (!units) continue;
-      const score = scoreUnitGramsMatch(key, prefix, units);
       if (score > bestScore) {
         best = units;
         bestScore = score;
@@ -340,7 +350,29 @@ export function lookupUnitGramsForFoodName(name: string): FoodItem["unitGrams"] 
   return result;
 }
 
+export function stripContaminatedLookupUnits(item: FoodItem): FoodItem {
+  const stored = sanitizeUnitGrams(item.unitGrams);
+  if (!stored) return item;
+  const loose = sanitizeUnitGrams(reversePrefixLookupUnits(item.name));
+  if (!loose) return item;
+  const strict = lookupUnitGramsForFoodName(item.name);
+  const next: Record<string, number> = { ...stored };
+  let changed = false;
+  for (const [unit, grams] of Object.entries(loose)) {
+    if (strict?.[unit] === grams) continue;
+    if (next[unit] === grams) {
+      delete next[unit];
+      changed = true;
+    }
+  }
+  if (!changed) return item;
+  const unitGrams = sanitizeUnitGrams(next);
+  return unitGrams ? { ...item, unitGrams } : { ...item, unitGrams: undefined };
+}
+
 export function enrichFoodItemUnitGrams(item: FoodItem): FoodItem {
-  const unitGrams = mergeUnitGramsMaps(item.unitGrams, lookupUnitGramsForFoodName(item.name));
-  return unitGrams ? { ...item, unitGrams } : item;
+  const cleaned = stripContaminatedLookupUnits(item);
+  if (isTrainerCreatedFood(cleaned)) return cleaned;
+  const unitGrams = mergeUnitGramsMaps(cleaned.unitGrams, lookupUnitGramsForFoodName(cleaned.name));
+  return unitGrams ? { ...cleaned, unitGrams } : { ...cleaned, unitGrams: undefined };
 }

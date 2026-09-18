@@ -119,6 +119,7 @@ describe("foodUnitGrams", () => {
     const oats = enrichFoodItemUnitGrams(
       food({
         name: "Havregryn",
+        source: "matvaretabell",
         portionLabel: "40 g (1 dl)",
         portionGrams: 40,
         unitGrams: { ss: 8 },
@@ -130,7 +131,7 @@ describe("foodUnitGrams", () => {
 
   it("skiller enheter med vekt fra enheter uten vekt", () => {
     const avocado = enrichFoodItemUnitGrams(
-      food({ name: "Avokado", portionLabel: "1/2 stk", portionGrams: 100 }),
+      food({ name: "Avokado", source: "matvaretabell", portionLabel: "1/2 stk", portionGrams: 100 }),
     );
     expect(registeredRecipeUnitsForFood(avocado)).toContain("g");
     expect(registeredRecipeUnitsForFood(avocado)).toContain("stk liten");
@@ -147,5 +148,19 @@ describe("foodUnitGrams", () => {
       for (const name of names) lookupUnitGramsForFoodName(name);
     }
     expect(Date.now() - started).toBeLessThan(200);
+  });
+
+  it("gir ikke brød-enheter til brødkrutonger eller andre sammensatte egen-matvarer", () => {
+    expect(lookupUnitGramsForFoodName("Brødkrutonger")).toBeUndefined();
+    expect(lookupUnitGramsForFoodName("Brød")?.stk).toBe(500);
+    const croutons = enrichFoodItemUnitGrams(
+      food({
+        name: "Brødkrutonger",
+        source: "egen",
+        isCustom: true,
+        unitGrams: { ss: 4, skive: 38, stk: 500 },
+      }),
+    );
+    expect(croutons.unitGrams).toEqual({ ss: 4 });
   });
 });

@@ -61,12 +61,20 @@ function dedupeAndNormalizeItems(items: FoodItem[]): FoodItem[] {
   return dedupeFoodBankItems(normalized).items;
 }
 
+function unitGramsSignature(items: FoodItem[]): string {
+  return [...items]
+    .map((item) => `${item.id}:${JSON.stringify(item.unitGrams ?? null)}`)
+    .sort()
+    .join("\n");
+}
+
 export function loadFoodBankItems(): FoodItem[] {
   const stored = readJson<FoodItem[]>(FOOD_BANK_STORAGE_KEY);
   if (stored?.length) {
     const withSeeds = appendMissingSeedFoodItems(stored);
     const deduped = dedupeAndNormalizeItems(withSeeds);
-    if (deduped.length !== stored.length || withSeeds.length !== stored.length) persistFoodBankItems(deduped);
+    const unitsChanged = unitGramsSignature(stored) !== unitGramsSignature(deduped);
+    if (deduped.length !== stored.length || withSeeds.length !== stored.length || unitsChanged) persistFoodBankItems(deduped);
     return deduped;
   }
   const seeded = dedupeAndNormalizeItems(buildDefaultFoodBankItems());

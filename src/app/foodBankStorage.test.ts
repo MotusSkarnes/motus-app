@@ -64,3 +64,17 @@ describe("food bank water", () => {
     expect(loaded?.nutritionPer100g.water).toBeUndefined();
   });
 });
+
+describe("food bank unit grams cleanup", () => {
+  it("fjerner brød-enheter som ble limt på brødkrutonger", () => {
+    persistFoodBankItems([
+      vitaminbamser({
+        id: "food-croutons",
+        name: "Brødkrutonger",
+        unitGrams: { ss: 4, skive: 38, stk: 500 },
+      }),
+    ]);
+    const loaded = loadFoodBankItems().find((item) => item.id === "food-croutons");
+    expect(loaded?.unitGrams).toEqual({ ss: 4 });
+  });
+});
