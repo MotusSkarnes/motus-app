@@ -5,6 +5,7 @@ import { formatMacro, type FoodItem } from "../../app/foodBankTypes";
 import { toIsoDateKey, type MemberQuickFoodLogEntry } from "../../app/memberMealPlanState";
 import { loadMemberMealPlanState } from "../../app/memberMealPlanState";
 import { persistMemberMealPlanStateLocalAndScheduleCloud, syncMemberMealPlanState } from "../../app/memberMealPlanStateCloud";
+import { findFoodItemById } from "../../app/foodBankDedup";
 import { searchFoodBankItems } from "../../app/foodBankSearch";
 import { useFoodBankItems } from "../../app/useFoodBankItems";
 import { useInspirationRecipeItems } from "../../app/inspirationRecipeItems";
@@ -57,7 +58,7 @@ export function MemberQuickFoodLogPanel({ memberId, readOnly = false, onRefreshF
   useEffect(() => {
     setSelectedFood((prev) => {
       if (!prev) return null;
-      const byId = foodItems.find((item) => item.id === prev.id);
+      const byId = findFoodItemById(foodItems, prev.id);
       if (byId) return byId;
       const nameKey = prev.name.trim().toLowerCase();
       return foodItems.find((item) => item.name.trim().toLowerCase() === nameKey) ?? prev;

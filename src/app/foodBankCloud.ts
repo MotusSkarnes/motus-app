@@ -12,7 +12,7 @@ import {
 import { appendMissingSeedFoodItems } from "./foodBankSeed";
 import { applyKnownPortionDefaults } from "./foodPortionDefaults";
 import { fetchApprovedFoodItemsForMember, fetchApprovedFoodItemsForTrainer } from "./memberFoodSubmissionsCloud";
-import { dedupeFoodBankItems, remapFoodIdList } from "./foodBankDedup";
+import { dedupeFoodBankItems, findFoodItemById, remapFoodIdList } from "./foodBankDedup";
 import { mergeNutritionWithBank, rehydrateMemberMealPlanState } from "./memberNutritionRehydrate";
 import { loadMemberMealPlanState } from "./memberMealPlanState";
 import { persistMemberMealPlanStateLocalAndScheduleCloud } from "./memberMealPlanStateCloud";
@@ -477,7 +477,7 @@ export function persistFoodUnitGrams(
   const grams = Number(gramsPerUnit);
   if (!foodId.trim() || !Number.isFinite(grams) || grams <= 0) return false;
   const items = loadFoodBankItems();
-  const food = items.find((item) => item.id === foodId);
+  const food = findFoodItemById(items, foodId);
   if (!food) return false;
   persistTrainerFoodBankBundle(ownerUserId, {
     items: upsertFoodItem(items, withRegisteredUnitGrams(food, unit, grams)),

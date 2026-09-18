@@ -2,6 +2,7 @@ import { EMPTY_FATTY_ACIDS, normalizeFattyAcids } from "./foodBankFattyAcids";
 import { hasMicronutrientData, normalizeMicronutrients } from "./foodBankMicronutrients";
 import { mergeNutritionWithBank, resolveNutritionFromFoodItems } from "./memberNutritionRehydrate";
 import type { FoodItem, FoodNutrition } from "./foodBankTypes";
+import { foodItemsById } from "./foodBankDedup";
 import { parseInspirationRecipeFoodId } from "./mealPlanRecipeEntry";
 import type { MealPlan, MealPlanFoodEntry } from "./mealPlanTypes";
 
@@ -94,7 +95,7 @@ export function resolveEntryNutrition(
 }
 
 export function foodItemsToById(foodItems: FoodItem[]): Map<string, FoodItem> {
-  return new Map(foodItems.map((food) => [food.id, food]));
+  return foodItemsById(foodItems);
 }
 
 /** Fyller inn manglende nutritionPer100g fra matvarebanken før makroberegning. */

@@ -58,7 +58,7 @@ import {
 } from "../app/mealPlanCloud";
 import { useInspirationRecipeItems } from "../app/inspirationRecipeItems";
 import { defaultPortionGramsForFood } from "../app/foodPortionDefaults";
-import { hydrateMealPlanFoodNutrition } from "../app/mealPlanFoodNutrition";
+import { hydrateMealPlanFoodNutrition, foodItemsToById } from "../app/mealPlanFoodNutrition";
 import { consumeMealPlanPendingFood } from "../app/mealPlanPendingFood";
 import { computeEntryMacros, computeMealMacros, formatMacroTotals } from "../app/mealPlanMacros";
 import {
@@ -601,7 +601,7 @@ export function TrainerMealPlanEditor({
     if (!isVisible) setGridSelection(null);
   }, [gridSelection, visibleWeekDays]);
 
-  const foodById = useMemo(() => new Map(foodItems.map((food) => [food.id, food])), [foodItems]);
+  const foodById = useMemo(() => foodItemsToById(foodItems), [foodItems]);
   const recipeNutritionById = useMemo(
     () => buildInspirationRecipeNutritionById(recipeItems, foodItemsForMacros),
     [recipeItems, foodItemsForMacros],

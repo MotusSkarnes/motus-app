@@ -1,6 +1,7 @@
 import { DEFAULT_RECIPE_BODY_BY_ID } from "./defaultInspirationRecipes";
 import { EMPTY_MICRONUTRIENTS, type FoodMicronutrients } from "./foodBankMicronutrients";
 import { buildDefaultFoodBankItems } from "./foodBankSeed";
+import { findFoodItemById } from "./foodBankDedup";
 import { registeredGramsPerUnit } from "./foodUnitGrams";
 import { recipeIngredientUnitPattern } from "./recipeUnits";
 import { computeMacrosForGrams, type MacroTotals } from "./mealPlanMacros";
@@ -513,7 +514,7 @@ export function applyRecipeIngredientFoodOverrides(
   return ingredients.map((ingredient) => {
     const overrideId = overrides[ingredient.key]?.trim();
     if (!overrideId) return ingredient;
-    const food = foodItems.find((item) => item.id === overrideId);
+    const food = findFoodItemById(foodItems, overrideId);
     if (!food) return ingredient;
     const grams = ingredient.grams;
     return {
@@ -623,7 +624,7 @@ export function computeRecipeIngredients(
     if (!shouldCountIngredientForMacros(line)) return;
     const parsed = parseIngredientLine(line);
     const overrideId = overrides?.[`ing-${index}`]?.trim();
-    const overrideFood = overrideId ? foodItems.find((item) => item.id === overrideId) : undefined;
+    const overrideFood = findFoodItemById(foodItems, overrideId);
     if (!parsed && !overrideFood) return;
 
     const food = overrideFood ?? (parsed ? resolveFoodForIngredient(parsed.searchText, foodItems) : null);

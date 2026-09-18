@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { dedupeFoodBankItems, foodNutritionSignature } from "./foodBankDedup";
+import { appendMissingSeedFoodItems } from "./foodBankSeed";
+import { dedupeFoodBankItems, findFoodItemById, foodNutritionSignature } from "./foodBankDedup";
 import type { FoodItem, FoodNutrition } from "./foodBankTypes";
 
 function item(partial: Partial<FoodItem> & { name: string; nutritionPer100g: FoodNutrition }): FoodItem {
@@ -168,5 +169,162 @@ describe("foodBankDedup", () => {
     expect(result.items).toHaveLength(1);
     expect(result.items[0]?.id).toBe("food-new");
     expect(result.items[0]?.portionGrams).toBe(1);
+  });
+
+  it("slår Motus-gulrot inn i Matvaretabellens gulrot, rå", () => {
+    const n: FoodNutrition = {
+      kcal: 41,
+      protein: 0.9,
+      carbs: 10,
+      fat: 0.2,
+      fiber: 2.8,
+      sugar: 4.7,
+      saturatedFat: 0,
+      sodium: 69,
+    };
+    const result = dedupeFoodBankItems([
+      item({
+        id: "food-seed-74-abc",
+        name: "Gulrot",
+        category: "gronnsaker",
+        nutritionPer100g: n,
+      }),
+      item({
+        id: "food-matvaretabell-gulrot-norsk-ra",
+        name: "Gulrot, norsk, rå",
+        category: "gronnsaker",
+        nutritionPer100g: { ...n, kcal: 39 },
+      }),
+      item({
+        id: "food-matvaretabell-gulrot-kokt",
+        name: "Gulrot, kokt",
+        category: "gronnsaker",
+        nutritionPer100g: { ...n, kcal: 28 },
+      }),
+      item({
+        id: "food-matvaretabell-gulrotkake",
+        name: "Gulrotkake",
+        category: "karbohydrater",
+        nutritionPer100g: { ...n, kcal: 320 },
+      }),
+    ]);
+    const names = result.items.map((row) => row.name);
+    expect(names).toContain("Gulrot, norsk, rå");
+    expect(names).toContain("Gulrot, kokt");
+    expect(names).toContain("Gulrotkake");
+    expect(names).not.toContain("Gulrot");
+    expect(result.idRemap["food-seed-74-abc"]).toBe("food-matvaretabell-gulrot-norsk-ra");
+    const table = result.items.find((row) => row.id === "food-matvaretabell-gulrot-norsk-ra");
+    expect(table?.aliasIds).toContain("food-seed-74-abc");
+    expect(findFoodItemById(result.items, "food-seed-74-abc")?.id).toBe("food-matvaretabell-gulrot-norsk-ra");
+  });
+
+  it("beholder egen kort matvare og starter uten tabelltreff", () => {
+    const n: FoodNutrition = {
+      kcal: 360,
+      protein: 30,
+      carbs: 35,
+      fat: 12,
+      fiber: 5,
+      sugar: 18,
+      saturatedFat: 5,
+      sodium: 180,
+    };
+    const custom = dedupeFoodBankItems([
+      item({
+        id: "food-seed-1",
+        name: "Gulrot",
+        category: "gronnsaker",
+        isCustom: true,
+        source: "egen",
+        nutritionPer100g: n,
+      }),
+      item({
+        id: "food-matvaretabell-gulrot-norsk-ra",
+        name: "Gulrot, norsk, rå",
+        category: "gronnsaker",
+        nutritionPer100g: { ...n, kcal: 41 },
+      }),
+    ]);
+    expect(custom.items.map((row) => row.name).sort()).toEqual(["Gulrot", "Gulrot, norsk, rå"]);
+
+    const onlySeed = dedupeFoodBankItems([
+      item({ id: "food-seed-2", name: "Proteinbar", category: "proteinkilder", nutritionPer100g: n }),
+    ]);
+    expect(onlySeed.items).toHaveLength(1);
+    expect(onlySeed.items[0]?.name).toBe("Proteinbar");
+  });
+
+  it("slår Banana-seed inn i Banan fra tabellen", () => {
+    const n: FoodNutrition = {
+      kcal: 89,
+      protein: 1.1,
+      carbs: 23,
+      fat: 0.3,
+      fiber: 2.6,
+      sugar: 12,
+      saturatedFat: 0.1,
+      sodium: 1,
+    };
+    const result = dedupeFoodBankItems([
+      item({ id: "food-seed-banana", name: "Banana", category: "karbohydrater", nutritionPer100g: n }),
+      item({
+        id: "food-matvaretabell-banan-ra",
+        name: "Banan, rå",
+        category: "frukt-baer",
+        nutritionPer100g: { ...n, kcal: 88 },
+      }),
+    ]);
+    expect(result.items.map((row) => row.name)).toEqual(["Banan, rå"]);
+    expect(result.idRemap["food-seed-banana"]).toBe("food-matvaretabell-banan-ra");
+  });
+
+  it("beholder tabellvaren ved identisk næring og husker seed-id", () => {
+    const n: FoodNutrition = {
+      kcal: 41,
+      protein: 0.9,
+      carbs: 10,
+      fat: 0.2,
+      fiber: 2.8,
+      sugar: 4.7,
+      saturatedFat: 0,
+      sodium: 69,
+    };
+    const result = dedupeFoodBankItems([
+      item({ id: "food-seed-gulrot", name: "Gulrot", category: "gronnsaker", nutritionPer100g: n }),
+      item({
+        id: "food-matvaretabell-gulrot-norsk-ra",
+        name: "Gulrot, norsk, rå",
+        category: "gronnsaker",
+        nutritionPer100g: n,
+      }),
+    ]);
+    expect(result.items.map((row) => row.name)).toEqual(["Gulrot, norsk, rå"]);
+    expect(result.items[0]?.aliasIds).toContain("food-seed-gulrot");
+    expect(findFoodItemById(result.items, "food-seed-gulrot")?.name).toBe("Gulrot, norsk, rå");
+  });
+
+  it("legger ikke tilbake Motus-gulrot når tabellen allerede dekker navnet", () => {
+    const n: FoodNutrition = {
+      kcal: 41,
+      protein: 0.9,
+      carbs: 10,
+      fat: 0.2,
+      fiber: 2.8,
+      sugar: 4.7,
+      saturatedFat: 0,
+      sodium: 69,
+    };
+    const tableOnly = [
+      item({
+        id: "food-matvaretabell-gulrot-norsk-ra",
+        name: "Gulrot, norsk, rå",
+        category: "gronnsaker",
+        nutritionPer100g: n,
+      }),
+    ];
+    const next = appendMissingSeedFoodItems(tableOnly);
+    expect(next.map((row) => row.name)).not.toContain("Gulrot");
+    expect(next.some((row) => row.name === "Gulrot, norsk, rå")).toBe(true);
   });
 });

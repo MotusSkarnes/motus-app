@@ -1,3 +1,4 @@
+import { foodItemsById } from "./foodBankDedup";
 import type { FoodItem } from "./foodBankTypes";
 import { formatMacro } from "./foodBankTypes";
 import { defaultPortionGramsForFood } from "./foodPortionDefaults";
@@ -342,7 +343,7 @@ export function suggestMealMacroAdjustments(
   foodById?: Map<string, FoodItem>,
 ): MealMacroAdjustmentSuggestion[] {
   if (!dailyTargets || !day.meals.length || !foods.length) return [];
-  const foodsById = new Map(foods.map((food) => [food.id, food]));
+  const foodsById = foodItemsById(foods);
   const distributed = distributeDailyTargetsToMeals(day, dailyTargets, "standard");
   const distributedById = new Map(distributed.map((meal) => [meal.id, meal.targets]));
   const suggestions: MealMacroAdjustmentSuggestion[] = [];

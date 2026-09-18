@@ -1,4 +1,5 @@
 import type { FoodItem } from "../app/foodBankTypes";
+import { findFoodItemById } from "../app/foodBankDedup";
 import { recipePeopleLabel, resolvedRecipeIngredientName, type RecipeIngredientDraft } from "../app/recipeBody";
 import { TextInput } from "../app/ui";
 import { RecipeMethodSection } from "./RecipeMethodSection";
@@ -40,7 +41,7 @@ export function RecipeCustomerPreview({
         </div>
         <ul className="motus-recipe-ingredient-list">
           {ingredients.map((row) => {
-            const bankName = row.foodId ? foodItems.find((item) => item.id === row.foodId)?.name : undefined;
+            const bankName = findFoodItemById(foodItems, row.foodId)?.name;
             const amount = amountLabel(row);
             const placeholder = resolvedRecipeIngredientName({ ...row, name: "" }, bankName) || "Navn kunden ser";
             return (

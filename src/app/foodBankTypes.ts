@@ -47,6 +47,8 @@ export type FoodItem = {
   nutritionSyncedAt?: string;
   /** Gram per 1 enhet (ss, ts, stk, …). Legges til uten å overskrive standardporsjon. */
   unitGrams?: Partial<Record<string, number>>;
+  /** Tidligere id-er, f.eks. Motus-startvare slått inn i Matvaretabellen. */
+  aliasIds?: string[];
   nutritionPer100g: FoodNutrition;
 };
 

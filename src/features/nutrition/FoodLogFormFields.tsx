@@ -8,6 +8,7 @@ import {
   type FoodMeasureMode,
 } from "../../app/foodPortionMeasure";
 import { defaultPortionGramsForFood } from "../../app/foodPortionDefaults";
+import { findFoodItemById } from "../../app/foodBankDedup";
 import { searchFoodBankItems } from "../../app/foodBankSearch";
 import { useFoodBankItems } from "../../app/useFoodBankItems";
 import { OutlineButton, TextInput } from "../../app/ui";
@@ -29,7 +30,7 @@ export function resolveSelectedFoodFromBank(
   selected: FoodItem | null,
 ): FoodItem | null {
   if (!selected) return null;
-  const byId = foodItems.find((item) => item.id === selected.id);
+  const byId = findFoodItemById(foodItems, selected.id);
   if (byId) return byId;
   const nameKey = normalizeFoodBankNameKey(selected.name);
   if (!nameKey) return selected;

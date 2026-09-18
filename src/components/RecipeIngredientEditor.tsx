@@ -14,6 +14,7 @@ import {
   suggestRecipeDisplayName,
   type RecipeIngredientDraft,
 } from "../app/recipeBody";
+import { findFoodItemById } from "../app/foodBankDedup";
 import { searchFoodBankItems } from "../app/foodBankSearch";
 import { uid } from "../app/storage";
 import { OutlineButton, TextInput } from "../app/ui";
@@ -152,7 +153,7 @@ export function RecipeIngredientEditor({
   const filteredFoods = useMemo(() => searchFoodBankItems(foodItems, search, 20), [foodItems, search]);
 
   const selectedFoodLive = selectedFood
-    ? foodItems.find((item) => item.id === selectedFood.id) ?? selectedFood
+    ? findFoodItemById(foodItems, selectedFood.id) ?? selectedFood
     : null;
   const addMissingUnits = selectedFoodLive ? missingRecipeUnitsForFood(selectedFoodLive) : [];
 
@@ -369,7 +370,7 @@ export function RecipeIngredientEditor({
           </div>
           <ul className="motus-recipe-ingredient-editor__list">
             {ingredients.map((row) => {
-              const food = row.foodId ? foodItems.find((item) => item.id === row.foodId) : undefined;
+              const food = findFoodItemById(foodItems, row.foodId);
               const line = bankLineText(food, row);
               const rowMissingUnits = food ? missingRecipeUnitsForFood(food) : [];
               const promptMatches = weightPrompt?.rowId === row.id;

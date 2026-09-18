@@ -2,7 +2,7 @@ import { enrichFoodItem } from "./foodBankMicronutrientEnrichment";
 import { applyKnownPortionDefaults } from "./foodPortionDefaults";
 import { normalizeMicronutrients } from "./foodBankMicronutrients";
 import { sanitizeStoredFattyAcids } from "./foodBankFattyAcids";
-import { dedupeFoodBankItems } from "./foodBankDedup";
+import { dedupeFoodBankItems, remapFoodIdList } from "./foodBankDedup";
 import { buildDefaultFoodBankItems, appendMissingSeedFoodItems } from "./foodBankSeed";
 import { sanitizeUnitGrams } from "./foodUnitGrams";
 import type { FoodItem, FoodNutrition } from "./foodBankTypes";
@@ -27,7 +27,11 @@ function normalizeFoodItem(item: FoodItem): FoodItem {
     }),
   );
   const unitGrams = sanitizeUnitGrams(next.unitGrams);
-  return unitGrams ? { ...next, unitGrams } : { ...next, unitGrams: undefined };
+  const aliasIds = [...new Set((next.aliasIds ?? []).map((id) => id.trim()).filter(Boolean))];
+  return {
+    ...(unitGrams ? { ...next, unitGrams } : { ...next, unitGrams: undefined }),
+    ...(aliasIds.length ? { aliasIds } : { aliasIds: undefined }),
+  };
 }
 
 export const FOOD_BANK_STORAGE_KEY = "motus_food_bank_v1";
@@ -56,9 +60,9 @@ export function notifyFoodBankChanged(): void {
   window.dispatchEvent(new CustomEvent(FOOD_BANK_CHANGED_EVENT));
 }
 
-function dedupeAndNormalizeItems(items: FoodItem[]): FoodItem[] {
+function dedupeAndNormalizeItems(items: FoodItem[]): ReturnType<typeof dedupeFoodBankItems> {
   const normalized = items.map(normalizeFoodItem);
-  return dedupeFoodBankItems(normalized).items;
+  return dedupeFoodBankItems(normalized);
 }
 
 function unitGramsSignature(items: FoodItem[]): string {
@@ -72,12 +76,27 @@ export function loadFoodBankItems(): FoodItem[] {
   const stored = readJson<FoodItem[]>(FOOD_BANK_STORAGE_KEY);
   if (stored?.length) {
     const withSeeds = appendMissingSeedFoodItems(stored);
-    const deduped = dedupeAndNormalizeItems(withSeeds);
+    const { items: deduped, idRemap } = dedupeAndNormalizeItems(withSeeds);
     const unitsChanged = unitGramsSignature(stored) !== unitGramsSignature(deduped);
-    if (deduped.length !== stored.length || withSeeds.length !== stored.length || unitsChanged) persistFoodBankItems(deduped);
+    if (
+      deduped.length !== stored.length ||
+      withSeeds.length !== stored.length ||
+      unitsChanged ||
+      Object.keys(idRemap).length > 0
+    ) {
+      persistFoodBankItems(deduped);
+    }
+    if (Object.keys(idRemap).length > 0) {
+      const previousFavorites = loadFavoriteFoodIds();
+      const previousRecent = loadRecentFoodIds();
+      const nextFavorites = remapFoodIdList(previousFavorites, idRemap);
+      const nextRecent = remapFoodIdList(previousRecent, idRemap);
+      if (nextFavorites.join("\n") !== previousFavorites.join("\n")) persistFavoriteFoodIds(nextFavorites);
+      if (nextRecent.join("\n") !== previousRecent.join("\n")) persistRecentFoodIds(nextRecent);
+    }
     return deduped;
   }
-  const seeded = dedupeAndNormalizeItems(buildDefaultFoodBankItems());
+  const seeded = dedupeAndNormalizeItems(buildDefaultFoodBankItems()).items;
   persistFoodBankItems(seeded);
   return seeded;
 }

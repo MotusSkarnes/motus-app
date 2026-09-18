@@ -17,7 +17,7 @@ import {
 import { MOTUS } from "../../app/data";
 import { formatMacro } from "../../app/foodBankTypes";
 import type { FoodItem } from "../../app/foodBankTypes";
-import { countMealPlanFoodItems } from "../../app/mealPlanCloud";
+import { foodItemsToById } from "../../app/mealPlanFoodNutrition";
 import { canonicalMemberMealSlotId } from "../../app/memberMealSlots";
 import { sumQuickFoodLogMacros } from "../../app/quickFoodLogMacros";
 import {
@@ -230,7 +230,7 @@ export function loggedMealEntriesFromPlanMeal(
 export function MemberMealPlanDashboard({ plan, memberId, onOpenAvoidances, onRefreshFoodBank }: MemberMealPlanDashboardProps) {
   const foodItems = useFoodBankItems();
   const { items: inspirationRecipes } = useInspirationRecipeItems();
-  const foodById = useMemo(() => new Map(foodItems.map((f) => [f.id, f])), [foodItems]);
+  const foodById = useMemo(() => foodItemsToById(foodItems), [foodItems]);
   const recipesById = useMemo(
     () => new Map(inspirationRecipes.map((recipe) => [recipe.id, recipe])),
     [inspirationRecipes],

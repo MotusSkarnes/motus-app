@@ -1,8 +1,8 @@
 import { uid } from "./storage";
-import { dedupeFoodBankItems } from "./foodBankDedup";
+import { dedupeFoodBankItems, existingFoodCoversSeedName } from "./foodBankDedup";
 import { enrichFoodNutrition } from "./foodBankMicronutrientEnrichment";
 import { applyKnownPortionDefaults } from "./foodPortionDefaults";
-import { normalizeFoodBankNameKey } from "./foodBankNameKey";
+import { canonicalFoodBankNameKey } from "./foodBankNameKey";
 import type { FoodCategoryId, FoodItem } from "./foodBankTypes";
 
 type SeedRow = {
@@ -152,10 +152,11 @@ export function buildDefaultFoodBankItems(createdBy = "Motus PT"): FoodItem[] {
 /** Legger til nye standardvarer fra seed når de mangler i eksisterende bank (match på navn). */
 export function appendMissingSeedFoodItems(items: FoodItem[]): FoodItem[] {
   if (!items.length) return items;
-  const existingNames = new Set(items.map((item) => normalizeFoodBankNameKey(item.name)));
-  const missing = buildDefaultFoodBankItems().filter(
-    (seed) => !existingNames.has(normalizeFoodBankNameKey(seed.name)),
-  );
+  const missing = buildDefaultFoodBankItems().filter((seed) => {
+    const key = canonicalFoodBankNameKey(seed.name);
+    if (items.some((item) => canonicalFoodBankNameKey(item.name) === key)) return false;
+    return !existingFoodCoversSeedName(items, seed.name);
+  });
   if (!missing.length) return items;
   return dedupeFoodBankItems([...items, ...missing]).items;
 }

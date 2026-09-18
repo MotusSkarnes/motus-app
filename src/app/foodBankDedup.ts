@@ -1,4 +1,4 @@
-import { normalizeFoodBankNameKey } from "./foodBankNameKey";
+import { canonicalFoodBankNameKey, foodNamePrimaryKey, normalizeFoodBankNameKey } from "./foodBankNameKey";
 import { isGenericDefaultPortion } from "./foodPortionDefaults";
 import type { FoodItem, FoodNutrition } from "./foodBankTypes";
 
@@ -40,6 +40,7 @@ function canonicalScore(item: FoodItem): number {
   let score = 0;
   if (item.isEdited) score += 10_000;
   if (item.isCustom) score += 5_000;
+  if (isOfficialTableFood(item)) score += 1_500;
   if (!isGenericDefaultPortion(item)) score += 2_000;
   if (item.id.startsWith("food-seed-")) score += 1_000;
   const name = item.name.trim();
@@ -49,13 +50,93 @@ function canonicalScore(item: FoodItem): number {
   return score;
 }
 
+function withMergedAliasIds(keep: FoodItem, dropped: FoodItem[]): FoodItem {
+  const aliasIds = [
+    ...new Set([
+      ...(keep.aliasIds ?? []),
+      ...dropped.flatMap((item) => [item.id, ...(item.aliasIds ?? [])]),
+    ]),
+  ].filter((id) => id !== keep.id);
+  return aliasIds.length ? { ...keep, aliasIds } : { ...keep, aliasIds: undefined };
+}
+
 function pickCanonical(group: FoodItem[]): FoodItem {
   return [...group].sort((a, b) => canonicalScore(b) - canonicalScore(a))[0];
+}
+
+function isImportedTableId(id: string): boolean {
+  return id.startsWith("food-matvaretabell-") || id.startsWith("food-usda-");
+}
+
+function isCollapsiblePlaceholder(item: FoodItem): boolean {
+  if (item.isCustom === true || item.isEdited === true) return false;
+  if (item.source === "egen") return false;
+  if (item.name.includes(",")) return false;
+  if (isImportedTableId(item.id)) return false;
+  return true;
+}
+
+function isOfficialTableFood(item: FoodItem): boolean {
+  if (item.isCustom === true || item.isEdited === true) return false;
+  if (item.source !== "matvaretabell" && item.source !== "usda") return false;
+  if (item.id.startsWith("food-seed-")) return false;
+  return isImportedTableId(item.id) || item.name.includes(",");
+}
+
+const PROCESSED_NAME_PATTERN = /juice|kake|suppe|smoothie|muffins|pai|grøt|salat|blanding|hermet|sylt/;
+
+export function tableNameCoversSeedName(tableName: string, seedName: string): boolean {
+  const seedKey = canonicalFoodBankNameKey(seedName);
+  if (!seedKey) return false;
+  if (canonicalFoodBankNameKey(tableName) === seedKey) return true;
+  return foodNamePrimaryKey(tableName) === seedKey;
+}
+
+function tableMatchScore(seedName: string, table: FoodItem): number {
+  const seed = seedName.toLowerCase();
+  const name = table.name.toLowerCase();
+  let score = 40;
+  if (/(^|,\s*)rå(\s|,|$)/i.test(table.name)) score += 80;
+  if (name.includes("norsk")) score += 20;
+  if (name.includes("kokt") && !seed.includes("kokt")) score -= 45;
+  if (name.includes("fryst") && !seed.includes("fryst")) score -= 35;
+  if (PROCESSED_NAME_PATTERN.test(name) && !PROCESSED_NAME_PATTERN.test(seed)) score -= 150;
+  score -= table.name.length * 0.05;
+  return score;
+}
+
+export function existingFoodCoversSeedName(items: FoodItem[], seedName: string): boolean {
+  return items.some((item) => isOfficialTableFood(item) && tableNameCoversSeedName(item.name, seedName));
+}
+
+function collapseSeedPlaceholders(items: FoodItem[], idRemap: Record<string, string>): FoodItem[] {
+  const official = items.filter(isOfficialTableFood);
+  if (!official.length) return items;
+
+  const keep = new Map(items.map((item) => [item.id, item]));
+  for (const placeholder of items) {
+    if (!isCollapsiblePlaceholder(placeholder)) continue;
+    const covers = official.filter(
+      (item) => item.id !== placeholder.id && tableNameCoversSeedName(item.name, placeholder.name),
+    );
+    if (!covers.length) continue;
+    const best = [...covers].sort((left, right) => tableMatchScore(placeholder.name, right) - tableMatchScore(placeholder.name, left))[0];
+    if (!best || tableMatchScore(placeholder.name, best) < 0) continue;
+    keep.delete(placeholder.id);
+    const kept = keep.get(best.id) ?? best;
+    keep.set(best.id, {
+      ...kept,
+      aliasIds: [...new Set([...(kept.aliasIds ?? []), placeholder.id, ...(placeholder.aliasIds ?? [])])],
+    });
+    idRemap[placeholder.id] = best.id;
+  }
+  return Array.from(keep.values());
 }
 
 /**
  * Slår sammen matvarer med identisk navn (normalisert) eller identisk næring per 100 g.
  * Egne / redigerte varer beholdes alltid som kanonisk innen gruppen.
+ * Korte Motus-startvarer slås inn i Matvaretabellen når navnet treffer, f.eks. Gulrot → Gulrot, norsk, rå.
  */
 export function dedupeFoodBankItems(items: FoodItem[]): FoodBankDedupResult {
   if (items.length <= 1) {
@@ -77,10 +158,9 @@ export function dedupeFoodBankItems(items: FoodItem[]): FoodBankDedupResult {
   const afterName = new Map<string, FoodItem>();
   for (const group of byName.values()) {
     const canonical = pickCanonical(group);
-    afterName.set(canonical.id, canonical);
-    for (const item of group) {
-      if (item.id !== canonical.id) idRemap[item.id] = canonical.id;
-    }
+    const dropped = group.filter((item) => item.id !== canonical.id);
+    for (const item of dropped) idRemap[item.id] = canonical.id;
+    afterName.set(canonical.id, withMergedAliasIds(canonical, dropped));
   }
 
   // 2) Identisk næring (men ulikt navn)
@@ -103,10 +183,10 @@ export function dedupeFoodBankItems(items: FoodItem[]): FoodBankDedupResult {
       continue;
     }
     const canonical = pickCanonical(group);
-    finalById.set(canonical.id, canonical);
+    const dropped = group.filter((item) => item.id !== canonical.id);
+    finalById.set(canonical.id, withMergedAliasIds(canonical, dropped));
     const removed: Array<{ id: string; name: string }> = [];
-    for (const item of group) {
-      if (item.id === canonical.id) continue;
+    for (const item of dropped) {
       idRemap[item.id] = canonical.id;
       removed.push({ id: item.id, name: item.name });
     }
@@ -119,7 +199,8 @@ export function dedupeFoodBankItems(items: FoodItem[]): FoodBankDedupResult {
     }
   }
 
-  const deduped = Array.from(finalById.values()).sort((a, b) => a.name.localeCompare(b.name, "nb"));
+  const collapsed = collapseSeedPlaceholders(Array.from(finalById.values()), idRemap);
+  const deduped = collapsed.sort((a, b) => a.name.localeCompare(b.name, "nb"));
   return {
     items: deduped,
     idRemap,
@@ -139,4 +220,21 @@ export function remapFoodIdList(ids: string[], idRemap: Record<string, string>):
     out.push(mapped);
   }
   return out;
+}
+
+export function findFoodItemById(items: FoodItem[], foodId: string | null | undefined): FoodItem | undefined {
+  const id = foodId?.trim();
+  if (!id) return undefined;
+  return items.find((item) => item.id === id || item.aliasIds?.includes(id));
+}
+
+export function foodItemsById(items: FoodItem[]): Map<string, FoodItem> {
+  const map = new Map<string, FoodItem>();
+  for (const item of items) {
+    map.set(item.id, item);
+    for (const aliasId of item.aliasIds ?? []) {
+      if (aliasId.trim() && !map.has(aliasId)) map.set(aliasId, item);
+    }
+  }
+  return map;
 }

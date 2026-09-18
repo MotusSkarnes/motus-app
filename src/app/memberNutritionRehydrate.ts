@@ -1,4 +1,5 @@
 import { mergeMicronutrientsPreferKnown } from "./foodBankMicronutrients";
+import { findFoodItemById } from "./foodBankDedup";
 import type { FoodItem, FoodNutrition } from "./foodBankTypes";
 import type { MemberMealPlanState, MemberQuickFoodLogEntry } from "./memberMealPlanState";
 
@@ -139,7 +140,7 @@ export function resolveNutritionFromFoodItems(
 
   const id = foodId?.trim();
   if (id) {
-    const byId = items.find((item) => item.id === id);
+    const byId = findFoodItemById(items, id);
     if (byId) {
       matched = true;
       merged = mergeNutritionWithBank(byId.nutritionPer100g, merged);

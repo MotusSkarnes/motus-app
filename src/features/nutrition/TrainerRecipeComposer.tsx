@@ -27,6 +27,7 @@ import {
   type RecipeProteinCategory,
 } from "../../app/recipeProteinCategory";
 import { computeRecipeIngredients, computeRecipeMacros } from "../../app/recipeMacros";
+import { findFoodItemById } from "../../app/foodBankDedup";
 import { persistFoodUnitGrams } from "../../app/foodBankCloud";
 import {
   buildRecipeBody,
@@ -110,7 +111,7 @@ function withResolvedIngredientNames(
   foodItems: FoodItem[],
 ): RecipeIngredientDraft[] {
   return rows.map((row) => {
-    const bankName = row.foodId ? foodItems.find((item) => item.id === row.foodId)?.name : undefined;
+    const bankName = findFoodItemById(foodItems, row.foodId)?.name;
     const name = resolvedRecipeIngredientName(row, bankName);
     return name === row.name ? row : { ...row, name };
   });
