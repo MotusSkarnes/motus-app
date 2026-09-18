@@ -9,6 +9,7 @@ import {
   recipePortionsLabel,
   suggestRecipeDisplayName,
   resolvedRecipeIngredientName,
+  splitRecipeMethodLine,
 } from "./recipeBody";
 
 const SAMPLE_BODY = `**Til 2 porsjoner**
@@ -51,6 +52,24 @@ describe("recipeBody", () => {
 
   it("henter slike-gjør-du-steg og stopper før tips", () => {
     expect(extractRecipeMethodSteps(SAMPLE_BODY)).toEqual(["Bland i bolle.", "Topp med bær."]);
+  });
+
+  it("deler nummererte steg også når de står på samme linje", () => {
+    const body = buildRecipeBody({
+      servings: 1,
+      ingredients: [{ id: "a", quantity: "1", unit: "stk", name: "Egg" }],
+      method: "1. Kok egget. 2. Skrell det. 3. Server med salt.",
+    });
+    expect(extractRecipeMethodSteps(body)).toEqual(["Kok egget.", "Skrell det.", "Server med salt."]);
+    expect(body).toContain("1. Kok egget.");
+    expect(body).toContain("2. Skrell det.");
+    expect(body).toContain("3. Server med salt.");
+  });
+
+  it("beholder ett steg når tallet er del av setningen", () => {
+    expect(splitRecipeMethodLine("Kok i 2. trinn til det stivner.")).toEqual([
+      "Kok i 2. trinn til det stivner.",
+    ]);
   });
 
   it("formaterer ingredienslinje pent", () => {

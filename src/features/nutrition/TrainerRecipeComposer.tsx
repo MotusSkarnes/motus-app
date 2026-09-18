@@ -491,6 +491,9 @@ export function TrainerRecipeComposer({
               className="motus-recipe-composer-method"
               rows={8}
             />
+            <p className="mt-1 text-xs text-slate-500">
+              Ett steg per linje — eller skriv 1. 2. 3. på samme linje. Kunden ser hvert punkt nummerert.
+            </p>
           </label>
           <label className="block">
             <span className="motus-foodbank-field-label">Tips (valgfritt)</span>

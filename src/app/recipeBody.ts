@@ -83,6 +83,43 @@ export function overridesFromIngredientDrafts(
 const METHOD_SECTION_MARKER =
   /\*\*Slik gjør du\*\*|(?:^|\n)#{1,3}\s*Slik gjør du\b|(?:^|\n)Slik gjør du\s*:?\s*(?:\n|$)|(?:^|\n)Fremgangsmåte\b|(?:^|\n)Fremgangsmate\b/i;
 
+const METHOD_STEP_PREFIX = /^(?:[-*•]\s+|\d{1,2}[\).]\s*)/;
+
+function isMethodTipsLine(line: string): boolean {
+  const stripped = line.replace(/^\*\*|\*\*$/g, "").trim();
+  return /^tips\s*:?/i.test(stripped);
+}
+
+function stripMethodStepPrefix(raw: string): string {
+  return raw.trim().replace(METHOD_STEP_PREFIX, "").trim();
+}
+
+/** Deler én linje i steg, også når flere nummer står på samme linje: «1. Stek. 2. Kok.» */
+export function splitRecipeMethodLine(line: string): string[] {
+  const trimmed = line.trim();
+  if (!trimmed || isMethodTipsLine(trimmed)) return [];
+
+  const numberedParts = trimmed.split(/\s+(?=\d{1,2}[\).]\s+[A-ZÆØÅ])/);
+  if (numberedParts.length > 1) {
+    return numberedParts.map(stripMethodStepPrefix).filter(Boolean);
+  }
+
+  if (/^[-*•]\s+/.test(trimmed)) {
+    const bulletParts = trimmed.split(/\s+(?=[-*•]\s+\S)/);
+    if (bulletParts.length > 1) {
+      return bulletParts.map(stripMethodStepPrefix).filter(Boolean);
+    }
+  }
+
+  const stripped = stripMethodStepPrefix(trimmed);
+  return stripped ? [stripped] : [];
+}
+
+export function parseRecipeMethodSteps(section: string): string[] {
+  if (!section.trim()) return [];
+  return section.replace(/\r\n/g, "\n").split("\n").flatMap(splitRecipeMethodLine);
+}
+
 export function extractRecipeMethodSection(body: string): string {
   const normalized = body.replace(/\r\n/g, "\n");
   const marker = normalized.match(METHOD_SECTION_MARKER);
@@ -93,22 +130,7 @@ export function extractRecipeMethodSection(body: string): string {
 }
 
 export function extractRecipeMethodSteps(body: string): string[] {
-  const section = extractRecipeMethodSection(body);
-  if (!section) return [];
-  return section
-    .split("\n")
-    .map((line) => line.trim())
-    .map((raw) =>
-      raw
-        .replace(/^[-*]\s+/, "")
-        .replace(/^\d+[\).]?\s+/, "")
-        .trim(),
-    )
-    .filter((line) => {
-      if (!line) return false;
-      const stripped = line.replace(/^\*\*|\*\*$/g, "").trim();
-      return !/^tips\s*:?/i.test(stripped);
-    });
+  return parseRecipeMethodSteps(extractRecipeMethodSection(body));
 }
 
 export function extractRecipeTipsSection(body: string): string {
@@ -138,7 +160,12 @@ export function buildRecipeBody(input: {
     parts.push("- ");
   }
   parts.push("", "**Slik gjør du**");
-  parts.push(method || "1. ");
+  const methodSteps = parseRecipeMethodSteps(method);
+  if (methodSteps.length) {
+    parts.push(...methodSteps.map((step, index) => `${index + 1}. ${step}`));
+  } else {
+    parts.push("1. ");
+  }
   if (tips) {
     const tipsBody = tips.replace(/^\*\*Tips:?\*\*\s*/i, "").trim();
     parts.push("", `**Tips:** ${tipsBody}`);
