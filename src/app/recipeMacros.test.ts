@@ -5,6 +5,7 @@ import {
   applyCanonicalRecipeBodies,
   computeRecipeIngredients,
   computeRecipeMacros,
+  convertQuantityToGrams,
   extractRecipeIngredientLines,
   parseIngredientLine,
   parseRecipeServings,
@@ -213,6 +214,27 @@ Slik gjør du
     expect(rows[0]?.searchText).toBe("den rosa fisken");
     expect(rows[0]?.grams).toBe(200);
     expect(recipeCustomerIngredientLabel(rows[0]!)).toBe("den rosa fisken");
+  });
+
+  it("teller ikke stk når matvaren mangler registrert vekt per stk", () => {
+    const chicken = foods.find((item) => item.name.toLowerCase().includes("kyllingbryst"));
+    expect(chicken).toBeTruthy();
+    expect(convertQuantityToGrams(1, "stk", chicken!.name, chicken!, { strictRegisteredUnits: true })).toBe(0);
+
+    const body = `**Til 1 porsjon**
+
+**Ingredienser**
+- 1 stk kyllingbryst
+- 100 g kyllingbryst
+
+**Slik gjør du**
+1. Stek.`;
+    const ingredients = computeRecipeIngredients(body, foods, {
+      "ing-0": chicken!.id,
+      "ing-1": chicken!.id,
+    });
+    expect(ingredients).toHaveLength(1);
+    expect(ingredients[0]?.grams).toBe(100);
   });
 });
 

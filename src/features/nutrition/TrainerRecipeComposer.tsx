@@ -498,7 +498,7 @@ export function TrainerRecipeComposer({
             </div>
           ) : ingredients.some((row) => row.name.trim()) ? (
             <p className="rounded-xl border border-amber-100 bg-amber-50/80 px-3 py-2 text-xs text-amber-900">
-              Kunne ikke beregne makroer ennå. Velg matvarer fra banken og bruk mengder (g, dl, ss, stk).
+              Kunne ikke beregne makroer ennå. Velg matvarer fra banken, og bruk enheter som har registrert vekt.
             </p>
           ) : null}
           {ingredients.some((row) => row.name.trim() && !row.foodId) ? (

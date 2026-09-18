@@ -242,7 +242,7 @@ export function RecipeIngredientEditor({
         <h3>Ingredienser</h3>
         <p>
           Søk i matvarebanken og legg til mengde. Linjen viser matvaren fra banken med gram og makro. Navnet kunden ser
-          endrer du under — det påvirker ikke navnet i banken.
+          endrer du lenger nede.
         </p>
       </div>
 
@@ -364,7 +364,6 @@ export function RecipeIngredientEditor({
               const food = row.foodId ? foodItems.find((item) => item.id === row.foodId) : undefined;
               const line = bankLineText(food, row);
               const rowNeedsWeight = Boolean(food && row.unit.trim() && !hasRegisteredUnitWeight(food, row.unit));
-              const amount = [row.quantity.trim(), row.unit.trim()].filter(Boolean).join(" ");
               const promptMatches = weightPrompt?.rowId === row.id;
               return (
                 <li key={row.id} className="motus-recipe-ingredient-editor__item">
@@ -422,16 +421,6 @@ export function RecipeIngredientEditor({
                       onCancel={() => setWeightPrompt(null)}
                     />
                   ) : null}
-                  <div className="motus-recipe-ingredient-editor__customer">
-                    <span className="motus-recipe-ingredient-editor__customer-label">Kunden ser</span>
-                    {amount ? <span className="motus-recipe-ingredient-editor__customer-amount">{amount}</span> : null}
-                    <TextInput
-                      value={row.name}
-                      onChange={(event) => updateRow(row.id, { name: event.target.value })}
-                      aria-label="Navn kunden ser"
-                      disabled={disabled}
-                    />
-                  </div>
                 </li>
               );
             })}

@@ -333,11 +333,14 @@ export function convertQuantityToGrams(
   unit: string,
   searchText: string,
   food: FoodItem | SyntheticFood | null,
+  options?: { strictRegisteredUnits?: boolean },
 ): number {
   const key = normalizeFoodKey(searchText);
+  const lookupUnit = unit.trim() || "stk";
   if (food && "portionGrams" in food) {
-    const registered = registeredGramsPerUnit(food, unit);
+    const registered = registeredGramsPerUnit(food, lookupUnit);
     if (registered != null) return quantity * registered;
+    if (options?.strictRegisteredUnits) return 0;
   }
 
   if (unit === "g") return quantity;
@@ -620,7 +623,9 @@ export function computeRecipeIngredients(
     const grams =
       parsed?.grams ??
       (parsed?.quantity != null
-        ? convertQuantityToGrams(parsed.quantity, parsed.unit ?? "", parsed.searchText, food)
+        ? convertQuantityToGrams(parsed.quantity, parsed.unit ?? "", parsed.searchText, food, {
+            strictRegisteredUnits: Boolean(overrideFood),
+          })
         : 0);
     if (grams <= 0) return;
 
