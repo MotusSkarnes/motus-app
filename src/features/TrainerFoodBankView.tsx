@@ -693,7 +693,11 @@ export function TrainerFoodBankView({
       </div>
 
       {section === "recipes" ? (
-        <TrainerRecipesPanel members={recipeMembers} authorName={trainerName} />
+        <TrainerRecipesPanel
+          members={recipeMembers}
+          authorName={trainerName}
+          trainerOwnerUserId={trainerOwnerUserId}
+        />
       ) : null}
 
       {section === "hidden-sources" ? <TrainerHiddenFoodSourcesPanel /> : null}

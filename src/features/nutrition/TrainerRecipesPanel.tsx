@@ -12,9 +12,14 @@ import { TrainerRecipeComposer } from "./TrainerRecipeComposer";
 type TrainerRecipesPanelProps = {
   members: Member[];
   authorName?: string;
+  trainerOwnerUserId?: string;
 };
 
-export function TrainerRecipesPanel({ members, authorName = "Motus PT" }: TrainerRecipesPanelProps) {
+export function TrainerRecipesPanel({
+  members,
+  authorName = "Motus PT",
+  trainerOwnerUserId,
+}: TrainerRecipesPanelProps) {
   const [composerOpen, setComposerOpen] = useState(false);
   const [editItem, setEditItem] = useState<InspirationRecipeItem | null>(null);
   const [duplicateFromItem, setDuplicateFromItem] = useState<InspirationRecipeItem | null>(null);
@@ -101,6 +106,7 @@ export function TrainerRecipesPanel({ members, authorName = "Motus PT" }: Traine
         editItem={editItem}
         duplicateFromItem={duplicateFromItem}
         authorName={authorName}
+        trainerOwnerUserId={trainerOwnerUserId}
         onClose={closeComposer}
         onSaved={() => setReloadKey((n) => n + 1)}
         onDelete={editItem && !duplicateFromItem ? requestDelete : undefined}

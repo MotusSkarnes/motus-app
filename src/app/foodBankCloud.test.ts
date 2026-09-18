@@ -85,4 +85,17 @@ describe("foodBankCloud", () => {
     expect(merged[0]?.nutritionPer100g.kcal).toBe(4);
     expect(merged[0]?.nutritionPer100g.water).toBe(2);
   });
+
+  it("beholder enhetsvekter fra begge sider ved merge", () => {
+    const local = item({
+      name: "Lettmelk",
+      unitGrams: { dl: 100, ts: 5 },
+    });
+    const remote = item({
+      name: "Lettmelk",
+      unitGrams: { ss: 15, ts: 4 },
+    });
+    const merged = mergeFoodBankItems([remote], [local]);
+    expect(merged[0]?.unitGrams).toEqual({ dl: 100, ss: 15, ts: 4 });
+  });
 });

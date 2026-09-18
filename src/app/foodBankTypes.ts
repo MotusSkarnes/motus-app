@@ -45,6 +45,8 @@ export type FoodItem = {
   isEdited?: boolean;
   /** Sist næringsdata ble synket fra Matvaretabellen/import. */
   nutritionSyncedAt?: string;
+  /** Gram per 1 enhet (ss, ts, stk, …). Legges til uten å overskrive standardporsjon. */
+  unitGrams?: Partial<Record<string, number>>;
   nutritionPer100g: FoodNutrition;
 };
 

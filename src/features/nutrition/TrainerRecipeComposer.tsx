@@ -27,6 +27,7 @@ import {
   type RecipeProteinCategory,
 } from "../../app/recipeProteinCategory";
 import { computeRecipeIngredients, computeRecipeMacros } from "../../app/recipeMacros";
+import { persistFoodUnitGrams } from "../../app/foodBankCloud";
 import {
   buildRecipeBody,
   extractRecipeMethodSection,
@@ -114,6 +115,7 @@ type TrainerRecipeComposerProps = {
   editItem?: InspirationRecipeItem | null;
   duplicateFromItem?: InspirationRecipeItem | null;
   authorName?: string;
+  trainerOwnerUserId?: string;
   onClose: () => void;
   onSaved: () => void;
   onDelete?: (item: InspirationRecipeItem) => void;
@@ -126,6 +128,7 @@ export function TrainerRecipeComposer({
   editItem = null,
   duplicateFromItem = null,
   authorName = "Motus",
+  trainerOwnerUserId,
   onClose,
   onSaved,
   onDelete,
@@ -460,6 +463,9 @@ export function TrainerRecipeComposer({
             foodItems={foodItemsForMacros}
             disabled={saving}
             onChange={setIngredients}
+            onRegisterUnitGrams={(foodId, unit, gramsPerUnit) => {
+              persistFoodUnitGrams(foodId, unit, gramsPerUnit, trainerOwnerUserId);
+            }}
           />
           <label className="block">
             <span className="motus-foodbank-field-label">Slik gjør du</span>

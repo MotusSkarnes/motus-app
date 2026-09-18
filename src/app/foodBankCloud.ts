@@ -7,6 +7,7 @@ import {
   persistFavoriteFoodIds,
   persistFoodBankItems,
   persistRecentFoodIds,
+  upsertFoodItem,
 } from "./foodBankStorage";
 import { appendMissingSeedFoodItems } from "./foodBankSeed";
 import { applyKnownPortionDefaults } from "./foodPortionDefaults";
@@ -18,6 +19,7 @@ import { persistMemberMealPlanStateLocalAndScheduleCloud } from "./memberMealPla
 import { enrichFoodItem } from "./foodBankMicronutrientEnrichment";
 import { normalizeMicronutrients } from "./foodBankMicronutrients";
 import type { FoodItem } from "./foodBankTypes";
+import { mergeUnitGramsMaps, withRegisteredUnitGrams } from "./foodUnitGrams";
 import { isSupabaseConfigured, supabaseClient } from "../services/supabaseClient";
 
 const FOOD_IMAGE_BUCKET = "exercise-images";
@@ -78,7 +80,7 @@ function foodBankItemsSignature(items: FoodItem[]): string {
   return items
     .map((item) => {
       const n = item.nutritionPer100g;
-      return `${item.id}\u0002${item.portionGrams}\u0002${item.portionLabel}\u0002${n.water ?? ""}\u0002${n.kcal ?? ""}\u0002${n.protein ?? ""}\u0002${n.carbs ?? ""}\u0002${n.fat ?? ""}`;
+      return `${item.id}\u0002${item.portionGrams}\u0002${item.portionLabel}\u0002${JSON.stringify(item.unitGrams ?? {})}\u0002${n.water ?? ""}\u0002${n.kcal ?? ""}\u0002${n.protein ?? ""}\u0002${n.carbs ?? ""}\u0002${n.fat ?? ""}`;
     })
     .sort()
     .join("\u0001");
@@ -132,6 +134,7 @@ export function mergeFoodBankItems(preferred: FoodItem[], fallback: FoodItem[]):
       ...existing,
       ...item,
       nutritionPer100g: mergeNutritionWithBank(item.nutritionPer100g, existing.nutritionPer100g),
+      unitGrams: mergeUnitGramsMaps(item.unitGrams, existing.unitGrams),
     });
   }
   return dedupeFoodBankItems(Array.from(byId.values())).items;
@@ -462,4 +465,25 @@ export function persistTrainerFoodBankBundle(ownerUserId: string | undefined, sn
   if (ownerUserId?.trim()) {
     scheduleTrainerFoodBankCloudSave(ownerUserId, deduped);
   }
+}
+
+/** Lagrer gram per enhet på matvaren uten å slette andre enheter eller standardporsjon. */
+export function persistFoodUnitGrams(
+  foodId: string,
+  unit: string,
+  gramsPerUnit: number,
+  ownerUserId?: string,
+): boolean {
+  const grams = Number(gramsPerUnit);
+  if (!foodId.trim() || !Number.isFinite(grams) || grams <= 0) return false;
+  const items = loadFoodBankItems();
+  const food = items.find((item) => item.id === foodId);
+  if (!food) return false;
+  persistTrainerFoodBankBundle(ownerUserId, {
+    items: upsertFoodItem(items, withRegisteredUnitGrams(food, unit, grams)),
+    favoriteIds: loadFavoriteFoodIds(),
+    recentIds: loadRecentFoodIds(),
+    updatedAt: Date.now(),
+  });
+  return true;
 }

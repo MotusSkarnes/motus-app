@@ -1,6 +1,7 @@
 import { DEFAULT_RECIPE_BODY_BY_ID } from "./defaultInspirationRecipes";
 import { EMPTY_MICRONUTRIENTS, type FoodMicronutrients } from "./foodBankMicronutrients";
 import { buildDefaultFoodBankItems } from "./foodBankSeed";
+import { registeredGramsPerUnit } from "./foodUnitGrams";
 import { computeMacrosForGrams, type MacroTotals } from "./mealPlanMacros";
 import type { FoodCategoryId, FoodItem, FoodNutrition } from "./foodBankTypes";
 
@@ -327,13 +328,17 @@ export function parseIngredientLine(line: string): ParsedIngredient | null {
   return { searchText, quantity: parsed.quantity, unit };
 }
 
-function convertQuantityToGrams(
+export function convertQuantityToGrams(
   quantity: number,
   unit: string,
   searchText: string,
   food: FoodItem | SyntheticFood | null,
 ): number {
   const key = normalizeFoodKey(searchText);
+  if (food && "portionGrams" in food) {
+    const registered = registeredGramsPerUnit(food, unit);
+    if (registered != null) return quantity * registered;
+  }
 
   if (unit === "g") return quantity;
   if (unit === "kg") return quantity * 1000;

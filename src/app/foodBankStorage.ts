@@ -4,6 +4,7 @@ import { normalizeMicronutrients } from "./foodBankMicronutrients";
 import { sanitizeStoredFattyAcids } from "./foodBankFattyAcids";
 import { dedupeFoodBankItems } from "./foodBankDedup";
 import { buildDefaultFoodBankItems, appendMissingSeedFoodItems } from "./foodBankSeed";
+import { sanitizeUnitGrams } from "./foodUnitGrams";
 import type { FoodItem, FoodNutrition } from "./foodBankTypes";
 
 function normalizeFoodNutrition(nutrition: FoodNutrition, source?: FoodItem["source"]): FoodNutrition {
@@ -19,12 +20,14 @@ function normalizeFoodNutrition(nutrition: FoodNutrition, source?: FoodItem["sou
 }
 
 function normalizeFoodItem(item: FoodItem): FoodItem {
-  return enrichFoodItem(
+  const next = enrichFoodItem(
     applyKnownPortionDefaults({
       ...item,
       nutritionPer100g: normalizeFoodNutrition(item.nutritionPer100g, item.source),
     }),
   );
+  const unitGrams = sanitizeUnitGrams(item.unitGrams ?? next.unitGrams);
+  return unitGrams ? { ...next, unitGrams } : { ...next, unitGrams: undefined };
 }
 
 export const FOOD_BANK_STORAGE_KEY = "motus_food_bank_v1";
