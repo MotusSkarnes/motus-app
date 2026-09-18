@@ -40,9 +40,9 @@ function canonicalScore(item: FoodItem): number {
   let score = 0;
   if (item.isEdited) score += 10_000;
   if (item.isCustom) score += 5_000;
-  if (isOfficialTableFood(item)) score += 1_500;
+  if (isOfficialTableFood(item)) score += 3_000;
   if (!isGenericDefaultPortion(item)) score += 2_000;
-  if (item.id.startsWith("food-seed-")) score += 1_000;
+  if (item.id.startsWith("food-seed-")) score -= 2_000;
   const name = item.name.trim();
   if (!name.includes(",")) score += 50;
   if (name.length <= 24) score += 20;
@@ -77,8 +77,8 @@ function isCollapsiblePlaceholder(item: FoodItem): boolean {
 }
 
 function isOfficialTableFood(item: FoodItem): boolean {
-  if (item.isCustom === true || item.isEdited === true) return false;
-  if (item.source !== "matvaretabell" && item.source !== "usda") return false;
+  if (item.isCustom === true) return false;
+  if (item.source === "egen") return false;
   if (item.id.startsWith("food-seed-")) return false;
   return isImportedTableId(item.id) || item.name.includes(",");
 }
@@ -107,6 +107,10 @@ function tableMatchScore(seedName: string, table: FoodItem): number {
 
 export function existingFoodCoversSeedName(items: FoodItem[], seedName: string): boolean {
   return items.some((item) => isOfficialTableFood(item) && tableNameCoversSeedName(item.name, seedName));
+}
+
+export function withoutCoveredSeedPlaceholders(items: FoodItem[]): FoodItem[] {
+  return items.filter((item) => !isCollapsiblePlaceholder(item) || !existingFoodCoversSeedName(items, item.name));
 }
 
 function collapseSeedPlaceholders(items: FoodItem[], idRemap: Record<string, string>): FoodItem[] {

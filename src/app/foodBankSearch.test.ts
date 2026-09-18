@@ -36,18 +36,27 @@ const BANK = [
 ];
 
 describe("searchFoodBankItems", () => {
-  it("rangerer ren gulrot foran retter som bare inneholder gulrot", () => {
+  it("skjuler Motus-gulrot når tabellen har gulrot, rå", () => {
     const names = searchFoodBankItems(BANK, "gulrot").map((item) => item.name);
-    expect(names[0]).toBe("Gulrot");
-    expect(names[1]).toBe("Gulrot, norsk, rå");
+    expect(names[0]).toBe("Gulrot, norsk, rå");
+    expect(names).not.toContain("Gulrot");
     expect(names).toContain("Gulrotkake");
     expect(names.at(-1)).toBe("Grønnsaksblanding med gulrot, fryst");
   });
 
+  it("beholder egen kort gulrot", () => {
+    const names = searchFoodBankItems(
+      [...BANK, { ...food("Gulrot"), id: "food-custom-gulrot", isCustom: true, source: "egen" }],
+      "gulrot",
+    ).map((item) => item.name);
+    expect(names).toContain("Gulrot");
+    expect(names).toContain("Gulrot, norsk, rå");
+  });
+
   it("finner gulrot selv om man skriver gulerot", () => {
     const names = searchFoodBankItems(BANK, "gulerot").map((item) => item.name);
-    expect(names[0]).toBe("Gulrot");
-    expect(names).toContain("Gulrot, norsk, rå");
+    expect(names[0]).toBe("Gulrot, norsk, rå");
+    expect(names).not.toContain("Gulrot");
     expect(names).not.toContain("Kyllingbryst");
   });
 });

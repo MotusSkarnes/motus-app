@@ -304,6 +304,31 @@ describe("foodBankDedup", () => {
     expect(findFoodItemById(result.items, "food-seed-gulrot")?.name).toBe("Gulrot, norsk, rå");
   });
 
+  it("slår Motus-gulrot inn i redigert tabellvare", () => {
+    const n: FoodNutrition = {
+      kcal: 41,
+      protein: 0.9,
+      carbs: 10,
+      fat: 0.2,
+      fiber: 2.8,
+      sugar: 4.7,
+      saturatedFat: 0,
+      sodium: 69,
+    };
+    const result = dedupeFoodBankItems([
+      item({ id: "food-seed-gulrot", name: "Gulrot", category: "gronnsaker", nutritionPer100g: n }),
+      item({
+        id: "food-matvaretabell-gulrot-ra",
+        name: "Gulrot, rå",
+        category: "gronnsaker",
+        isEdited: true,
+        nutritionPer100g: { ...n, kcal: 39 },
+      }),
+    ]);
+    expect(result.items.map((row) => row.name)).toEqual(["Gulrot, rå"]);
+    expect(result.idRemap["food-seed-gulrot"]).toBe("food-matvaretabell-gulrot-ra");
+  });
+
   it("legger ikke tilbake Motus-gulrot når tabellen allerede dekker navnet", () => {
     const n: FoodNutrition = {
       kcal: 41,

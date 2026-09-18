@@ -1,12 +1,13 @@
 import { useCallback, useEffect, useState } from "react";
+import { withoutCoveredSeedPlaceholders } from "./foodBankDedup";
 import { FOOD_BANK_CHANGED_EVENT, loadFoodBankItems } from "./foodBankStorage";
 import type { FoodItem } from "./foodBankTypes";
 
 export function useFoodBankItems(): FoodItem[] {
-  const [items, setItems] = useState<FoodItem[]>(() => loadFoodBankItems());
+  const [items, setItems] = useState<FoodItem[]>(() => withoutCoveredSeedPlaceholders(loadFoodBankItems()));
 
   const reload = useCallback(() => {
-    setItems(loadFoodBankItems());
+    setItems(withoutCoveredSeedPlaceholders(loadFoodBankItems()));
   }, []);
 
   useEffect(() => {

@@ -1,3 +1,4 @@
+import { withoutCoveredSeedPlaceholders } from "./foodBankDedup";
 import { foodItemMatchesSearch } from "./foodBankSearch";
 import type { FoodBankFilterChip, FoodItem, FoodMacroFilter, FoodSource } from "./foodBankTypes";
 
@@ -32,7 +33,7 @@ export function filterFoodBankItems(items: FoodItem[], filters: FoodBankListFilt
   const query = filters.search.trim().toLowerCase();
   const recentSet = new Set(filters.recentIds);
 
-  return items.filter((item) => {
+  return withoutCoveredSeedPlaceholders(items).filter((item) => {
     if (query) {
       if (!foodItemMatchesSearch(item, filters.search)) return false;
     }

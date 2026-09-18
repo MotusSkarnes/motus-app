@@ -1,3 +1,4 @@
+import { withoutCoveredSeedPlaceholders } from "./foodBankDedup";
 import { normalizeFoodBankNameKey } from "./foodBankNameKey";
 import type { FoodItem } from "./foodBankTypes";
 
@@ -77,7 +78,7 @@ export function foodItemMatchesSearch(item: FoodItem, query: string): boolean {
 export function searchFoodBankItems(items: FoodItem[], query: string, limit = 20): FoodItem[] {
   const trimmed = query.trim();
   if (!trimmed) return [];
-  return items
+  return withoutCoveredSeedPlaceholders(items)
     .map((item) => ({ item, score: foodSearchScore(trimmed, item) }))
     .filter((row): row is { item: FoodItem; score: number } => row.score != null)
     .sort((left, right) => left.score - right.score || left.item.name.localeCompare(right.item.name, "no"))
