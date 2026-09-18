@@ -140,7 +140,8 @@ function memberPeriodPlanSeenKey(plan: PeriodSchedulePlan): string {
 }
 
 function memberMealPlanSeenKey(plan: MealPlan): string {
-  return plan.memberId.trim() || plan.id;
+  const version = plan.updatedAt?.trim() || plan.createdAt?.trim() || plan.id;
+  return `${plan.memberId.trim() || plan.id}:${version}`;
 }
 
 function mealPlanAlertTimestamp(plan: MealPlan, fallbackOrder: number): number {

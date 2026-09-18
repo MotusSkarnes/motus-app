@@ -1007,6 +1007,14 @@ describe("useNotifications meal plan alerts", () => {
   afterEach(() => {
     window.localStorage.removeItem("motus.notifications.memberSeenMealPlanKeys");
     window.localStorage.removeItem("motus.notifications.memberOpenedAlertIds");
+    window.localStorage.removeItem("motus.notifications.memberSeenAt");
+    window.localStorage.removeItem("motus_meal_plans_v1");
+  });
+
+  beforeEach(() => {
+    window.localStorage.removeItem("motus.notifications.memberSeenMealPlanKeys");
+    window.localStorage.removeItem("motus.notifications.memberOpenedAlertIds");
+    window.localStorage.removeItem("motus.notifications.memberSeenAt");
     window.localStorage.removeItem("motus_meal_plans_v1");
   });
 
@@ -1079,5 +1087,85 @@ describe("useNotifications meal plan alerts", () => {
 
     expect(memberTab).toBe("nutrition");
     expect(result.current.memberVisibleAlerts.find((item) => item.kind === "meal-plan")).toBeUndefined();
+  });
+
+  it("treats a later meal-plan save as a new unread alert", async () => {
+    const firstPlan = {
+      id: "mealplan-1",
+      memberId: "member-1",
+      title: "Uke 38",
+      notes: "Høyprotein",
+      createdAt: "2026-09-17",
+      updatedAt: new Date(Date.now() - 60_000).toISOString(),
+      days: [
+        {
+          id: "day-1",
+          label: "Mandag",
+          meals: [
+            {
+              id: "meal-1",
+              name: "Frokost",
+              items: [
+                {
+                  id: "food-1",
+                  foodId: "havre",
+                  foodName: "Havregryn",
+                  grams: 80,
+                  nutritionPer100g: {
+                    kcal: 370,
+                    protein: 13,
+                    carbs: 60,
+                    fat: 7,
+                    fiber: 8,
+                    sugar: 1,
+                    saturatedFat: 1,
+                    sodium: 0,
+                  },
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    };
+    window.localStorage.setItem("motus_meal_plans_v1", JSON.stringify({ "member-1": firstPlan }));
+
+    const { result } = renderHook(() =>
+      useNotifications({
+        messages: [],
+        programs: [],
+        logs: [],
+        members: [{ id: "member-1", name: "Test", email: "test@example.com" } as never],
+        memberViewId: "member-1",
+        setMemberTab: () => {},
+      }),
+    );
+
+    const firstAlert = result.current.memberVisibleAlerts.find((item) => item.kind === "meal-plan");
+    expect(firstAlert?.isUnread).toBe(true);
+    act(() => {
+      result.current.openAlert(firstAlert!);
+    });
+    expect(result.current.memberVisibleAlerts.find((item) => item.kind === "meal-plan")).toBeUndefined();
+
+    window.localStorage.setItem(
+      "motus_meal_plans_v1",
+      JSON.stringify({
+        "member-1": {
+          ...firstPlan,
+          title: "Uke 39",
+          updatedAt: new Date().toISOString(),
+        },
+      }),
+    );
+    act(() => {
+      window.dispatchEvent(new Event("motus-meal-plan-changed"));
+    });
+
+    await waitFor(() => {
+      const nextAlert = result.current.memberVisibleAlerts.find((item) => item.kind === "meal-plan");
+      expect(nextAlert?.isUnread).toBe(true);
+      expect(nextAlert?.text).toBe("Uke 39");
+    });
   });
 });
