@@ -696,6 +696,36 @@
   grid-column: 1 / -1;
 }
 
+.motus-foodbank-form-section {
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  border-radius: 0.9rem;
+  background: rgba(248, 250, 252, 0.8);
+  padding: 0.85rem 0.9rem 1rem;
+}
+
+.motus-foodbank-form-section__title {
+  margin: 0;
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.motus-foodbank-form-section__hint {
+  margin: 0.35rem 0 0;
+  font-size: 0.75rem;
+  line-height: 1.4;
+  color: #64748b;
+}
+
+.motus-foodbank-form-section__subtitle {
+  margin: 0.9rem 0 0;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #64748b;
+}
+
 .motus-foodbank-image-field {
   display: flex;
   flex-direction: column;

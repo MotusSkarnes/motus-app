@@ -69,11 +69,19 @@ import {
   micronutrientFormFromNutrition,
   parseMicronutrientForm,
 } from "./FoodMicronutrientSection";
+import {
+  FoodFattyAcidFormFields,
+  FoodFattyAcidTable,
+  fattyAcidFormDefaults,
+  fattyAcidFormFromNutrition,
+  parseFattyAcidForm,
+} from "./FoodFattyAcidSection";
 import { FoodImageField } from "./FoodImageField";
 import { FoodLabelScanButton } from "./FoodLabelScanButton";
 import { TrainerFoodSubmissionQueue } from "./TrainerFoodSubmissionQueue";
 import type { FoodLabelScanResult } from "../app/foodLabelScanTypes";
 import type { FoodMicronutrientKey } from "../app/foodBankMicronutrients";
+import type { FoodFattyAcidKey } from "../app/foodBankFattyAcids";
 import type { Member } from "../app/types";
 import { TrainerRecipesPanel } from "./nutrition/TrainerRecipesPanel";
 import { TrainerHiddenFoodSourcesPanel } from "./nutrition/TrainerHiddenFoodSourcesPanel";
@@ -128,6 +136,7 @@ type FoodFormState = {
   saturatedFat: string;
   sodium: string;
   water: string;
+  fattyAcids: Record<FoodFattyAcidKey, string>;
   micronutrients: Record<FoodMicronutrientKey, string>;
 };
 
@@ -151,6 +160,7 @@ function emptyForm(): FoodFormState {
     saturatedFat: "0",
     sodium: "0",
     water: "",
+    fattyAcids: fattyAcidFormDefaults(),
     micronutrients: micronutrientFormDefaults(),
   };
 }
@@ -178,6 +188,7 @@ function formFromFood(item: FoodItem): FoodFormState {
       item.nutritionPer100g.water == null || !Number.isFinite(item.nutritionPer100g.water)
         ? ""
         : String(item.nutritionPer100g.water),
+    fattyAcids: fattyAcidFormFromNutrition(item.nutritionPer100g),
     micronutrients: micronutrientFormFromNutrition(item.nutritionPer100g),
   };
 }
@@ -519,7 +530,7 @@ export function TrainerFoodBankView({
         saturatedFat: parseNumber(form.saturatedFat),
         sodium: parseNumber(form.sodium),
         water: parseOptionalNumber(form.water),
-        fattyAcids: existing?.nutritionPer100g.fattyAcids,
+        fattyAcids: parseFattyAcidForm(form.fattyAcids),
         micronutrients: parseMicronutrientForm(form.micronutrients),
       },
     };
@@ -868,6 +879,11 @@ export function TrainerFoodBankView({
             </section>
 
             <section className="motus-foodbank-detail-section">
+              <h3>Omega og fettsyrer</h3>
+              <FoodFattyAcidTable nutrition={selectedItem.nutritionPer100g} />
+            </section>
+
+            <section className="motus-foodbank-detail-section">
               <h3>Mikronæringsstoffer</h3>
               <FoodMicronutrientTable nutrition={selectedItem.nutritionPer100g} />
             </section>
@@ -1192,6 +1208,15 @@ export function TrainerFoodBankView({
                   La stå tomt hvis ukjent. Skriv 0 hvis matvaren er tørr og uten vann.
                 </span>
               </label>
+              <FoodFattyAcidFormFields
+                values={form.fattyAcids}
+                onChange={(key, value) =>
+                  setForm((current) => ({
+                    ...current,
+                    fattyAcids: { ...current.fattyAcids, [key]: value },
+                  }))
+                }
+              />
               <FoodMicronutrientFormFields
                 values={form.micronutrients}
                 onChange={(key, value) =>

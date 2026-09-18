@@ -1,13 +1,31 @@
 /** Utvidede fettsyrer per 100 g (Matvaretabellen / beriket matbank). */
-export type FoodFattyAcids = {
-  monounsaturatedFat: number;
-  polyunsaturatedFat: number;
-  omega3: number;
-  omega6: number;
-  epa: number;
-  dha: number;
-  ala: number;
+export type FoodFattyAcidKey =
+  | "monounsaturatedFat"
+  | "polyunsaturatedFat"
+  | "omega3"
+  | "omega6"
+  | "epa"
+  | "dha"
+  | "ala";
+
+export type FoodFattyAcids = Record<FoodFattyAcidKey, number>;
+
+export type FoodFattyAcidMeta = {
+  key: FoodFattyAcidKey;
+  label: string;
+  unit: string;
+  decimals: number;
 };
+
+export const FOOD_FATTY_ACID_FIELDS: FoodFattyAcidMeta[] = [
+  { key: "monounsaturatedFat", label: "Enumettet fett", unit: "g", decimals: 1 },
+  { key: "polyunsaturatedFat", label: "Flerumettet fett", unit: "g", decimals: 1 },
+  { key: "omega3", label: "Omega-3 totalt", unit: "g", decimals: 2 },
+  { key: "omega6", label: "Omega-6 totalt", unit: "g", decimals: 2 },
+  { key: "ala", label: "ALA (alfa-linolensyre)", unit: "g", decimals: 2 },
+  { key: "epa", label: "EPA", unit: "g", decimals: 2 },
+  { key: "dha", label: "DHA", unit: "g", decimals: 2 },
+];
 
 export const EMPTY_FATTY_ACIDS: FoodFattyAcids = {
   monounsaturatedFat: 0,
@@ -74,6 +92,33 @@ export function normalizeFattyAcids(partial?: Partial<FoodFattyAcids> | null): F
     dha: Number(partial.dha) || 0,
     ala: Number(partial.ala) || 0,
   };
+}
+
+/** Kun nøkler med kjent verdi. Mangler nøkkel = ukjent; 0 = målt til 0. */
+export function compactFattyAcids(value: Partial<FoodFattyAcids> | undefined): Partial<FoodFattyAcids> {
+  const result: Partial<FoodFattyAcids> = {};
+  if (!value) return result;
+  for (const field of FOOD_FATTY_ACID_FIELDS) {
+    const amount = value[field.key];
+    if (typeof amount !== "number" || !Number.isFinite(amount)) continue;
+    result[field.key] = amount;
+  }
+  return result;
+}
+
+export function readFattyAcidValue(
+  fattyAcids: Partial<FoodFattyAcids> | undefined,
+  key: FoodFattyAcidKey,
+): number | undefined {
+  if (!fattyAcids || !Object.prototype.hasOwnProperty.call(fattyAcids, key)) return undefined;
+  const amount = fattyAcids[key];
+  if (typeof amount !== "number" || !Number.isFinite(amount)) return undefined;
+  return amount;
+}
+
+export function hasStoredFattyAcids(fattyAcids: Partial<FoodFattyAcids> | undefined): boolean {
+  if (!fattyAcids) return false;
+  return FOOD_FATTY_ACID_FIELDS.some((field) => readFattyAcidValue(fattyAcids, field.key) !== undefined);
 }
 
 export function hasFattyAcidData(fattyAcids: FoodFattyAcids): boolean {

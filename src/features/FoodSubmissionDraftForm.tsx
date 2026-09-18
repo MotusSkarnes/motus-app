@@ -1,6 +1,16 @@
 import { FOOD_BANK_CATEGORIES, type FoodCategoryId } from "../app/foodBankTypes";
 import type { FoodLabelScanResult, FoodSubmissionDraft } from "../app/foodLabelScanTypes";
 import { FoodLabelScanButton } from "./FoodLabelScanButton";
+import {
+  FoodFattyAcidFormFields,
+  fattyAcidFormFromNutrition,
+  parseFattyAcidForm,
+} from "./FoodFattyAcidSection";
+import {
+  FoodMicronutrientFormFields,
+  micronutrientFormFromNutrition,
+  parseMicronutrientForm,
+} from "./FoodMicronutrientSection";
 import { GradientButton, OutlineButton, SelectBox, TextInput } from "../app/ui";
 
 export type FoodSubmissionDraftFormProps = {
@@ -63,11 +73,22 @@ export function FoodSubmissionDraftForm({
         />
       </label>
       <div className="grid gap-2 sm:grid-cols-2">
-        {(["kcal", "protein", "carbs", "fat"] as const).map((key) => (
+        {(
+          [
+            ["kcal", "Kalorier"],
+            ["protein", "Protein (g)"],
+            ["carbs", "Karbohydrater (g)"],
+            ["fat", "Fett (g)"],
+            ["fiber", "Kostfiber (g)"],
+            ["sugar", "Sukker (g)"],
+            ["saturatedFat", "Mettet fett (g)"],
+            ["sodium", "Natrium (mg)"],
+          ] as const
+        ).map(([key, label]) => (
           <label key={key} className="block space-y-1">
-            <span className="text-xs font-semibold text-slate-700">{key} / 100g</span>
+            <span className="text-xs font-semibold text-slate-700">{label} / 100g</span>
             <TextInput
-              value={String(draft.nutritionPer100g[key])}
+              value={String(draft.nutritionPer100g[key] ?? "")}
               onChange={(e) =>
                 onDraftChange({
                   ...draft,
@@ -81,6 +102,32 @@ export function FoodSubmissionDraftForm({
           </label>
         ))}
       </div>
+      <FoodFattyAcidFormFields
+        values={fattyAcidFormFromNutrition(draft.nutritionPer100g)}
+        onChange={(key, value) => {
+          const nextValues = { ...fattyAcidFormFromNutrition(draft.nutritionPer100g), [key]: value };
+          onDraftChange({
+            ...draft,
+            nutritionPer100g: {
+              ...draft.nutritionPer100g,
+              fattyAcids: parseFattyAcidForm(nextValues),
+            },
+          });
+        }}
+      />
+      <FoodMicronutrientFormFields
+        values={micronutrientFormFromNutrition(draft.nutritionPer100g)}
+        onChange={(key, value) => {
+          const nextValues = { ...micronutrientFormFromNutrition(draft.nutritionPer100g), [key]: value };
+          onDraftChange({
+            ...draft,
+            nutritionPer100g: {
+              ...draft.nutritionPer100g,
+              micronutrients: parseMicronutrientForm(nextValues),
+            },
+          });
+        }}
+      />
       <div className="flex flex-wrap gap-2">
         <GradientButton type="button" onClick={onSubmit} disabled={submitting}>
           {submitLabel}

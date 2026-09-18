@@ -73,28 +73,47 @@ type FoodMicronutrientFormFieldsProps = {
 };
 
 export function FoodMicronutrientFormFields({ values, onChange }: FoodMicronutrientFormFieldsProps) {
+  const vitamins = FOOD_MICRONUTRIENT_FIELDS.filter((field) => field.group === "vitamins");
+  const minerals = FOOD_MICRONUTRIENT_FIELDS.filter((field) => field.group === "minerals");
   return (
-    <details className="motus-foodbank-form-span-all rounded-xl border border-slate-200/80 bg-slate-50/80 p-3">
-      <summary className="cursor-pointer text-sm font-semibold text-slate-800">Mikronæringsstoffer (per 100 g)</summary>
-      <p className="mt-2 text-xs text-slate-500">
+    <section className="motus-foodbank-form-span-all motus-foodbank-form-section">
+      <h3 className="motus-foodbank-form-section__title">Vitaminer og mineraler (per 100 g)</h3>
+      <p className="motus-foodbank-form-section__hint">
         Valgfritt. Fylles automatisk ved import fra Matvaretabellen. La feltet stå tomt hvis verdien er ukjent. Skriv 0
         hvis næringsstoffet er målt til 0.
       </p>
-      <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-        {FOOD_MICRONUTRIENT_FIELDS.map((field) => (
-          <label key={field.key} className="motus-foodbank-field">
-            <span className="motus-foodbank-field-label">
-              {field.label} ({field.unit})
-            </span>
-            <TextInput
-              value={values[field.key]}
-              onChange={(event) => onChange(field.key, event.target.value)}
-              placeholder=""
-            />
-          </label>
+      <h4 className="motus-foodbank-form-section__subtitle">Vitaminer</h4>
+      <div className="mt-2 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        {vitamins.map((field) => (
+          <MicronutrientInput key={field.key} field={field} value={values[field.key]} onChange={onChange} />
         ))}
       </div>
-    </details>
+      <h4 className="motus-foodbank-form-section__subtitle">Mineraler og sporstoffer</h4>
+      <div className="mt-2 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        {minerals.map((field) => (
+          <MicronutrientInput key={field.key} field={field} value={values[field.key]} onChange={onChange} />
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function MicronutrientInput({
+  field,
+  value,
+  onChange,
+}: {
+  field: (typeof FOOD_MICRONUTRIENT_FIELDS)[number];
+  value: string;
+  onChange: (key: FoodMicronutrientKey, value: string) => void;
+}) {
+  return (
+    <label className="motus-foodbank-field">
+      <span className="motus-foodbank-field-label">
+        {field.label} ({field.unit})
+      </span>
+      <TextInput value={value} onChange={(event) => onChange(field.key, event.target.value)} placeholder="Ukjent" />
+    </label>
   );
 }
 
