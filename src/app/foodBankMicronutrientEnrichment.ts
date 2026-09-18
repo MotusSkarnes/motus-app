@@ -1,5 +1,5 @@
 import { enrichFoodNutritionFattyAcids } from "./foodBankFattyAcidEnrichment";
-import type { FoodItem, FoodNutrition } from "./foodBankTypes";
+import type { FoodItem, FoodNutrition, FoodSource } from "./foodBankTypes";
 import {
   hasMicronutrientData,
   normalizeMicronutrients,
@@ -30,7 +30,11 @@ export function lookupMicronutrientsForFoodName(name: string): FoodMicronutrient
   return normalizeMicronutrients(entry.micros);
 }
 
-export function enrichFoodNutrition(nutrition: FoodNutrition, foodName: string): FoodNutrition {
+export function enrichFoodNutrition(
+  nutrition: FoodNutrition,
+  foodName: string,
+  source?: FoodSource,
+): FoodNutrition {
   let next = nutrition;
   const normalized = normalizeMicronutrients(next.micronutrients);
   if (hasMicronutrientData(normalized)) {
@@ -42,13 +46,13 @@ export function enrichFoodNutrition(nutrition: FoodNutrition, foodName: string):
         ? { ...next, micronutrients: fromLookup }
         : { ...next, micronutrients: normalized };
   }
-  return enrichFoodNutritionFattyAcids(next, foodName);
+  return enrichFoodNutritionFattyAcids(next, foodName, source);
 }
 
 export function enrichFoodItem(item: FoodItem): FoodItem {
   return {
     ...item,
-    nutritionPer100g: enrichFoodNutrition(item.nutritionPer100g, item.name),
+    nutritionPer100g: enrichFoodNutrition(item.nutritionPer100g, item.name, item.source),
   };
 }
 

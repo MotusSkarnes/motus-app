@@ -188,7 +188,7 @@ function formFromFood(item: FoodItem): FoodFormState {
       item.nutritionPer100g.water == null || !Number.isFinite(item.nutritionPer100g.water)
         ? ""
         : String(item.nutritionPer100g.water),
-    fattyAcids: fattyAcidFormFromNutrition(item.nutritionPer100g),
+    fattyAcids: fattyAcidFormFromNutrition(item.nutritionPer100g, item.source),
     micronutrients: micronutrientFormFromNutrition(item.nutritionPer100g),
   };
 }
@@ -880,7 +880,7 @@ export function TrainerFoodBankView({
 
             <section className="motus-foodbank-detail-section">
               <h3>Omega og fettsyrer</h3>
-              <FoodFattyAcidTable nutrition={selectedItem.nutritionPer100g} />
+              <FoodFattyAcidTable nutrition={selectedItem.nutritionPer100g} source={selectedItem.source} />
             </section>
 
             <section className="motus-foodbank-detail-section">

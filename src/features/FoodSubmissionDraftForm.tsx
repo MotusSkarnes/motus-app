@@ -103,9 +103,9 @@ export function FoodSubmissionDraftForm({
         ))}
       </div>
       <FoodFattyAcidFormFields
-        values={fattyAcidFormFromNutrition(draft.nutritionPer100g)}
+        values={fattyAcidFormFromNutrition(draft.nutritionPer100g, draft.source)}
         onChange={(key, value) => {
-          const nextValues = { ...fattyAcidFormFromNutrition(draft.nutritionPer100g), [key]: value };
+          const nextValues = { ...fattyAcidFormFromNutrition(draft.nutritionPer100g, draft.source), [key]: value };
           onDraftChange({
             ...draft,
             nutritionPer100g: {

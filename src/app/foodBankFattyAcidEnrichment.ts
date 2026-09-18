@@ -1,5 +1,11 @@
-import type { FoodNutrition } from "./foodBankTypes";
-import { EMPTY_FATTY_ACIDS, hasFattyAcidData, normalizeFattyAcids, type FoodFattyAcids } from "./foodBankFattyAcids";
+import type { FoodNutrition, FoodSource } from "./foodBankTypes";
+import {
+  hasFattyAcidData,
+  hasStoredFattyAcids,
+  normalizeFattyAcids,
+  sanitizeStoredFattyAcids,
+  type FoodFattyAcids,
+} from "./foodBankFattyAcids";
 import { normalizeFoodLookupKey } from "./foodBankMicronutrientEnrichment";
 import fattyAcidData from "./foodBankFattyAcidsData.json";
 
@@ -16,14 +22,22 @@ export function lookupFattyAcidsForFoodName(name: string): FoodFattyAcids | null
   return normalizeFattyAcids(entry.fattyAcids);
 }
 
-export function enrichFoodNutritionFattyAcids(nutrition: FoodNutrition, foodName: string): FoodNutrition {
-  const current = normalizeFattyAcids(nutrition.fattyAcids);
-  if (hasFattyAcidData(current)) {
-    return { ...nutrition, fattyAcids: current };
+export function enrichFoodNutritionFattyAcids(
+  nutrition: FoodNutrition,
+  foodName: string,
+  source?: FoodSource,
+): FoodNutrition {
+  const stored = sanitizeStoredFattyAcids(nutrition.fattyAcids, {
+    keepMeasuredZeros: source === "matvaretabell" || source === "usda",
+  });
+  if (hasStoredFattyAcids(stored)) {
+    return { ...nutrition, fattyAcids: stored as FoodFattyAcids };
   }
   const fromLookup = lookupFattyAcidsForFoodName(foodName);
-  if (!fromLookup || !hasFattyAcidData(fromLookup)) {
-    return { ...nutrition, fattyAcids: current };
+  if (fromLookup && hasFattyAcidData(fromLookup)) {
+    return { ...nutrition, fattyAcids: fromLookup };
   }
-  return { ...nutrition, fattyAcids: fromLookup };
+  if (nutrition.fattyAcids === undefined) return nutrition;
+  const { fattyAcids: _dropped, ...rest } = nutrition;
+  return rest;
 }

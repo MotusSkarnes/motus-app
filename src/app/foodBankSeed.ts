@@ -143,6 +143,7 @@ export function buildDefaultFoodBankItems(createdBy = "Motus PT"): FoodItem[] {
           sodium: row.sodium ?? 0,
         },
         row.name,
+        "matvaretabell",
       ),
     }),
   );

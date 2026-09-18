@@ -95,15 +95,40 @@ export function normalizeFattyAcids(partial?: Partial<FoodFattyAcids> | null): F
 }
 
 /** Kun nøkler med kjent verdi. Mangler nøkkel = ukjent; 0 = målt til 0. */
-export function compactFattyAcids(value: Partial<FoodFattyAcids> | undefined): Partial<FoodFattyAcids> {
+export function compactFattyAcids(
+  value: Partial<FoodFattyAcids> | undefined,
+  options?: { dropZeros?: boolean },
+): Partial<FoodFattyAcids> {
   const result: Partial<FoodFattyAcids> = {};
   if (!value) return result;
   for (const field of FOOD_FATTY_ACID_FIELDS) {
     const amount = value[field.key];
     if (typeof amount !== "number" || !Number.isFinite(amount)) continue;
+    if (options?.dropZeros && amount === 0) continue;
     result[field.key] = amount;
   }
   return result;
+}
+
+export function isDenseFattyAcidObject(value: Partial<FoodFattyAcids> | undefined): boolean {
+  if (!value) return false;
+  return FOOD_FATTY_ACID_FIELDS.every((field) => Object.prototype.hasOwnProperty.call(value, field.key));
+}
+
+export function shouldTreatDenseFattyAcidZerosAsUnknown(value: Partial<FoodFattyAcids> | undefined): boolean {
+  if (!isDenseFattyAcidObject(value)) return false;
+  return FOOD_FATTY_ACID_FIELDS.every((field) => Number(value[field.key]) === 0);
+}
+
+/** Fjerner aututfylte null-objekter på egne matvarer. Matvaretabellen beholder målte 0-verdier. */
+export function sanitizeStoredFattyAcids(
+  value: Partial<FoodFattyAcids> | undefined,
+  options?: { keepMeasuredZeros?: boolean },
+): Partial<FoodFattyAcids> | undefined {
+  const compact = compactFattyAcids(value, {
+    dropZeros: !options?.keepMeasuredZeros && shouldTreatDenseFattyAcidZerosAsUnknown(value),
+  });
+  return hasStoredFattyAcids(compact) ? compact : undefined;
 }
 
 export function readFattyAcidValue(
@@ -121,13 +146,9 @@ export function hasStoredFattyAcids(fattyAcids: Partial<FoodFattyAcids> | undefi
   return FOOD_FATTY_ACID_FIELDS.some((field) => readFattyAcidValue(fattyAcids, field.key) !== undefined);
 }
 
-export function hasFattyAcidData(fattyAcids: FoodFattyAcids): boolean {
-  return (
-    fattyAcids.monounsaturatedFat > 0 ||
-    fattyAcids.polyunsaturatedFat > 0 ||
-    fattyAcids.omega3 > 0 ||
-    fattyAcids.omega6 > 0
-  );
+export function hasFattyAcidData(fattyAcids: Partial<FoodFattyAcids> | undefined): boolean {
+  if (!fattyAcids) return false;
+  return FOOD_FATTY_ACID_FIELDS.some((field) => (Number(fattyAcids[field.key]) || 0) > 0);
 }
 
 export function mergeFoodNutritionFattyAcids(

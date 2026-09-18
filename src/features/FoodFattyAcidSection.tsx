@@ -1,21 +1,24 @@
+import type { FoodNutrition, FoodSource } from "../app/foodBankTypes";
+import { TextInput } from "../app/ui";
 import {
   FOOD_FATTY_ACID_FIELDS,
-  compactFattyAcids,
   hasStoredFattyAcids,
   readFattyAcidValue,
+  sanitizeStoredFattyAcids,
   type FoodFattyAcidKey,
   type FoodFattyAcids,
 } from "../app/foodBankFattyAcids";
-import type { FoodNutrition } from "../app/foodBankTypes";
-import { TextInput } from "../app/ui";
 
 type FoodFattyAcidReadonlyProps = {
   nutrition: FoodNutrition;
+  source?: FoodSource;
   className?: string;
 };
 
-export function FoodFattyAcidTable({ nutrition, className = "" }: FoodFattyAcidReadonlyProps) {
-  const fattyAcids = compactFattyAcids(nutrition.fattyAcids);
+export function FoodFattyAcidTable({ nutrition, source, className = "" }: FoodFattyAcidReadonlyProps) {
+  const fattyAcids = sanitizeStoredFattyAcids(nutrition.fattyAcids, {
+    keepMeasuredZeros: source === "matvaretabell" || source === "usda",
+  });
   if (!hasStoredFattyAcids(fattyAcids)) {
     return (
       <p className={`text-sm text-slate-500 ${className}`.trim()}>
@@ -76,8 +79,14 @@ export function fattyAcidFormDefaults(): Record<FoodFattyAcidKey, string> {
   return Object.fromEntries(FOOD_FATTY_ACID_FIELDS.map((field) => [field.key, ""])) as Record<FoodFattyAcidKey, string>;
 }
 
-export function fattyAcidFormFromNutrition(nutrition: FoodNutrition): Record<FoodFattyAcidKey, string> {
-  const stored = compactFattyAcids(nutrition.fattyAcids);
+export function fattyAcidFormFromNutrition(
+  nutrition: FoodNutrition,
+  source?: FoodSource,
+): Record<FoodFattyAcidKey, string> {
+  const stored =
+    sanitizeStoredFattyAcids(nutrition.fattyAcids, {
+      keepMeasuredZeros: source === "matvaretabell" || source === "usda",
+    }) ?? {};
   return Object.fromEntries(
     FOOD_FATTY_ACID_FIELDS.map((field) => {
       const amount = readFattyAcidValue(stored, field.key);
