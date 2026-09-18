@@ -360,6 +360,7 @@ function loadBestLocalMealPlan(lookupIds: string[]): MealPlan | null {
 export async function saveMealPlanToSupabase(
   ownerUserId: string,
   plan: MealPlan,
+  options?: { notify?: boolean },
 ): Promise<boolean> {
   if (!supabaseClient || !ownerUserId.trim() || !plan.memberId.trim()) return false;
   const { error } = await supabaseClient.from("member_meal_plans").upsert(
@@ -380,7 +381,9 @@ export async function saveMealPlanToSupabase(
     }
     return false;
   }
-  notifyMemberMealPlanPush(plan);
+  if (options?.notify !== false) {
+    notifyMemberMealPlanPush(plan);
+  }
   return true;
 }
 
@@ -657,8 +660,11 @@ export async function persistMealPlanBundle(
   }
   let cloudSynced = false;
   for (const id of ids.length ? ids : [plan.memberId.trim()].filter(Boolean)) {
-    const ok = await saveMealPlanToSupabase(ownerUserId, { ...plan, memberId: id });
+    const ok = await saveMealPlanToSupabase(ownerUserId, { ...plan, memberId: id }, { notify: false });
     if (ok) cloudSynced = true;
+  }
+  if (cloudSynced) {
+    notifyMemberMealPlanPush(plan);
   }
   if (!cloudSynced) {
     return {
