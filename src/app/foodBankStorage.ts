@@ -26,7 +26,7 @@ function normalizeFoodItem(item: FoodItem): FoodItem {
       nutritionPer100g: normalizeFoodNutrition(item.nutritionPer100g, item.source),
     }),
   );
-  const unitGrams = sanitizeUnitGrams(item.unitGrams ?? next.unitGrams);
+  const unitGrams = sanitizeUnitGrams(next.unitGrams);
   return unitGrams ? { ...next, unitGrams } : { ...next, unitGrams: undefined };
 }
 

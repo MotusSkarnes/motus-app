@@ -1,11 +1,16 @@
 import { describe, expect, it } from "vitest";
 import type { FoodItem } from "./foodBankTypes";
 import {
+  enrichFoodItemUnitGrams,
   gramsForIngredientDraft,
   hasRegisteredUnitWeight,
   inferredUnitGramsFromPortion,
+  lookupUnitGramsForFoodName,
   mergeUnitGramsMaps,
+  missingRecipeUnitsForFood,
   registeredGramsPerUnit,
+  registeredRecipeUnitsForFood,
+  unitGramsFromMatvaretabellenPortions,
   withRegisteredUnitGrams,
 } from "./foodUnitGrams";
 
@@ -80,5 +85,57 @@ describe("foodUnitGrams", () => {
 
   it("slår sammen enhetsvekter uten å slette nøkler", () => {
     expect(mergeUnitGramsMaps({ ss: 15 }, { dl: 100, ss: 12 })).toEqual({ dl: 100, ss: 15 });
+  });
+
+  it("mapper Matvaretabellens husholdningsmål til ss/ts/dl/stk", () => {
+    expect(
+      unitGramsFromMatvaretabellenPortions([
+        { id: "skive", portionName: "skive", quantity: 6, unit: "g" },
+        { id: "stk", portionName: "stk", quantity: 325, unit: "g" },
+        { id: "dl", portionName: "desiliter", quantity: 55, unit: "g" },
+      ]),
+    ).toEqual({ skive: 6, stk: 325, dl: 55 });
+    expect(
+      unitGramsFromMatvaretabellenPortions([
+        { id: "stk_stor", portionName: "stk (stor)", quantity: 220, unit: "g" },
+        { id: "stk_liten", portionName: "stk (liten)", quantity: 130, unit: "g" },
+      ]),
+    ).toEqual({ "stk stor": 220, "stk liten": 130 });
+    expect(
+      unitGramsFromMatvaretabellenPortions([
+        { id: "porsjon", portionName: "porsjon", quantity: 150, unit: "g" },
+        { id: "pr_skive", portionName: "pr brødskive", quantity: 20, unit: "g" },
+      ]),
+    ).toEqual({ porsjon: 150, brødskive: 20 });
+  });
+
+  it("fyller inn Matvaretabellen-vekter uten å overskrive lagrede enheter", () => {
+    expect(lookupUnitGramsForFoodName("Agurk")?.stk).toBe(325);
+    expect(lookupUnitGramsForFoodName("Avokado")?.["stk liten"]).toBe(130);
+    expect(lookupUnitGramsForFoodName("Avokado")?.["stk stor"]).toBe(220);
+    expect(lookupUnitGramsForFoodName("Havregryn")?.ss).toBe(6);
+    expect(lookupUnitGramsForFoodName("Havregryn")?.dl).toBe(40);
+    const oats = enrichFoodItemUnitGrams(
+      food({
+        name: "Havregryn",
+        portionLabel: "40 g (1 dl)",
+        portionGrams: 40,
+        unitGrams: { ss: 8 },
+      }),
+    );
+    expect(oats.unitGrams?.ss).toBe(8);
+    expect(oats.unitGrams?.dl).toBe(40);
+  });
+
+  it("skiller enheter med vekt fra enheter uten vekt", () => {
+    const avocado = enrichFoodItemUnitGrams(
+      food({ name: "Avokado", portionLabel: "1/2 stk", portionGrams: 100 }),
+    );
+    expect(registeredRecipeUnitsForFood(avocado)).toContain("g");
+    expect(registeredRecipeUnitsForFood(avocado)).toContain("stk liten");
+    expect(registeredRecipeUnitsForFood(avocado)).toContain("stk stor");
+    expect(missingRecipeUnitsForFood(avocado)).toContain("ss");
+    expect(missingRecipeUnitsForFood(avocado)).not.toContain("g");
+    expect(missingRecipeUnitsForFood(avocado)).not.toContain("stk liten");
   });
 });

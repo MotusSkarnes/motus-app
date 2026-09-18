@@ -1,5 +1,6 @@
 import { enrichFoodNutritionFattyAcids } from "./foodBankFattyAcidEnrichment";
 import type { FoodItem, FoodNutrition, FoodSource } from "./foodBankTypes";
+import { enrichFoodItemUnitGrams } from "./foodUnitGrams";
 import {
   hasMicronutrientData,
   normalizeMicronutrients,
@@ -50,10 +51,10 @@ export function enrichFoodNutrition(
 }
 
 export function enrichFoodItem(item: FoodItem): FoodItem {
-  return {
+  return enrichFoodItemUnitGrams({
     ...item,
     nutritionPer100g: enrichFoodNutrition(item.nutritionPer100g, item.name, item.source),
-  };
+  });
 }
 
 export function enrichFoodItems(items: FoodItem[]): FoodItem[] {

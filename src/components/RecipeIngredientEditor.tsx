@@ -6,11 +6,11 @@ import { defaultPortionGramsForFood } from "../app/foodPortionDefaults";
 import {
   formatGramsAmount,
   gramsForIngredientDraft,
-  hasRegisteredUnitWeight,
+  missingRecipeUnitsForFood,
+  registeredRecipeUnitsForFood,
 } from "../app/foodUnitGrams";
 import { computeMacrosForGrams } from "../app/mealPlanMacros";
 import {
-  RECIPE_INGREDIENT_UNITS,
   suggestRecipeDisplayName,
   type RecipeIngredientDraft,
 } from "../app/recipeBody";
@@ -31,6 +31,7 @@ type WeightPrompt = {
   unit: string;
   grams: string;
   rowId?: string;
+  missingUnits: string[];
 };
 
 function UnitSelect({
@@ -46,29 +47,16 @@ function UnitSelect({
   ariaLabel?: string;
   onChange: (unit: string) => void;
 }) {
-  const selected = RECIPE_INGREDIENT_UNITS.includes(value as (typeof RECIPE_INGREDIENT_UNITS)[number])
-    ? value
-    : value || "g";
-  const selectedMissing = Boolean(food && selected && !hasRegisteredUnitWeight(food, selected));
+  const options = [...registeredRecipeUnitsForFood(food)];
+  if (value && !options.includes(value)) options.unshift(value);
+  const selected = options.includes(value) ? value : options[0] ?? "g";
   return (
-    <select
-      value={selected}
-      onChange={(event) => onChange(event.target.value)}
-      disabled={disabled}
-      aria-label={ariaLabel}
-      className={selectedMissing ? "is-missing-weight" : undefined}
-    >
-      {!RECIPE_INGREDIENT_UNITS.includes(value as (typeof RECIPE_INGREDIENT_UNITS)[number]) && value ? (
-        <option value={value}>{value}</option>
-      ) : null}
-      {RECIPE_INGREDIENT_UNITS.map((item) => {
-        const registered = !food || hasRegisteredUnitWeight(food, item);
-        return (
-          <option key={item} value={item} style={registered ? undefined : { color: "#94a3b8" }}>
-            {item}
-          </option>
-        );
-      })}
+    <select value={selected} onChange={(event) => onChange(event.target.value)} disabled={disabled} aria-label={ariaLabel}>
+      {options.map((item) => (
+        <option key={item} value={item}>
+          {item}
+        </option>
+      ))}
     </select>
   );
 }
@@ -95,18 +83,35 @@ function bankLineText(food: FoodItem | undefined, row: RecipeIngredientDraft): {
 function WeightForm({
   prompt,
   disabled,
+  onUnitChange,
   onGramsChange,
   onSave,
   onCancel,
 }: {
   prompt: WeightPrompt;
   disabled?: boolean;
+  onUnitChange: (unit: string) => void;
   onGramsChange: (value: string) => void;
   onSave: () => void;
   onCancel: () => void;
 }) {
   return (
     <div className="motus-recipe-ingredient-editor__weight-form">
+      <label>
+        <span>Enhet uten vekt</span>
+        <select
+          value={prompt.unit}
+          onChange={(event) => onUnitChange(event.target.value)}
+          disabled={disabled}
+          aria-label={`Enhet uten vekt for ${prompt.foodName}`}
+        >
+          {prompt.missingUnits.map((item) => (
+            <option key={item} value={item}>
+              {item}
+            </option>
+          ))}
+        </select>
+      </label>
       <label>
         <span>Gram per 1 {prompt.unit} {prompt.foodName}</span>
         <TextInput
@@ -154,9 +159,7 @@ export function RecipeIngredientEditor({
   const selectedFoodLive = selectedFood
     ? foodItems.find((item) => item.id === selectedFood.id) ?? selectedFood
     : null;
-  const addNeedsWeight = Boolean(
-    selectedFoodLive && unit.trim() && !hasRegisteredUnitWeight(selectedFoodLive, unit),
-  );
+  const addMissingUnits = selectedFoodLive ? missingRecipeUnitsForFood(selectedFoodLive) : [];
 
   function resetAddForm() {
     setSearch("");
@@ -178,18 +181,21 @@ export function RecipeIngredientEditor({
     setWeightPrompt(null);
   }
 
-  function openWeightPrompt(food: FoodItem, nextUnit: string, rowId?: string) {
-    if (!nextUnit.trim() || hasRegisteredUnitWeight(food, nextUnit)) {
+  function openWeightPrompt(food: FoodItem, rowId?: string) {
+    const missingUnits = [...missingRecipeUnitsForFood(food)];
+    if (!missingUnits.length) {
       setWeightPrompt(null);
       return;
     }
     setWeightPrompt({
       foodId: food.id,
       foodName: food.name,
-      unit: nextUnit.trim(),
+      unit: missingUnits[0] ?? "ss",
       grams: "",
       rowId,
+      missingUnits,
     });
+    setError(null);
   }
 
   function saveWeightPrompt() {
@@ -200,6 +206,11 @@ export function RecipeIngredientEditor({
       return;
     }
     onRegisterUnitGrams(weightPrompt.foodId, weightPrompt.unit, grams);
+    if (weightPrompt.rowId) {
+      updateRow(weightPrompt.rowId, { unit: weightPrompt.unit });
+    } else {
+      setUnit(weightPrompt.unit);
+    }
     setWeightPrompt(null);
     setError(null);
   }
@@ -241,8 +252,8 @@ export function RecipeIngredientEditor({
       <div className="motus-recipe-ingredient-editor__head">
         <h3>Ingredienser</h3>
         <p>
-          Søk i matvarebanken og legg til mengde. Linjen viser matvaren fra banken med gram og makro. Navnet kunden ser
-          endrer du lenger nede.
+          Søk i matvarebanken og legg til mengde. Rullegardinen viser bare enheter med vekt. Bruk vekt-knappen for å
+          legge inn enheter du veier selv.
         </p>
       </div>
 
@@ -319,16 +330,17 @@ export function RecipeIngredientEditor({
               value={unit}
               food={selectedFoodLive}
               disabled={disabled}
+              ariaLabel="Enhet"
               onChange={setUnit}
             />
-            {addNeedsWeight && onRegisterUnitGrams ? (
+            {addMissingUnits.length > 0 && onRegisterUnitGrams ? (
               <button
                 type="button"
                 className="motus-recipe-ingredient-editor__unit-weight-btn"
-                onClick={() => selectedFoodLive && openWeightPrompt(selectedFoodLive, unit)}
+                onClick={() => selectedFoodLive && openWeightPrompt(selectedFoodLive)}
                 disabled={disabled}
-                title={`Legg inn vekt for 1 ${unit} ${selectedFoodLive?.name ?? ""}`.trim()}
-                aria-label={`Legg inn vekt for 1 ${unit} ${selectedFoodLive?.name ?? ""}`.trim()}
+                title={`Legg inn vekt for enheter uten vekt på ${selectedFoodLive?.name ?? "matvaren"}`}
+                aria-label={`Legg inn vekt for enheter uten vekt på ${selectedFoodLive?.name ?? "matvaren"}`}
               >
                 <Scale className="h-4 w-4" aria-hidden />
               </button>
@@ -340,10 +352,11 @@ export function RecipeIngredientEditor({
           Legg til
         </OutlineButton>
       </div>
-      {weightPrompt && !weightPrompt.rowId && weightPrompt.foodId === selectedFoodLive?.id && weightPrompt.unit === unit.trim() ? (
+      {weightPrompt && !weightPrompt.rowId && weightPrompt.foodId === selectedFoodLive?.id ? (
         <WeightForm
           prompt={weightPrompt}
           disabled={disabled}
+          onUnitChange={(next) => setWeightPrompt((current) => (current ? { ...current, unit: next } : current))}
           onGramsChange={(value) => setWeightPrompt((current) => (current ? { ...current, grams: value } : current))}
           onSave={saveWeightPrompt}
           onCancel={() => setWeightPrompt(null)}
@@ -363,7 +376,7 @@ export function RecipeIngredientEditor({
             {ingredients.map((row) => {
               const food = row.foodId ? foodItems.find((item) => item.id === row.foodId) : undefined;
               const line = bankLineText(food, row);
-              const rowNeedsWeight = Boolean(food && row.unit.trim() && !hasRegisteredUnitWeight(food, row.unit));
+              const rowMissingUnits = food ? missingRecipeUnitsForFood(food) : [];
               const promptMatches = weightPrompt?.rowId === row.id;
               return (
                 <li key={row.id} className="motus-recipe-ingredient-editor__item">
@@ -383,14 +396,14 @@ export function RecipeIngredientEditor({
                         ariaLabel={`Enhet for ${food?.name ?? row.name}`}
                         onChange={(next) => updateRow(row.id, { unit: next })}
                       />
-                      {rowNeedsWeight && onRegisterUnitGrams ? (
+                      {rowMissingUnits.length > 0 && onRegisterUnitGrams ? (
                         <button
                           type="button"
                           className="motus-recipe-ingredient-editor__unit-weight-btn"
-                          onClick={() => food && openWeightPrompt(food, row.unit, row.id)}
+                          onClick={() => food && openWeightPrompt(food, row.id)}
                           disabled={disabled}
-                          title={`Legg inn vekt for 1 ${row.unit} ${food?.name ?? ""}`.trim()}
-                          aria-label={`Legg inn vekt for 1 ${row.unit} ${food?.name ?? ""}`.trim()}
+                          title={`Legg inn vekt for enheter uten vekt på ${food?.name ?? "matvaren"}`}
+                          aria-label={`Legg inn vekt for enheter uten vekt på ${food?.name ?? "matvaren"}`}
                         >
                           <Scale className="h-4 w-4" aria-hidden />
                         </button>
@@ -416,6 +429,7 @@ export function RecipeIngredientEditor({
                     <WeightForm
                       prompt={weightPrompt}
                       disabled={disabled}
+                      onUnitChange={(next) => setWeightPrompt((current) => (current ? { ...current, unit: next } : current))}
                       onGramsChange={(value) => setWeightPrompt((current) => (current ? { ...current, grams: value } : current))}
                       onSave={saveWeightPrompt}
                       onCancel={() => setWeightPrompt(null)}

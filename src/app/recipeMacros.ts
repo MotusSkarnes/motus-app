@@ -2,6 +2,7 @@ import { DEFAULT_RECIPE_BODY_BY_ID } from "./defaultInspirationRecipes";
 import { EMPTY_MICRONUTRIENTS, type FoodMicronutrients } from "./foodBankMicronutrients";
 import { buildDefaultFoodBankItems } from "./foodBankSeed";
 import { registeredGramsPerUnit } from "./foodUnitGrams";
+import { recipeIngredientUnitPattern } from "./recipeUnits";
 import { computeMacrosForGrams, type MacroTotals } from "./mealPlanMacros";
 import type { FoodCategoryId, FoodItem, FoodNutrition } from "./foodBankTypes";
 
@@ -157,7 +158,13 @@ const NEGLIGIBLE_PATTERN =
 
 function isNegligibleIngredientLine(line: string): boolean {
   const withoutQty = line
-    .replace(/^(\d+(?:[.,]\d+)?(?:\s*\/\s*\d+)?)\s*(?:dl|ss|ts|kg|g|stk|skiver?|boks|fedd|håndfull|handfull|lite|stor)?\s*/i, "")
+    .replace(
+      new RegExp(
+        `^(\\d+(?:[.,]\\d+)?(?:\\s*\\/\\s*\\d+)?)\\s*(?:${recipeIngredientUnitPattern()}|lite|stor|skiver|handfull)?\\s*`,
+        "i",
+      ),
+      "",
+    )
     .trim();
   return NEGLIGIBLE_PATTERN.test(line) || NEGLIGIBLE_PATTERN.test(withoutQty);
 }
@@ -310,7 +317,9 @@ export function parseIngredientLine(line: string): ParsedIngredient | null {
   const parsed = parseLeadingQuantity(text);
   if (!parsed && !explicitGrams) return null;
 
-  const unitMatch = parsed?.rest.match(/^(dl|ss|ts|kg|g|stk|skiver?|boks|fedd|håndfull|handfull|lite|stor)\b\s*/i);
+  const unitMatch = parsed?.rest.match(
+    new RegExp(`^(${recipeIngredientUnitPattern()}|lite|stor|skiver|handfull)\\b\\s*`, "i"),
+  );
   const unit = unitMatch?.[1]?.toLowerCase() ?? "";
   const searchText = (
     parsed ? (unitMatch ? parsed.rest.slice(unitMatch[0].length) : parsed.rest) : text

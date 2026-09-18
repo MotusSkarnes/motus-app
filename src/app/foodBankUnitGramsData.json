@@ -1,0 +1,9075 @@
+{
+  "source": "https://www.matvaretabellen.no/api/nb/foods.json",
+  "generatedAt": "2026-09-18T11:57:40.273Z",
+  "foodCount": 1815,
+  "lookup": {
+    "adzukibønnertørr": {
+      "dl": 85
+    },
+    "agavesirup": {
+      "ss": 16,
+      "dl": 140
+    },
+    "agurknorskra": {
+      "skive": 6,
+      "stk": 325,
+      "dl": 55
+    },
+    "agurkersyltede": {
+      "skive": 5
+    },
+    "aioli": {
+      "ss": 18
+    },
+    "akkartiarmetblekksprutinnbaktforfritertfryst": {
+      "porsjon": 190
+    },
+    "akkartiarmetblekksprutinnbaktforfritertstektifett": {
+      "porsjon": 150
+    },
+    "akkartiarmetblekksprutkokt": {
+      "porsjon": 150
+    },
+    "akkartiarmetblekksprutra": {
+      "porsjon": 195
+    },
+    "alaskapollockra": {
+      "porsjon": 270
+    },
+    "alfalfaspirerra": {
+      "dl": 20
+    },
+    "americanokaffe": {
+      "kopp": 240
+    },
+    "ananashermetiskmedegensaft": {
+      "ring": 40,
+      "dl": 105
+    },
+    "ananashermetiskmedsukkerlake": {
+      "ring": 40,
+      "dl": 105
+    },
+    "ananasra": {
+      "stk": 665
+    },
+    "ananasjuice": {
+      "glass stor": 320,
+      "glass": 200,
+      "dl": 100,
+      "glass liten": 150
+    },
+    "andkjøttmedskinnovnsstekt": {
+      "porsjon": 150
+    },
+    "andkjøttmedskinnra": {
+      "porsjon": 375
+    },
+    "andkjøttutenskinnovnsstekt": {
+      "porsjon": 150
+    },
+    "andkjøttutenskinnra": {
+      "porsjon": 395
+    },
+    "anisfrø": {
+      "ts": 3
+    },
+    "ansjoshermetisk": {
+      "stk": 20
+    },
+    "appelsinra": {
+      "stk": 195,
+      "båt": 35
+    },
+    "appelsinjuiceferskpresset": {
+      "glass stor": 320,
+      "glass": 200,
+      "dl": 100,
+      "glass liten": 150
+    },
+    "appelsinjuicefrakonsentrat": {
+      "glass stor": 320,
+      "glass": 200,
+      "dl": 100,
+      "glass liten": 150
+    },
+    "appelsinmarmelade": {
+      "beger": 24,
+      "ss": 16,
+      "brødskive": 20,
+      "dl": 115
+    },
+    "appelsinsaftdrikkeklar": {
+      "glass stor": 320,
+      "glass": 200,
+      "dl": 100,
+      "glass liten": 150
+    },
+    "appelsinsaftublandet": {
+      "dl": 100
+    },
+    "aprikoshermetiskmedsukkerlake": {
+      "stk": 20,
+      "dl": 105
+    },
+    "aprikosra": {
+      "stk": 35
+    },
+    "aprikostørket": {
+      "stk": 7,
+      "dl": 50
+    },
+    "aprikossyltetøy": {
+      "ss": 16,
+      "brødskive": 20,
+      "dl": 115
+    },
+    "aroniasvartsurbærra": {
+      "dl": 55
+    },
+    "artiskokkra": {
+      "stk": 140
+    },
+    "aspargeshermetiskavrent": {
+      "stk": 10
+    },
+    "aspargesra": {
+      "stk": 16
+    },
+    "aspargesbønnerfryst": {
+      "stk": 3
+    },
+    "aspargesbønnerra": {
+      "stk": 3
+    },
+    "aspargessuppehjemmelaget": {
+      "porsjon": 350,
+      "dl": 100
+    },
+    "auberginera": {
+      "stk": 285,
+      "skive": 25
+    },
+    "avokadora": {
+      "stk stor": 220,
+      "stk liten": 130
+    },
+    "avokadoogkikertpaleggkjøpt": {
+      "brødskive": 20
+    },
+    "avokadosuppekald": {
+      "dl": 100
+    },
+    "babymaisminimaishermetisk": {
+      "stk": 15
+    },
+    "babyspinatra": {
+      "dl": 12
+    },
+    "baconcrisp": {
+      "pose stor": 140,
+      "dl": 17,
+      "pose liten": 45
+    },
+    "baconostsmørbar": {
+      "brødskive": 10
+    },
+    "baconpostei": {
+      "brødskive": 20
+    },
+    "baguettglutenfrisemper": {
+      "stk": 50
+    },
+    "bakepulver": {
+      "ts": 6
+    },
+    "balsamicoeddik": {
+      "dl": 100,
+      "ts": 5,
+      "ss": 11
+    },
+    "bambusskuddhermetisk": {
+      "dl": 60,
+      "stk": 3
+    },
+    "bananra": {
+      "stk": 120
+    },
+    "banankake": {
+      "porsjon": 80
+    },
+    "barnematsinlacspesialgrøtpulver": {
+      "dl": 40,
+      "ss": 6
+    },
+    "barnematsinlacspesialgrøtspiseklarnestle": {
+      "dl": 100
+    },
+    "barnematfullkornsgrøtmedeksotiskefrukterogmuslifra12mndpulver": {
+      "dl": 40,
+      "ss": 6
+    },
+    "barnematfullkornsgrøtmedeksotiskefrukterogmuslifra12mndspiseklar": {
+      "dl": 100
+    },
+    "barnemathavregrøtmedbananogmangofra8mndpulver": {
+      "dl": 40,
+      "ss": 6
+    },
+    "barnemathavregrøtmedbananogmangofra8mndspiseklar": {
+      "dl": 100
+    },
+    "barnemathavregrøtnaturellfra6mndpulver": {
+      "dl": 40,
+      "ss": 6
+    },
+    "barnemathavregrøtnaturellfra6mndspiseklar": {
+      "dl": 100
+    },
+    "barnematmiddagbiffgrytefra12mnd": {
+      "glass": 210
+    },
+    "barnematmiddaghønsegrytemedcouscousfra12mnd": {
+      "glass": 210
+    },
+    "barnematmiddaghønsegrytemedgrønnsakerfra6mnd": {
+      "glass": 190
+    },
+    "barnematmiddagpastabolognesefra6mnd": {
+      "glass": 190
+    },
+    "barnematmiddagpastaoggrønnsakerfra8mnd": {
+      "glass": 190
+    },
+    "barnematmiddagragufra8mnd": {
+      "glass": 190
+    },
+    "basilikumra": {
+      "dl": 5
+    },
+    "basilikumtørket": {
+      "ts": 1
+    },
+    "bayonneskinkekokt": {
+      "skive": 15
+    },
+    "berlinerbollekjøpt": {
+      "stk": 65
+    },
+    "bernaisesausavpulver": {
+      "dl": 100,
+      "porsjon": 75
+    },
+    "bernaisesaushjemmelaget": {
+      "dl": 100,
+      "porsjon": 75
+    },
+    "betasuppeavpulvertilberedt": {
+      "porsjon": 350,
+      "dl": 100
+    },
+    "betasuppehjemmelaget": {
+      "porsjon": 350,
+      "dl": 100
+    },
+    "bidoshjemmelaget": {
+      "porsjon": 450
+    },
+    "biffstroganoff": {
+      "porsjon": 300
+    },
+    "biscotti": {
+      "stk": 20
+    },
+    "bjørnebærra": {
+      "stk": 6,
+      "dl": 55
+    },
+    "bjørnebærsyltetøy": {
+      "ss": 16,
+      "brødskive": 20,
+      "dl": 115
+    },
+    "bladsalatnorskra": {
+      "dl": 25
+    },
+    "blodoksera": {
+      "dl": 100
+    },
+    "blodpuddingovnsstekt": {
+      "skive": 40
+    },
+    "blokkebærmikkelsbærra": {
+      "dl": 55
+    },
+    "blomkalimportertfryst": {
+      "bukett": 30,
+      "stk": 480
+    },
+    "blomkalimportertra": {
+      "bukett": 30,
+      "stk": 480
+    },
+    "blomkalkokt": {
+      "bukett": 30,
+      "stk": 480
+    },
+    "blomkalnorskra": {
+      "bukett": 30,
+      "stk": 480
+    },
+    "blomkaluspesifisertra": {
+      "bukett": 30,
+      "stk": 480
+    },
+    "blomkalbrokkolisuppeavpulver": {
+      "dl": 100,
+      "porsjon": 220
+    },
+    "blomkalsuppeavpulver": {
+      "porsjon": 350,
+      "dl": 100
+    },
+    "blomkalsuppehjemmelaget": {
+      "porsjon": 350,
+      "dl": 100
+    },
+    "blabærfryst": {
+      "dl": 55
+    },
+    "blabærra": {
+      "dl": 55
+    },
+    "blabærmousse": {
+      "porsjon": 140
+    },
+    "blabærsyltetøy": {
+      "ss": 16,
+      "brødskive": 20,
+      "dl": 115
+    },
+    "blabærsyltetøylett": {
+      "ss": 16,
+      "brødskive": 20,
+      "dl": 115
+    },
+    "blabærsyltetøyrørtfryst": {
+      "ss": 16,
+      "brødskive": 20,
+      "dl": 115
+    },
+    "blabærsyltetøyutentilsattsukker": {
+      "ss": 16,
+      "brødskive": 20,
+      "dl": 115
+    },
+    "blakveiterakaldrøkt": {
+      "porsjon": 175
+    },
+    "blalangera": {
+      "porsjon": 270
+    },
+    "blaskjellilakeavrent": {
+      "dl": 70,
+      "stk": 8
+    },
+    "blaskjellra": {
+      "porsjon": 115,
+      "dl": 70,
+      "stk": 8
+    },
+    "bløtkakemedkremsyltetøy": {
+      "porsjon": 95
+    },
+    "bogskinkehermetisk": {
+      "boks": 325,
+      "skive": 25
+    },
+    "bokhvetehelekorn": {
+      "ss": 10,
+      "dl": 75
+    },
+    "bokhvetemel": {
+      "ss": 11,
+      "dl": 65
+    },
+    "bolleglutenfrimedlettmelkhjemmebakt": {
+      "stk": 60
+    },
+    "bollemedhelmelkhjemmebakt": {
+      "stk": 60
+    },
+    "bollemedlettmelkhjemmebakt": {
+      "stk": 60
+    },
+    "bollemedsjokoladebiter": {
+      "stk liten": 50,
+      "stk stor": 115
+    },
+    "bollemedskummetmelkhjemmebakt": {
+      "stk": 60
+    },
+    "bolleutenrosinerkjøpt": {
+      "stk liten": 50,
+      "stk stor": 115
+    },
+    "bollemiksglutenfriøkologiskpulverdetglutenfrieverksted": {
+      "pose": 400
+    },
+    "borlottibønnertørr": {
+      "dl": 75
+    },
+    "bouillabaissefranskfiskesuppe": {
+      "porsjon": 350,
+      "dl": 100
+    },
+    "breiflabbfiletkokt": {
+      "porsjon": 200
+    },
+    "breiflabbra": {
+      "porsjon": 270
+    },
+    "brelett": {
+      "beger": 10,
+      "brødskive": 5
+    },
+    "bremykt": {
+      "beger": 10,
+      "brødskive": 5
+    },
+    "bremyktmykere": {
+      "brødskive": 5
+    },
+    "brennevin40volalkohol": {
+      "glass": 40,
+      "dl": 100
+    },
+    "brennevin60volalkohol": {
+      "glass": 40,
+      "dl": 100
+    },
+    "briehvitmuggost": {
+      "porsjon": 30,
+      "brødskive": 26,
+      "skive": 13
+    },
+    "bringebærra": {
+      "stk": 5,
+      "dl": 50
+    },
+    "bringebærmousse": {
+      "porsjon": 140
+    },
+    "bringebærsyltetøy": {
+      "ss": 16,
+      "brødskive": 20,
+      "dl": 115
+    },
+    "bringebærsyltetøylett": {
+      "ss": 16,
+      "brødskive": 20,
+      "dl": 115
+    },
+    "bringebærsyltetøyrørtfryst": {
+      "ss": 16,
+      "brødskive": 20,
+      "dl": 115
+    },
+    "bringebærsyltetøyutentilsattsukker": {
+      "ss": 16,
+      "brødskive": 20,
+      "dl": 115
+    },
+    "brislingioljeavrenthermetisk": {
+      "brødskive": 25
+    },
+    "brislingitomathermetisk": {
+      "brødskive": 25
+    },
+    "brislingra": {
+      "porsjon": 175
+    },
+    "brokkoliimportertfryst": {
+      "bukett": 25,
+      "stk": 395
+    },
+    "brokkoliimportertra": {
+      "bukett": 25,
+      "stk": 395
+    },
+    "brokkolikokt": {
+      "stk": 440,
+      "bukett": 28
+    },
+    "brokkolinorskra": {
+      "bukett": 25,
+      "stk": 395
+    },
+    "brokkoliuspesifisertra": {
+      "bukett": 25,
+      "stk": 395
+    },
+    "brokkolisuppehjemmelaget": {
+      "porsjon": 350,
+      "dl": 100
+    },
+    "brosmekokt": {
+      "porsjon": 200
+    },
+    "brosmeovnsstekt": {
+      "porsjon": 200
+    },
+    "brosmera": {
+      "porsjon": 270
+    },
+    "browniesmedglasurkjøpt": {
+      "stk": 90
+    },
+    "brunsausavblokk": {
+      "dl": 100,
+      "porsjon": 75
+    },
+    "brunsauskjøttkakesausavpulver": {
+      "dl": 100,
+      "porsjon": 75
+    },
+    "brunsausmedløkavpulver": {
+      "dl": 100,
+      "porsjon": 75
+    },
+    "brunebønnerkokt": {
+      "porsjon": 190
+    },
+    "brunebønnertørre": {
+      "ss": 12,
+      "dl": 80,
+      "porsjon": 80
+    },
+    "brunepinner": {
+      "stk": 15
+    },
+    "brunostuspesifisert": {
+      "skive": 8,
+      "brødskive": 16
+    },
+    "brusbitterlemon": {
+      "boks": 330,
+      "glass": 200,
+      "dl": 100
+    },
+    "bruscolakunstigsøtetlett": {
+      "boks": 330,
+      "glass stor": 320,
+      "glass": 200,
+      "dl": 100,
+      "glass liten": 150
+    },
+    "bruscolamedsukker": {
+      "boks": 330,
+      "glass stor": 320,
+      "glass": 200,
+      "dl": 100,
+      "glass liten": 150
+    },
+    "brusfruktjuicekunstigsøtetlett": {
+      "boks": 330,
+      "glass stor": 320,
+      "glass": 200,
+      "dl": 100,
+      "glass liten": 150
+    },
+    "brusfruktjuicemedsukker": {
+      "boks": 330,
+      "glass stor": 320,
+      "glass": 200,
+      "dl": 100,
+      "glass liten": 150
+    },
+    "brustonicwater": {
+      "boks": 330,
+      "glass": 200,
+      "dl": 100
+    },
+    "brød13sammaltmelskummetmelkhjemmebakt": {
+      "skive": 45
+    },
+    "brød13sammaltmelvannhjemmebakt": {
+      "skive": 45
+    },
+    "brød100sammaltmelskummetmelkhjemmebakt": {
+      "skive": 45
+    },
+    "brød23sammaltmelskummetmelkhjemmebakt": {
+      "skive": 45
+    },
+    "brød23sammaltmelvannhjemmebakt": {
+      "skive": 45
+    },
+    "brød25sammaltmelskummetmelkhjemmebakt": {
+      "skive": 45
+    },
+    "brød25sammaltmelvannhjemmebakt": {
+      "skive": 45
+    },
+    "brød50sammaltmelskummetmelkhjemmebakt": {
+      "skive": 45
+    },
+    "brød50sammaltmelvannhjemmebakt": {
+      "skive": 45
+    },
+    "brød75sammaltmelskummetmelkhjemmebakt": {
+      "skive": 45
+    },
+    "brød75sammaltmelvannhjemmebakt": {
+      "skive": 45
+    },
+    "brødekstragrovt75100kjøpt": {
+      "skive": 50
+    },
+    "brødglutenfrittfintmedlettmelkhjemmebakt": {
+      "skive": 40
+    },
+    "brødglutenfrittfintmedvannhjemmebakt": {
+      "skive": 40
+    },
+    "brødglutenfrittgrovtmedlettmelkhjemmebakt": {
+      "skive": 45
+    },
+    "brødglutenfrittgrovtmedvannhjemmebakt": {
+      "skive": 45
+    },
+    "brødglutenfrittgrovtsoyabasertdrikkehjemmebakt": {
+      "skive": 45
+    },
+    "brødgrovbakstsammaltmelhjemmebakt": {
+      "skive": 45
+    },
+    "brødgrovt5075kjøpt": {
+      "skive": 40
+    },
+    "brødgrovt5075kjøptkneipp": {
+      "skive": 40
+    },
+    "brødgrovtglutenfrittfria": {
+      "skive": 38,
+      "stk": 500
+    },
+    "brødhalvgrovt2550kjøpt": {
+      "skive": 40
+    },
+    "brødhalvgrovt2550kjøptkneipp": {
+      "skive": 40
+    },
+    "brødmikseltefrittbrødglutenfriøkologiskpulverdetglutenfrieverksted": {
+      "pose": 740
+    },
+    "brødmiksfiberbrødglutenfriøkologiskpulverdetglutenfrieverksted": {
+      "pose": 500
+    },
+    "brødmiksnistebrødglutenfriøkologiskpulverdetglutenfrieverksted": {
+      "pose": 375
+    },
+    "brønnkarsera": {
+      "dl": 12
+    },
+    "bulgurgrynkokt": {
+      "porsjon": 225
+    },
+    "bulgurgryntørr": {
+      "dl": 80,
+      "ss": 13,
+      "porsjon": 75
+    },
+    "buljongpulver": {
+      "pose": 150,
+      "dl": 70,
+      "ss": 11
+    },
+    "butterdeig": {
+      "stk": 85
+    },
+    "byggmel": {
+      "ss": 9,
+      "dl": 60
+    },
+    "byggryn": {
+      "dl": 80,
+      "ss": 13
+    },
+    "byggrynsgrøt": {
+      "porsjon": 350,
+      "dl": 100
+    },
+    "bønneogolivensalatkjøpt": {
+      "boks": 300
+    },
+    "bønnegrytevegetarisk": {
+      "porsjon": 300
+    },
+    "bønnekarbonaderstektifett": {
+      "stk": 60
+    },
+    "bønnerichilisaushermetisk": {
+      "boks": 410
+    },
+    "caffelatteenkelmedhavrebasertdrikke": {
+      "dl": 100,
+      "kopp": 300
+    },
+    "caffelatteenkelmedhavrebasertdrikkemedjod": {
+      "dl": 100,
+      "kopp": 300
+    },
+    "caffelatteenkelmedhelmelk": {
+      "dl": 100,
+      "kopp": 300
+    },
+    "caffelatteenkelmedlaktosefrimelk": {
+      "dl": 100,
+      "kopp": 300
+    },
+    "caffelatteenkelmedlettmelk": {
+      "dl": 100,
+      "kopp": 300
+    },
+    "caffelatteenkelmedsoyabasertdrikke": {
+      "dl": 100,
+      "kopp": 300
+    },
+    "caffemocca": {
+      "dl": 100,
+      "kopp": 230
+    },
+    "cafeaulait": {
+      "dl": 100,
+      "kopp": 300
+    },
+    "cafeaulaitmedhavrebasertdrikke": {
+      "dl": 100,
+      "kopp": 300
+    },
+    "cafeaulaitmedhavrebasertdrikkemedjod": {
+      "dl": 100,
+      "kopp": 300
+    },
+    "cafeaulaitmedlaktosefrimelk": {
+      "dl": 100,
+      "kopp": 300
+    },
+    "cafeaulaitmedsoyabasertdrikke": {
+      "dl": 100,
+      "kopp": 300
+    },
+    "camemberthvitmuggost": {
+      "porsjon": 30,
+      "brødskive": 26,
+      "skive": 13
+    },
+    "cappucinoenkelmedhavrebasertdrikke": {
+      "kopp": 170,
+      "dl": 100
+    },
+    "cappucinoenkelmedhavrebasertdrikkemedjod": {
+      "kopp": 170,
+      "dl": 100
+    },
+    "cappucinoenkelmedhelmelk": {
+      "kopp": 170,
+      "dl": 100
+    },
+    "cappucinoenkelmedlaktosefrimelk": {
+      "kopp": 170,
+      "dl": 100
+    },
+    "cappucinoenkelmedlettmelk": {
+      "kopp": 170,
+      "dl": 100
+    },
+    "cappucinoenkelmedsoyabasertdrikke": {
+      "kopp": 170,
+      "dl": 100
+    },
+    "carambolastjernefruktra": {
+      "stk": 85
+    },
+    "cashewnøtter": {
+      "stk": 1,
+      "håndfull": 20,
+      "dl": 60
+    },
+    "cashewnøttersaltet": {
+      "stk": 1,
+      "dl": 60
+    },
+    "chapattimedsammaltmel": {
+      "stk": 50
+    },
+    "chayotera": {
+      "stk": 270
+    },
+    "cheddargulost": {
+      "brødskive": 20,
+      "dl": 40
+    },
+    "cheddarsaus": {
+      "ss": 18
+    },
+    "cheeseburgermedbrøddressingmvkjøpt": {
+      "stk": 105
+    },
+    "cherimoyara": {
+      "stk": 210
+    },
+    "cherrytomatimportertra": {
+      "stk": 15
+    },
+    "chevregeitostnaturell": {
+      "brødskive": 15
+    },
+    "chiafrøtørket": {
+      "ss": 10,
+      "dl": 70
+    },
+    "chiliconcarne": {
+      "porsjon": 300
+    },
+    "chiligrønnra": {
+      "stk": 7
+    },
+    "chilirødra": {
+      "stk": 7
+    },
+    "chilinøtter": {
+      "dl": 45
+    },
+    "chilipulver": {
+      "ts": 3
+    },
+    "chilisaussøt": {
+      "ss": 17
+    },
+    "chorizopølse": {
+      "skive": 3
+    },
+    "ciabattaglutenfrischar": {
+      "stk": 50
+    },
+    "cidereple06volalkohol": {
+      "boks": 500,
+      "dl": 100
+    },
+    "ciderpære06volalkohol": {
+      "boks": 500,
+      "dl": 100
+    },
+    "ciderpære06volalkoholkunstigsøtet": {
+      "boks": 500,
+      "dl": 100
+    },
+    "cidersøt45volalkohol": {
+      "glass": 100,
+      "boks": 500,
+      "dl": 100
+    },
+    "cornflakeskelloggs": {
+      "porsjon": 35,
+      "dl": 14
+    },
+    "cornflakesglutenfrischar": {
+      "porsjon": 35
+    },
+    "cornflakesglutenfriutentilsattsukkerøkologiskdetglutenfrieverksted": {
+      "porsjon": 35,
+      "pose": 200
+    },
+    "cornflakessøtfrosties": {
+      "porsjon": 35,
+      "dl": 16
+    },
+    "cortadoenkel": {
+      "dl": 100,
+      "kopp": 60
+    },
+    "cortadoenkelmedhavrebasertdrikke": {
+      "dl": 100,
+      "kopp": 60
+    },
+    "cortadoenkelmedhavrebasertdrikkemedjod": {
+      "dl": 100,
+      "kopp": 60
+    },
+    "cortadoenkelmedlaktosefrimelk": {
+      "dl": 100,
+      "kopp": 60
+    },
+    "cortadoenkelmedsoyabasertdrikke": {
+      "dl": 100,
+      "kopp": 60
+    },
+    "cottagecheese": {
+      "ss": 16,
+      "dl": 100
+    },
+    "couscouskokt": {
+      "porsjon": 190
+    },
+    "couscoustørr": {
+      "dl": 75,
+      "porsjon": 75
+    },
+    "crabsticksalatmajonessalat": {
+      "dl": 95,
+      "brødskive": 30
+    },
+    "croissantutenfyllkjøpt": {
+      "stk liten": 45,
+      "stk stor": 80
+    },
+    "cremecheriemykost": {
+      "porsjon": 30
+    },
+    "cremefraiche35fett": {
+      "dl": 100,
+      "ss": 18,
+      "beger": 300
+    },
+    "cupcakesmedglasuravpulversmør": {
+      "stk": 60
+    },
+    "cæsardressing": {
+      "porsjon": 25,
+      "ss": 18
+    },
+    "daddeltørket": {
+      "stk liten": 8,
+      "stk stor": 19
+    },
+    "daimkake": {
+      "porsjon": 80
+    },
+    "delfiakake": {
+      "skive": 25
+    },
+    "desserttoppingpaboks": {
+      "ss": 3,
+      "dl": 18
+    },
+    "dessertvinekstrasøtmusserende": {
+      "glass": 100,
+      "dl": 100
+    },
+    "dillra": {
+      "dl": 12
+    },
+    "dipsaussursøtbarbequesaus": {
+      "ss": 17
+    },
+    "donutsmedsjokoladeglasurkjøpt": {
+      "stk": 65
+    },
+    "dressingmajonestype15fett": {
+      "porsjon": 25,
+      "dl": 100,
+      "ss": 18
+    },
+    "dressingmajonestype30fett": {
+      "porsjon": 25,
+      "dl": 100,
+      "ss": 18
+    },
+    "dressingmajonestype55fett": {
+      "porsjon": 25,
+      "dl": 100,
+      "ss": 18
+    },
+    "druegrønnra": {
+      "stk": 5,
+      "dl": 70
+    },
+    "druera": {
+      "stk": 5,
+      "dl": 70
+    },
+    "druerødra": {
+      "stk": 5,
+      "dl": 70
+    },
+    "druejuice": {
+      "glass stor": 320,
+      "glass": 200,
+      "dl": 100,
+      "glass liten": 150
+    },
+    "edamergulost": {
+      "brødskive": 20,
+      "dl": 40,
+      "skive": 10
+    },
+    "eddik7": {
+      "dl": 100,
+      "ts": 5,
+      "ss": 11
+    },
+    "eggkokt": {
+      "stk": 56
+    },
+    "eggra": {
+      "dl": 100,
+      "stk": 55
+    },
+    "eggstektifett": {
+      "stk": 48
+    },
+    "eggøkologiskkokt": {
+      "stk": 56
+    },
+    "eggøkologiskra": {
+      "dl": 100,
+      "stk": 55
+    },
+    "eggøkologiskstektifett": {
+      "stk": 48
+    },
+    "eggedosis": {
+      "dl": 65
+    },
+    "eggehvitekokt": {
+      "stk": 33
+    },
+    "eggehvitera": {
+      "stk": 37,
+      "dl": 100
+    },
+    "eggekremvaniljekrem": {
+      "dl": 95,
+      "ss": 13
+    },
+    "eggeplommekokt": {
+      "stk": 16
+    },
+    "eggeplommera": {
+      "dl": 100,
+      "stk": 18
+    },
+    "eggerørestektifett": {
+      "ss": 30,
+      "porsjon": 50
+    },
+    "eggerørestektutenfett": {
+      "ss": 30,
+      "porsjon": 50
+    },
+    "eggesalathjemmelaget": {
+      "dl": 95,
+      "brødskive": 30
+    },
+    "eggesalatmajonessalatkjøpt": {
+      "dl": 95,
+      "brødskive": 30
+    },
+    "eggnudlerkokt": {
+      "porsjon": 220
+    },
+    "eggnudlertørr": {
+      "porsjon": 85
+    },
+    "elghøyryggovnsstekt": {
+      "porsjon": 150
+    },
+    "elghøyryggra": {
+      "porsjon": 200
+    },
+    "elglarstekovnsstekt": {
+      "porsjon": 150
+    },
+    "elgmørbradovnsstekt": {
+      "porsjon": 150
+    },
+    "elgmørbradra": {
+      "porsjon": 200
+    },
+    "elgytterlarstekra": {
+      "porsjon": 200
+    },
+    "elghakkelggryte": {
+      "porsjon": 450
+    },
+    "endivesalatra": {
+      "dl": 30
+    },
+    "energidrikktilsatttaurinkoffeinogbvitaminer": {
+      "boks liten": 250,
+      "dl": 100
+    },
+    "energidrikktilsatttaurinkoffeinogbvitaminersukkerfri": {
+      "boks liten": 250,
+      "dl": 100
+    },
+    "eplegrannysmithgoldendeliciousra": {
+      "stk": 150
+    },
+    "epleingridmariera": {
+      "stk": 125
+    },
+    "eplepinkladyra": {
+      "stk": 125
+    },
+    "eplerødaromara": {
+      "stk": 125
+    },
+    "eplehermetisk": {
+      "dl": 105
+    },
+    "epleimportertra": {
+      "stk liten": 90,
+      "stk stor": 165,
+      "stk": 125
+    },
+    "eplenorskuspesifisertra": {
+      "stk liten": 90,
+      "stk stor": 165,
+      "stk": 125
+    },
+    "epletørket": {
+      "dl": 25,
+      "ring": 5
+    },
+    "epleuspesifisertra": {
+      "stk liten": 90,
+      "stk stor": 165,
+      "stk": 125
+    },
+    "eplecidereddik": {
+      "dl": 100,
+      "ts": 5,
+      "ss": 11
+    },
+    "eplejuicemost": {
+      "glass stor": 320,
+      "glass": 200,
+      "dl": 100,
+      "glass liten": 150
+    },
+    "eplekake": {
+      "porsjon": 80
+    },
+    "eplemos": {
+      "ss": 16,
+      "brødskive": 20,
+      "dl": 115
+    },
+    "eplemoslett": {
+      "ss": 16,
+      "brødskive": 20,
+      "dl": 115
+    },
+    "eplemosutentilsattsukker": {
+      "ss": 16,
+      "brødskive": 20,
+      "dl": 115
+    },
+    "eplenektar": {
+      "glass stor": 320,
+      "glass": 200,
+      "dl": 100,
+      "glass liten": 150
+    },
+    "eplepai": {
+      "porsjon": 80
+    },
+    "erterfryst": {
+      "ss": 12,
+      "dl": 60
+    },
+    "ertergrønnehermetiskavrent": {
+      "dl": 70,
+      "ss": 19
+    },
+    "ertertørre": {
+      "ss": 12,
+      "dl": 80
+    },
+    "ertestuingavpulver": {
+      "dl": 100,
+      "porsjon": 130
+    },
+    "espressoenkel": {
+      "dl": 100,
+      "kopp": 30
+    },
+    "falafelkikertbollerkjøpt": {
+      "pakke": 300
+    },
+    "falukorv": {
+      "stk": 400,
+      "porsjon": 150,
+      "skive": 25
+    },
+    "feltsalatra": {
+      "dl": 10
+    },
+    "fenalar": {
+      "skive": 15
+    },
+    "fennikelra": {
+      "dl": 45,
+      "stk": 140
+    },
+    "ferskenhermetiskmedegensaft": {
+      "dl": 105,
+      "stk": 45
+    },
+    "ferskenhermetiskmedsukkerlake": {
+      "dl": 105,
+      "stk": 45
+    },
+    "ferskenra": {
+      "stk": 150
+    },
+    "fetaostmedgeitmelk": {
+      "stk": 200,
+      "dl": 60
+    },
+    "fikentørket": {
+      "stk": 20,
+      "dl": 80
+    },
+    "fikensyltetøy": {
+      "ss": 16,
+      "brødskive": 20,
+      "dl": 115
+    },
+    "filodeig": {
+      "stk": 25
+    },
+    "fiskebolleravrenthermetisk": {
+      "stk": 25,
+      "porsjon": 150
+    },
+    "fiskebollerkjøpt": {
+      "stk": 25,
+      "porsjon": 150
+    },
+    "fiskeburgerkjøpt": {
+      "stk": 100,
+      "porsjon": 150
+    },
+    "fiskeburgerlaks": {
+      "stk": 100,
+      "porsjon": 150
+    },
+    "fiskeburgermagerfisk": {
+      "stk": 100,
+      "porsjon": 150
+    },
+    "fiskeburgermakrell": {
+      "stk": 100,
+      "porsjon": 150
+    },
+    "fiskeburgerpanertmedbrødostsauskjøpt": {
+      "stk": 130
+    },
+    "fiskeburgersei": {
+      "stk": 100,
+      "porsjon": 150
+    },
+    "fiskeburgersild": {
+      "stk": 100,
+      "porsjon": 150
+    },
+    "fiskegratengkjøpt": {
+      "porsjon": 275
+    },
+    "fiskegratengmedeggogmakaroniovnsstekt": {
+      "porsjon": 275
+    },
+    "fiskegratengmedeggovnsstekt": {
+      "porsjon": 275
+    },
+    "fiskegratengovnsstektkjøpt": {
+      "porsjon": 275
+    },
+    "fiskegrytemedseiløkogpaprikasaus": {
+      "porsjon": 300
+    },
+    "fiskegrytemedtorskogtomat": {
+      "porsjon": 300
+    },
+    "fiskekakerkjøpt": {
+      "stk": 55,
+      "porsjon": 150
+    },
+    "fiskepatelaks": {
+      "skive": 50
+    },
+    "fiskepatemagerfisk": {
+      "skive": 50
+    },
+    "fiskepinnerforfritertstektifett": {
+      "stk": 22,
+      "porsjon": 150
+    },
+    "fiskepinnerkjøpt": {
+      "stk": 25,
+      "porsjon": 150
+    },
+    "fiskepudding": {
+      "skive": 40,
+      "porsjon": 150
+    },
+    "fiskepuddingfløtepudding": {
+      "skive": 40,
+      "porsjon": 150
+    },
+    "fiskesuppeavpulver": {
+      "porsjon": 350,
+      "dl": 100
+    },
+    "fiskesuppehjemmelaget": {
+      "porsjon": 350,
+      "dl": 100
+    },
+    "fiskesuppemedhvitfiskhjemmelaget": {
+      "porsjon": 350,
+      "dl": 100
+    },
+    "fiskesuppemedlakshjemmelaget": {
+      "porsjon": 350,
+      "dl": 100
+    },
+    "fiskesuppepulver": {
+      "pose": 80
+    },
+    "flatbrødhavrekjøpt": {
+      "stk": 5
+    },
+    "flatbrødhjemmebakttypekjøpt": {
+      "stk": 20
+    },
+    "flatbrødkjøpt": {
+      "stk stor": 20,
+      "stk liten": 4
+    },
+    "fleskepølse": {
+      "brødskive": 15
+    },
+    "floradix": {
+      "ss": 11
+    },
+    "fløtemysostbrunost": {
+      "skive": 8,
+      "brødskive": 16
+    },
+    "fløtemysostbrunostlett": {
+      "skive": 8,
+      "brødskive": 16
+    },
+    "fløyelsgrøt": {
+      "porsjon": 350,
+      "dl": 100
+    },
+    "focacciamiksglutenfriøkologiskpulverdetglutenfrieverksted": {
+      "pose": 430
+    },
+    "formkakefetdansksandkake": {
+      "skive": 45
+    },
+    "formkakemarmor": {
+      "skive": 45
+    },
+    "formkakemedglasurkjøpt": {
+      "skive": 45
+    },
+    "formkakemedmindrefett": {
+      "skive": 45
+    },
+    "formkakeutenglasurkjøpt": {
+      "skive": 45
+    },
+    "frityrolje": {
+      "ss": 10,
+      "dl": 90
+    },
+    "frokostblandingbokhveteogmørksjokoladeglutenfriøkologiskdetglutenfrieverksted": {
+      "pose": 300
+    },
+    "frokostblandingristethveteogrisspesialk": {
+      "dl": 20,
+      "porsjon": 35
+    },
+    "frokostblandingsjokoladesmak": {
+      "porsjon": 35,
+      "dl": 15
+    },
+    "frokostblandingsjokoladesmakcocopopscrunchers": {
+      "porsjon": 35,
+      "dl": 15
+    },
+    "frokostblandingsjokoladesmaknestlenesquick": {
+      "porsjon": 35
+    },
+    "frokostjuice": {
+      "glass stor": 320,
+      "glass": 200,
+      "dl": 100,
+      "glass liten": 150
+    },
+    "frokostsalatmajonessalatmedostemasse": {
+      "brødskive": 30
+    },
+    "fromasjavpulver": {
+      "porsjon": 140
+    },
+    "fruktcocktailhermetiskmedegensaft": {
+      "dl": 110
+    },
+    "fruktcocktailhermetiskmedsukkerlake": {
+      "dl": 110
+    },
+    "fruktmuslifrokostblandingglutenfrifinax": {
+      "porsjon": 100
+    },
+    "fruktsausavpulver": {
+      "dl": 100,
+      "porsjon": 75
+    },
+    "fruktstangfruktgodteri": {
+      "stk": 25
+    },
+    "fruktsuppeavpulver": {
+      "dl": 100
+    },
+    "fyrstekakemedepler": {
+      "porsjon": 80
+    },
+    "fyrstekakemedmandler": {
+      "porsjon": 80
+    },
+    "farepølse": {
+      "skive": 5
+    },
+    "farikalavlammekjøtt": {
+      "porsjon": 450
+    },
+    "gaffelbitersildhermetisk": {
+      "stk": 5
+    },
+    "galiamelonra": {
+      "skive": 55,
+      "stk": 360
+    },
+    "gamalost": {
+      "brødskive": 15
+    },
+    "geitmelklangtidsholdbar": {
+      "glass stor": 320,
+      "glass": 200,
+      "dl": 100,
+      "glass liten": 150,
+      "kartong": 250
+    },
+    "geitostbrunost": {
+      "skive": 8,
+      "brødskive": 16
+    },
+    "geitosthvitbalsfjord": {
+      "brødskive": 20,
+      "skive": 10
+    },
+    "geitosthvitkvitlin": {
+      "brødskive": 20,
+      "skive": 10
+    },
+    "geitostsmørbardillsnøfrisk": {
+      "brødskive": 15
+    },
+    "geitostsmørbarkantarellsnøfrisk": {
+      "brødskive": 15
+    },
+    "geitostsmørbarnaturellsnøfrisk": {
+      "brødskive": 15
+    },
+    "geitostsmørbarrødløkogtimiansnøfrisk": {
+      "brødskive": 15
+    },
+    "gelatinplaterpulver": {
+      "stk": 2,
+      "ss": 8
+    },
+    "geleavpulver": {
+      "porsjon": 140
+    },
+    "gelefruktseigmenn": {
+      "stk": 5
+    },
+    "ghee": {
+      "ss": 10,
+      "dl": 90
+    },
+    "gheevegetabilsk": {
+      "ss": 10,
+      "dl": 90
+    },
+    "gjeddera": {
+      "porsjon": 270
+    },
+    "gjærpressgjær": {
+      "stk": 50
+    },
+    "gjærtørrgjær": {
+      "pose": 12
+    },
+    "glassnudlertørr": {
+      "porsjon": 85
+    },
+    "glukosesirup": {
+      "ss": 16
+    },
+    "gommenamdal": {
+      "porsjon": 20,
+      "dl": 115
+    },
+    "gorgonzolablamuggost": {
+      "porsjon": 30
+    },
+    "goudaost": {
+      "brødskive": 20,
+      "skive": 10
+    },
+    "granapadanoost": {
+      "ss": 6
+    },
+    "granateplera": {
+      "stk": 190
+    },
+    "grapefruktra": {
+      "stk": 130
+    },
+    "grapefruktjuice": {
+      "glass stor": 320,
+      "glass": 200,
+      "dl": 100,
+      "glass liten": 150
+    },
+    "gresskarra": {
+      "dl": 55
+    },
+    "gresskarkjerner": {
+      "ss": 9,
+      "dl": 60
+    },
+    "gresskarsuppehjemmelaget": {
+      "porsjon": 350,
+      "dl": 100
+    },
+    "gressløkra": {
+      "ss": 3,
+      "dl": 18
+    },
+    "grillpølse": {
+      "stk": 60
+    },
+    "grillpølsekalkunogkylling": {
+      "stk": 60
+    },
+    "grillpølsemager": {
+      "stk": 60
+    },
+    "grillpølsemedost": {
+      "stk": 80
+    },
+    "grovbakstmel": {
+      "ss": 11,
+      "dl": 65
+    },
+    "grytebasisjegergryteutenkjøtt": {
+      "porsjon": 300
+    },
+    "grytebasisorientalskutenkjøtt": {
+      "porsjon": 300
+    },
+    "grytebasisstroganoffutenkjøtt": {
+      "porsjon": 300
+    },
+    "graddost": {
+      "brødskive": 20,
+      "skive": 10
+    },
+    "grønnjuicemedagurkogspinatkjøptikafebakeri": {
+      "dl": 100
+    },
+    "grønnkalra": {
+      "dl": 55
+    },
+    "grønnsaksblandingblomkalbønnerertergulrotfryst": {
+      "dl": 50
+    },
+    "grønnsaksblandingblomkalertergulrotfryst": {
+      "dl": 50
+    },
+    "grønnsaksblandingertergulrotmaisfryst": {
+      "dl": 50
+    },
+    "grønnsaksgrytemedpotet": {
+      "porsjon": 300
+    },
+    "grønnsaksposteikjøpt": {
+      "brødskive": 20
+    },
+    "grønnsaksrøremedtomatratatouille": {
+      "porsjon": 130
+    },
+    "guavara": {
+      "stk": 55
+    },
+    "gudbrandsdalsostbrunost": {
+      "skive": 8,
+      "brødskive": 16
+    },
+    "gudbrandsdalsostbrunostlett": {
+      "skive": 8,
+      "brødskive": 16
+    },
+    "gulasjhjemmelaget": {
+      "porsjon": 350,
+      "dl": 100
+    },
+    "gulløl57volalkohol": {
+      "glass": 500,
+      "dl": 100,
+      "boks liten": 330
+    },
+    "gulostuspesifisert": {
+      "brødskive": 20,
+      "dl": 40,
+      "skive": 10
+    },
+    "gulrotimportertfryst": {
+      "dl": 60
+    },
+    "gulrotkokt": {
+      "stk": 75
+    },
+    "gulrotnorskra": {
+      "stk": 80
+    },
+    "gulrotjuice": {
+      "glass stor": 320,
+      "glass": 200,
+      "dl": 100,
+      "glass liten": 150
+    },
+    "gulrotkake": {
+      "porsjon": 80
+    },
+    "gulrotkakemedostekremkjøpt": {
+      "porsjon": 80
+    },
+    "gulrotsuppehjemmelaget": {
+      "porsjon": 350,
+      "dl": 100
+    },
+    "gurkemeiemalt": {
+      "ts": 3
+    },
+    "gaskjøttmedskinnovnsstekt": {
+      "porsjon": 150
+    },
+    "gaskjøttmedskinnra": {
+      "porsjon": 365
+    },
+    "gaskjøttutenskinnovnsstekt": {
+      "porsjon": 150
+    },
+    "gaskjøttutenskinnra": {
+      "porsjon": 485
+    },
+    "hamburgerdobbelmedbrøddressingmvkjøpt": {
+      "stk": 180
+    },
+    "hamburgerekstrakjøttmedbrøddressingmvkjøpt": {
+      "stk": 190
+    },
+    "hamburgerenkelmedbrøddressingmvkjøpt": {
+      "stk": 100
+    },
+    "hamburgerra": {
+      "stk": 100
+    },
+    "hamburgerbrødfintkjøpt": {
+      "stk": 80
+    },
+    "harekjøttra": {
+      "porsjon": 200
+    },
+    "hasselnøtter": {
+      "stk": 1,
+      "håndfull": 20,
+      "dl": 60
+    },
+    "havreristetmedfruktoljecrusli": {
+      "porsjon": 100,
+      "dl": 40
+    },
+    "havreogbokhvetegrøtglutenfri": {
+      "porsjon": 350,
+      "dl": 100
+    },
+    "havreogmandelbasertdrikke": {
+      "glass stor": 320,
+      "glass": 200,
+      "dl": 100,
+      "glass liten": 150
+    },
+    "havrebasertdrikke": {
+      "glass stor": 320,
+      "glass": 200,
+      "dl": 100,
+      "glass liten": 150
+    },
+    "havrebasertdrikkeappelsinogmangosmak": {
+      "glass stor": 320,
+      "glass": 200,
+      "dl": 100,
+      "glass liten": 150
+    },
+    "havrebasertdrikkemedjodkalsiumogvitaminervitdvitb2vitb12": {
+      "glass stor": 320,
+      "glass": 200,
+      "dl": 100,
+      "glass liten": 150
+    },
+    "havrebasertdrikkemedjodkalsiumvitaminervitb2folatvitb12vitd": {
+      "glass stor": 320,
+      "glass": 200,
+      "dl": 100,
+      "glass liten": 150
+    },
+    "havrebasertdrikkemedkalsiumogvitamind": {
+      "glass stor": 320,
+      "glass": 200,
+      "dl": 100,
+      "glass liten": 150
+    },
+    "havrebasertdrikkemedkalsiumogvitaminervitdvitb2vitb12": {
+      "glass stor": 320,
+      "glass": 200,
+      "dl": 100,
+      "glass liten": 150
+    },
+    "havrebasertdrikkesjokoladesmakmedjodkalsiumogvitaminervitdvitb2vitb12": {
+      "glass stor": 320,
+      "glass": 200,
+      "dl": 100,
+      "glass liten": 150
+    },
+    "havrebasertdrikkesjokoladesmakmedkalsiumvitaminervitdvitb2vitb12": {
+      "glass stor": 320,
+      "glass": 200,
+      "dl": 100,
+      "glass liten": 150
+    },
+    "havrebasertdrikkeøkologisk": {
+      "glass stor": 320,
+      "glass": 200,
+      "dl": 100,
+      "glass liten": 150
+    },
+    "havregryn": {
+      "porsjon": 100,
+      "dl": 40,
+      "ss": 6
+    },
+    "havregrynøkologiske": {
+      "porsjon": 100,
+      "dl": 40,
+      "ss": 6
+    },
+    "havregrøtmedmelk": {
+      "porsjon": 350,
+      "dl": 100
+    },
+    "havregrøtmedvann": {
+      "porsjon": 350,
+      "dl": 100
+    },
+    "havregrøtmedyoghurtgranolaogbærkjøptikafebakeri": {
+      "beger": 165
+    },
+    "havregrøtutensaltmedmelk": {
+      "porsjon": 350,
+      "dl": 100
+    },
+    "havregrøtutensaltmedvann": {
+      "porsjon": 350,
+      "dl": 100
+    },
+    "havrekli": {
+      "ss": 7,
+      "dl": 50
+    },
+    "havremakronerkjøpt": {
+      "stk": 10
+    },
+    "havremel": {
+      "ss": 7,
+      "dl": 55
+    },
+    "havremeløkologiskdetglutenfrieverksted": {
+      "ss": 7,
+      "dl": 55
+    },
+    "havreputerhavrefras": {
+      "porsjon": 35,
+      "dl": 12
+    },
+    "havreringernestlecheerios": {
+      "porsjon": 35
+    },
+    "havsalt": {
+      "dl": 130,
+      "ts": 7
+    },
+    "havalra": {
+      "porsjon": 175
+    },
+    "helmelk35fetttine": {
+      "glass stor": 320,
+      "glass": 200,
+      "dl": 100,
+      "glass liten": 150
+    },
+    "helmelk35fettlaktosefri": {
+      "glass stor": 320,
+      "glass": 200,
+      "dl": 100,
+      "glass liten": 150
+    },
+    "helmelk4fettqmeieriene": {
+      "glass stor": 320,
+      "glass": 200,
+      "dl": 100,
+      "glass liten": 150
+    },
+    "helmelk41fettøkologisk": {
+      "glass stor": 320,
+      "glass": 200,
+      "dl": 100,
+      "glass liten": 150
+    },
+    "helmelkuspesifisert": {
+      "glass stor": 320,
+      "glass": 200,
+      "dl": 100,
+      "glass liten": 150
+    },
+    "hetvinsøt17volalkohol": {
+      "dl": 100,
+      "glass": 60
+    },
+    "hetvintørr15volalkohol": {
+      "dl": 100,
+      "glass": 60
+    },
+    "hirsehelekorn": {
+      "ss": 12,
+      "dl": 80
+    },
+    "hjertera": {
+      "porsjon": 125
+    },
+    "hjertesalatra": {
+      "dl": 25
+    },
+    "hjortstekra": {
+      "porsjon": 200
+    },
+    "hodekalkokt": {
+      "stk": 1125
+    },
+    "hodekalnorskra": {
+      "dl": 35,
+      "stk": 1150
+    },
+    "hoisinsaushjemmelaget": {
+      "dl": 100,
+      "ts": 5,
+      "ss": 11
+    },
+    "hollandaisesaushjemmelaget": {
+      "dl": 100,
+      "ss": 11
+    },
+    "honning": {
+      "brødskive": 15,
+      "ss": 22,
+      "ts": 11,
+      "beger": 15
+    },
+    "honningmelonra": {
+      "skive": 55,
+      "stk": 370
+    },
+    "horngjelra": {
+      "porsjon": 270
+    },
+    "hummerkokt": {
+      "porsjon": 150
+    },
+    "husholdningssaftdrikkeklar": {
+      "glass stor": 320,
+      "glass": 200,
+      "dl": 100,
+      "glass liten": 150
+    },
+    "husholdningssaftublandetkjøpt": {
+      "dl": 100
+    },
+    "hvalkjøttra": {
+      "porsjon": 150
+    },
+    "hvetehelkorn": {
+      "ss": 9,
+      "dl": 60
+    },
+    "hvetebrikkerweetabix": {
+      "stk": 18
+    },
+    "hveteflakristetmedhvetekliallbranregular": {
+      "porsjon": 35,
+      "dl": 18
+    },
+    "hvetekake": {
+      "skive": 45
+    },
+    "hvetekim": {
+      "dl": 35,
+      "ss": 5
+    },
+    "hvetekimolje": {
+      "ss": 10,
+      "dl": 90
+    },
+    "hvetekliristetallbranplus": {
+      "porsjon": 35,
+      "dl": 25
+    },
+    "hvetemelsammaltfintgrovt": {
+      "ss": 9,
+      "dl": 60
+    },
+    "hvetemelsiktet": {
+      "ss": 9,
+      "dl": 55
+    },
+    "hvetemeløkologisk": {
+      "ss": 9,
+      "dl": 55
+    },
+    "hvitsausavpulver": {
+      "dl": 100,
+      "porsjon": 75
+    },
+    "hvitsaushjemmelaget": {
+      "dl": 100,
+      "porsjon": 75
+    },
+    "hvitebønnerstorehermetisk": {
+      "ss": 19,
+      "dl": 85
+    },
+    "hvitebønnertørre": {
+      "ss": 12,
+      "dl": 80
+    },
+    "hvitløkra": {
+      "stk": 45,
+      "fedd": 3
+    },
+    "hvitløkspulver": {
+      "ts": 4
+    },
+    "hvittingra": {
+      "porsjon": 270
+    },
+    "hvitvinhalvsøtsøtinklmusserende": {
+      "glass": 100,
+      "dl": 100
+    },
+    "hvitvinhalvtørr10volalkohol": {
+      "glass": 100,
+      "dl": 100
+    },
+    "hvitvinrosemusserende": {
+      "glass": 100,
+      "dl": 100
+    },
+    "hvitvintørr12volalkohol": {
+      "glass": 100,
+      "dl": 100
+    },
+    "hyllebærra": {
+      "dl": 55
+    },
+    "hyrdepaimedkjøttdeiggrønnsakerogpotetmos": {
+      "porsjon": 300
+    },
+    "hysekoljekokt": {
+      "porsjon": 200
+    },
+    "hysekoljera": {
+      "porsjon": 270
+    },
+    "hysekoljerøktskiverkokt": {
+      "porsjon": 200
+    },
+    "hysekoljerøktskiverra": {
+      "porsjon": 270
+    },
+    "habrannra": {
+      "porsjon": 270
+    },
+    "hønebrystfiletutenskinnra": {
+      "porsjon": 195
+    },
+    "hønefiletkokt": {
+      "porsjon": 150
+    },
+    "hønekjøttmedskinnkokt": {
+      "porsjon": 150
+    },
+    "hønekjøttmedskinnra": {
+      "porsjon": 215
+    },
+    "hønekjøttutenskinnra": {
+      "porsjon": 215
+    },
+    "hønsefrikassehjemmelaget": {
+      "porsjon": 300
+    },
+    "ingefærmalt": {
+      "ts": 2
+    },
+    "ingefærsyltet": {
+      "porsjon": 5
+    },
+    "ingefærjuiceingefærshotkjøptikafebakeri": {
+      "beger": 60
+    },
+    "ingefærjuiceingefærshotmedappelsinoggurkemeiekjøptikafebakeri": {
+      "beger": 60
+    },
+    "ingefærrotra": {
+      "ss": 9
+    },
+    "isfruktismango": {
+      "porsjon": 95
+    },
+    "isplantebasertsjokolade": {
+      "porsjon": 95
+    },
+    "isplantebasertvanilje": {
+      "porsjon": 95
+    },
+    "isbergsalatissalatimportertra": {
+      "dl": 25,
+      "stk": 470,
+      "blad": 40
+    },
+    "isbergsalatissalatnorskra": {
+      "dl": 25,
+      "stk": 470,
+      "blad": 40
+    },
+    "isbergsalatissalatra": {
+      "dl": 25,
+      "stk": 470,
+      "blad": 40
+    },
+    "iskaffecappuchino": {
+      "boks": 330,
+      "glass stor": 320,
+      "glass": 200,
+      "dl": 100,
+      "glass liten": 150
+    },
+    "iskremfløtekrokan": {
+      "porsjon": 95
+    },
+    "iskremfløtelakris": {
+      "porsjon": 95
+    },
+    "iskremfløtemedsjokoladekjeksogsaltkaramell": {
+      "porsjon": 95
+    },
+    "iskremfløtesaltkaramellutentilsattsukker": {
+      "porsjon": 95
+    },
+    "iskremfløtesjokoladeutentilsattsukker": {
+      "porsjon": 95
+    },
+    "iskremfløtevanilje": {
+      "porsjon": 95,
+      "dl": 60
+    },
+    "iskremfløtevaniljeogsjokoladeutentilsattsukker": {
+      "porsjon": 95
+    },
+    "iskremfløtevanilje15fløte": {
+      "porsjon": 95
+    },
+    "iskremfløtevanilje25fløte": {
+      "porsjon": 95
+    },
+    "iskremfløtevaniljemedcookiedeig": {
+      "porsjon": 95
+    },
+    "iskremfløtevaniljemedoreokjeks": {
+      "porsjon": 95
+    },
+    "iskremfløtevaniljeutentilsattsukker": {
+      "porsjon": 95
+    },
+    "iskremkaramellfyllmedkjeksogsjokoladetrekk": {
+      "stk": 130
+    },
+    "iskremmedkjekskroneismedjordbær": {
+      "stk": 74
+    },
+    "iskremmedkjekskroneismedsjokolade": {
+      "stk": 73
+    },
+    "iskrempinneisvaniljeismedmørktsjokoladetrekk": {
+      "stk": 80
+    },
+    "iskremvaniljehjemmelaget": {
+      "porsjon": 95
+    },
+    "isteferskenkjøpt": {
+      "glass stor": 320,
+      "glass": 200,
+      "dl": 100,
+      "glass liten": 150
+    },
+    "istekjøpt": {
+      "glass stor": 320,
+      "glass": 200,
+      "dl": 100,
+      "glass liten": 150
+    },
+    "istekunstigsøtetlettkjøpt": {
+      "glass stor": 320,
+      "glass": 200,
+      "dl": 100,
+      "glass liten": 150
+    },
+    "istesitronkjøpt": {
+      "glass stor": 320,
+      "glass": 200,
+      "dl": 100,
+      "glass liten": 150
+    },
+    "italiensksalatmajonessalat": {
+      "brødskive": 30
+    },
+    "jalapenora": {
+      "stk": 14
+    },
+    "jarlsberggulost": {
+      "brødskive": 20,
+      "dl": 40,
+      "skive": 10
+    },
+    "jarlsberggulostlett": {
+      "brødskive": 20,
+      "dl": 40,
+      "skive": 10
+    },
+    "jordbær100gsukkerprkgbærfryst": {
+      "dl": 60
+    },
+    "jordbær250gsukkerprkgbærfryst": {
+      "dl": 60
+    },
+    "jordbærra": {
+      "stk stor": 30,
+      "stk liten": 10,
+      "dl": 60
+    },
+    "jordbærmousse": {
+      "porsjon": 140
+    },
+    "jordbærsyltetøy": {
+      "ss": 16,
+      "brødskive": 20,
+      "dl": 115
+    },
+    "jordbærsyltetøylett": {
+      "ss": 16,
+      "brødskive": 20,
+      "dl": 115
+    },
+    "jordbærsyltetøyrørtfryst": {
+      "ss": 16,
+      "brødskive": 20,
+      "dl": 115
+    },
+    "jordbærsyltetøyutentilsattsukker": {
+      "ss": 16,
+      "brødskive": 20,
+      "dl": 115
+    },
+    "jordskokkra": {
+      "stk": 17,
+      "dl": 55
+    },
+    "jordskokksuppehjemmelaget": {
+      "porsjon": 350,
+      "dl": 100
+    },
+    "juicemedeplegulrotingefærogsitronkjøptikafebakeri": {
+      "glass stor": 320,
+      "glass": 200,
+      "dl": 100,
+      "glass liten": 150,
+      "boks": 250
+    },
+    "juicemedrødbetegulrotogingefærkjøptikafebakeri": {
+      "glass stor": 320,
+      "glass": 200,
+      "dl": 100,
+      "glass liten": 150,
+      "boks": 250
+    },
+    "julekakemedtørketfrukt": {
+      "skive": 50
+    },
+    "kabaretmedfiskepuddingogreker": {
+      "skive": 40
+    },
+    "kaffepulvertilberedt": {
+      "kopp": 170,
+      "dl": 100
+    },
+    "kaffetraktet": {
+      "kopp": 170,
+      "dl": 100
+    },
+    "kaffefløte10fett": {
+      "dl": 100,
+      "ss": 11,
+      "kartong": 300
+    },
+    "kaffehvitt": {
+      "dl": 100,
+      "beger": 12
+    },
+    "kaffehvittpulvercoffeemate": {
+      "ts": 3,
+      "dl": 55
+    },
+    "kaffemelk35fett": {
+      "ts": 5,
+      "beger": 10
+    },
+    "kakaomedlettmelktilberedt": {
+      "kopp": 240,
+      "dl": 100
+    },
+    "kakaopulver": {
+      "ss": 7,
+      "dl": 50
+    },
+    "kakebunnglutenfriavpulvertoro": {
+      "porsjon": 35
+    },
+    "kakekremromsmakkjøpt": {
+      "dl": 95,
+      "ss": 13
+    },
+    "kakemiksfinglutenfripulvertoro": {
+      "dl": 40,
+      "ss": 8,
+      "pose": 345
+    },
+    "kakemikssjokoladekakeglutenfriøkologiskpulverdetglutenfrieverksted": {
+      "pakke": 600
+    },
+    "kaktusfikenra": {
+      "stk": 80
+    },
+    "kalkunbrystfiletutenskinnra": {
+      "porsjon": 195
+    },
+    "kalkunbrystfiletutenskinnovnsstekt": {
+      "porsjon": 150
+    },
+    "kalkunkjøttmedskinnovnsstekt": {
+      "porsjon": 150
+    },
+    "kalkunkjøttmedskinnra": {
+      "porsjon": 195
+    },
+    "kalkunkjøttutenskinnovnsstekt": {
+      "porsjon": 150
+    },
+    "kalkunkjøttutenskinnra": {
+      "porsjon": 195
+    },
+    "kalkunfiletnaturellrøkt": {
+      "skive": 11
+    },
+    "kalkunrullkrydderskinke": {
+      "skive": 11
+    },
+    "kalvkoteletterra": {
+      "porsjon": 200
+    },
+    "kalvstekra": {
+      "porsjon": 200
+    },
+    "kalverull": {
+      "skive": 12
+    },
+    "kamskjellra": {
+      "stk": 8
+    },
+    "kanelmalt": {
+      "ts": 4
+    },
+    "kanelbolleskillingsbollehjemmebakt": {
+      "stk": 65
+    },
+    "kanelbolleskillingsbollemedsukkerstrøkjøpt": {
+      "stk": 100,
+      "stk stor": 140,
+      "stk liten": 50
+    },
+    "kanelbolleskillingsbollemedvaniljekremmelisglasurkjøpt": {
+      "stk liten": 100,
+      "stk": 125,
+      "stk stor": 160
+    },
+    "kaninkjøttra": {
+      "porsjon": 200
+    },
+    "kantaloupemelonra": {
+      "skive": 55,
+      "stk": 280
+    },
+    "kantarellra": {
+      "stk": 5,
+      "dl": 30
+    },
+    "kapershermetisk": {
+      "dl": 60,
+      "stk": 3
+    },
+    "karamell": {
+      "stk liten": 5,
+      "stk stor": 15
+    },
+    "karamellmedsjokoladetrekk": {
+      "stk stor": 12,
+      "stk liten": 6
+    },
+    "karamellpuddinghjemmelaget": {
+      "porsjon": 140
+    },
+    "karamellpuddingkjøpt": {
+      "porsjon": 140
+    },
+    "karamellsaus": {
+      "porsjon": 25,
+      "ss": 15,
+      "dl": 130
+    },
+    "karbonadedeigstektutenfett": {
+      "pakke": 275
+    },
+    "karbonadedeigstorfe45fettra": {
+      "pakke": 400
+    },
+    "karbonaderkjøpt": {
+      "stk": 100,
+      "porsjon": 150
+    },
+    "karbonaderoksera": {
+      "stk": 125
+    },
+    "kardemommemalt": {
+      "ts": 3
+    },
+    "karrimalt": {
+      "ts": 3
+    },
+    "karripastacurrypaste": {
+      "dl": 100,
+      "ss": 18
+    },
+    "karvekumminhel": {
+      "ts": 3
+    },
+    "kassavara": {
+      "stk": 410,
+      "dl": 60
+    },
+    "kastanjerristede": {
+      "dl": 70,
+      "stk": 8
+    },
+    "kaviaravlodderogn": {
+      "brødskive": 15
+    },
+    "kaviaravtorskerogn": {
+      "brødskive": 15
+    },
+    "kaviarpolarkaviar": {
+      "brødskive": 15
+    },
+    "kaviarmix": {
+      "brødskive": 15
+    },
+    "kavringsøtsukkerkavring": {
+      "stk": 9,
+      "dl": 40
+    },
+    "ketchuptomatketchup": {
+      "ss": 20,
+      "dl": 110
+    },
+    "keylimepai": {
+      "porsjon": 80
+    },
+    "kidneybønnerrødehermetisk": {
+      "ss": 18,
+      "dl": 90
+    },
+    "kidneybønnerrødetørre": {
+      "ss": 12,
+      "dl": 80
+    },
+    "kikerterhermetisk": {
+      "dl": 75,
+      "ss": 19
+    },
+    "kikertertørre": {
+      "ss": 12,
+      "dl": 80
+    },
+    "kikertmeløkologisk": {
+      "pose": 350
+    },
+    "kinakalnorskra": {
+      "stk": 735,
+      "dl": 30
+    },
+    "kirsebærra": {
+      "stk": 7,
+      "dl": 60
+    },
+    "kirsebærsyltetøy": {
+      "ss": 16,
+      "brødskive": 20,
+      "dl": 115
+    },
+    "kiwira": {
+      "stk": 75,
+      "skive": 15
+    },
+    "kjekskaptein": {
+      "stk": 7
+    },
+    "kjeksfetcreamcracker": {
+      "stk": 11
+    },
+    "kjeksgrovkornmo": {
+      "stk": 9
+    },
+    "kjekssaltfetritzseltiner": {
+      "stk": 5
+    },
+    "kjekssaltglutenfrisalti": {
+      "pose": 175
+    },
+    "kjekssøtgjende": {
+      "stk": 7
+    },
+    "kjekssøtmariekjeks": {
+      "stk": 4
+    },
+    "kjekssøtbarnekjeks": {
+      "stk": 3
+    },
+    "kjekssøtbarnekjeksmedsjokolade": {
+      "stk stor": 13,
+      "stk liten": 7
+    },
+    "kjekssøtfyltmedsyltetøyelfrukt": {
+      "stk": 13
+    },
+    "kjekssøtgrovdigestive": {
+      "stk": 15
+    },
+    "kjekssøthavreogsjokolade": {
+      "stk": 13
+    },
+    "kjekssøthavrebixit": {
+      "stk": 16
+    },
+    "kjekssøthavreflarn": {
+      "stk": 8
+    },
+    "kjekssøthavrekjekssibas": {
+      "stk": 16
+    },
+    "kjekssøtkremfyll": {
+      "stk": 13
+    },
+    "kjekssøtnougattypeballerina": {
+      "stk": 14
+    },
+    "kjekssøtsjokoladebitercookiesstore": {
+      "stk stor": 85,
+      "stk liten": 55
+    },
+    "kjekssøtsjokoladebiternøttercookiessma": {
+      "stk": 11
+    },
+    "kjekssøtvaffelfylt": {
+      "stk": 5
+    },
+    "kjøleskapsgrøthavregryn": {
+      "porsjon": 350,
+      "dl": 100
+    },
+    "kjøleskapsgrøthavregrynogchiafrø": {
+      "porsjon": 350,
+      "dl": 100
+    },
+    "kjøttboller": {
+      "porsjon": 150
+    },
+    "kjøttbollerhermetisk": {
+      "stk": 9,
+      "porsjon": 150
+    },
+    "kjøttbollerkalkunogkylling": {
+      "stk": 15,
+      "porsjon": 150
+    },
+    "kjøttbollerkylling": {
+      "stk": 15,
+      "porsjon": 150
+    },
+    "kjøttbollersvenske": {
+      "porsjon": 150
+    },
+    "kjøttbuljongtilberedt": {
+      "dl": 100
+    },
+    "kjøttdeigkylling8fettra": {
+      "pakke": 400
+    },
+    "kjøttdeiglam14fettra": {
+      "pakke": 400
+    },
+    "kjøttdeigstorfe13fettutensaltogvannra": {
+      "pakke": 400
+    },
+    "kjøttdeigstorfe14fettmedsaltogvannra": {
+      "pakke": 400
+    },
+    "kjøttdeigstorfestektutenfett": {
+      "pakke": 280
+    },
+    "kjøttdeigsvin9fettra": {
+      "pakke": 100
+    },
+    "kjøttdeigsvinstektutenfett": {
+      "pakke": 290
+    },
+    "kjøttkakermedertestuingferdigmiddagkjøpt": {
+      "porsjon": 590
+    },
+    "kjøttkakerkjøpt": {
+      "stk": 55,
+      "porsjon": 150
+    },
+    "kjøttpuddingovnsstekt": {
+      "skive": 30,
+      "porsjon": 150
+    },
+    "kjøttpølsekjøpt": {
+      "stk liten": 90,
+      "stk stor": 150,
+      "porsjon": 150
+    },
+    "kjøttpølsemedmindrefett": {
+      "stk": 90,
+      "porsjon": 150
+    },
+    "kjøttsuppemedgrønnsakerogpoteterferdigmiddagkjøpt": {
+      "pakke": 350
+    },
+    "klementinra": {
+      "stk": 70
+    },
+    "klibrødmedhvetekli": {
+      "stk": 8
+    },
+    "klippfisksaltetogtørket": {
+      "porsjon": 200
+    },
+    "knakkpølse": {
+      "stk": 65,
+      "porsjon": 150
+    },
+    "knekkebrødglutenfritt": {
+      "stk": 13
+    },
+    "knekkebrødhavre": {
+      "stk": 18
+    },
+    "knekkebrødlyst": {
+      "stk": 14
+    },
+    "knekkebrødmedekstrafiber": {
+      "stk": 11
+    },
+    "knekkebrødrugogspeltklisigdalhelsprøtt": {
+      "stk": 21
+    },
+    "knekkebrødrughusman": {
+      "stk": 14
+    },
+    "knekkebrødrughusmansport": {
+      "stk": 14
+    },
+    "knekkebrødruggrovt": {
+      "stk": 12
+    },
+    "knekkebrødrugmedfyllsandwich": {
+      "pakke": 46
+    },
+    "knekkebrødrugtyntrugsprøfinncrisp": {
+      "stk": 11
+    },
+    "knutekalra": {
+      "skive": 55,
+      "stk": 110
+    },
+    "kokebananmelbananplantainra": {
+      "stk": 180
+    },
+    "kokosbasertdrikkemedkalsiumogvitaminervitb12vitd": {
+      "glass stor": 320,
+      "glass": 200,
+      "dl": 100,
+      "glass liten": 150
+    },
+    "kokosbolle": {
+      "stk liten": 30,
+      "stk stor": 75
+    },
+    "kokosbollekake": {
+      "porsjon": 80
+    },
+    "kokosfett": {
+      "dl": 95,
+      "pakke": 250
+    },
+    "kokosfettdelfia": {
+      "pakke": 250
+    },
+    "kokosmakroner": {
+      "stk liten": 20,
+      "stk stor": 60
+    },
+    "kokosmasseusøtet": {
+      "dl": 35,
+      "ss": 5
+    },
+    "kokosmelkhermetisk": {
+      "dl": 95,
+      "boks liten": 165,
+      "ss": 10
+    },
+    "kokosmelkmagerhermetisk": {
+      "dl": 95,
+      "boks liten": 165,
+      "ss": 10
+    },
+    "kokosnøttra": {
+      "stk": 270
+    },
+    "kokosolje": {
+      "ss": 10,
+      "ts": 5,
+      "dl": 90
+    },
+    "koktlaksmedurtesausgulrotogpoteterferdigmiddagkjøpt": {
+      "porsjon": 490
+    },
+    "koktskinke": {
+      "skive": 12
+    },
+    "kompottavfruktogbær": {
+      "porsjon": 160
+    },
+    "kondensertmelksøtet": {
+      "boks": 397
+    },
+    "kongerekera": {
+      "stk": 17
+    },
+    "korianderra": {
+      "dl": 5
+    },
+    "koriandertørket": {
+      "ts": 1
+    },
+    "korianderfrø": {
+      "ts": 2
+    },
+    "kornblanding4korn": {
+      "porsjon": 100,
+      "dl": 50
+    },
+    "kornblandingmedbærblabærmusli": {
+      "porsjon": 100,
+      "dl": 50
+    },
+    "kornblandingmedfruktognøtterenergimusli": {
+      "porsjon": 100,
+      "dl": 50
+    },
+    "kornblandingmedfruktfruktmusli": {
+      "porsjon": 100
+    },
+    "kornblandingmuslimedbærglutenfriøkologiskdetglutenfrieverksted": {
+      "porsjon": 100
+    },
+    "kornblandingmuslimedfruktnøttersøtet": {
+      "porsjon": 100,
+      "dl": 50
+    },
+    "krabbenaturellhermetisk": {
+      "boks": 95,
+      "brødskive": 25
+    },
+    "krabbepinnercrabsticksfryst": {
+      "stk": 17
+    },
+    "kransekake": {
+      "stang": 40
+    },
+    "kreklingkrøkebærra": {
+      "dl": 55
+    },
+    "krempisketpaboks": {
+      "dl": 25,
+      "ss": 3
+    },
+    "kremfløte37fett": {
+      "dl": 100,
+      "ss": 11,
+      "kartong": 300
+    },
+    "kremfløte37fettlaktosefri": {
+      "dl": 100,
+      "kartong": 300
+    },
+    "kremostphiladelphia": {
+      "brødskive": 15
+    },
+    "kremostkrydder": {
+      "brødskive": 15
+    },
+    "kremostlettphiladelphia": {
+      "brødskive": 15
+    },
+    "kremostnaturell": {
+      "brødskive": 15
+    },
+    "kremostpepper": {
+      "brødskive": 15
+    },
+    "kremosturter": {
+      "brødskive": 15
+    },
+    "krepskokt": {
+      "porsjon": 150
+    },
+    "kringlegjærdeigmedtørketfrukt": {
+      "porsjon": 65
+    },
+    "kruskaklihvetekli": {
+      "dl": 25,
+      "ss": 3.5
+    },
+    "krydderkake": {
+      "porsjon": 80
+    },
+    "kumquatra": {
+      "stk": 19
+    },
+    "kvarg1fettkesam": {
+      "dl": 100,
+      "ss": 18,
+      "beger": 300
+    },
+    "kvarg7fettkesam": {
+      "dl": 100,
+      "ss": 18,
+      "beger": 300
+    },
+    "kveitefiletmelpanertstektifett": {
+      "porsjon": 150
+    },
+    "kveitehellefiskoppdrettra": {
+      "porsjon": 175
+    },
+    "kveitehellefiskra": {
+      "porsjon": 175
+    },
+    "kveitehellefiskskiverrøktra": {
+      "porsjon": 175
+    },
+    "kveitehellefiskuspesifisertra": {
+      "porsjon": 175
+    },
+    "kveiteskiverkokt": {
+      "porsjon": 150
+    },
+    "kvæfjordkakeverdensbeste": {
+      "porsjon": 80
+    },
+    "kyllingfiletkokt": {
+      "porsjon": 150
+    },
+    "kyllingfiletstektifett": {
+      "porsjon": 150
+    },
+    "kyllingfiletstektutenfett": {
+      "porsjon": 150
+    },
+    "kyllingfiletutenskinnra": {
+      "porsjon": 195
+    },
+    "kyllinghelmedskinnlandkyllingovnsstekt": {
+      "porsjon": 150
+    },
+    "kyllinghelmedskinnlandkyllingra": {
+      "porsjon": 195
+    },
+    "kyllinghelmedskinnovnsstekt": {
+      "porsjon": 150
+    },
+    "kyllinghelmedskinnra": {
+      "stk": 990,
+      "porsjon": 195
+    },
+    "kyllinghelutenskinnovnsstekt": {
+      "porsjon": 150
+    },
+    "kyllinghelutenskinnra": {
+      "stk": 785,
+      "porsjon": 195
+    },
+    "kyllinglaroverlaroglarklubbemedskinnovnsstekt": {
+      "stk": 115,
+      "porsjon": 150
+    },
+    "kyllinglaroverlaroglarklubbemedskinnra": {
+      "porsjon": 195,
+      "stk": 170
+    },
+    "kyllinglaroverlaroglarklubbeutenskinnovnsstekt": {
+      "stk": 95,
+      "porsjon": 150
+    },
+    "kyllinglaroverlaroglarklubbeutenskinnra": {
+      "porsjon": 195,
+      "stk": 140
+    },
+    "kyllinglarklubbeunderlarmedskinnovnsstekt": {
+      "stk": 45,
+      "porsjon": 150
+    },
+    "kyllinglarklubbeunderlarmedskinnra": {
+      "stk": 70,
+      "porsjon": 195
+    },
+    "kyllinglarklubbeunderlarutenskinnovnsstekt": {
+      "stk": 40,
+      "porsjon": 150
+    },
+    "kyllinglarklubbeunderlarutenskinnra": {
+      "porsjon": 195,
+      "stk": 60
+    },
+    "kyllingoverlarlarutenlarklubbemedskinnovnsstekt": {
+      "stk": 70,
+      "porsjon": 150
+    },
+    "kyllingoverlarlarutenlarklubbemedskinnra": {
+      "stk": 100,
+      "porsjon": 195
+    },
+    "kyllingoverlarlarutenlarklubbeutenskinnovnsstekt": {
+      "porsjon": 150,
+      "stk": 60
+    },
+    "kyllingoverlarlarutenlarklubbeutenskinnra": {
+      "porsjon": 195,
+      "stk": 80
+    },
+    "kyllingogkalkunpølsemedmindrefett": {
+      "stk": 60
+    },
+    "kyllingogkalkunpølsemedost": {
+      "stk": 60
+    },
+    "kyllingburgermedbrøddressingkjøpt": {
+      "stk": 140
+    },
+    "kyllinggrytemedtomatløksopp": {
+      "porsjon": 300
+    },
+    "kyllingnuggetsfritertdagligvare": {
+      "stk": 20
+    },
+    "kyllingnuggetsfritertfastfood": {
+      "stk": 16
+    },
+    "kyllingpostei": {
+      "brødskive": 20
+    },
+    "kyllingposteihermetisk": {
+      "brødskive": 20
+    },
+    "kyllingposteiovnsbakt": {
+      "brødskive": 20
+    },
+    "kalrotkokt": {
+      "stk": 780
+    },
+    "kalrotkalrabinorskra": {
+      "stk": 830
+    },
+    "lakrissøt": {
+      "stk liten": 5,
+      "stk stor": 20
+    },
+    "lakriskonfekt": {
+      "stk liten": 3,
+      "stk stor": 20
+    },
+    "laksfiletgravet": {
+      "skive": 25
+    },
+    "laksfiletovnsstekt": {
+      "stk": 115,
+      "porsjon": 150
+    },
+    "laksfiletstektipanne": {
+      "stk": 105,
+      "porsjon": 150
+    },
+    "laksoppdrettra": {
+      "filet": 125,
+      "porsjon": 175
+    },
+    "laksoppdrettskiverkokt": {
+      "porsjon": 150
+    },
+    "laksoppdrettskiverstektifett": {
+      "porsjon": 150
+    },
+    "laksrøkt": {
+      "skive": 25
+    },
+    "laksvillkokt": {
+      "porsjon": 150
+    },
+    "laksvillra": {
+      "porsjon": 175
+    },
+    "laksepalegg70laksibegerkjøpt": {
+      "beger": 40
+    },
+    "lambogstekovnsstekt": {
+      "porsjon": 150
+    },
+    "lambogstekra": {
+      "porsjon": 270
+    },
+    "lamflatbiffra": {
+      "porsjon": 270
+    },
+    "lamflatbiffstektutenfett": {
+      "porsjon": 150
+    },
+    "lamindrefiletra": {
+      "porsjon": 270
+    },
+    "lamindrefiletstektutenfett": {
+      "porsjon": 150
+    },
+    "lamkotelettra": {
+      "stk": 105,
+      "porsjon": 270
+    },
+    "lamkotelettstektutenfett": {
+      "porsjon": 150,
+      "stk": 60
+    },
+    "lamlarstekra": {
+      "porsjon": 265
+    },
+    "lamlarstekovnsstekt": {
+      "porsjon": 150
+    },
+    "lammørbradstektutenfett": {
+      "porsjon": 150
+    },
+    "lamytrefiletra": {
+      "porsjon": 270
+    },
+    "lamytrefiletstektutenfett": {
+      "porsjon": 150
+    },
+    "lammefrikasse": {
+      "porsjon": 300
+    },
+    "lammerull": {
+      "skive": 12
+    },
+    "langera": {
+      "porsjon": 270
+    },
+    "lapskauslysstorfekjøtt": {
+      "porsjon": 450
+    },
+    "lasagnemedkjøttdeig": {
+      "porsjon": 300
+    },
+    "lasagnemedkjøttdeigfrystkjøpt": {
+      "porsjon": 300
+    },
+    "lefseferdigsmurtkjøpt": {
+      "pakke": 75,
+      "stk": 35
+    },
+    "lettmelk05fettvitamindqmeieriene": {
+      "glass stor": 320,
+      "glass": 200,
+      "dl": 100,
+      "glass liten": 150
+    },
+    "lettmelk05fettvitamindtine": {
+      "glass stor": 320,
+      "glass": 200,
+      "dl": 100,
+      "glass liten": 150
+    },
+    "lettmelk05fettvitamindlaktosefri": {
+      "glass stor": 320,
+      "glass": 200,
+      "dl": 100,
+      "glass liten": 150
+    },
+    "lettmelk05fettvitaminduspesifisert": {
+      "glass stor": 320,
+      "glass": 200,
+      "dl": 100,
+      "glass liten": 150
+    },
+    "lettmelk07fettøkologisk": {
+      "glass stor": 320,
+      "glass": 200,
+      "dl": 100,
+      "glass liten": 150
+    },
+    "lettmelk1fettuspesifisert": {
+      "glass stor": 320,
+      "glass": 200,
+      "dl": 100,
+      "glass liten": 150
+    },
+    "lettmelk10fettqmeieriene": {
+      "glass stor": 320,
+      "glass": 200,
+      "dl": 100,
+      "glass liten": 150
+    },
+    "lettmelk10fetttine": {
+      "glass stor": 320,
+      "glass": 200,
+      "dl": 100,
+      "glass liten": 150
+    },
+    "lettmelk10fettlaktosefri": {
+      "glass stor": 320,
+      "glass": 200,
+      "dl": 100
+    },
+    "lettmelk10fettlaktoseredusert": {
+      "glass stor": 320,
+      "glass": 200,
+      "dl": 100,
+      "glass liten": 150
+    },
+    "lettmelk12fettlangtidsholdbar": {
+      "glass stor": 320,
+      "glass": 200,
+      "dl": 100,
+      "glass liten": 150
+    },
+    "lettmelk12fettøkologisk": {
+      "glass stor": 320,
+      "glass": 200,
+      "dl": 100,
+      "glass liten": 150
+    },
+    "lettmelkkakaosmakvitamind": {
+      "glass stor": 320,
+      "glass": 200,
+      "dl": 100,
+      "glass liten": 150
+    },
+    "lettmelkuspesifisert": {
+      "glass stor": 320,
+      "glass": 200,
+      "dl": 100,
+      "glass liten": 150
+    },
+    "lettrømme10fett": {
+      "dl": 100,
+      "ss": 18,
+      "beger": 300
+    },
+    "lettrømme18fett": {
+      "dl": 100,
+      "ss": 18,
+      "beger": 300
+    },
+    "lettrømme18fettøkologisk": {
+      "dl": 100,
+      "beger": 300
+    },
+    "lettøllett25volalkohol": {
+      "glass": 500,
+      "dl": 100,
+      "boks liten": 330
+    },
+    "leverkyllingra": {
+      "porsjon": 125
+    },
+    "leverlamra": {
+      "porsjon": 125
+    },
+    "leverreinra": {
+      "porsjon": 125
+    },
+    "leverstorfera": {
+      "porsjon": 125
+    },
+    "leversvinra": {
+      "porsjon": 125
+    },
+    "levertorskra": {
+      "porsjon": 80
+    },
+    "leverposteifersk": {
+      "brødskive": 20
+    },
+    "leverposteigrovdansk": {
+      "brødskive": 20
+    },
+    "leverposteihermetisk": {
+      "brødskive": 20
+    },
+    "leverposteiovnsbakt": {
+      "brødskive": 20
+    },
+    "leverposteiuspesifisert": {
+      "brødskive": 20
+    },
+    "likør17volalkoholfløtebasert": {
+      "glass": 66,
+      "dl": 110
+    },
+    "likør35volalkohol": {
+      "glass": 66,
+      "dl": 110
+    },
+    "likørsøt21volalkohol": {
+      "glass": 66,
+      "dl": 110
+    },
+    "limabønnersmørbønnertørr": {
+      "dl": 65
+    },
+    "limera": {
+      "stk": 65,
+      "båt": 10,
+      "skive": 10
+    },
+    "limonademedbringebærkjøptikafebakeri": {
+      "dl": 100
+    },
+    "limonademedpasjonsfrukt": {
+      "dl": 100
+    },
+    "limonademedsitronkjøptikafebakeri": {
+      "dl": 100
+    },
+    "linfrøknuste": {
+      "ss": 8,
+      "dl": 60
+    },
+    "linfrøolje": {
+      "ss": 10,
+      "dl": 90
+    },
+    "linsergrønnehermetisk": {
+      "dl": 100,
+      "ss": 18
+    },
+    "linsergrønnekokt": {
+      "porsjon": 215
+    },
+    "linsergrønnetørre": {
+      "porsjon": 85,
+      "ss": 13,
+      "dl": 85
+    },
+    "linserrødehermetisk": {
+      "dl": 100,
+      "ss": 18
+    },
+    "linserrødetørre": {
+      "porsjon": 85,
+      "ss": 13,
+      "dl": 85
+    },
+    "linsersvartebelugatørre": {
+      "porsjon": 85
+    },
+    "linsesuppe": {
+      "porsjon": 350,
+      "dl": 100
+    },
+    "litchira": {
+      "stk": 12
+    },
+    "lofffintbrød025formstektkjøpt": {
+      "skive": 40
+    },
+    "lofffintbrød025halvstektstekt": {
+      "skive": 40
+    },
+    "lofffintbrød025kjøpt": {
+      "skive": 40
+    },
+    "lofffintbrød025spiralkjøpt": {
+      "skive": 30
+    },
+    "loffskummetmelkhjemmebakt": {
+      "skive": 50
+    },
+    "loffvannhjemmebakt": {
+      "skive": 50
+    },
+    "lomrera": {
+      "porsjon": 270
+    },
+    "lungemoskjøpt": {
+      "pakke": 400
+    },
+    "lutefiskkokt": {
+      "porsjon": 200
+    },
+    "lyrra": {
+      "porsjon": 270
+    },
+    "løkgulnorskra": {
+      "stk": 160,
+      "dl": 55
+    },
+    "løkkokt": {
+      "stk": 155
+    },
+    "løksuppegratinertmedostogbrødhjemmelaget": {
+      "porsjon": 350
+    },
+    "løksuppehjemmelaget": {
+      "porsjon": 350,
+      "dl": 100
+    },
+    "macadamianøtter": {
+      "stk": 2,
+      "håndfull": 20,
+      "dl": 60
+    },
+    "macchiatoenkel": {
+      "kopp": 35,
+      "dl": 100
+    },
+    "macchiatoenkelmedhavrebasertdrikke": {
+      "kopp": 35,
+      "dl": 100
+    },
+    "macchiatoenkelmedhavrebasertdrikkemedjod": {
+      "kopp": 35,
+      "dl": 100
+    },
+    "macchiatoenkelmedlaktosefrimelk": {
+      "kopp": 35,
+      "dl": 100
+    },
+    "macchiatoenkelmedsoyabasertdrikke": {
+      "kopp": 35,
+      "dl": 100
+    },
+    "magerostsmørbar10fett": {
+      "brødskive": 10
+    },
+    "magerostsmørbar3fett": {
+      "brødskive": 10
+    },
+    "magerostsmørbar7fett": {
+      "brødskive": 10
+    },
+    "maisfryst": {
+      "dl": 70
+    },
+    "maishermetisk": {
+      "ss": 13,
+      "dl": 70
+    },
+    "maisnorskra": {
+      "dl": 70,
+      "stk": 140
+    },
+    "maismel": {
+      "ss": 12,
+      "dl": 65
+    },
+    "maisolje": {
+      "ss": 10,
+      "dl": 90
+    },
+    "maisstivelse": {
+      "ss": 9,
+      "dl": 60
+    },
+    "majonesekstralett25fett": {
+      "dl": 95,
+      "brødskive": 10
+    },
+    "majonesekte": {
+      "dl": 95,
+      "brødskive": 10
+    },
+    "majoneslett40fett": {
+      "dl": 95,
+      "brødskive": 10
+    },
+    "majoneslett50fett": {
+      "dl": 95,
+      "brødskive": 10
+    },
+    "makrellitomat60makrellhermetisk": {
+      "brødskive": 40,
+      "boks": 110
+    },
+    "makrellitomat70makrellhermetisk": {
+      "brødskive": 40,
+      "boks": 170
+    },
+    "makrellitomathermetisk": {
+      "brødskive": 40
+    },
+    "makrellaugustdesemberkokt": {
+      "porsjon": 150
+    },
+    "makrellaugustdesemberra": {
+      "porsjon": 175
+    },
+    "makrellaugustdesemberstektifett": {
+      "porsjon": 150
+    },
+    "makrellfebruarjunikokt": {
+      "porsjon": 150
+    },
+    "makrellfebruarjunira": {
+      "porsjon": 175
+    },
+    "makrellfebruarjunistektifett": {
+      "porsjon": 150
+    },
+    "makrellkaldrøkt": {
+      "brødskive": 25
+    },
+    "makrellvarmrøkt": {
+      "brødskive": 25
+    },
+    "mandelbasertdrikke": {
+      "glass stor": 320,
+      "glass": 200,
+      "dl": 100,
+      "glass liten": 150
+    },
+    "mandelbasertdrikkemedkalsiumogvitaminervitb2vitb12vitevitdusøtet": {
+      "glass stor": 320,
+      "glass": 200,
+      "dl": 100,
+      "glass liten": 150
+    },
+    "mandelmel": {
+      "ss": 5,
+      "dl": 50
+    },
+    "mandler": {
+      "stk": 1,
+      "håndfull": 20,
+      "dl": 60
+    },
+    "mandlerskaldet": {
+      "stk": 1,
+      "håndfull": 20,
+      "dl": 60
+    },
+    "mangora": {
+      "stk": 335
+    },
+    "mangoldsølvbetera": {
+      "dl": 30
+    },
+    "marengs": {
+      "stk": 3
+    },
+    "margarinmelange": {
+      "brødskive": 5,
+      "dl": 90
+    },
+    "margarinmelangeflytende": {
+      "ss": 10,
+      "dl": 90
+    },
+    "margarinmelangeflytendemedsmørolje": {
+      "ss": 10,
+      "dl": 90
+    },
+    "margarinmelangeflytendevegansk": {
+      "ss": 10,
+      "dl": 90
+    },
+    "margarinmelangeutensaltogmelkfolie": {
+      "brødskive": 5,
+      "dl": 90
+    },
+    "margarinoliverobeger": {
+      "brødskive": 5
+    },
+    "margarinsoftfloralett": {
+      "beger": 10,
+      "brødskive": 5
+    },
+    "margarinsoftflorafolie": {
+      "brødskive": 5
+    },
+    "margarinsoftfloraoriginal": {
+      "beger": 10,
+      "brødskive": 5
+    },
+    "margarinsoftspesial": {
+      "brødskive": 5
+    },
+    "margarinvitahjertegomyk": {
+      "beger": 10,
+      "brødskive": 5
+    },
+    "margarinvitahjertegolett": {
+      "brødskive": 5
+    },
+    "margarinvitahjertegoflytende": {
+      "ss": 10,
+      "dl": 90
+    },
+    "margarinvitaproaktiv": {
+      "brødskive": 5
+    },
+    "margarinhard": {
+      "brødskive": 5,
+      "dl": 90
+    },
+    "margarinmyk": {
+      "brødskive": 5,
+      "dl": 90
+    },
+    "marsipan30mandler": {
+      "stang": 18,
+      "stk": 10
+    },
+    "marsipan50mandler": {
+      "stang": 18,
+      "stk": 10
+    },
+    "marsipanbrødmedsjokoladetrekk": {
+      "stk stor": 65,
+      "stk liten": 25,
+      "stk": 40
+    },
+    "marsipankakemedsyltetøyogkrem": {
+      "porsjon": 95
+    },
+    "matfettflott": {
+      "dl": 95,
+      "pakke": 500
+    },
+    "matfløte18fett": {
+      "dl": 100,
+      "ss": 11,
+      "kartong": 300
+    },
+    "matlagingsfettuspesifisert": {
+      "brødskive": 5,
+      "dl": 90
+    },
+    "matlagingsproduktavhavre13fett": {
+      "dl": 100,
+      "ss": 11
+    },
+    "matlagingsproduktavsoya17fett": {
+      "dl": 100,
+      "ss": 11
+    },
+    "matlagingsproduktwhipping": {
+      "dl": 100,
+      "ss": 11
+    },
+    "mazarinkjøpt": {
+      "stk": 55
+    },
+    "medisterdeigra": {
+      "pakke": 400
+    },
+    "medisterkakerstekt": {
+      "porsjon": 150,
+      "stk": 80
+    },
+    "medisterpølserøkturøktkokt": {
+      "stk": 400,
+      "porsjon": 150
+    },
+    "melglutenfrittgrovttoro": {
+      "ss": 9,
+      "pose": 405,
+      "dl": 45
+    },
+    "melglutenfrittlysttoro": {
+      "pose": 360,
+      "dl": 40,
+      "ss": 8
+    },
+    "melhavrebrødmiksglutenfritoro": {
+      "pakke": 409
+    },
+    "melvaffelmiksglutenfritoro": {
+      "pakke": 242
+    },
+    "melis": {
+      "ss": 8,
+      "dl": 55
+    },
+    "melisglasur": {
+      "dl": 135,
+      "ss": 17
+    },
+    "melkuspesifisert": {
+      "glass stor": 320,
+      "glass": 200,
+      "dl": 100,
+      "glass liten": 150
+    },
+    "melkepaleggmedsukkerhapa": {
+      "brødskive": 15
+    },
+    "meterbønnerra": {
+      "stk": 13
+    },
+    "milkshakesjokoladesmak": {
+      "glass stor": 320,
+      "glass": 200,
+      "dl": 100,
+      "glass liten": 150,
+      "beger": 220
+    },
+    "mineralsalt": {
+      "dl": 130,
+      "ts": 7
+    },
+    "mineralvannmedkullsyrebonaquanaturell": {
+      "glass stor": 320,
+      "glass": 200,
+      "dl": 100,
+      "glass liten": 150
+    },
+    "mineralvannmedkullsyrebrisnaturell": {
+      "glass stor": 320,
+      "glass": 200,
+      "dl": 100,
+      "glass liten": 150
+    },
+    "mineralvannmedkullsyrefarrisnaturell": {
+      "glass stor": 320,
+      "glass": 200,
+      "dl": 100,
+      "glass liten": 150
+    },
+    "mineralvannmedkullsyreolden": {
+      "glass stor": 320,
+      "glass": 200,
+      "dl": 100,
+      "glass liten": 150
+    },
+    "mineralvannutenkullsyrebonaquanaturell": {
+      "glass stor": 320,
+      "glass": 200,
+      "dl": 100,
+      "glass liten": 150
+    },
+    "mineralvannutenkullsyreolden": {
+      "glass stor": 320,
+      "glass": 200,
+      "dl": 100,
+      "glass liten": 150
+    },
+    "minestronesuppeutenkjøtthjemmelaget": {
+      "porsjon": 350,
+      "dl": 100
+    },
+    "mormonsenkake": {
+      "porsjon": 80
+    },
+    "morellerra": {
+      "stk": 9,
+      "dl": 60
+    },
+    "morrpølse": {
+      "skive": 2
+    },
+    "morsmelkerstatningfrafødseldrikkeklar": {
+      "dl": 100,
+      "ss": 11
+    },
+    "morsmelkerstatningfrafødselferdigutblandet": {
+      "dl": 100
+    },
+    "morsmelkerstatningfrafødselpulver": {
+      "ss": 7,
+      "dl": 50
+    },
+    "moussakamedkjøttdeig": {
+      "porsjon": 300
+    },
+    "mozzarellalettnorsk": {
+      "dl": 40,
+      "stk": 125
+    },
+    "mozzarellanorsk": {
+      "dl": 40,
+      "stk": 125
+    },
+    "muffins": {
+      "stk": 30
+    },
+    "muffinsavpulverglutenfrie": {
+      "stk": 30
+    },
+    "muffinsavpulvermedmelisglasurglutenfrie": {
+      "stk": 35
+    },
+    "muffinsmedbanan": {
+      "stk": 30
+    },
+    "muffinsmedbananmelisglasur": {
+      "stk": 35
+    },
+    "muffinsmedblabær": {
+      "stk": 30
+    },
+    "muffinsmedblabærkjøpt": {
+      "stk": 100,
+      "stk liten": 35,
+      "stk stor": 150
+    },
+    "muffinsmedblabærmelisglasur": {
+      "stk": 35
+    },
+    "muffinsmedgulrot": {
+      "stk": 30
+    },
+    "muffinsmedgulrotmelisglasur": {
+      "stk": 35
+    },
+    "muffinsmedkakao": {
+      "stk": 30
+    },
+    "muffinsmedkakaomelisglasur": {
+      "stk": 35
+    },
+    "muffinsmedmelisglasur": {
+      "stk": 35
+    },
+    "muffinsmedsitron": {
+      "stk": 30
+    },
+    "muffinsmedsitronmelisglasur": {
+      "stk": 35
+    },
+    "muffinsmedsjokoladebiter": {
+      "stk": 30
+    },
+    "muffinsmedsjokoladebiterkjøpt": {
+      "stk": 100,
+      "stk liten": 35,
+      "stk stor": 150
+    },
+    "muffinsmedsjokoladebitermelisglasur": {
+      "stk": 35
+    },
+    "multekrem": {
+      "porsjon": 95
+    },
+    "multermolterra": {
+      "dl": 50,
+      "stk": 3
+    },
+    "multesyltetøy": {
+      "ss": 16,
+      "brødskive": 20,
+      "dl": 115
+    },
+    "multesyltetøyrørtfryst": {
+      "dl": 50
+    },
+    "multi062gstknycoplus": {
+      "stk": 0.62
+    },
+    "multibarn15gstknycoplus": {
+      "stk": 1.5
+    },
+    "multivitaminmiksturnycoplus": {
+      "porsjon": 10
+    },
+    "mungbønnertørre": {
+      "ss": 12,
+      "dl": 80
+    },
+    "mungbønnespirerra": {
+      "dl": 45
+    },
+    "muskatmalt": {
+      "ts": 4
+    },
+    "mørktølbayerogjuleøl4547volalkohol": {
+      "glass": 500,
+      "dl": 100,
+      "boks liten": 330
+    },
+    "napoleonskake": {
+      "stk": 150
+    },
+    "nashiasiatiskpærera": {
+      "stk": 200
+    },
+    "natron": {
+      "ts": 6
+    },
+    "nektarinra": {
+      "stk": 115
+    },
+    "nellikmalt": {
+      "ts": 3
+    },
+    "nepenorskra": {
+      "stk": 40,
+      "dl": 55
+    },
+    "noritørkettang": {
+      "stk": 3
+    },
+    "normannablamuggost": {
+      "porsjon": 30
+    },
+    "norvegiagulost": {
+      "brødskive": 20,
+      "dl": 40,
+      "skive": 10
+    },
+    "norvegiagulostfyldig": {
+      "brødskive": 20,
+      "skive": 10
+    },
+    "norvegiagulostlett": {
+      "brødskive": 20,
+      "dl": 40,
+      "skive": 10
+    },
+    "norvegiagulostvellagret": {
+      "brødskive": 20,
+      "skive": 10
+    },
+    "norvegiagulostøkologisk": {
+      "brødskive": 20,
+      "skive": 10
+    },
+    "norzolablamuggost": {
+      "porsjon": 30
+    },
+    "nudlerfullkornkokt": {
+      "porsjon": 220
+    },
+    "nudlerfullkorntørr": {
+      "porsjon": 85,
+      "pakke": 85
+    },
+    "nudlerhveteuteneggkokt": {
+      "porsjon": 180
+    },
+    "nudlerhveteuteneggtørr": {
+      "porsjon": 85,
+      "pakke": 85
+    },
+    "nudlermedkrydderkokt": {
+      "porsjon": 220
+    },
+    "nypera": {
+      "dl": 60
+    },
+    "nypesuppeavpulver": {
+      "porsjon": 350,
+      "dl": 100
+    },
+    "nypesuppepulver": {
+      "dl": 45
+    },
+    "nypesyltetøy": {
+      "ss": 16,
+      "brødskive": 20,
+      "dl": 115
+    },
+    "nøkkelost": {
+      "brødskive": 20,
+      "skive": 10
+    },
+    "nøkkelostlett": {
+      "brødskive": 20,
+      "skive": 10
+    },
+    "nøttebunn": {
+      "porsjon": 80
+    },
+    "nøttekakemyk": {
+      "porsjon": 80
+    },
+    "nøttepaleggnugatti": {
+      "brødskive": 15
+    },
+    "nøttepaleggmedmindresukkernugatti": {
+      "brødskive": 15
+    },
+    "okrara": {
+      "stk": 7
+    },
+    "okserull": {
+      "skive": 9
+    },
+    "olivengrønnemedpaprikafyll": {
+      "stk": 3
+    },
+    "olivengrønnepickles": {
+      "stk liten": 3,
+      "stk stor": 7,
+      "dl": 50
+    },
+    "olivensorteioljehermetisk": {
+      "stk liten": 3,
+      "stk stor": 6,
+      "dl": 50
+    },
+    "olivenolje": {
+      "ss": 10,
+      "dl": 90
+    },
+    "olivenoljeextravirginjomfruolje": {
+      "ss": 10,
+      "dl": 90
+    },
+    "omelettstektifett": {
+      "porsjon": 125
+    },
+    "omelettstektutenfett": {
+      "porsjon": 125
+    },
+    "oreganotørket": {
+      "ts": 1
+    },
+    "oreokakeavpulverfløteogsmør": {
+      "porsjon": 95
+    },
+    "ostekakemedkjeksbunn": {
+      "porsjon": 80
+    },
+    "ostepop": {
+      "pose": 220,
+      "dl": 10
+    },
+    "paimedskinkeogost": {
+      "porsjon": 300
+    },
+    "paibunnmiksglutenfriøkologiskpulverdetglutenfrieverksted": {
+      "pakke": 200
+    },
+    "pakchoibokchoykalra": {
+      "dl": 30
+    },
+    "palmeolje": {
+      "ss": 10,
+      "dl": 90
+    },
+    "panettermedkyllingogost": {
+      "stk": 75
+    },
+    "pangasiusra": {
+      "porsjon": 270
+    },
+    "pannekakeravpulver": {
+      "stk": 65
+    },
+    "pannekakergrove": {
+      "stk": 100
+    },
+    "pannekakerstektifett": {
+      "stk": 65
+    },
+    "pannekakerstektutenfett": {
+      "stk": 65
+    },
+    "papayara": {
+      "stk": 250
+    },
+    "paprikagrønnkokt": {
+      "stk": 125
+    },
+    "paprikagrønnra": {
+      "stk": 145,
+      "skive": 10
+    },
+    "paprikaguloransjekokt": {
+      "stk": 125
+    },
+    "paprikaguloransjera": {
+      "stk": 145,
+      "skive": 10
+    },
+    "paprikarødkokt": {
+      "stk": 125
+    },
+    "paprikarødra": {
+      "stk": 145,
+      "skive": 10
+    },
+    "paprikaogkikertpaleggkjøpt": {
+      "brødskive": 20
+    },
+    "paprikapulver": {
+      "ts": 3
+    },
+    "paradiseplerra": {
+      "stk": 125
+    },
+    "paranøtter": {
+      "håndfull": 20,
+      "dl": 65,
+      "stk": 3
+    },
+    "parmesanparmigianoreggianoost": {
+      "dl": 40,
+      "ss": 6
+    },
+    "pasjonsfruktra": {
+      "stk": 18
+    },
+    "pasjonsfruktjuice": {
+      "glass stor": 320,
+      "glass": 200,
+      "dl": 100,
+      "glass liten": 150,
+      "ss": 11
+    },
+    "pastaarrabiata": {
+      "porsjon": 300
+    },
+    "pastabolognese": {
+      "porsjon": 300
+    },
+    "pastacarbonara": {
+      "porsjon": 300
+    },
+    "pastamedkalkunostesausfrystkjøpt": {
+      "porsjon": 300
+    },
+    "pastamedkjøttsausbolognesefrystkjøpt": {
+      "porsjon": 300
+    },
+    "pastaferskmedkjøttogosttortellinira": {
+      "stk": 5,
+      "pakke": 250,
+      "dl": 45
+    },
+    "pastaferskmedkjøtttortellinira": {
+      "stk": 5,
+      "pakke": 250,
+      "dl": 45
+    },
+    "pastaferskmedostraviolira": {
+      "stk": 4,
+      "dl": 35,
+      "pakke": 250
+    },
+    "pastafullkornkoktmedsalt": {
+      "porsjon": 195
+    },
+    "pastafullkorntørr": {
+      "porsjon": 85,
+      "dl": 35
+    },
+    "pastaglutenfriavmaisogristørrbarilla": {
+      "porsjon": 75
+    },
+    "pastaglutenfriavrisoggrønnsakertørrorgrantricolore": {
+      "porsjon": 75
+    },
+    "pastaglutenfrikokt": {
+      "porsjon": 195
+    },
+    "pastaglutenfrispagettitørrsemper": {
+      "porsjon": 75
+    },
+    "pastagrønnferskkokt": {
+      "porsjon": 195
+    },
+    "pastagrønnferskra": {
+      "porsjon": 110
+    },
+    "pastanaturellferskkokt": {
+      "porsjon": 195
+    },
+    "pastanaturellferskra": {
+      "porsjon": 110
+    },
+    "pastanaturellkokt": {
+      "porsjon": 195
+    },
+    "pastanaturelltørr": {
+      "dl": 35,
+      "porsjon": 75
+    },
+    "pastiller": {
+      "stk": 1
+    },
+    "pastillerutensukker": {
+      "stk": 1
+    },
+    "pastinakkkokt": {
+      "stk": 94
+    },
+    "pastinakkra": {
+      "stk": 100,
+      "dl": 55
+    },
+    "peanøtter": {
+      "stk": 1,
+      "håndfull": 20,
+      "dl": 60
+    },
+    "peanøttersaltet": {
+      "stk": 1,
+      "dl": 60
+    },
+    "peanøttolje": {
+      "ss": 10,
+      "dl": 90
+    },
+    "peanøttsmør": {
+      "brødskive": 15,
+      "ss": 17
+    },
+    "pekannøtter": {
+      "stk": 2,
+      "dl": 45,
+      "håndfull": 20
+    },
+    "peppercayennerød": {
+      "ts": 3
+    },
+    "pepperhvit": {
+      "ts": 4
+    },
+    "peppersort": {
+      "ts": 3
+    },
+    "peppernøtter": {
+      "stk": 5
+    },
+    "pepperrotra": {
+      "ss": 4
+    },
+    "peppersaus": {
+      "dl": 100,
+      "porsjon": 75
+    },
+    "perlebygg": {
+      "dl": 80
+    },
+    "persillenorskra": {
+      "dl": 12
+    },
+    "persilletørket": {
+      "ts": 1
+    },
+    "persillerotkokt": {
+      "stk": 85
+    },
+    "persillerotnorskra": {
+      "stk": 90,
+      "dl": 55
+    },
+    "pestogrønnhjemmelaget": {
+      "dl": 100,
+      "ss": 18
+    },
+    "pestogrønnkjøpt": {
+      "glass": 190,
+      "dl": 100,
+      "ss": 18
+    },
+    "pestorødhjemmelaget": {
+      "dl": 100,
+      "ss": 18
+    },
+    "pestorødkjøpt": {
+      "glass": 190,
+      "dl": 100,
+      "ss": 18
+    },
+    "physalisra": {
+      "stk": 5
+    },
+    "pigghahabrannra": {
+      "porsjon": 175
+    },
+    "piggvarra": {
+      "porsjon": 270
+    },
+    "pils47volalkohol": {
+      "glass": 500,
+      "dl": 100,
+      "boks liten": 330
+    },
+    "pinjekjerner": {
+      "ss": 10,
+      "dl": 60
+    },
+    "pistasjnøtter": {
+      "stk": 1,
+      "dl": 50
+    },
+    "pistasjnøttersaltet": {
+      "stk": 1,
+      "dl": 50
+    },
+    "pitabrødfintkjøpt": {
+      "stk": 75
+    },
+    "pitabrødfintmedsalttilsattjodkjøpt": {
+      "stk": 75
+    },
+    "pizzahvitcremefraicheogspinathjemmelaget": {
+      "porsjon": 300
+    },
+    "pizzahvitpæreogblamuggosthjemmelaget": {
+      "porsjon": 300
+    },
+    "pizzahvitspekeskinkehjemmelaget": {
+      "porsjon": 300
+    },
+    "pizzakarbonadedeighjemmelaget": {
+      "porsjon": 300
+    },
+    "pizzakjøpt": {
+      "porsjon": 300
+    },
+    "pizzakjøttdeigogløkkjøpt": {
+      "porsjon": 300,
+      "stk": 520
+    },
+    "pizzakjøttdeighjemmelaget": {
+      "porsjon": 300
+    },
+    "pizzamozzarellaogtomaterkjøpt": {
+      "porsjon": 300,
+      "stk": 335
+    },
+    "pizzamozzarellaskinkesalamiogsjampinjongkjøpt": {
+      "porsjon": 300,
+      "stk": 330
+    },
+    "pizzaparmahjemmelaget": {
+      "porsjon": 300
+    },
+    "pizzapepperonihjemmelaget": {
+      "porsjon": 300
+    },
+    "pizzapepperonisalamijalapenoogostkjøpt": {
+      "porsjon": 300,
+      "stk": 330
+    },
+    "pizzaplantebasertdeighjemmelaget": {
+      "porsjon": 300
+    },
+    "pizzaskinkecheddarogmozzarellakjøpt": {
+      "porsjon": 300,
+      "stk": 580
+    },
+    "pizzaskinkehjemmelaget": {
+      "porsjon": 300
+    },
+    "pizzaskinkepaprikaogjarlsbergostkjøpt": {
+      "porsjon": 300,
+      "stk": 575
+    },
+    "pizzaskinkepepperoniogkjøttdeigkjøpt": {
+      "porsjon": 300,
+      "stk": 1015
+    },
+    "pizzatomatsausogosthjemmelaget": {
+      "porsjon": 300
+    },
+    "pizzaveganhjemmelaget": {
+      "porsjon": 300
+    },
+    "pizzavegetarhjemmelaget": {
+      "porsjon": 300
+    },
+    "pizzabunnutenfyll": {
+      "stk": 550
+    },
+    "pizzabunnmiksglutenfriøkologiskpulverdetglutenfrieverksted": {
+      "pose": 350
+    },
+    "pizzafyllbasisutenkjøtt": {
+      "dl": 100,
+      "porsjon": 75
+    },
+    "pizzaostrevet": {
+      "dl": 40
+    },
+    "plantebasertburgeravpotetoglinser": {
+      "stk": 125
+    },
+    "plantebasertburgersoyaprotein": {
+      "stk": 50
+    },
+    "plantebasertgrillpølseavgrønnsakerogpotet": {
+      "stk": 66
+    },
+    "plantebasertgrillpølsesolsikkeprotein": {
+      "stk": 80
+    },
+    "plantebasertmiddagsdeigerteprotein": {
+      "pakke": 400
+    },
+    "plantebasertmiddagsdeigsoyaproteinoghvete": {
+      "pakke": 250
+    },
+    "plantebasertproduktmedsammebruksomradesomost": {
+      "brødskive": 20,
+      "skive": 10
+    },
+    "plantebasertproduktmedsammebruksomradesomostrevet": {
+      "dl": 40
+    },
+    "plantebasertproduktmedsammebruksomradesomyoghurtsoyabasertmedkalsiumogvitaminervitdvitb12": {
+      "dl": 100,
+      "beger": 400
+    },
+    "plantebasertproduktmedsammebruksomradesomyoghurtsoyabasertmedsmakmedkalsiumogvitaminervitdriboflavinvitb12": {
+      "dl": 100
+    },
+    "plantebasertschnitzelsoyaoghveteprotein": {
+      "stk": 90
+    },
+    "plantebasertemiddagsbollererteprotein": {
+      "pakke": 300
+    },
+    "plantebasertemiddagsbollerpotetoglinser": {
+      "pakke": 300
+    },
+    "plantebasertemiddagsbollersoyaprotein": {
+      "pakke": 300
+    },
+    "plommehermetiskmedsukkerlake": {
+      "stk": 15,
+      "dl": 120
+    },
+    "plommera": {
+      "stk": 50
+    },
+    "plommesyltetøy": {
+      "ss": 16,
+      "brødskive": 20,
+      "dl": 115
+    },
+    "polarbrødhvete": {
+      "stk": 38
+    },
+    "pomelora": {
+      "stk": 495
+    },
+    "pommesfritesfryst": {
+      "porsjon": 135,
+      "dl": 45
+    },
+    "pommesfritesgatekjøkken": {
+      "porsjon": 135
+    },
+    "ponzusaushjemmelaget": {
+      "dl": 100,
+      "ts": 5,
+      "ss": 11
+    },
+    "popcornpoppetkjøpt": {
+      "pose": 75,
+      "dl": 3
+    },
+    "popcornpoppetmikropop": {
+      "dl": 3
+    },
+    "portsalutkittmodnetost": {
+      "brødskive": 20,
+      "skive": 10
+    },
+    "portobellosoppra": {
+      "stk": 84
+    },
+    "potethermetiskavrent": {
+      "stk": 55,
+      "porsjon": 170
+    },
+    "potethøstpotetkokt": {
+      "stk": 55,
+      "stk liten": 30,
+      "porsjon": 170,
+      "stk stor": 100
+    },
+    "potethøstpotetkoktsaltetvann": {
+      "stk liten": 33,
+      "stk": 55,
+      "porsjon": 170,
+      "stk stor": 100
+    },
+    "potethøstpotetra": {
+      "stk": 55,
+      "stk liten": 30,
+      "porsjon": 170,
+      "stk stor": 100
+    },
+    "potetlagringspotetkokt": {
+      "stk": 55,
+      "stk liten": 30,
+      "porsjon": 170,
+      "stk stor": 100
+    },
+    "potetlagringspotetkoktsaltetvann": {
+      "stk": 55,
+      "stk liten": 30,
+      "porsjon": 170,
+      "stk stor": 100
+    },
+    "potetlagringspotetra": {
+      "stk": 55,
+      "stk liten": 30,
+      "porsjon": 170,
+      "stk stor": 100
+    },
+    "potettidligpotetkyprosra": {
+      "stk": 55,
+      "stk liten": 30,
+      "porsjon": 170,
+      "stk stor": 100
+    },
+    "potettidligpotetkokt": {
+      "stk": 55,
+      "stk liten": 30,
+      "porsjon": 170,
+      "stk stor": 100
+    },
+    "potettidligpotetkoktsaltetvann": {
+      "stk": 55,
+      "stk liten": 30,
+      "porsjon": 170,
+      "stk stor": 100
+    },
+    "potettidligpotetra": {
+      "stk": 55,
+      "stk liten": 30,
+      "porsjon": 170,
+      "stk stor": 100
+    },
+    "potetogpurreløksuppehjemmelaget": {
+      "porsjon": 350,
+      "dl": 100
+    },
+    "potetchips": {
+      "pose liten": 165,
+      "pose stor": 400,
+      "dl": 12
+    },
+    "potetchipsmedmindrefett": {
+      "pose liten": 165,
+      "pose stor": 400,
+      "dl": 12
+    },
+    "potetlompepotetlefsekjøpt": {
+      "stk liten": 25,
+      "stk stor": 35
+    },
+    "potetmelpotetstivelse": {
+      "dl": 70,
+      "ss": 11
+    },
+    "potetmosavpulverutenmelk": {
+      "porsjon": 200,
+      "dl": 100
+    },
+    "potetmospotetstappehjemmelaget": {
+      "porsjon": 200
+    },
+    "potetmospulvermedmelk": {
+      "dl": 35,
+      "pose": 90
+    },
+    "potetsalatmedektemajones": {
+      "dl": 100,
+      "ss": 19
+    },
+    "potetsalatmedlettmajones": {
+      "dl": 100,
+      "ss": 19
+    },
+    "potetsalatmedlettrømme": {
+      "dl": 100,
+      "ss": 19
+    },
+    "potetsalatmedseterrømme": {
+      "dl": 100,
+      "ss": 19
+    },
+    "potetskruerpotetringer": {
+      "dl": 20,
+      "pose": 170
+    },
+    "prim": {
+      "brødskive": 15
+    },
+    "primlett": {
+      "brødskive": 15
+    },
+    "primmedjernsprett": {
+      "brødskive": 15
+    },
+    "puddingmandelsmakkjøpt": {
+      "porsjon": 140
+    },
+    "puffethavre": {
+      "porsjon": 35,
+      "dl": 9
+    },
+    "puffethvetemedsukkeroghonninghonnikorn": {
+      "porsjon": 35,
+      "dl": 13
+    },
+    "puffetris": {
+      "porsjon": 35,
+      "dl": 9
+    },
+    "pultost": {
+      "brødskive": 10
+    },
+    "pultosthedemark": {
+      "brødskive": 10
+    },
+    "pultostløiten": {
+      "brødskive": 10
+    },
+    "pumpernikkelfullkornsbrødekstragrovt75100kjøpt": {
+      "skive": 40
+    },
+    "purreløkimportertra": {
+      "dl": 45,
+      "stk": 210,
+      "skive": 2
+    },
+    "purreløknorskra": {
+      "dl": 45,
+      "stk": 210,
+      "skive": 2
+    },
+    "purreløkra": {
+      "dl": 45,
+      "stk": 210,
+      "skive": 2
+    },
+    "pyttipannestektepotetermedkjøttogløkfrystkjøpt": {
+      "porsjon": 300
+    },
+    "pærehermetiskmedegensaft": {
+      "dl": 105
+    },
+    "pærehermetiskmedsukkerlake": {
+      "dl": 105,
+      "stk": 45
+    },
+    "pæreimportertra": {
+      "stk stor": 205,
+      "stk liten": 145
+    },
+    "pærenorskra": {
+      "stk stor": 205,
+      "stk liten": 145
+    },
+    "pæreuspesifisertra": {
+      "stk stor": 205,
+      "stk liten": 145
+    },
+    "pærejuice": {
+      "glass stor": 320,
+      "glass": 200,
+      "dl": 100,
+      "glass liten": 150
+    },
+    "pølsebrødfintkjøpt": {
+      "stk stor": 60,
+      "stk liten": 30
+    },
+    "quinoahvitkokt": {
+      "porsjon": 185
+    },
+    "quinoahvittørr": {
+      "dl": 70,
+      "porsjon": 75
+    },
+    "quinoakokt": {
+      "porsjon": 185
+    },
+    "quinoarødkokt": {
+      "porsjon": 185
+    },
+    "quinoarødtørr": {
+      "dl": 70,
+      "porsjon": 75
+    },
+    "quinoasvartkokt": {
+      "porsjon": 185
+    },
+    "quinoasvarttørr": {
+      "dl": 70,
+      "porsjon": 75
+    },
+    "quinoatørr": {
+      "dl": 70,
+      "porsjon": 75
+    },
+    "rabarbrara": {
+      "stk": 100,
+      "dl": 50
+    },
+    "rabarbragrøt": {
+      "dl": 100
+    },
+    "rabarbrasuppe": {
+      "dl": 100
+    },
+    "rabarbrasyltetøy": {
+      "ss": 16,
+      "brødskive": 20,
+      "dl": 115
+    },
+    "racletteost": {
+      "skive": 35
+    },
+    "radicchiorossosalatra": {
+      "dl": 30
+    },
+    "rapidsalatnorskra": {
+      "dl": 10
+    },
+    "rapsolje": {
+      "ss": 10,
+      "dl": 90
+    },
+    "rapsoljekaldpressetodelia": {
+      "ss": 10,
+      "dl": 90
+    },
+    "reddiknorskra": {
+      "stk": 4
+    },
+    "reinsdyrbogstekra": {
+      "porsjon": 200
+    },
+    "reinsdyrkjøtttørketra": {
+      "pakke": 50
+    },
+    "reinsdyrstekra": {
+      "porsjon": 200
+    },
+    "reinsdyrkakerhermetisk": {
+      "stk": 15,
+      "porsjon": 150
+    },
+    "reinsdyrpølse": {
+      "skive": 4
+    },
+    "reinsdyrskavfrystra": {
+      "porsjon": 200,
+      "pakke": 400
+    },
+    "rekerilakeavrent": {
+      "dl": 70
+    },
+    "rekerinnbaktforfritertfryst": {
+      "stk": 7,
+      "porsjon": 190
+    },
+    "rekerinnbaktforfritertstektifett": {
+      "stk": 6,
+      "porsjon": 150
+    },
+    "rekesalatmajonessalat": {
+      "brødskive": 30
+    },
+    "remulade": {
+      "dl": 95,
+      "brødskive": 10
+    },
+    "ribberullskiver": {
+      "skive": 14
+    },
+    "ridderost": {
+      "brødskive": 20
+    },
+    "ripshvitera": {
+      "dl": 50
+    },
+    "ripsra": {
+      "dl": 50
+    },
+    "ripssyltetøy": {
+      "ss": 16,
+      "brødskive": 20,
+      "dl": 115
+    },
+    "ripssyltetøyavhviterips": {
+      "ss": 16,
+      "brødskive": 20,
+      "dl": 115
+    },
+    "risarboriorisottoristørr": {
+      "dl": 90
+    },
+    "risbasmatikokt": {
+      "porsjon": 160
+    },
+    "risgrøtris1timeskoketidtørr": {
+      "dl": 90
+    },
+    "risgrøtris525minkoketidtørr": {
+      "dl": 90
+    },
+    "rishurtigris1saltkokt": {
+      "porsjon": 160
+    },
+    "rishurtigris1salttørr": {
+      "porsjon": 55,
+      "dl": 50
+    },
+    "rishurtigriskokt": {
+      "porsjon": 160
+    },
+    "rishurtigristørr": {
+      "dl": 50
+    },
+    "risjasminkokt": {
+      "porsjon": 160
+    },
+    "rispolertbasmatiristørr": {
+      "dl": 80,
+      "porsjon": 55
+    },
+    "rispolertjasminristørr": {
+      "dl": 80,
+      "porsjon": 55
+    },
+    "rispolertlangkornetkokt": {
+      "porsjon": 160
+    },
+    "rispolertlangkornettørr": {
+      "dl": 80,
+      "porsjon": 55
+    },
+    "rispolertparboiledlangkornetkokt": {
+      "porsjon": 160
+    },
+    "rispolertparboiledlangkornettørr": {
+      "dl": 80,
+      "porsjon": 55
+    },
+    "risupolertnaturrislangkornetkokt": {
+      "porsjon": 160
+    },
+    "risupolertnaturrislangkornettørr": {
+      "dl": 80,
+      "porsjon": 55
+    },
+    "risvillriskokt": {
+      "porsjon": 160
+    },
+    "risvillristørr": {
+      "dl": 80,
+      "porsjon": 55
+    },
+    "risbasertdrikke": {
+      "glass stor": 320,
+      "glass": 200,
+      "dl": 100,
+      "glass liten": 150
+    },
+    "risgrøtmedhelmelk": {
+      "porsjon": 350,
+      "dl": 100
+    },
+    "risgrøtmedlettmelk": {
+      "porsjon": 350,
+      "dl": 100
+    },
+    "riskakerlettsaltet": {
+      "stk liten": 2,
+      "stk stor": 7
+    },
+    "riskakerusaltet": {
+      "stk": 6
+    },
+    "riskrem": {
+      "porsjon": 95
+    },
+    "rislunsjmedjordbær": {
+      "beger": 150
+    },
+    "rismel": {
+      "dl": 70,
+      "ss": 11
+    },
+    "rismelfullkornøkologiskdetglutenfrieverksted": {
+      "pose": 350
+    },
+    "risnudlerkokt": {
+      "porsjon": 180
+    },
+    "risnudlertørr": {
+      "porsjon": 85
+    },
+    "roastbiffskiver": {
+      "skive": 13
+    },
+    "rogntorskhermetiskstektifett": {
+      "porsjon": 150
+    },
+    "rogntorskkokt": {
+      "skive": 45
+    },
+    "rogntorskpressethermetisk": {
+      "skive": 45
+    },
+    "rognebærra": {
+      "dl": 55
+    },
+    "rognleverpostei": {
+      "brødskive": 15,
+      "boks": 100
+    },
+    "romanosalatra": {
+      "dl": 30
+    },
+    "roquefortblamuggost": {
+      "porsjon": 30
+    },
+    "rosenkalfryst": {
+      "stk": 12
+    },
+    "rosenkalnorskra": {
+      "stk": 12
+    },
+    "rosinbollekjøpt": {
+      "stk liten": 50,
+      "stk stor": 115
+    },
+    "rosiner": {
+      "dl": 60
+    },
+    "rosmarinra": {
+      "ts": 1
+    },
+    "rosmarintørket": {
+      "ts": 1
+    },
+    "ruccolasalatra": {
+      "dl": 11,
+      "pose": 65
+    },
+    "rugbrødfint025kjøpt": {
+      "skive": 40
+    },
+    "rugbrødgrovt5075kjøpt": {
+      "skive": 60
+    },
+    "rugmelsammalt": {
+      "ss": 9,
+      "dl": 55
+    },
+    "rugmelsiktet": {
+      "ss": 9,
+      "dl": 50
+    },
+    "rullekakemedsjokoladekrem": {
+      "skive": 25
+    },
+    "rullekakemedsmørkrem": {
+      "skive": 25
+    },
+    "rullekakemedsmørkremkjøpt": {
+      "skive": 25
+    },
+    "rullekakemedsyltetøy": {
+      "skive": 25
+    },
+    "rundstykkefinthalvstektkjøptstekt": {
+      "stk": 50
+    },
+    "rundstykkefinthalvstektmedsalttilsattjodkjøpt": {
+      "stk": 50
+    },
+    "rundstykkefintkjøpt": {
+      "stk": 85
+    },
+    "rundstykkefintmedskummetmelkhjemmebakt": {
+      "stk": 45
+    },
+    "rundstykkefintmedvannhjemmebakt": {
+      "stk": 45
+    },
+    "rundstykkegrovthalvstektkjøptstekt": {
+      "stk liten": 50,
+      "stk stor": 75
+    },
+    "rundstykkegrovtkjøpt": {
+      "stk": 100,
+      "stk liten": 70,
+      "stk stor": 145
+    },
+    "rundstykkegrovtmedsalttilsattjodkjøpt": {
+      "stk": 100,
+      "stk liten": 70,
+      "stk stor": 145
+    },
+    "rundstykkegrovtmedskummetmelkhjemmebakt": {
+      "stk": 70
+    },
+    "rundstykkegrovtmedvannhjemmebakt": {
+      "stk": 70
+    },
+    "rundstykkemellomgrovtmedskummetmelkhjemmebakt": {
+      "stk": 70
+    },
+    "rundstykkemellomgrovtmedvannhjemmebakt": {
+      "stk": 70
+    },
+    "rundstykkerfiberglutenfriekjøpt": {
+      "stk": 60
+    },
+    "rundstykkerfineglutenfriekjøpt": {
+      "stk": 65
+    },
+    "rypekjøttovnsstekt": {
+      "porsjon": 150
+    },
+    "rypekjøttra": {
+      "porsjon": 195
+    },
+    "radyrkjøttra": {
+      "porsjon": 200
+    },
+    "rødbetenorskra": {
+      "stk": 120,
+      "dl": 55
+    },
+    "rødbetersyltede": {
+      "dl": 70,
+      "skive": 12
+    },
+    "rødbetsalatmajonessalat": {
+      "dl": 95,
+      "brødskive": 30
+    },
+    "rødkal": {
+      "pakke": 450
+    },
+    "rødkalra": {
+      "dl": 35,
+      "stk": 1200
+    },
+    "rødspettefiletkavringpanertra": {
+      "porsjon": 270,
+      "stk": 100
+    },
+    "rødspettefiletkavringpanertstektifett": {
+      "porsjon": 200
+    },
+    "rødspettefiletkokt": {
+      "porsjon": 200
+    },
+    "rødspettefiletmelpanertstektifett": {
+      "porsjon": 200
+    },
+    "rødspettefyltforfritertfryst": {
+      "porsjon": 270,
+      "stk": 150
+    },
+    "rødspettepanertforfritertfyltstektifett": {
+      "porsjon": 200
+    },
+    "rødspettepanertforfritertfyltstektutenfett": {
+      "porsjon": 200
+    },
+    "rødspettera": {
+      "porsjon": 270
+    },
+    "rødvin12volalkohol": {
+      "dl": 100,
+      "glass": 120
+    },
+    "rødvintørr": {
+      "dl": 100,
+      "glass": 120
+    },
+    "rødvinuspesifisert": {
+      "dl": 100,
+      "glass": 120
+    },
+    "rødvinseddik": {
+      "dl": 100,
+      "ts": 5,
+      "ss": 11
+    },
+    "rømmedressingmedurter": {
+      "porsjon": 25,
+      "dl": 100,
+      "ss": 18
+    },
+    "rømmegrøt": {
+      "porsjon": 350,
+      "dl": 100
+    },
+    "røyemelpanertstektifett": {
+      "porsjon": 150
+    },
+    "røyera": {
+      "porsjon": 175
+    },
+    "røyestektutenfett": {
+      "porsjon": 150
+    },
+    "saft1000gsukkerprlrasaftdrikkeklar": {
+      "glass stor": 320,
+      "glass": 200,
+      "dl": 100,
+      "glass liten": 150
+    },
+    "saft1000gsukkerprlrasaftublandet": {
+      "dl": 100
+    },
+    "saft500gsukkerprlrasaftdrikkeklar": {
+      "glass stor": 320,
+      "glass": 200,
+      "dl": 100,
+      "glass liten": 150
+    },
+    "saft500gsukkerprlrasaftublandet": {
+      "dl": 100
+    },
+    "saftutentilsattsukkerkunstigsøtetdrikkeklar": {
+      "glass stor": 320,
+      "glass": 200,
+      "dl": 100,
+      "glass liten": 150
+    },
+    "saftis": {
+      "stk": 85
+    },
+    "saftismedfruktjuice": {
+      "stk": 62
+    },
+    "salami": {
+      "skive": 7
+    },
+    "salami22fett": {
+      "skive": 7
+    },
+    "salami38fett": {
+      "skive": 7
+    },
+    "salamidansk": {
+      "skive": 7
+    },
+    "salamimager": {
+      "skive": 7
+    },
+    "salatgreskmedfetaostoliven": {
+      "porsjon": 135
+    },
+    "salatdressingoljeogeddikfranskdressing": {
+      "porsjon": 25,
+      "ss": 10,
+      "dl": 90
+    },
+    "salatdressingutenfett": {
+      "porsjon": 25,
+      "dl": 100,
+      "ss": 11
+    },
+    "salsicciaitalienskpølse": {
+      "skive": 3
+    },
+    "saltbordsalt": {
+      "dl": 130,
+      "ts": 7
+    },
+    "saltbordsaltjodert": {
+      "dl": 130,
+      "ts": 7
+    },
+    "saltstenger": {
+      "stk": 2,
+      "pose": 250
+    },
+    "sanasol": {
+      "porsjon": 10
+    },
+    "sandefjordsmør": {
+      "dl": 100,
+      "ss": 11
+    },
+    "sashimikveite": {
+      "stk": 20
+    },
+    "sashimilaks": {
+      "stk": 20
+    },
+    "sashimitunfisk": {
+      "stk": 20
+    },
+    "seifiletkavringpanertra": {
+      "porsjon": 270,
+      "stk": 100
+    },
+    "seifiletkavringpanertstektifett": {
+      "porsjon": 200
+    },
+    "seifiletmelpanertstektifett": {
+      "porsjon": 200
+    },
+    "seikokt": {
+      "porsjon": 200
+    },
+    "seipanertfrystkjøpt": {
+      "porsjon": 270
+    },
+    "seira": {
+      "porsjon": 270
+    },
+    "seibiffmelpanertmedforstektløkfrystkjøpt": {
+      "porsjon": 270,
+      "stk": 90
+    },
+    "seibiffmelpanertmedforstektløkkjøptstektifett": {
+      "porsjon": 200
+    },
+    "seilaksioljeavrent": {
+      "brødskive": 25
+    },
+    "selbublablamuggost": {
+      "porsjon": 30
+    },
+    "selbublablamuggostøkologisk": {
+      "porsjon": 30
+    },
+    "sellerirotra": {
+      "stk": 545,
+      "dl": 50
+    },
+    "semulegrynhvetegryn": {
+      "ss": 10,
+      "dl": 70
+    },
+    "semulegrøt": {
+      "porsjon": 350,
+      "dl": 100
+    },
+    "sennep": {
+      "ss": 16,
+      "dl": 100
+    },
+    "sennepsfrø": {
+      "ts": 5
+    },
+    "sennepssaus": {
+      "porsjon": 25,
+      "dl": 100,
+      "ss": 18
+    },
+    "serinakaker": {
+      "stk": 10
+    },
+    "servelat": {
+      "skive": 9
+    },
+    "servelatmager": {
+      "skive": 9
+    },
+    "sesamfrømedskall": {
+      "ss": 9,
+      "dl": 60
+    },
+    "sesamfrøutenskall": {
+      "ss": 9,
+      "dl": 60
+    },
+    "sesamolje": {
+      "ss": 10,
+      "dl": 90
+    },
+    "sesamposteipastatahini": {
+      "ss": 16,
+      "brødskive": 15
+    },
+    "seterrømme35fett": {
+      "dl": 100,
+      "ss": 18,
+      "beger": 300
+    },
+    "sharonkakifruktra": {
+      "stk": 125
+    },
+    "shiitakesoppra": {
+      "stk": 8,
+      "dl": 30
+    },
+    "sikra": {
+      "porsjon": 270
+    },
+    "sikorisalatra": {
+      "dl": 20
+    },
+    "sildkokt": {
+      "porsjon": 150
+    },
+    "sildkryddersild": {
+      "brødskive": 25
+    },
+    "sildmarinertimajonesrømme": {
+      "brødskive": 25
+    },
+    "sildmarinertsennepssild": {
+      "brødskive": 25
+    },
+    "sildmelpanertstektifett": {
+      "porsjon": 150
+    },
+    "sildra": {
+      "porsjon": 175
+    },
+    "sildrøktbøkling": {
+      "brødskive": 25
+    },
+    "sildsursildinnlagtavrent": {
+      "brødskive": 25
+    },
+    "sildesalatmedpotet": {
+      "brødskive": 30
+    },
+    "sirup": {
+      "ss": 16,
+      "dl": 140
+    },
+    "sirupskake": {
+      "porsjon": 80
+    },
+    "sitronra": {
+      "skive": 15,
+      "stk": 80
+    },
+    "sitronfromasj": {
+      "porsjon": 140
+    },
+    "sitronsaftflaske": {
+      "dl": 100,
+      "stk": 33,
+      "ss": 11
+    },
+    "sitronterte": {
+      "porsjon": 80
+    },
+    "sjalottløkra": {
+      "stk stor": 45,
+      "stk liten": 13,
+      "dl": 55
+    },
+    "sjampinjongchampignonra": {
+      "dl": 35,
+      "stk": 18
+    },
+    "sjampinjonghermetiskavrent": {
+      "dl": 75
+    },
+    "sjokolademars": {
+      "stk": 35
+    },
+    "sjokoladesnickers": {
+      "stk": 38
+    },
+    "sjokoladefyltkonfekt": {
+      "stk": 15
+    },
+    "sjokoladehvit": {
+      "plate": 100
+    },
+    "sjokoladekokesjokoladelys": {
+      "plate": 100
+    },
+    "sjokoladekokesjokolademørk": {
+      "plate": 100
+    },
+    "sjokolademedgeleogmarsipantroika": {
+      "stk stor": 65,
+      "stk liten": 15
+    },
+    "sjokolademedkjeks": {
+      "plate liten": 45,
+      "plate stor": 80
+    },
+    "sjokolademedkokosfyllbounty": {
+      "stk": 28
+    },
+    "sjokolademedmandelkrokandaim": {
+      "stk": 28
+    },
+    "sjokolademedmintfyllaftereight": {
+      "stk": 8
+    },
+    "sjokolademednøtter": {
+      "plate stor": 200,
+      "plate liten": 60,
+      "plate": 100
+    },
+    "sjokolademelkesjokolade": {
+      "plate liten": 70,
+      "plate stor": 200,
+      "plate": 100
+    },
+    "sjokolademelkesjokoladeporøs": {
+      "plate liten": 70,
+      "stk stor": 45,
+      "plate": 150,
+      "stk liten": 3,
+      "plate stor": 210
+    },
+    "sjokolademørk70kakao": {
+      "plate stor": 100,
+      "plate liten": 65
+    },
+    "sjokolademørk85kakao": {
+      "plate": 100
+    },
+    "sjokoladesmasjokolader": {
+      "stk liten": 5,
+      "stk stor": 10
+    },
+    "sjokoladedrikkavpulverdrikkeklar": {
+      "kopp": 240,
+      "dl": 100
+    },
+    "sjokoladefondant": {
+      "porsjon": 95
+    },
+    "sjokoladeglasur": {
+      "ss": 15,
+      "dl": 130
+    },
+    "sjokoladekakemedglasur": {
+      "porsjon": 80
+    },
+    "sjokoladekakemedglasurkjøpt": {
+      "porsjon": 80
+    },
+    "sjokoladekakemedostekremglutenfri": {
+      "porsjon": 80
+    },
+    "sjokoladekakemedsmørkremglutenfri": {
+      "porsjon": 80
+    },
+    "sjokoladekakeutenglasur": {
+      "porsjon": 80
+    },
+    "sjokolademelklitago": {
+      "glass stor": 320,
+      "glass": 200,
+      "dl": 100,
+      "glass liten": 150
+    },
+    "sjokolademelksjokomelk": {
+      "glass stor": 320,
+      "glass": 200,
+      "dl": 100,
+      "glass liten": 150
+    },
+    "sjokolademelkavpulveroghelmelk": {
+      "glass stor": 320,
+      "glass": 200,
+      "dl": 100,
+      "glass liten": 150
+    },
+    "sjokolademelkavpulveroglettmelk": {
+      "glass stor": 320,
+      "glass": 200,
+      "dl": 100,
+      "glass liten": 150
+    },
+    "sjokolademelkavpulverogmelk": {
+      "glass stor": 320,
+      "glass": 200,
+      "dl": 100,
+      "glass liten": 150
+    },
+    "sjokolademelkutentilsattsukkerlitagouten": {
+      "glass stor": 320,
+      "glass": 200,
+      "dl": 100,
+      "glass liten": 150,
+      "beger": 330
+    },
+    "sjokolademousse": {
+      "porsjon": 95
+    },
+    "sjokoladepuddingavpulver": {
+      "porsjon": 140
+    },
+    "sjokoladepuddingkjøpt": {
+      "porsjon": 140
+    },
+    "sjokoladepulverutenmelk": {
+      "dl": 45,
+      "ss": 8
+    },
+    "sjokoladepaleggsjokade": {
+      "brødskive": 15
+    },
+    "sjokoladesauskjøpt": {
+      "porsjon": 25,
+      "dl": 130,
+      "ss": 17
+    },
+    "sjysausavpulver": {
+      "dl": 100,
+      "porsjon": 75
+    },
+    "sjøtungera": {
+      "porsjon": 270
+    },
+    "skalldyrsuppe": {
+      "porsjon": 350
+    },
+    "skatera": {
+      "porsjon": 270
+    },
+    "skinkerullwestfalerskinke": {
+      "skive": 12
+    },
+    "skolebrødmedmelisglasureggekremkokoskjøpt": {
+      "stk liten": 115,
+      "stk stor": 160
+    },
+    "skonrokk": {
+      "stk": 12
+    },
+    "skorsonnerotsvartrotra": {
+      "stk liten": 30,
+      "stk stor": 75
+    },
+    "skumgodtahlgrensbiler": {
+      "pose": 125,
+      "stk": 1
+    },
+    "skumgodtmarshmallows": {
+      "stk": 7
+    },
+    "skummetmelkstyrk": {
+      "glass stor": 320,
+      "glass": 200,
+      "dl": 100,
+      "glass liten": 150
+    },
+    "skummetmelktine": {
+      "glass stor": 320,
+      "glass": 200,
+      "dl": 100,
+      "glass liten": 150
+    },
+    "skyrbanan": {
+      "pose": 90
+    },
+    "skyrbringebær": {
+      "beger": 130
+    },
+    "skyrmedsmakkunstigsøtet": {
+      "beger": 160,
+      "dl": 100
+    },
+    "smoothieananasogingefær": {
+      "glass stor": 320,
+      "glass": 200,
+      "dl": 100,
+      "glass liten": 150
+    },
+    "smoothieananasogkokos": {
+      "glass stor": 320,
+      "glass": 200,
+      "dl": 100,
+      "glass liten": 150
+    },
+    "smoothieananasogmango": {
+      "glass stor": 320,
+      "glass": 200,
+      "dl": 100,
+      "glass liten": 150
+    },
+    "smoothieappelsingulrotogingefær": {
+      "glass stor": 320,
+      "glass": 200,
+      "dl": 100,
+      "glass liten": 150
+    },
+    "smoothieavokadoogmangokjøptikafebakeri": {
+      "boks": 330
+    },
+    "smoothieblabærogbringebær": {
+      "glass stor": 320,
+      "glass": 200,
+      "dl": 100,
+      "glass liten": 150
+    },
+    "smoothieblabærogeple": {
+      "glass stor": 320,
+      "glass": 200,
+      "dl": 100,
+      "glass liten": 150
+    },
+    "smoothiebringebærogjordbær": {
+      "glass stor": 320,
+      "glass": 200,
+      "dl": 100,
+      "glass liten": 150
+    },
+    "smoothiegrønn": {
+      "glass stor": 320,
+      "glass": 200,
+      "dl": 100,
+      "glass liten": 150
+    },
+    "smoothieguavaoggojibær": {
+      "glass stor": 320,
+      "glass": 200,
+      "dl": 100,
+      "glass liten": 150
+    },
+    "smoothiejuicebananogbær": {
+      "glass stor": 320,
+      "glass": 200,
+      "dl": 100,
+      "glass liten": 150
+    },
+    "smoothiemangoogappelsin": {
+      "glass stor": 320,
+      "glass": 200,
+      "dl": 100,
+      "glass liten": 150
+    },
+    "smoothiemangooggojibær": {
+      "glass": 200,
+      "dl": 100,
+      "glass liten": 150
+    },
+    "smoothiemangoogpasjonsfrukt": {
+      "glass stor": 320,
+      "glass": 200,
+      "dl": 100,
+      "glass liten": 150
+    },
+    "smoothieyoghurtjuicebananogbær": {
+      "glass stor": 320,
+      "glass": 200,
+      "dl": 100,
+      "glass liten": 150
+    },
+    "smoothieblandingananasmangoogbananfryst": {
+      "pakke": 800
+    },
+    "smoothieblandingananasmelonogbananfryst": {
+      "pakke": 400
+    },
+    "smoothieblandingananaspapayaogmangofryst": {
+      "pakke": 600
+    },
+    "smoothieblandingbanangrønnkalmangoogingefærfryst": {
+      "pakke": 400
+    },
+    "smoothieblandingbringebærblabærogbananfryst": {
+      "pakke": 400
+    },
+    "smoothieblandingjordbærogbananfryst": {
+      "pakke": 400
+    },
+    "smoothieblandingjordbærbananogblabærfryst": {
+      "pakke": 600
+    },
+    "smoothieblandingjordbærbringebærogbananfryst": {
+      "pakke": 400
+    },
+    "smuldrepaimedbær": {
+      "porsjon": 80
+    },
+    "smuldrepaimedeple": {
+      "porsjon": 80
+    },
+    "smultringer": {
+      "stk": 45
+    },
+    "smagodtblandetutensjokolade": {
+      "stk": 8,
+      "stk stor": 15,
+      "stk liten": 3
+    },
+    "smagodtsalte": {
+      "stk": 8,
+      "stk stor": 15,
+      "stk liten": 3
+    },
+    "smør": {
+      "beger": 10,
+      "brødskive": 5,
+      "dl": 90
+    },
+    "smørmeierismørekstrasaltkviteseidsmør": {
+      "beger": 10,
+      "brødskive": 5,
+      "dl": 90
+    },
+    "smørusaltet": {
+      "brødskive": 5,
+      "dl": 90
+    },
+    "smørkremmedhardmargarin": {
+      "dl": 95,
+      "ss": 14
+    },
+    "smørkremmedsmør": {
+      "dl": 95,
+      "ss": 14
+    },
+    "sneglerhermetisk": {
+      "dl": 70
+    },
+    "soddmedkjøttbollerhermetisk": {
+      "porsjon": 450,
+      "boks": 850
+    },
+    "solbærra": {
+      "dl": 50
+    },
+    "solbærmousse": {
+      "porsjon": 140
+    },
+    "solbærsaft1000gsukkerprlrasaftdrikkeklar": {
+      "glass stor": 320,
+      "glass": 200,
+      "dl": 100,
+      "glass liten": 150
+    },
+    "solbærsaft1000gsukkerprlrasaftublandet": {
+      "dl": 100
+    },
+    "solbærsaft500gsukkerprlrasaftdrikkeklar": {
+      "glass stor": 320,
+      "glass": 200,
+      "dl": 100,
+      "glass liten": 150
+    },
+    "solbærsaft500gsukkerprlrasaftublandet": {
+      "dl": 100
+    },
+    "solbærsirupdrikkeklar": {
+      "glass": 200,
+      "dl": 100,
+      "glass liten": 150
+    },
+    "solbærsirupublandet": {
+      "dl": 100
+    },
+    "solbærsyltetøy": {
+      "ss": 16,
+      "brødskive": 20,
+      "dl": 115
+    },
+    "solsikkefrø": {
+      "ss": 8,
+      "dl": 55
+    },
+    "solsikkeolje": {
+      "ss": 10,
+      "dl": 90
+    },
+    "sopprotein": {
+      "pakke": 300
+    },
+    "soppsuppe": {
+      "porsjon": 350,
+      "dl": 100
+    },
+    "sorbet": {
+      "porsjon": 95,
+      "dl": 80
+    },
+    "sorghum": {
+      "ss": 10,
+      "dl": 75
+    },
+    "sosissersmapølser": {
+      "stk": 30,
+      "porsjon": 150
+    },
+    "soyabasertdrikke": {
+      "glass stor": 320,
+      "glass": 200,
+      "dl": 100,
+      "glass liten": 150
+    },
+    "soyabasertdrikkemedkalsiumogvitaminervitb2vitb12vitdsøtet": {
+      "glass stor": 320,
+      "glass": 200,
+      "dl": 100,
+      "glass liten": 150
+    },
+    "soyabasertdrikkemedkalsiumogvitaminervitb2vitb12vitdusøtet": {
+      "glass stor": 320,
+      "glass": 200,
+      "dl": 100,
+      "glass liten": 150
+    },
+    "soyabønnertørre": {
+      "ss": 12,
+      "dl": 80
+    },
+    "soyamel": {
+      "ss": 9,
+      "dl": 45
+    },
+    "soyamelmedmindrefett": {
+      "ss": 9,
+      "dl": 45
+    },
+    "soyaolje": {
+      "ss": 10,
+      "dl": 90
+    },
+    "soyapølsehermetisk": {
+      "stk": 40
+    },
+    "soyasaus": {
+      "ss": 13,
+      "dl": 115
+    },
+    "soyasaussøt": {
+      "dl": 100,
+      "ss": 11
+    },
+    "spekesildutvannet": {
+      "porsjon": 150
+    },
+    "spekeskinke": {
+      "skive": 8
+    },
+    "speltmelsiktet": {
+      "ss": 9,
+      "dl": 55
+    },
+    "spinatfrystra": {
+      "terning": 14,
+      "pose stor": 400,
+      "pose liten": 250
+    },
+    "spinatimportertra": {
+      "pose liten": 65,
+      "dl": 12,
+      "pose stor": 250
+    },
+    "spinatnorskra": {
+      "pose liten": 65,
+      "dl": 12,
+      "pose stor": 250
+    },
+    "spinatra": {
+      "pose liten": 65,
+      "dl": 12,
+      "pose stor": 250
+    },
+    "spinatsuppehjemmelaget": {
+      "porsjon": 350,
+      "dl": 100
+    },
+    "spisskummenmalt": {
+      "ts": 3
+    },
+    "spisskalra": {
+      "dl": 35,
+      "stk": 800
+    },
+    "squashzucchinira": {
+      "stk": 285,
+      "skive": 15
+    },
+    "stabburpølse": {
+      "skive": 5
+    },
+    "stangselleriimportertra": {
+      "stk": 380,
+      "stilk": 33,
+      "dl": 50
+    },
+    "stangsellerinorskra": {
+      "stk": 380,
+      "stilk": 33,
+      "dl": 50
+    },
+    "stangsellerira": {
+      "stk": 380,
+      "stilk": 33,
+      "dl": 50
+    },
+    "steinbitfiletmelpanertstektifett": {
+      "porsjon": 200
+    },
+    "steinbitkokt": {
+      "porsjon": 200
+    },
+    "steinbitra": {
+      "porsjon": 270
+    },
+    "steinsoppra": {
+      "dl": 30
+    },
+    "sterkvinsøtportvin20volalkohol": {
+      "dl": 105,
+      "glass": 63
+    },
+    "sterkvinsøtvermouth15volalkohol": {
+      "dl": 105,
+      "glass": 63
+    },
+    "sterkølbokkøl65volalkohol": {
+      "glass": 500,
+      "dl": 100,
+      "boks liten": 330
+    },
+    "stikkelsbærra": {
+      "dl": 60,
+      "stk": 3
+    },
+    "stikkelsbærsyltetøy": {
+      "ss": 16,
+      "brødskive": 20,
+      "dl": 115
+    },
+    "stiltonblamuggost": {
+      "porsjon": 30
+    },
+    "storfebankekjøttra": {
+      "porsjon": 200
+    },
+    "storfebogstekra": {
+      "porsjon": 200
+    },
+    "storfeentrecotera": {
+      "porsjon": 195
+    },
+    "storfeentrecotestektutenfett": {
+      "porsjon": 150
+    },
+    "storfeflatbiffra": {
+      "porsjon": 200
+    },
+    "storfehøyryggra": {
+      "porsjon": 200
+    },
+    "storfeindrefiletra": {
+      "porsjon": 200
+    },
+    "storfekjøttkokt": {
+      "porsjon": 150
+    },
+    "storfekjøttra": {
+      "porsjon": 200
+    },
+    "storfemørbradra": {
+      "porsjon": 200
+    },
+    "storferundstekra": {
+      "porsjon": 200
+    },
+    "storfestekroastbiffrosastektutenfett": {
+      "porsjon": 150
+    },
+    "storfeytrefiletra": {
+      "porsjon": 200
+    },
+    "storfeytrefiletstektutenfett": {
+      "porsjon": 150
+    },
+    "sukkerbrunt": {
+      "ss": 10,
+      "dl": 70
+    },
+    "sukkerhvitt": {
+      "stk": 2,
+      "ss": 13,
+      "ts": 5,
+      "dl": 90
+    },
+    "sukkerbrød": {
+      "porsjon": 80
+    },
+    "sukkerbrødmedeggekrembærgele": {
+      "porsjon": 95
+    },
+    "sukkererternorskra": {
+      "stk": 4
+    },
+    "sukkertøydrops": {
+      "stk": 3
+    },
+    "suksessterte": {
+      "porsjon": 80
+    },
+    "surimi": {
+      "pakke": 110
+    },
+    "surkalkjøpt": {
+      "pose": 450,
+      "dl": 100
+    },
+    "sushimakicalifornia": {
+      "stk": 25
+    },
+    "sushimakiavokadovegetar": {
+      "stk": 25
+    },
+    "sushimakikveite": {
+      "stk": 25
+    },
+    "sushimakilaks": {
+      "stk": 25
+    },
+    "sushimakimangovegetar": {
+      "stk": 25
+    },
+    "sushimakiscampi": {
+      "stk": 25
+    },
+    "sushimakitempura": {
+      "stk": 25
+    },
+    "sushimakitofuvegetar": {
+      "stk": 25
+    },
+    "sushimakitunfisk": {
+      "stk": 25
+    },
+    "sushinigirikamskjell": {
+      "stk": 25
+    },
+    "sushinigirikveite": {
+      "stk": 30
+    },
+    "sushinigirilaks": {
+      "stk": 30
+    },
+    "sushinigiriscampi": {
+      "stk": 25
+    },
+    "sushinigiritunfisk": {
+      "stk": 30
+    },
+    "svartebønnerhermetisk": {
+      "ss": 15,
+      "dl": 90
+    },
+    "svartøyebønnertørr": {
+      "dl": 75
+    },
+    "sveitserostgulost": {
+      "brødskive": 20,
+      "dl": 40,
+      "skive": 10
+    },
+    "svinbankekjøttkokt": {
+      "porsjon": 150
+    },
+    "svinflatbiffra": {
+      "porsjon": 200
+    },
+    "svinflatbiffstektutenfett": {
+      "porsjon": 150
+    },
+    "svinindrefiletra": {
+      "porsjon": 200
+    },
+    "svinindrefiletstektutenfett": {
+      "porsjon": 150
+    },
+    "svinmørbradkokt": {
+      "porsjon": 150
+    },
+    "svinmørbradra": {
+      "porsjon": 200
+    },
+    "svinmørbradstektutenfett": {
+      "porsjon": 150
+    },
+    "svinnakkekoteletterra": {
+      "porsjon": 230,
+      "stk": 180
+    },
+    "svinnakkekoteletterstektutenfett": {
+      "stk": 110,
+      "porsjon": 150
+    },
+    "svinribbesidefleskra": {
+      "porsjon": 150
+    },
+    "svinytrefiletra": {
+      "porsjon": 200
+    },
+    "svinytrefiletstektutenfett": {
+      "porsjon": 150
+    },
+    "svinekamrøkt": {
+      "skive": 15
+    },
+    "svinestekmedsurkalogpoteterferdigmiddagkjøpt": {
+      "porsjon": 555
+    },
+    "sviskejuice": {
+      "glass stor": 320,
+      "glass": 200,
+      "dl": 100,
+      "glass liten": 150
+    },
+    "svisker": {
+      "dl": 75,
+      "stk": 8
+    },
+    "sylte": {
+      "skive": 11
+    },
+    "syltetøy40bær40sukker": {
+      "beger": 24,
+      "ss": 16,
+      "brødskive": 20,
+      "dl": 115
+    },
+    "syltetøy45bær25sukker": {
+      "ss": 16,
+      "brødskive": 20,
+      "dl": 115
+    },
+    "syltetøy60bær30sukker": {
+      "ss": 16,
+      "brødskive": 20,
+      "dl": 115
+    },
+    "syltetøyutentilsattsukker": {
+      "ss": 16,
+      "brødskive": 20,
+      "dl": 115
+    },
+    "syrnethavreprodukttilmatlaging15fett": {
+      "dl": 100,
+      "ss": 18
+    },
+    "syrnetmelkkefirmedsmakqmeieriene": {
+      "glass stor": 320,
+      "glass": 200,
+      "dl": 100,
+      "glass liten": 150
+    },
+    "syrnetmelkkulturmjølk": {
+      "glass stor": 320,
+      "glass": 200,
+      "dl": 100,
+      "glass liten": 150
+    },
+    "syrnetmelkskummakulturmjølk": {
+      "glass stor": 320,
+      "glass": 200,
+      "dl": 100,
+      "glass liten": 150
+    },
+    "syrnetmelkblabærlaktosefribiola": {
+      "glass stor": 320,
+      "glass": 200,
+      "dl": 100,
+      "glass liten": 150
+    },
+    "syrnetmelkblabærmagerbiola": {
+      "glass stor": 320,
+      "glass": 200,
+      "dl": 100,
+      "glass liten": 150
+    },
+    "syrnetmelkblabærbringebærbioq": {
+      "glass stor": 320,
+      "glass": 200,
+      "dl": 100,
+      "glass liten": 150
+    },
+    "syrnetmelkbringebærbiola": {
+      "glass stor": 320,
+      "glass": 200,
+      "dl": 100,
+      "glass liten": 150
+    },
+    "syrnetmelkjordbærbiola": {
+      "glass stor": 320,
+      "glass": 200,
+      "dl": 100,
+      "glass liten": 150
+    },
+    "syrnetmelknaturellbiola": {
+      "glass stor": 320,
+      "glass": 200,
+      "dl": 100,
+      "glass liten": 150
+    },
+    "syrnetmelkrødbeteeplelimebiola": {
+      "glass stor": 320,
+      "glass": 200,
+      "dl": 100,
+      "glass liten": 150
+    },
+    "syrnetmelkøkologiskkefirtine": {
+      "glass stor": 320,
+      "glass": 200,
+      "dl": 100,
+      "glass liten": 150
+    },
+    "syrnettyknethavreprodukt": {
+      "dl": 100,
+      "ss": 18
+    },
+    "søtpotetmedskallkoktutensalt": {
+      "stk": 130
+    },
+    "søtpotetra": {
+      "stk": 130
+    },
+    "søtpotetsuppehjemmelaget": {
+      "porsjon": 350,
+      "dl": 100
+    },
+    "tacomedskjellkarbonadedeiggrønnsaker": {
+      "stk": 155
+    },
+    "tacomedskjellkjøttdeiggrønnsaker": {
+      "stk": 155
+    },
+    "tacomedskjellkyllinggrønnsaker": {
+      "stk": 155
+    },
+    "tacomedskjelllaksgrønnsaker": {
+      "stk": 155
+    },
+    "tacomedskjellplantebasertdeiggrønnsaker": {
+      "stk": 155
+    },
+    "tacomedtortillakarbonadedeiggrønnsaker": {
+      "stk": 230
+    },
+    "tacomedtortillakjøttdeiggrønnsaker": {
+      "stk": 230
+    },
+    "tacomedtortillakyllinggrønnsaker": {
+      "stk": 230
+    },
+    "tacomedtortillalaksgrønnsaker": {
+      "stk": 230
+    },
+    "tacomedtortillaplantebasertdeiggrønnsaker": {
+      "stk": 230
+    },
+    "tacokrydderhjemmelaget": {
+      "ss": 8
+    },
+    "tacokrydderkjøpt": {
+      "ss": 8,
+      "pakke": 35
+    },
+    "tacosaus": {
+      "glass": 230,
+      "dl": 105,
+      "ts": 7
+    },
+    "tacoskjell": {
+      "stk stor": 20,
+      "stk liten": 12
+    },
+    "tacosuppehjemmelaget": {
+      "porsjon": 350,
+      "dl": 100
+    },
+    "taffelosttomat": {
+      "brødskive": 20,
+      "skive": 10
+    },
+    "tegrønntilberedt": {
+      "kopp": 240,
+      "dl": 100
+    },
+    "tesvarttilberedt": {
+      "kopp": 240,
+      "dl": 100
+    },
+    "terteutenfyll": {
+      "stk": 30
+    },
+    "tilskuddsblandingfra6mnddrikkeklar": {
+      "dl": 100,
+      "ss": 11
+    },
+    "tilskuddsblandingfra6mndferdigutblandet": {
+      "dl": 100
+    },
+    "tilskuddsblandingfra6mndpulver": {
+      "ss": 7,
+      "dl": 50
+    },
+    "tilslørtebondepikermedkavring": {
+      "porsjon": 95
+    },
+    "timianra": {
+      "ts": 1
+    },
+    "timiantørket": {
+      "ts": 1
+    },
+    "tindvedhavtornra": {
+      "dl": 50
+    },
+    "tofu": {
+      "dl": 100
+    },
+    "tomathakkettetrapak": {
+      "dl": 100
+    },
+    "tomathermetisk": {
+      "boks": 400,
+      "dl": 100
+    },
+    "tomatimportertra": {
+      "stk": 95,
+      "skive": 13
+    },
+    "tomatnorskra": {
+      "stk": 95,
+      "skive": 13
+    },
+    "tomatuspesifisertra": {
+      "stk": 95,
+      "skive": 13
+    },
+    "tomatbønnerhvitebønneritomatsaushermetisk": {
+      "dl": 110,
+      "ss": 19
+    },
+    "tomatersoltørkedeinnlagteioljeavrent": {
+      "stk": 7
+    },
+    "tomatersoltørkedetørr": {
+      "stk": 3
+    },
+    "tomatjuice": {
+      "glass stor": 320,
+      "glass": 200,
+      "dl": 100,
+      "glass liten": 150
+    },
+    "tomatpure": {
+      "dl": 100,
+      "ss": 18
+    },
+    "tomatsuppeavpulver": {
+      "porsjon": 350,
+      "dl": 100
+    },
+    "tomatsuppemedmakaroniavpulver": {
+      "porsjon": 350,
+      "dl": 100
+    },
+    "tomatsuppepulver": {
+      "pose": 95
+    },
+    "torskfiletkavringpanertra": {
+      "porsjon": 270,
+      "stk": 100
+    },
+    "torskfiletkavringpanertstektifett": {
+      "porsjon": 200
+    },
+    "torskfiletkokt": {
+      "porsjon": 200,
+      "stk": 85
+    },
+    "torskfiletmelpanertstektifett": {
+      "porsjon": 200
+    },
+    "torskfiletovnsstekt": {
+      "porsjon": 200,
+      "stk": 95
+    },
+    "torskfiletstektipanne": {
+      "porsjon": 200,
+      "stk": 95
+    },
+    "torskforfritertfyltfryst": {
+      "porsjon": 270,
+      "stk": 150
+    },
+    "torskiskiverra": {
+      "porsjon": 270
+    },
+    "torsklettsaltetkokt": {
+      "porsjon": 200,
+      "filet": 85
+    },
+    "torsklettsaltetra": {
+      "porsjon": 270
+    },
+    "torskoppdrettra": {
+      "filet": 125,
+      "porsjon": 270
+    },
+    "torskpanertforfritertfyltovnsstekt": {
+      "porsjon": 200
+    },
+    "torskpanertforfritertfyltstektifett": {
+      "porsjon": 200
+    },
+    "torskpanertforfritertovnsstekt": {
+      "porsjon": 200
+    },
+    "torskpanertforfritertstektifett": {
+      "porsjon": 200
+    },
+    "torskpanertkjøpt": {
+      "porsjon": 270,
+      "stk liten": 55,
+      "stk stor": 100
+    },
+    "torskskiverkokt": {
+      "porsjon": 200
+    },
+    "torskuspesifisertra": {
+      "porsjon": 270
+    },
+    "torskvillra": {
+      "porsjon": 270
+    },
+    "tortillamaislefse": {
+      "stk": 42
+    },
+    "tortillawrapsburritohvetemel": {
+      "stk stor": 60,
+      "stk liten": 40
+    },
+    "tortillachipsnachochips": {
+      "pose stor": 200,
+      "pose liten": 150,
+      "stk": 3
+    },
+    "traktkantarellra": {
+      "dl": 30
+    },
+    "tranmøllers": {
+      "ts": 4.6
+    },
+    "tranmøllersdobbelkapsler": {
+      "stk": 1
+    },
+    "tranmedlimesmakbiopharma": {
+      "ts": 4.6
+    },
+    "tranebærra": {
+      "dl": 55
+    },
+    "tranebærjuice": {
+      "glass stor": 320,
+      "glass": 200,
+      "dl": 100,
+      "glass liten": 150
+    },
+    "trollkrem": {
+      "porsjon": 95
+    },
+    "tropiskjuice": {
+      "glass stor": 320,
+      "glass": 200,
+      "dl": 100,
+      "glass liten": 150
+    },
+    "tunfiskigelehermetisk": {
+      "boks": 185,
+      "dl": 95,
+      "ss": 14
+    },
+    "tunfiskioljeavrenthermetisk": {
+      "boks": 185,
+      "dl": 95,
+      "ss": 14
+    },
+    "tunfiskioljeikkeavrenthermetisk": {
+      "boks": 185,
+      "dl": 95,
+      "ss": 14
+    },
+    "tunfiskivannavrenthermetisk": {
+      "dl": 95,
+      "ss": 14
+    },
+    "tunfiskmakrellstørjera": {
+      "porsjon": 270
+    },
+    "tyggegummimedsukker": {
+      "stk": 1
+    },
+    "tykklefsepasmurtkjøpt": {
+      "stk stor": 120,
+      "stk liten": 55
+    },
+    "tykklefseutenfyll": {
+      "stk": 25
+    },
+    "tyttebærra": {
+      "dl": 55
+    },
+    "tyttebærsyltetøy": {
+      "ss": 16,
+      "brødskive": 20,
+      "dl": 115
+    },
+    "tyttebærsyltetøyrørtfryst": {
+      "dl": 60
+    },
+    "tørrfisk": {
+      "porsjon": 200
+    },
+    "uerkokt": {
+      "porsjon": 200
+    },
+    "uerlettsaltetra": {
+      "porsjon": 270
+    },
+    "uerlettsaltetskiverkokt": {
+      "porsjon": 200
+    },
+    "uerra": {
+      "porsjon": 270
+    },
+    "urtesalt": {
+      "dl": 130,
+      "ts": 7
+    },
+    "vafleravpulver": {
+      "stk liten": 20,
+      "stk stor": 85
+    },
+    "vaflerglutenfrieavpulvertoro": {
+      "stk liten": 20,
+      "stk stor": 85
+    },
+    "vaflergrove": {
+      "stk liten": 25,
+      "stk stor": 100
+    },
+    "vaflermedegg": {
+      "stk liten": 20,
+      "stk stor": 85
+    },
+    "vaflermedeggutenfett": {
+      "stk liten": 20,
+      "stk stor": 85
+    },
+    "vaflermedrømmeutenegg": {
+      "stk liten": 18,
+      "stk stor": 75
+    },
+    "valmuefrø": {
+      "ts": 3
+    },
+    "valnøtter": {
+      "stk": 2,
+      "dl": 45,
+      "håndfull": 20
+    },
+    "valnøttolje": {
+      "ss": 10,
+      "ts": 5,
+      "dl": 90
+    },
+    "vaniljekremkjøpt": {
+      "dl": 95,
+      "ss": 13
+    },
+    "vaniljekremmedhelmelk": {
+      "dl": 95,
+      "ss": 13
+    },
+    "vaniljesausavpulver": {
+      "dl": 100,
+      "porsjon": 75
+    },
+    "vaniljesauskjøpt": {
+      "dl": 100,
+      "porsjon": 75
+    },
+    "vaniljesukker": {
+      "ts": 5
+    },
+    "vanndrikkevann": {
+      "glass stor": 320,
+      "glass": 200,
+      "dl": 100,
+      "glass liten": 150
+    },
+    "vannbakkelsutenfyll": {
+      "stk": 20
+    },
+    "vannkastanjerhermetisk": {
+      "skive": 3,
+      "dl": 65
+    },
+    "vannmelonra": {
+      "skive": 80
+    },
+    "varmsjokoladeavhelmelk": {
+      "kopp": 240,
+      "dl": 100
+    },
+    "varmsjokoladeavlettmelk": {
+      "kopp": 240,
+      "dl": 100
+    },
+    "vegetabilskposteikjøpt": {
+      "brødskive": 15
+    },
+    "vegetarlasagnehjemmelaget": {
+      "porsjon": 300
+    },
+    "villsvinkjøttra": {
+      "porsjon": 200
+    },
+    "viltsausavpulver": {
+      "dl": 100,
+      "porsjon": 75
+    },
+    "vinalkoholfri": {
+      "glass": 100,
+      "dl": 100
+    },
+    "vinalkoholsvak": {
+      "glass": 100,
+      "dl": 100
+    },
+    "vitaoptimalolje": {
+      "ss": 10,
+      "dl": 90
+    },
+    "vitaminbjørner21gstkcollett": {
+      "stk": 2.1
+    },
+    "vitamineral055gstkvitaplex": {
+      "stk": 0.55
+    },
+    "varløkra": {
+      "dl": 40,
+      "stk": 19
+    },
+    "vørterkake": {
+      "skive": 45
+    },
+    "vørterøl": {
+      "glass stor": 320,
+      "glass": 200,
+      "dl": 100,
+      "glass liten": 150,
+      "boks liten": 330
+    },
+    "wakamesalat": {
+      "boks": 80
+    },
+    "waldorfsalat": {
+      "dl": 95,
+      "brødskive": 30
+    },
+    "wasabirotra": {
+      "stk": 170
+    },
+    "wienerbrødmedeggekrem": {
+      "stk": 80
+    },
+    "wienerbrødmedsyltetøy": {
+      "stk liten": 50,
+      "stk stor": 80
+    },
+    "wienerkringlemedmandelfyll": {
+      "stk": 50
+    },
+    "wienerpølse": {
+      "stk": 65
+    },
+    "wienerpølsekalkunogkylling": {
+      "stk": 65
+    },
+    "wienerpølsemager": {
+      "stk": 65
+    },
+    "wienersnitzelra": {
+      "stk": 150
+    },
+    "wrapsglutenfribfree": {
+      "stk": 42
+    },
+    "wrapsglutenfrischar": {
+      "stk": 80
+    },
+    "yoghurtblabær0fettyoplait": {
+      "dl": 100,
+      "beger": 125
+    },
+    "yoghurtjordbærqmeieriene": {
+      "dl": 100
+    },
+    "yoghurtjordbærtine": {
+      "dl": 100,
+      "beger": 125
+    },
+    "yoghurtmedcouliskjøptikafebakeri": {
+      "beger": 205
+    },
+    "yoghurtmedfruktpureogmuslikjøptikafebakeri": {
+      "beger": 190
+    },
+    "yoghurtmedmusliogskogsbærgomorgen": {
+      "beger": 195,
+      "dl": 100
+    },
+    "yoghurtnaturell": {
+      "dl": 100,
+      "ss": 18
+    },
+    "yoghurtnaturell10fettgresktyrkisk": {
+      "dl": 100
+    },
+    "yoghurtnaturell2fettgresktyrkisk": {
+      "dl": 100
+    },
+    "yoghurtnaturelllaktosefri": {
+      "dl": 100
+    },
+    "yoghurtnaturelløkologisk": {
+      "dl": 100,
+      "ss": 18
+    },
+    "yoghurtvanilje": {
+      "dl": 100
+    },
+    "yoghurtvanilje0fettyoplait": {
+      "dl": 100,
+      "beger": 125
+    },
+    "yoghurtvaniljelaktosefri": {
+      "dl": 100
+    },
+    "aborabborra": {
+      "porsjon": 270
+    },
+    "alra": {
+      "porsjon": 175
+    },
+    "alrøkt": {
+      "brødskive": 25
+    },
+    "ølalkoholfritt": {
+      "glass": 500,
+      "dl": 100,
+      "boks liten": 330
+    },
+    "ølredusertenergiinnholdlavkarbo": {
+      "glass": 500,
+      "dl": 100,
+      "boks liten": 330
+    },
+    "ørretfiletrøkt": {
+      "skive": 20
+    },
+    "ørretoppdrettkokt": {
+      "filet": 135,
+      "porsjon": 150
+    },
+    "ørretoppdrettra": {
+      "filet": 160,
+      "porsjon": 175
+    },
+    "ørretoppdrettskivermelpanertstektifett": {
+      "porsjon": 150
+    },
+    "ørretsjøørretkokt": {
+      "filet": 135,
+      "porsjon": 150
+    },
+    "ørretsjøørretmelpanertstektifett": {
+      "porsjon": 150
+    },
+    "ørretsjøørretra": {
+      "porsjon": 175
+    },
+    "østavindgulost": {
+      "brødskive": 20,
+      "skive": 10
+    },
+    "østersra": {
+      "stk": 10
+    },
+    "østerssoppra": {
+      "stk": 7,
+      "dl": 30
+    },
+    "adzukibønner": {
+      "dl": 85
+    },
+    "agurk": {
+      "skive": 6,
+      "stk": 325,
+      "dl": 55
+    },
+    "agurker": {
+      "skive": 5
+    },
+    "akkar": {
+      "porsjon": 195
+    },
+    "alaskapollock": {
+      "porsjon": 270
+    },
+    "alfalfaspirer": {
+      "dl": 20
+    },
+    "americano": {
+      "kopp": 240
+    },
+    "ananas": {
+      "stk": 665
+    },
+    "and": {
+      "porsjon": 375
+    },
+    "ansjos": {
+      "stk": 20
+    },
+    "appelsin": {
+      "stk": 195,
+      "båt": 35
+    },
+    "appelsinjuice": {
+      "glass stor": 320,
+      "glass": 200,
+      "dl": 100,
+      "glass liten": 150
+    },
+    "appelsinsaft": {
+      "glass stor": 320,
+      "glass": 200,
+      "dl": 100,
+      "glass liten": 150
+    },
+    "aprikos": {
+      "stk": 7,
+      "dl": 50
+    },
+    "aronia": {
+      "dl": 55
+    },
+    "artiskokk": {
+      "stk": 140
+    },
+    "asparges": {
+      "stk": 16
+    },
+    "aspargesbønner": {
+      "stk": 3
+    },
+    "aspargessuppe": {
+      "porsjon": 350,
+      "dl": 100
+    },
+    "aubergine": {
+      "stk": 285,
+      "skive": 25
+    },
+    "avokado": {
+      "stk stor": 220,
+      "stk liten": 130
+    },
+    "avokadoogkikertpalegg": {
+      "brødskive": 20
+    },
+    "avokadosuppe": {
+      "dl": 100
+    },
+    "babymais": {
+      "stk": 15
+    },
+    "babyspinat": {
+      "dl": 12
+    },
+    "baconost": {
+      "brødskive": 10
+    },
+    "baguett": {
+      "stk": 50
+    },
+    "bambusskudd": {
+      "dl": 60,
+      "stk": 3
+    },
+    "banan": {
+      "stk": 120
+    },
+    "barnemat": {
+      "dl": 40,
+      "ss": 6
+    },
+    "basilikum": {
+      "dl": 5
+    },
+    "bayonneskinke": {
+      "skive": 15
+    },
+    "berlinerbolle": {
+      "stk": 65
+    },
+    "bernaisesaus": {
+      "dl": 100,
+      "porsjon": 75
+    },
+    "betasuppe": {
+      "porsjon": 350,
+      "dl": 100
+    },
+    "bidos": {
+      "porsjon": 450
+    },
+    "bjørnebær": {
+      "stk": 6,
+      "dl": 55
+    },
+    "bladsalat": {
+      "dl": 25
+    },
+    "blod": {
+      "dl": 100
+    },
+    "blodpudding": {
+      "skive": 40
+    },
+    "blokkebær": {
+      "dl": 55
+    },
+    "blomkal": {
+      "bukett": 30,
+      "stk": 480
+    },
+    "blomkalbrokkolisuppe": {
+      "dl": 100,
+      "porsjon": 220
+    },
+    "blomkalsuppe": {
+      "porsjon": 350,
+      "dl": 100
+    },
+    "blabær": {
+      "dl": 55
+    },
+    "blakveite": {
+      "porsjon": 175
+    },
+    "blalange": {
+      "porsjon": 270
+    },
+    "blaskjell": {
+      "porsjon": 115,
+      "dl": 70,
+      "stk": 8
+    },
+    "bløtkake": {
+      "porsjon": 95
+    },
+    "bogskinke": {
+      "boks": 325,
+      "skive": 25
+    },
+    "bokhvete": {
+      "ss": 10,
+      "dl": 75
+    },
+    "bolle": {
+      "stk liten": 50,
+      "stk stor": 115
+    },
+    "bollemiks": {
+      "pose": 400
+    },
+    "borlottibønner": {
+      "dl": 75
+    },
+    "bouillabaisse": {
+      "porsjon": 350,
+      "dl": 100
+    },
+    "breiflabb": {
+      "porsjon": 270
+    },
+    "brennevin": {
+      "glass": 40,
+      "dl": 100
+    },
+    "brie": {
+      "porsjon": 30,
+      "brødskive": 26,
+      "skive": 13
+    },
+    "bringebær": {
+      "stk": 5,
+      "dl": 50
+    },
+    "brisling": {
+      "porsjon": 175
+    },
+    "brokkoli": {
+      "stk": 440,
+      "bukett": 28
+    },
+    "brokkolisuppe": {
+      "porsjon": 350,
+      "dl": 100
+    },
+    "brosme": {
+      "porsjon": 270
+    },
+    "brownies": {
+      "stk": 90
+    },
+    "brunsaus": {
+      "dl": 100,
+      "porsjon": 75
+    },
+    "brunebønner": {
+      "ss": 12,
+      "dl": 80,
+      "porsjon": 80
+    },
+    "brunost": {
+      "skive": 8,
+      "brødskive": 16
+    },
+    "brus": {
+      "boks": 330,
+      "glass stor": 320,
+      "glass": 200,
+      "dl": 100,
+      "glass liten": 150
+    },
+    "brød": {
+      "skive": 38,
+      "stk": 500
+    },
+    "brødmiks": {
+      "pose": 500
+    },
+    "brønnkarse": {
+      "dl": 12
+    },
+    "bulgurgryn": {
+      "dl": 80,
+      "ss": 13,
+      "porsjon": 75
+    },
+    "bønneogolivensalat": {
+      "boks": 300
+    },
+    "bønnegryte": {
+      "porsjon": 300
+    },
+    "bønnekarbonader": {
+      "stk": 60
+    },
+    "bønner": {
+      "boks": 410
+    },
+    "caffelatte": {
+      "dl": 100,
+      "kopp": 300
+    },
+    "camembert": {
+      "porsjon": 30,
+      "brødskive": 26,
+      "skive": 13
+    },
+    "cappucino": {
+      "kopp": 170,
+      "dl": 100
+    },
+    "carambola": {
+      "stk": 85
+    },
+    "chapatti": {
+      "stk": 50
+    },
+    "chayote": {
+      "stk": 270
+    },
+    "cheddar": {
+      "brødskive": 20,
+      "dl": 40
+    },
+    "cheeseburger": {
+      "stk": 105
+    },
+    "cherimoya": {
+      "stk": 210
+    },
+    "cherrytomat": {
+      "stk": 15
+    },
+    "chevre": {
+      "brødskive": 15
+    },
+    "chiafrø": {
+      "ss": 10,
+      "dl": 70
+    },
+    "chili": {
+      "stk": 7
+    },
+    "chilisaus": {
+      "ss": 17
+    },
+    "chorizo": {
+      "skive": 3
+    },
+    "ciabatta": {
+      "stk": 50
+    },
+    "cider": {
+      "glass": 100,
+      "boks": 500,
+      "dl": 100
+    },
+    "cornflakes": {
+      "porsjon": 35,
+      "dl": 14
+    },
+    "cortado": {
+      "dl": 100,
+      "kopp": 60
+    },
+    "couscous": {
+      "dl": 75,
+      "porsjon": 75
+    },
+    "crabsticksalat": {
+      "dl": 95,
+      "brødskive": 30
+    },
+    "croissant": {
+      "stk liten": 45,
+      "stk stor": 80
+    },
+    "cremecherie": {
+      "porsjon": 30
+    },
+    "cremefraiche": {
+      "dl": 100,
+      "ss": 18,
+      "beger": 300
+    },
+    "cupcakes": {
+      "stk": 60
+    },
+    "daddel": {
+      "stk liten": 8,
+      "stk stor": 19
+    },
+    "dessertvin": {
+      "glass": 100,
+      "dl": 100
+    },
+    "dill": {
+      "dl": 12
+    },
+    "dipsaus": {
+      "ss": 17
+    },
+    "donuts": {
+      "stk": 65
+    },
+    "dressing": {
+      "porsjon": 25,
+      "dl": 100,
+      "ss": 18
+    },
+    "drue": {
+      "stk": 5,
+      "dl": 70
+    },
+    "edamer": {
+      "brødskive": 20,
+      "dl": 40,
+      "skive": 10
+    },
+    "eddik": {
+      "dl": 100,
+      "ts": 5,
+      "ss": 11
+    },
+    "egg": {
+      "dl": 100,
+      "stk": 55
+    },
+    "eggehvite": {
+      "stk": 37,
+      "dl": 100
+    },
+    "eggekrem": {
+      "dl": 95,
+      "ss": 13
+    },
+    "eggeplomme": {
+      "dl": 100,
+      "stk": 18
+    },
+    "eggerøre": {
+      "ss": 30,
+      "porsjon": 50
+    },
+    "eggesalat": {
+      "dl": 95,
+      "brødskive": 30
+    },
+    "eggnudler": {
+      "porsjon": 220
+    },
+    "elg": {
+      "porsjon": 200
+    },
+    "elghakk": {
+      "porsjon": 450
+    },
+    "endivesalat": {
+      "dl": 30
+    },
+    "energidrikk": {
+      "boks liten": 250,
+      "dl": 100
+    },
+    "eple": {
+      "stk liten": 90,
+      "stk stor": 165,
+      "stk": 125
+    },
+    "eplejuice": {
+      "glass stor": 320,
+      "glass": 200,
+      "dl": 100,
+      "glass liten": 150
+    },
+    "erter": {
+      "ss": 12,
+      "dl": 60
+    },
+    "ertestuing": {
+      "dl": 100,
+      "porsjon": 130
+    },
+    "espresso": {
+      "dl": 100,
+      "kopp": 30
+    },
+    "falafel": {
+      "pakke": 300
+    },
+    "feltsalat": {
+      "dl": 10
+    },
+    "fennikel": {
+      "dl": 45,
+      "stk": 140
+    },
+    "fersken": {
+      "stk": 150
+    },
+    "feta": {
+      "stk": 200,
+      "dl": 60
+    },
+    "fiken": {
+      "stk": 20,
+      "dl": 80
+    },
+    "fiskeboller": {
+      "stk": 25,
+      "porsjon": 150
+    },
+    "fiskeburger": {
+      "stk": 100,
+      "porsjon": 150
+    },
+    "fiskegrateng": {
+      "porsjon": 275
+    },
+    "fiskegryte": {
+      "porsjon": 300
+    },
+    "fiskekaker": {
+      "stk": 55,
+      "porsjon": 150
+    },
+    "fiskepate": {
+      "skive": 50
+    },
+    "fiskepinner": {
+      "stk": 25,
+      "porsjon": 150
+    },
+    "fiskesuppe": {
+      "porsjon": 350,
+      "dl": 100
+    },
+    "flatbrød": {
+      "stk stor": 20,
+      "stk liten": 4
+    },
+    "fløtemysost": {
+      "skive": 8,
+      "brødskive": 16
+    },
+    "focacciamiks": {
+      "pose": 430
+    },
+    "formkake": {
+      "skive": 45
+    },
+    "frokostblanding": {
+      "porsjon": 35,
+      "dl": 15
+    },
+    "frokostsalat": {
+      "brødskive": 30
+    },
+    "fromasj": {
+      "porsjon": 140
+    },
+    "fruktcocktail": {
+      "dl": 110
+    },
+    "fruktmusli": {
+      "porsjon": 100
+    },
+    "fruktsaus": {
+      "dl": 100,
+      "porsjon": 75
+    },
+    "fruktstang": {
+      "stk": 25
+    },
+    "fruktsuppe": {
+      "dl": 100
+    },
+    "fyrstekake": {
+      "porsjon": 80
+    },
+    "farikal": {
+      "porsjon": 450
+    },
+    "gaffelbiter": {
+      "stk": 5
+    },
+    "galiamelon": {
+      "skive": 55,
+      "stk": 360
+    },
+    "geitmelk": {
+      "glass stor": 320,
+      "glass": 200,
+      "dl": 100,
+      "glass liten": 150,
+      "kartong": 250
+    },
+    "geitost": {
+      "skive": 8,
+      "brødskive": 16
+    },
+    "gelatin": {
+      "stk": 2,
+      "ss": 8
+    },
+    "gele": {
+      "porsjon": 140
+    },
+    "gelefrukt": {
+      "stk": 5
+    },
+    "gjedde": {
+      "porsjon": 270
+    },
+    "gjær": {
+      "pose": 12
+    },
+    "glassnudler": {
+      "porsjon": 85
+    },
+    "gomme": {
+      "porsjon": 20,
+      "dl": 115
+    },
+    "gorgonzola": {
+      "porsjon": 30
+    },
+    "granapadano": {
+      "ss": 6
+    },
+    "granateple": {
+      "stk": 190
+    },
+    "grapefrukt": {
+      "stk": 130
+    },
+    "gresskar": {
+      "dl": 55
+    },
+    "gresskarsuppe": {
+      "porsjon": 350,
+      "dl": 100
+    },
+    "gressløk": {
+      "ss": 3,
+      "dl": 18
+    },
+    "grytebasis": {
+      "porsjon": 300
+    },
+    "grønnjuice": {
+      "dl": 100
+    },
+    "grønnkal": {
+      "dl": 55
+    },
+    "grønnsaksblanding": {
+      "dl": 50
+    },
+    "grønnsaksgryte": {
+      "porsjon": 300
+    },
+    "grønnsakspostei": {
+      "brødskive": 20
+    },
+    "grønnsaksrøre": {
+      "porsjon": 130
+    },
+    "guava": {
+      "stk": 55
+    },
+    "gudbrandsdalsost": {
+      "skive": 8,
+      "brødskive": 16
+    },
+    "gulasj": {
+      "porsjon": 350,
+      "dl": 100
+    },
+    "gulløl": {
+      "glass": 500,
+      "dl": 100,
+      "boks liten": 330
+    },
+    "gulost": {
+      "brødskive": 20,
+      "dl": 40,
+      "skive": 10
+    },
+    "gulrot": {
+      "stk": 75
+    },
+    "gulrotsuppe": {
+      "porsjon": 350,
+      "dl": 100
+    },
+    "gurkemeie": {
+      "ts": 3
+    },
+    "gas": {
+      "porsjon": 365
+    },
+    "hamburger": {
+      "stk": 100
+    },
+    "hamburgerbrød": {
+      "stk": 80
+    },
+    "hare": {
+      "porsjon": 200
+    },
+    "havre": {
+      "porsjon": 100,
+      "dl": 40
+    },
+    "havreogbokhvetegrøt": {
+      "porsjon": 350,
+      "dl": 100
+    },
+    "havregrøt": {
+      "porsjon": 350,
+      "dl": 100
+    },
+    "havremakroner": {
+      "stk": 10
+    },
+    "havreputer": {
+      "porsjon": 35,
+      "dl": 12
+    },
+    "havreringer": {
+      "porsjon": 35
+    },
+    "haval": {
+      "porsjon": 175
+    },
+    "helmelk": {
+      "glass stor": 320,
+      "glass": 200,
+      "dl": 100,
+      "glass liten": 150
+    },
+    "hetvin": {
+      "dl": 100,
+      "glass": 60
+    },
+    "hirse": {
+      "ss": 12,
+      "dl": 80
+    },
+    "hjerte": {
+      "porsjon": 125
+    },
+    "hjertesalat": {
+      "dl": 25
+    },
+    "hjort": {
+      "porsjon": 200
+    },
+    "hodekal": {
+      "dl": 35,
+      "stk": 1150
+    },
+    "hoisinsaus": {
+      "dl": 100,
+      "ts": 5,
+      "ss": 11
+    },
+    "hollandaisesaus": {
+      "dl": 100,
+      "ss": 11
+    },
+    "honningmelon": {
+      "skive": 55,
+      "stk": 370
+    },
+    "horngjel": {
+      "porsjon": 270
+    },
+    "hummer": {
+      "porsjon": 150
+    },
+    "husholdningssaft": {
+      "glass stor": 320,
+      "glass": 200,
+      "dl": 100,
+      "glass liten": 150
+    },
+    "hval": {
+      "porsjon": 150
+    },
+    "hvete": {
+      "ss": 9,
+      "dl": 60
+    },
+    "hvetebrikker": {
+      "stk": 18
+    },
+    "hveteflakristet": {
+      "porsjon": 35,
+      "dl": 18
+    },
+    "hvetekli": {
+      "porsjon": 35,
+      "dl": 25
+    },
+    "hvetemel": {
+      "ss": 9,
+      "dl": 55
+    },
+    "hvitsaus": {
+      "dl": 100,
+      "porsjon": 75
+    },
+    "hvitebønner": {
+      "ss": 12,
+      "dl": 80
+    },
+    "hvitløk": {
+      "stk": 45,
+      "fedd": 3
+    },
+    "hvitting": {
+      "porsjon": 270
+    },
+    "hvitvin": {
+      "glass": 100,
+      "dl": 100
+    },
+    "hyllebær": {
+      "dl": 55
+    },
+    "hyrdepai": {
+      "porsjon": 300
+    },
+    "hyse": {
+      "porsjon": 270
+    },
+    "habrann": {
+      "porsjon": 270
+    },
+    "høne": {
+      "porsjon": 150
+    },
+    "hønsefrikasse": {
+      "porsjon": 300
+    },
+    "ingefær": {
+      "ts": 2
+    },
+    "ingefærjuice": {
+      "beger": 60
+    },
+    "ingefærrot": {
+      "ss": 9
+    },
+    "isbergsalat": {
+      "dl": 25,
+      "stk": 470,
+      "blad": 40
+    },
+    "iskaffe": {
+      "boks": 330,
+      "glass stor": 320,
+      "glass": 200,
+      "dl": 100,
+      "glass liten": 150
+    },
+    "iskrem": {
+      "porsjon": 95,
+      "dl": 60
+    },
+    "iste": {
+      "glass stor": 320,
+      "glass": 200,
+      "dl": 100,
+      "glass liten": 150
+    },
+    "italiensksalat": {
+      "brødskive": 30
+    },
+    "jalapeno": {
+      "stk": 14
+    },
+    "jarlsberg": {
+      "brødskive": 20,
+      "dl": 40,
+      "skive": 10
+    },
+    "jordbær": {
+      "stk stor": 30,
+      "stk liten": 10,
+      "dl": 60
+    },
+    "jordskokk": {
+      "stk": 17,
+      "dl": 55
+    },
+    "jordskokksuppe": {
+      "porsjon": 350,
+      "dl": 100
+    },
+    "juice": {
+      "glass stor": 320,
+      "glass": 200,
+      "dl": 100,
+      "glass liten": 150,
+      "boks": 250
+    },
+    "julekake": {
+      "skive": 50
+    },
+    "kabaret": {
+      "skive": 40
+    },
+    "kaffe": {
+      "kopp": 170,
+      "dl": 100
+    },
+    "kaffefløte": {
+      "dl": 100,
+      "ss": 11,
+      "kartong": 300
+    },
+    "kaffemelk": {
+      "ts": 5,
+      "beger": 10
+    },
+    "kakao": {
+      "kopp": 240,
+      "dl": 100
+    },
+    "kakebunn": {
+      "porsjon": 35
+    },
+    "kakekrem": {
+      "dl": 95,
+      "ss": 13
+    },
+    "kakemiks": {
+      "dl": 40,
+      "ss": 8,
+      "pose": 345
+    },
+    "kaktusfiken": {
+      "stk": 80
+    },
+    "kalkun": {
+      "porsjon": 195
+    },
+    "kalkunfilet": {
+      "skive": 11
+    },
+    "kalkunrull": {
+      "skive": 11
+    },
+    "kalv": {
+      "porsjon": 200
+    },
+    "kamskjell": {
+      "stk": 8
+    },
+    "kanel": {
+      "ts": 4
+    },
+    "kanelbolle": {
+      "stk": 100,
+      "stk stor": 140,
+      "stk liten": 50
+    },
+    "kanin": {
+      "porsjon": 200
+    },
+    "kantaloupemelon": {
+      "skive": 55,
+      "stk": 280
+    },
+    "kantarell": {
+      "stk": 5,
+      "dl": 30
+    },
+    "kapers": {
+      "dl": 60,
+      "stk": 3
+    },
+    "karamellpudding": {
+      "porsjon": 140
+    },
+    "karbonadedeig": {
+      "pakke": 275
+    },
+    "karbonader": {
+      "stk": 100,
+      "porsjon": 150
+    },
+    "kardemomme": {
+      "ts": 3
+    },
+    "karri": {
+      "ts": 3
+    },
+    "karripasta": {
+      "dl": 100,
+      "ss": 18
+    },
+    "karve": {
+      "ts": 3
+    },
+    "kassava": {
+      "stk": 410,
+      "dl": 60
+    },
+    "kastanjer": {
+      "dl": 70,
+      "stk": 8
+    },
+    "kaviar": {
+      "brødskive": 15
+    },
+    "kavring": {
+      "stk": 9,
+      "dl": 40
+    },
+    "ketchup": {
+      "ss": 20,
+      "dl": 110
+    },
+    "kidneybønner": {
+      "ss": 12,
+      "dl": 80
+    },
+    "kikerter": {
+      "ss": 12,
+      "dl": 80
+    },
+    "kikertmel": {
+      "pose": 350
+    },
+    "kinakal": {
+      "stk": 735,
+      "dl": 30
+    },
+    "kirsebær": {
+      "stk": 7,
+      "dl": 60
+    },
+    "kiwi": {
+      "stk": 75,
+      "skive": 15
+    },
+    "kjeks": {
+      "stk": 7
+    },
+    "kjøleskapsgrøt": {
+      "porsjon": 350,
+      "dl": 100
+    },
+    "kjøttbuljong": {
+      "dl": 100
+    },
+    "kjøttdeig": {
+      "pakke": 400
+    },
+    "kjøttkakermedertestuing": {
+      "porsjon": 590
+    },
+    "kjøttkaker": {
+      "stk": 55,
+      "porsjon": 150
+    },
+    "kjøttpudding": {
+      "skive": 30,
+      "porsjon": 150
+    },
+    "kjøttpølse": {
+      "stk liten": 90,
+      "stk stor": 150,
+      "porsjon": 150
+    },
+    "kjøttsuppemedgrønnsakerogpoteter": {
+      "pakke": 350
+    },
+    "klementin": {
+      "stk": 70
+    },
+    "klibrød": {
+      "stk": 8
+    },
+    "klippfisk": {
+      "porsjon": 200
+    },
+    "knekkebrød": {
+      "stk": 14
+    },
+    "knutekal": {
+      "skive": 55,
+      "stk": 110
+    },
+    "kokebanan": {
+      "stk": 180
+    },
+    "kokosbasertdrikke": {
+      "glass stor": 320,
+      "glass": 200,
+      "dl": 100,
+      "glass liten": 150
+    },
+    "kokosmasse": {
+      "dl": 35,
+      "ss": 5
+    },
+    "kokosmelk": {
+      "dl": 95,
+      "boks liten": 165,
+      "ss": 10
+    },
+    "kokosnøtt": {
+      "stk": 270
+    },
+    "koktlaksmedurtesaus": {
+      "porsjon": 490
+    },
+    "kompott": {
+      "porsjon": 160
+    },
+    "kondensertmelk": {
+      "boks": 397
+    },
+    "kongereke": {
+      "stk": 17
+    },
+    "koriander": {
+      "dl": 5
+    },
+    "kornblanding": {
+      "porsjon": 100,
+      "dl": 50
+    },
+    "krabbe": {
+      "boks": 95,
+      "brødskive": 25
+    },
+    "krabbepinner": {
+      "stk": 17
+    },
+    "krekling": {
+      "dl": 55
+    },
+    "krem": {
+      "dl": 25,
+      "ss": 3
+    },
+    "kremfløte": {
+      "dl": 100,
+      "ss": 11,
+      "kartong": 300
+    },
+    "kremost": {
+      "brødskive": 15
+    },
+    "kreps": {
+      "porsjon": 150
+    },
+    "kringle": {
+      "porsjon": 65
+    },
+    "kruskakli": {
+      "dl": 25,
+      "ss": 3.5
+    },
+    "kumquat": {
+      "stk": 19
+    },
+    "kvarg": {
+      "dl": 100,
+      "ss": 18,
+      "beger": 300
+    },
+    "kveite": {
+      "porsjon": 150
+    },
+    "kvæfjordkake": {
+      "porsjon": 80
+    },
+    "kylling": {
+      "stk": 990,
+      "porsjon": 195
+    },
+    "kyllingogkalkunpølse": {
+      "stk": 60
+    },
+    "kyllingburger": {
+      "stk": 140
+    },
+    "kyllinggryte": {
+      "porsjon": 300
+    },
+    "kyllingnuggets": {
+      "stk": 16
+    },
+    "kalrot": {
+      "stk": 780
+    },
+    "lakris": {
+      "stk liten": 5,
+      "stk stor": 20
+    },
+    "laks": {
+      "filet": 125,
+      "porsjon": 175
+    },
+    "laksepalegg": {
+      "beger": 40
+    },
+    "lam": {
+      "stk": 105,
+      "porsjon": 270
+    },
+    "lange": {
+      "porsjon": 270
+    },
+    "lapskaus": {
+      "porsjon": 450
+    },
+    "lasagne": {
+      "porsjon": 300
+    },
+    "lefse": {
+      "pakke": 75,
+      "stk": 35
+    },
+    "lettmelk": {
+      "glass stor": 320,
+      "glass": 200,
+      "dl": 100,
+      "glass liten": 150
+    },
+    "lettrømme": {
+      "dl": 100,
+      "ss": 18,
+      "beger": 300
+    },
+    "lettøl": {
+      "glass": 500,
+      "dl": 100,
+      "boks liten": 330
+    },
+    "lever": {
+      "porsjon": 125
+    },
+    "leverpostei": {
+      "brødskive": 20
+    },
+    "likør": {
+      "glass": 66,
+      "dl": 110
+    },
+    "limabønner": {
+      "dl": 65
+    },
+    "lime": {
+      "stk": 65,
+      "båt": 10,
+      "skive": 10
+    },
+    "limonade": {
+      "dl": 100
+    },
+    "linfrø": {
+      "ss": 8,
+      "dl": 60
+    },
+    "linser": {
+      "porsjon": 85,
+      "ss": 13,
+      "dl": 85
+    },
+    "litchi": {
+      "stk": 12
+    },
+    "loff": {
+      "skive": 50
+    },
+    "lomre": {
+      "porsjon": 270
+    },
+    "lungemos": {
+      "pakke": 400
+    },
+    "lutefisk": {
+      "porsjon": 200
+    },
+    "lyr": {
+      "porsjon": 270
+    },
+    "løk": {
+      "stk": 160,
+      "dl": 55
+    },
+    "løksuppe": {
+      "porsjon": 350,
+      "dl": 100
+    },
+    "macchiato": {
+      "kopp": 35,
+      "dl": 100
+    },
+    "magerost": {
+      "brødskive": 10
+    },
+    "mais": {
+      "dl": 70,
+      "stk": 140
+    },
+    "majones": {
+      "dl": 95,
+      "brødskive": 10
+    },
+    "makrellitomat": {
+      "brødskive": 40,
+      "boks": 110
+    },
+    "makrell": {
+      "brødskive": 25
+    },
+    "mango": {
+      "stk": 335
+    },
+    "mangold": {
+      "dl": 30
+    },
+    "margarin": {
+      "brødskive": 5,
+      "dl": 90
+    },
+    "marsipan": {
+      "stang": 18,
+      "stk": 10
+    },
+    "marsipanbrød": {
+      "stk stor": 65,
+      "stk liten": 25,
+      "stk": 40
+    },
+    "marsipankake": {
+      "porsjon": 95
+    },
+    "matfett": {
+      "dl": 95,
+      "pakke": 500
+    },
+    "matfløte": {
+      "dl": 100,
+      "ss": 11,
+      "kartong": 300
+    },
+    "matlagingsfett": {
+      "brødskive": 5,
+      "dl": 90
+    },
+    "matlagingsprodukt": {
+      "dl": 100,
+      "ss": 11
+    },
+    "mazarin": {
+      "stk": 55
+    },
+    "medisterdeig": {
+      "pakke": 400
+    },
+    "medisterkaker": {
+      "porsjon": 150,
+      "stk": 80
+    },
+    "medisterpølse": {
+      "stk": 400,
+      "porsjon": 150
+    },
+    "mel": {
+      "pose": 360,
+      "dl": 40,
+      "ss": 8
+    },
+    "melk": {
+      "glass stor": 320,
+      "glass": 200,
+      "dl": 100,
+      "glass liten": 150
+    },
+    "melkepalegg": {
+      "brødskive": 15
+    },
+    "meterbønner": {
+      "stk": 13
+    },
+    "milkshake": {
+      "glass stor": 320,
+      "glass": 200,
+      "dl": 100,
+      "glass liten": 150,
+      "beger": 220
+    },
+    "mineralvann": {
+      "glass stor": 320,
+      "glass": 200,
+      "dl": 100,
+      "glass liten": 150
+    },
+    "minestronesuppe": {
+      "porsjon": 350,
+      "dl": 100
+    },
+    "mormonsen": {
+      "porsjon": 80
+    },
+    "moreller": {
+      "stk": 9,
+      "dl": 60
+    },
+    "morsmelkerstatning": {
+      "ss": 7,
+      "dl": 50
+    },
+    "moussaka": {
+      "porsjon": 300
+    },
+    "mozzarella": {
+      "dl": 40,
+      "stk": 125
+    },
+    "multer": {
+      "dl": 50,
+      "stk": 3
+    },
+    "multi0": {
+      "stk": 0.62
+    },
+    "multibarn1": {
+      "stk": 1.5
+    },
+    "multivitaminmikstur": {
+      "porsjon": 10
+    },
+    "mungbønner": {
+      "ss": 12,
+      "dl": 80
+    },
+    "mungbønnespirer": {
+      "dl": 45
+    },
+    "muskat": {
+      "ts": 4
+    },
+    "mørktøl": {
+      "glass": 500,
+      "dl": 100,
+      "boks liten": 330
+    },
+    "nashi": {
+      "stk": 200
+    },
+    "nektarin": {
+      "stk": 115
+    },
+    "nellik": {
+      "ts": 3
+    },
+    "nepe": {
+      "stk": 40,
+      "dl": 55
+    },
+    "nori": {
+      "stk": 3
+    },
+    "normanna": {
+      "porsjon": 30
+    },
+    "norvegia": {
+      "brødskive": 20,
+      "dl": 40,
+      "skive": 10
+    },
+    "norzola": {
+      "porsjon": 30
+    },
+    "nudler": {
+      "porsjon": 85,
+      "pakke": 85
+    },
+    "nype": {
+      "dl": 60
+    },
+    "nypesuppe": {
+      "porsjon": 350,
+      "dl": 100
+    },
+    "nøttekake": {
+      "porsjon": 80
+    },
+    "nøttepalegg": {
+      "brødskive": 15
+    },
+    "okra": {
+      "stk": 7
+    },
+    "oliven": {
+      "stk liten": 3,
+      "stk stor": 7,
+      "dl": 50
+    },
+    "omelett": {
+      "porsjon": 125
+    },
+    "oregano": {
+      "ts": 1
+    },
+    "oreokake": {
+      "porsjon": 95
+    },
+    "ostekake": {
+      "porsjon": 80
+    },
+    "pai": {
+      "porsjon": 300
+    },
+    "paibunnmiks": {
+      "pakke": 200
+    },
+    "pakchoi": {
+      "dl": 30
+    },
+    "panetter": {
+      "stk": 75
+    },
+    "pangasius": {
+      "porsjon": 270
+    },
+    "pannekaker": {
+      "stk": 100
+    },
+    "papaya": {
+      "stk": 250
+    },
+    "paprika": {
+      "stk": 145,
+      "skive": 10
+    },
+    "paprikaogkikertpalegg": {
+      "brødskive": 20
+    },
+    "paradisepler": {
+      "stk": 125
+    },
+    "parmesan": {
+      "dl": 40,
+      "ss": 6
+    },
+    "pasjonsfrukt": {
+      "stk": 18
+    },
+    "pastamedkalkun": {
+      "porsjon": 300
+    },
+    "pastamedkjøttsaus": {
+      "porsjon": 300
+    },
+    "pasta": {
+      "stk": 4,
+      "dl": 35,
+      "pakke": 250
+    },
+    "pastinakk": {
+      "stk": 100,
+      "dl": 55
+    },
+    "pepper": {
+      "ts": 4
+    },
+    "pepperrot": {
+      "ss": 4
+    },
+    "persille": {
+      "ts": 1
+    },
+    "persillerot": {
+      "stk": 90,
+      "dl": 55
+    },
+    "pesto": {
+      "glass": 190,
+      "dl": 100,
+      "ss": 18
+    },
+    "physalis": {
+      "stk": 5
+    },
+    "piggha": {
+      "porsjon": 175
+    },
+    "piggvar": {
+      "porsjon": 270
+    },
+    "pils": {
+      "glass": 500,
+      "dl": 100,
+      "boks liten": 330
+    },
+    "pitabrød": {
+      "stk": 75
+    },
+    "pizza": {
+      "porsjon": 300
+    },
+    "pizzabunn": {
+      "stk": 550
+    },
+    "pizzabunnmiks": {
+      "pose": 350
+    },
+    "pizzafyllbasis": {
+      "dl": 100,
+      "porsjon": 75
+    },
+    "pizzaost": {
+      "dl": 40
+    },
+    "plantebasertburger": {
+      "stk": 50
+    },
+    "plantebasertgrillpølse": {
+      "stk": 80
+    },
+    "plantebasertmiddagsdeig": {
+      "pakke": 400
+    },
+    "plantebasertprodukt": {
+      "brødskive": 20,
+      "skive": 10
+    },
+    "plantebasertschnitzel": {
+      "stk": 90
+    },
+    "plantebasertemiddagsboller": {
+      "pakke": 300
+    },
+    "plomme": {
+      "stk": 50
+    },
+    "polarbrød": {
+      "stk": 38
+    },
+    "pomelo": {
+      "stk": 495
+    },
+    "pommesfrites": {
+      "porsjon": 135,
+      "dl": 45
+    },
+    "ponzusaus": {
+      "dl": 100,
+      "ts": 5,
+      "ss": 11
+    },
+    "popcorn": {
+      "pose": 75,
+      "dl": 3
+    },
+    "portsalut": {
+      "brødskive": 20,
+      "skive": 10
+    },
+    "portobellosopp": {
+      "stk": 84
+    },
+    "potet": {
+      "stk": 55,
+      "stk liten": 30,
+      "porsjon": 170,
+      "stk stor": 100
+    },
+    "potetogpurreløksuppe": {
+      "porsjon": 350,
+      "dl": 100
+    },
+    "potetlompe": {
+      "stk liten": 25,
+      "stk stor": 35
+    },
+    "potetmel": {
+      "dl": 70,
+      "ss": 11
+    },
+    "potetmos": {
+      "porsjon": 200,
+      "dl": 100
+    },
+    "potetmospulver": {
+      "dl": 35,
+      "pose": 90
+    },
+    "potetsalat": {
+      "dl": 100,
+      "ss": 19
+    },
+    "potetskruer": {
+      "dl": 20,
+      "pose": 170
+    },
+    "pudding": {
+      "porsjon": 140
+    },
+    "puffethvete": {
+      "porsjon": 35,
+      "dl": 13
+    },
+    "pumpernikkel": {
+      "skive": 40
+    },
+    "purreløk": {
+      "dl": 45,
+      "stk": 210,
+      "skive": 2
+    },
+    "pyttipanne": {
+      "porsjon": 300
+    },
+    "pære": {
+      "stk stor": 205,
+      "stk liten": 145
+    },
+    "pølsebrød": {
+      "stk stor": 60,
+      "stk liten": 30
+    },
+    "quinoa": {
+      "dl": 70,
+      "porsjon": 75
+    },
+    "rabarbra": {
+      "stk": 100,
+      "dl": 50
+    },
+    "raclette": {
+      "skive": 35
+    },
+    "radicchiorosso": {
+      "dl": 30
+    },
+    "rapidsalat": {
+      "dl": 10
+    },
+    "reddik": {
+      "stk": 4
+    },
+    "reinsdyr": {
+      "porsjon": 200
+    },
+    "reinsdyrkaker": {
+      "stk": 15,
+      "porsjon": 150
+    },
+    "reinsdyrskav": {
+      "porsjon": 200,
+      "pakke": 400
+    },
+    "reker": {
+      "dl": 70
+    },
+    "rekesalat": {
+      "brødskive": 30
+    },
+    "ribberull": {
+      "skive": 14
+    },
+    "rips": {
+      "dl": 50
+    },
+    "ris": {
+      "dl": 80,
+      "porsjon": 55
+    },
+    "risgrøt": {
+      "porsjon": 350,
+      "dl": 100
+    },
+    "riskaker": {
+      "stk liten": 2,
+      "stk stor": 7
+    },
+    "risnudler": {
+      "porsjon": 180
+    },
+    "roastbiff": {
+      "skive": 13
+    },
+    "rogn": {
+      "skive": 45
+    },
+    "rognebær": {
+      "dl": 55
+    },
+    "romanosalat": {
+      "dl": 30
+    },
+    "roquefort": {
+      "porsjon": 30
+    },
+    "rosenkal": {
+      "stk": 12
+    },
+    "rosinbolle": {
+      "stk liten": 50,
+      "stk stor": 115
+    },
+    "rosmarin": {
+      "ts": 1
+    },
+    "ruccolasalat": {
+      "dl": 11,
+      "pose": 65
+    },
+    "rugbrød": {
+      "skive": 40
+    },
+    "rugmel": {
+      "ss": 9,
+      "dl": 50
+    },
+    "rullekake": {
+      "skive": 25
+    },
+    "rundstykke": {
+      "stk": 100,
+      "stk liten": 70,
+      "stk stor": 145
+    },
+    "rundstykker": {
+      "stk": 65
+    },
+    "rype": {
+      "porsjon": 195
+    },
+    "radyr": {
+      "porsjon": 200
+    },
+    "rødbete": {
+      "stk": 120,
+      "dl": 55
+    },
+    "rødbeter": {
+      "dl": 70,
+      "skive": 12
+    },
+    "rødbetsalat": {
+      "dl": 95,
+      "brødskive": 30
+    },
+    "rødspette": {
+      "porsjon": 270
+    },
+    "rødvin": {
+      "dl": 100,
+      "glass": 120
+    },
+    "rømmedressing": {
+      "porsjon": 25,
+      "dl": 100,
+      "ss": 18
+    },
+    "røye": {
+      "porsjon": 175
+    },
+    "saft": {
+      "glass stor": 320,
+      "glass": 200,
+      "dl": 100,
+      "glass liten": 150
+    },
+    "salat": {
+      "porsjon": 135
+    },
+    "salatdressing": {
+      "porsjon": 25,
+      "dl": 100,
+      "ss": 11
+    },
+    "salsiccia": {
+      "skive": 3
+    },
+    "salt": {
+      "dl": 130,
+      "ts": 7
+    },
+    "sashimi": {
+      "stk": 20
+    },
+    "sei": {
+      "porsjon": 270
+    },
+    "seibiff": {
+      "porsjon": 270,
+      "stk": 90
+    },
+    "seilaks": {
+      "brødskive": 25
+    },
+    "selbubla": {
+      "porsjon": 30
+    },
+    "sellerirot": {
+      "stk": 545,
+      "dl": 50
+    },
+    "semulegryn": {
+      "ss": 10,
+      "dl": 70
+    },
+    "sesamfrø": {
+      "ss": 9,
+      "dl": 60
+    },
+    "sesamposteipasta": {
+      "ss": 16,
+      "brødskive": 15
+    },
+    "seterrømme": {
+      "dl": 100,
+      "ss": 18,
+      "beger": 300
+    },
+    "sharon": {
+      "stk": 125
+    },
+    "shiitakesopp": {
+      "stk": 8,
+      "dl": 30
+    },
+    "sik": {
+      "porsjon": 270
+    },
+    "sikorisalat": {
+      "dl": 20
+    },
+    "sild": {
+      "porsjon": 175
+    },
+    "sildesalat": {
+      "brødskive": 30
+    },
+    "sitron": {
+      "skive": 15,
+      "stk": 80
+    },
+    "sitronsaft": {
+      "dl": 100,
+      "stk": 33,
+      "ss": 11
+    },
+    "sjalottløk": {
+      "stk stor": 45,
+      "stk liten": 13,
+      "dl": 55
+    },
+    "sjampinjong": {
+      "dl": 35,
+      "stk": 18
+    },
+    "sjokolade": {
+      "plate liten": 70,
+      "stk stor": 45,
+      "plate": 150,
+      "stk liten": 3,
+      "plate stor": 210
+    },
+    "sjokoladedrikk": {
+      "kopp": 240,
+      "dl": 100
+    },
+    "sjokoladekake": {
+      "porsjon": 80
+    },
+    "sjokolademelk": {
+      "glass stor": 320,
+      "glass": 200,
+      "dl": 100,
+      "glass liten": 150
+    },
+    "sjokoladepudding": {
+      "porsjon": 140
+    },
+    "sjokoladepulver": {
+      "dl": 45,
+      "ss": 8
+    },
+    "sjokoladepalegg": {
+      "brødskive": 15
+    },
+    "sjokoladesaus": {
+      "porsjon": 25,
+      "dl": 130,
+      "ss": 17
+    },
+    "sjysaus": {
+      "dl": 100,
+      "porsjon": 75
+    },
+    "sjøtunge": {
+      "porsjon": 270
+    },
+    "skate": {
+      "porsjon": 270
+    },
+    "skinkerull": {
+      "skive": 12
+    },
+    "skolebrød": {
+      "stk liten": 115,
+      "stk stor": 160
+    },
+    "skorsonnerot": {
+      "stk liten": 30,
+      "stk stor": 75
+    },
+    "skumgodt": {
+      "pose": 125,
+      "stk": 1
+    },
+    "skummetmelk": {
+      "glass stor": 320,
+      "glass": 200,
+      "dl": 100,
+      "glass liten": 150
+    },
+    "skyr": {
+      "pose": 90
+    },
+    "smoothie": {
+      "glass stor": 320,
+      "glass": 200,
+      "dl": 100,
+      "glass liten": 150
+    },
+    "smoothieblanding": {
+      "pakke": 400
+    },
+    "smuldrepai": {
+      "porsjon": 80
+    },
+    "smagodt": {
+      "stk": 8,
+      "stk stor": 15,
+      "stk liten": 3
+    },
+    "smørkrem": {
+      "dl": 95,
+      "ss": 14
+    },
+    "snegler": {
+      "dl": 70
+    },
+    "sodd": {
+      "porsjon": 450,
+      "boks": 850
+    },
+    "solbær": {
+      "dl": 50
+    },
+    "solbærsaft": {
+      "glass stor": 320,
+      "glass": 200,
+      "dl": 100,
+      "glass liten": 150
+    },
+    "solbærsirup": {
+      "glass": 200,
+      "dl": 100,
+      "glass liten": 150
+    },
+    "sosisser": {
+      "stk": 30,
+      "porsjon": 150
+    },
+    "soyabønner": {
+      "ss": 12,
+      "dl": 80
+    },
+    "soyapølse": {
+      "stk": 40
+    },
+    "spekesild": {
+      "porsjon": 150
+    },
+    "speltmel": {
+      "ss": 9,
+      "dl": 55
+    },
+    "spinat": {
+      "pose liten": 65,
+      "dl": 12,
+      "pose stor": 250
+    },
+    "spinatsuppe": {
+      "porsjon": 350,
+      "dl": 100
+    },
+    "spisskummen": {
+      "ts": 3
+    },
+    "spisskal": {
+      "dl": 35,
+      "stk": 800
+    },
+    "squash": {
+      "stk": 285,
+      "skive": 15
+    },
+    "stangselleri": {
+      "stk": 380,
+      "stilk": 33,
+      "dl": 50
+    },
+    "steinbit": {
+      "porsjon": 270
+    },
+    "steinsopp": {
+      "dl": 30
+    },
+    "sterkvin": {
+      "dl": 105,
+      "glass": 63
+    },
+    "sterkøl": {
+      "glass": 500,
+      "dl": 100,
+      "boks liten": 330
+    },
+    "stikkelsbær": {
+      "dl": 60,
+      "stk": 3
+    },
+    "stilton": {
+      "porsjon": 30
+    },
+    "storfe": {
+      "porsjon": 200
+    },
+    "sukker": {
+      "stk": 2,
+      "ss": 13,
+      "ts": 5,
+      "dl": 90
+    },
+    "sukkererter": {
+      "stk": 4
+    },
+    "sukkertøy": {
+      "stk": 3
+    },
+    "surkal": {
+      "pose": 450,
+      "dl": 100
+    },
+    "sushi": {
+      "stk": 25
+    },
+    "svartebønner": {
+      "ss": 15,
+      "dl": 90
+    },
+    "svartøyebønner": {
+      "dl": 75
+    },
+    "sveitserost": {
+      "brødskive": 20,
+      "dl": 40,
+      "skive": 10
+    },
+    "svin": {
+      "porsjon": 230,
+      "stk": 180
+    },
+    "svinekam": {
+      "skive": 15
+    },
+    "svinestekmedsurkalogpoteter": {
+      "porsjon": 555
+    },
+    "syltetøy": {
+      "beger": 24,
+      "ss": 16,
+      "brødskive": 20,
+      "dl": 115
+    },
+    "syrnethavreprodukttilmatlaging": {
+      "dl": 100,
+      "ss": 18
+    },
+    "syrnetmelk": {
+      "glass stor": 320,
+      "glass": 200,
+      "dl": 100,
+      "glass liten": 150
+    },
+    "syrnet": {
+      "dl": 100,
+      "ss": 18
+    },
+    "søtpotet": {
+      "stk": 130
+    },
+    "søtpotetsuppe": {
+      "porsjon": 350,
+      "dl": 100
+    },
+    "tacomedskjell": {
+      "stk": 155
+    },
+    "tacomedtortilla": {
+      "stk": 230
+    },
+    "tacokrydder": {
+      "ss": 8,
+      "pakke": 35
+    },
+    "tacosuppe": {
+      "porsjon": 350,
+      "dl": 100
+    },
+    "taffelost": {
+      "brødskive": 20,
+      "skive": 10
+    },
+    "terte": {
+      "stk": 30
+    },
+    "tilskuddsblanding": {
+      "ss": 7,
+      "dl": 50
+    },
+    "tilslørtebondepiker": {
+      "porsjon": 95
+    },
+    "timian": {
+      "ts": 1
+    },
+    "tindved": {
+      "dl": 50
+    },
+    "tomat": {
+      "stk": 95,
+      "skive": 13
+    },
+    "tomatbønner": {
+      "dl": 110,
+      "ss": 19
+    },
+    "tomater": {
+      "stk": 3
+    },
+    "tomatsuppe": {
+      "porsjon": 350,
+      "dl": 100
+    },
+    "torsk": {
+      "porsjon": 270,
+      "stk liten": 55,
+      "stk stor": 100
+    },
+    "tortilla": {
+      "stk": 42
+    },
+    "tortillachips": {
+      "pose stor": 200,
+      "pose liten": 150,
+      "stk": 3
+    },
+    "traktkantarell": {
+      "dl": 30
+    },
+    "tran": {
+      "ts": 4.6
+    },
+    "tranebær": {
+      "dl": 55
+    },
+    "tunfisk": {
+      "boks": 185,
+      "dl": 95,
+      "ss": 14
+    },
+    "tyggegummi": {
+      "stk": 1
+    },
+    "tykklefse": {
+      "stk stor": 120,
+      "stk liten": 55
+    },
+    "tyttebær": {
+      "dl": 55
+    },
+    "uer": {
+      "porsjon": 270
+    },
+    "vafler": {
+      "stk liten": 25,
+      "stk stor": 100
+    },
+    "vaniljekrem": {
+      "dl": 95,
+      "ss": 13
+    },
+    "vaniljesaus": {
+      "dl": 100,
+      "porsjon": 75
+    },
+    "vann": {
+      "glass stor": 320,
+      "glass": 200,
+      "dl": 100,
+      "glass liten": 150
+    },
+    "vannbakkels": {
+      "stk": 20
+    },
+    "vannkastanjer": {
+      "skive": 3,
+      "dl": 65
+    },
+    "vannmelon": {
+      "skive": 80
+    },
+    "varmsjokolade": {
+      "kopp": 240,
+      "dl": 100
+    },
+    "vegetabilskpostei": {
+      "brødskive": 15
+    },
+    "vegetarlasagne": {
+      "porsjon": 300
+    },
+    "villsvin": {
+      "porsjon": 200
+    },
+    "viltsaus": {
+      "dl": 100,
+      "porsjon": 75
+    },
+    "vin": {
+      "glass": 100,
+      "dl": 100
+    },
+    "vitaminbjørner": {
+      "stk": 2.1
+    },
+    "vitamineral": {
+      "stk": 0.55
+    },
+    "varløk": {
+      "dl": 40,
+      "stk": 19
+    },
+    "wasabirot": {
+      "stk": 170
+    },
+    "wienerbrød": {
+      "stk liten": 50,
+      "stk stor": 80
+    },
+    "wienerkringle": {
+      "stk": 50
+    },
+    "wienersnitzel": {
+      "stk": 150
+    },
+    "wraps": {
+      "stk": 42
+    },
+    "yoghurt": {
+      "dl": 100,
+      "ss": 18
+    },
+    "abor": {
+      "porsjon": 270
+    },
+    "ørret": {
+      "filet": 160,
+      "porsjon": 175
+    },
+    "østavind": {
+      "brødskive": 20,
+      "skive": 10
+    },
+    "østers": {
+      "stk": 10
+    },
+    "østerssopp": {
+      "stk": 7,
+      "dl": 30
+    }
+  }
+}

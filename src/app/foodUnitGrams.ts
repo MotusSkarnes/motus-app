@@ -1,13 +1,28 @@
 import { defaultPortionGramsForFood, defaultPortionLabelForFood } from "./foodPortionDefaults";
+import { normalizeFoodBankNameKey } from "./foodBankNameKey";
 import type { FoodItem } from "./foodBankTypes";
+import unitGramsData from "./foodBankUnitGramsData.json";
+import { RECIPE_INGREDIENT_UNITS } from "./recipeUnits";
 
 const UNIT_ALIASES: Record<string, string> = {
   skiver: "skive",
   handfull: "håndfull",
+  "stk (liten)": "stk liten",
+  "stk (stor)": "stk stor",
+  "stk (middels)": "stk",
+  "glass (lite)": "glass liten",
+  "glass (stort)": "glass stor",
+  "boks (liten)": "boks liten",
+  "pose (liten)": "pose liten",
+  "pose (stor)": "pose stor",
+  "plate (liten)": "plate liten",
+  "plate (stor)": "plate stor",
+  "plate (middels)": "plate",
+  "pr brødskive": "brødskive",
 };
 
 const PORTION_UNIT_PATTERN =
-  /(\d+(?:[.,]\d+)?|\d+\s*\/\s*\d+)\s*(g|kg|dl|ss|ts|stk|skiver?|boks|fedd|håndfull|handfull)\b/gi;
+  /(\d+(?:[.,]\d+)?|\d+\s*\/\s*\d+)\s*(stk liten|stk stor|glass liten|glass stor|boks liten|pose liten|pose stor|plate liten|plate stor|brødskive|håndfull|handfull|porsjon|skiver?|fedd|beger|pakke|filet|kartong|bukett|stilk|stang|terning|glass|kopp|plate|pose|boks|skive|dl|ss|ts|stk|kg|g)\b/gi;
 
 export type FoodWithUnitGrams = Pick<FoodItem, "name" | "portionLabel" | "portionGrams"> & {
   unitGrams?: FoodItem["unitGrams"];
@@ -91,6 +106,16 @@ export function hasRegisteredUnitWeight(food: FoodWithUnitGrams | null | undefin
   return registeredGramsPerUnit(food, unit) != null;
 }
 
+export function registeredRecipeUnitsForFood(food: FoodWithUnitGrams | null | undefined): readonly string[] {
+  if (!food) return RECIPE_INGREDIENT_UNITS;
+  return RECIPE_INGREDIENT_UNITS.filter((unit) => hasRegisteredUnitWeight(food, unit));
+}
+
+export function missingRecipeUnitsForFood(food: FoodWithUnitGrams | null | undefined): readonly string[] {
+  if (!food) return [];
+  return RECIPE_INGREDIENT_UNITS.filter((unit) => unit !== "g" && unit !== "kg" && !hasRegisteredUnitWeight(food, unit));
+}
+
 export function withRegisteredUnitGrams(food: FoodItem, unit: string, gramsPerUnit: number): FoodItem {
   const key = normalizeFoodUnit(unit);
   const grams = Number(gramsPerUnit);
@@ -125,4 +150,140 @@ export function formatGramsAmount(grams: number): string {
   if (!Number.isFinite(rounded) || rounded <= 0) return "";
   if (Math.abs(rounded - Math.round(rounded)) < 0.05) return `${Math.round(rounded)} g`;
   return `${String(rounded).replace(".", ",")} g`;
+}
+
+export type MatvaretabellenPortion = {
+  id?: string;
+  portionName?: string;
+  quantity?: number;
+  unit?: string;
+};
+
+const MATVARETABELLEN_PORTION_TO_UNIT: Record<string, string> = {
+  dl: "dl",
+  desiliter: "dl",
+  spiseskje: "ss",
+  teskje: "ts",
+  stk: "stk",
+  stk_middels: "stk",
+  "stk (middels)": "stk",
+  stk_liten: "stk liten",
+  "stk (liten)": "stk liten",
+  stk_stor: "stk stor",
+  "stk (stor)": "stk stor",
+  skive: "skive",
+  boks: "boks",
+  boks_liten: "boks liten",
+  "boks (liten)": "boks liten",
+  fedd: "fedd",
+  neve: "håndfull",
+  håndfull: "håndfull",
+  handfull: "håndfull",
+  porsjon: "porsjon",
+  glass: "glass",
+  glass_lite: "glass liten",
+  "glass (lite)": "glass liten",
+  glass_stort: "glass stor",
+  "glass (stort)": "glass stor",
+  kopp: "kopp",
+  beger: "beger",
+  pakke: "pakke",
+  pose: "pose",
+  pose_liten: "pose liten",
+  "pose (liten)": "pose liten",
+  pose_stor: "pose stor",
+  "pose (stor)": "pose stor",
+  pr_skive: "brødskive",
+  "pr brødskive": "brødskive",
+  filet: "filet",
+  kartong: "kartong",
+  plate: "plate",
+  plate_liten: "plate liten",
+  "plate (liten)": "plate liten",
+  plate_stor: "plate stor",
+  "plate (stor)": "plate stor",
+  plate_middels: "plate",
+  "plate (middels)": "plate",
+  bukett: "bukett",
+  blad: "blad",
+  stilk: "stilk",
+  stang: "stang",
+  ring: "ring",
+  båt: "båt",
+  terning: "terning",
+};
+
+const LOOKUP_NAME_ALIASES: Record<string, string> = {
+  banana: "banan",
+  eggewite: "eggehvite",
+};
+
+const UNIT_GRAMS_LOOKUP = (unitGramsData as { lookup?: Record<string, Record<string, number>> }).lookup ?? {};
+
+function gramsFromPortion(portion: MatvaretabellenPortion): number | null {
+  const grams = Number(portion.quantity);
+  if (!Number.isFinite(grams) || grams <= 0) return null;
+  const unitCode = String(portion.unit ?? "g").trim().toLowerCase();
+  if (unitCode && unitCode !== "g") return null;
+  return grams;
+}
+
+/** Mapper Matvaretabellens porsjoner til gram per enhet i måltidsbyggeren. */
+export function unitGramsFromMatvaretabellenPortions(
+  portions: MatvaretabellenPortion[] | undefined,
+): FoodItem["unitGrams"] | undefined {
+  if (!portions?.length) return undefined;
+  const exact: Record<string, number> = {};
+
+  for (const portion of portions) {
+    const grams = gramsFromPortion(portion);
+    if (grams == null) continue;
+    const id = String(portion.id ?? "").trim().toLowerCase();
+    const name = String(portion.portionName ?? "").trim().toLowerCase();
+    const mapped = MATVARETABELLEN_PORTION_TO_UNIT[id] ?? MATVARETABELLEN_PORTION_TO_UNIT[name];
+    if (!mapped) continue;
+    exact[mapped] = grams;
+  }
+
+  return sanitizeUnitGrams(exact);
+}
+
+function lookupKeysForName(name: string): string[] {
+  const key = normalizeFoodBankNameKey(name);
+  if (!key) return [];
+  const keys = [key];
+  const alias = LOOKUP_NAME_ALIASES[key];
+  if (alias) keys.push(normalizeFoodBankNameKey(alias));
+  for (const [from, to] of Object.entries(LOOKUP_NAME_ALIASES)) {
+    if (to === key) keys.push(from);
+  }
+  return [...new Set(keys.filter(Boolean))];
+}
+
+export function lookupUnitGramsForFoodName(name: string): FoodItem["unitGrams"] | undefined {
+  const keys = lookupKeysForName(name);
+  if (!keys.length) return undefined;
+
+  let best: Record<string, number> | undefined;
+  let bestScore = -1;
+  for (const [candidateKey, units] of Object.entries(UNIT_GRAMS_LOOKUP)) {
+    const matchedKey = keys.find(
+      (key) => candidateKey === key || candidateKey.startsWith(key) || key.startsWith(candidateKey),
+    );
+    if (!matchedKey) continue;
+    const unitCount = Object.keys(units).length;
+    const exact = keys.includes(candidateKey) ? 1000 : 0;
+    const prefix = candidateKey.startsWith(matchedKey) ? matchedKey.length : 0;
+    const score = exact + unitCount * 10 + prefix;
+    if (score > bestScore) {
+      best = units;
+      bestScore = score;
+    }
+  }
+  return sanitizeUnitGrams(best);
+}
+
+export function enrichFoodItemUnitGrams(item: FoodItem): FoodItem {
+  const unitGrams = mergeUnitGramsMaps(item.unitGrams, lookupUnitGramsForFoodName(item.name));
+  return unitGrams ? { ...item, unitGrams } : item;
 }

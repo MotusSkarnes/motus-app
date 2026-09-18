@@ -132,6 +132,10 @@ describe("foodBankImport", () => {
         foodName: "Brokkoli, norsk, rå",
         foodGroupId: "6",
         calories: { quantity: 34 },
+        portions: [
+          { id: "stk", portionName: "stk", quantity: 250, unit: "g" },
+          { id: "spiseskje", portionName: "spiseskje", quantity: 10, unit: "g" },
+        ],
         constituents: [
           { nutrientId: "Protein", quantity: 2.8, unit: "g" },
           { nutrientId: "Karbo", quantity: 7, unit: "g" },
@@ -141,6 +145,8 @@ describe("foodBankImport", () => {
       } satisfies MatvaretabellenFood,
       "Trener",
     );
+    expect(matvaretabellenBrokkoli).not.toBeNull();
+    expect(matvaretabellenBrokkoli?.unitGrams).toEqual({ stk: 250, ss: 10 });
     expect(matvaretabellenBrokkoli).not.toBeNull();
     const { items, backfilled } = applyMatvaretabellenNutritionBackfill(
       [seedBrokkoli],

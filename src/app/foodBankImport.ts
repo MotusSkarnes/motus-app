@@ -7,6 +7,7 @@ import {
 import { normalizeFoodBankNameKey } from "./foodBankNameKey";
 import { cloneNutritionSnapshot } from "./memberNutritionRehydrate";
 import { foodCategoryMeta, type FoodCategoryId, type FoodItem, type FoodNutrition, type FoodSource } from "./foodBankTypes";
+import { mergeUnitGramsMaps, unitGramsFromMatvaretabellenPortions } from "./foodUnitGrams";
 import { uid } from "./storage";
 
 export const MATVARETABELLEN_FOODS_URL = "https://www.matvaretabellen.no/api/nb/foods.json";
@@ -33,7 +34,7 @@ export type MatvaretabellenFood = {
   foodName?: string;
   foodGroupId?: string;
   calories?: { quantity?: number };
-  portions?: Array<{ portionName?: string; quantity?: number; unit?: string }>;
+  portions?: Array<{ id?: string; portionName?: string; quantity?: number; unit?: string }>;
   constituents?: Array<{ nutrientId?: string; quantity?: number; unit?: string }>;
 };
 
@@ -138,18 +139,23 @@ export function applyMatvaretabellenNutritionBackfill(
     const match = findMatvaretabellenNutritionMatch(item.name, imported);
     if (!match) return item;
 
+    const nextUnitGrams = mergeUnitGramsMaps(item.unitGrams, match.unitGrams);
     const nextNutrition = cloneNutritionSnapshot(match.nutritionPer100g);
     const currentScore = nutritionRichnessScore(item.nutritionPer100g);
     const nextScore = nutritionRichnessScore(nextNutrition);
     const currentWater = Number(item.nutritionPer100g.water ?? 0);
     const nextWater = Number(nextNutrition.water ?? 0);
-    if (nextScore <= currentScore && nextWater <= currentWater) return item;
+    const nutritionImproved = nextScore > currentScore || nextWater > currentWater;
+    const unitsChanged = JSON.stringify(nextUnitGrams ?? {}) !== JSON.stringify(item.unitGrams ?? {});
+    if (!nutritionImproved && !unitsChanged) return item;
 
     backfilled += 1;
     return {
       ...item,
-      nutritionPer100g: nextNutrition,
-      nutritionSyncedAt: syncedAt,
+      ...(nutritionImproved
+        ? { nutritionPer100g: nextNutrition, nutritionSyncedAt: syncedAt }
+        : {}),
+      ...(nextUnitGrams ? { unitGrams: nextUnitGrams } : {}),
     };
   });
   return { items, backfilled };
@@ -214,6 +220,7 @@ export function mapMatvaretabellenFood(food: MatvaretabellenFood, trainerName: s
   const portionName = portion?.portionName
     ? `${portion.quantity ?? 100} ${portionUnit} (${portion.portionName})`
     : "100 g";
+  const unitGrams = unitGramsFromMatvaretabellenPortions(food.portions);
 
   return {
     id: stableImportId(name, "matvaretabell"),
@@ -228,6 +235,7 @@ export function mapMatvaretabellenFood(food: MatvaretabellenFood, trainerName: s
     imageEmoji: meta.emoji,
     isCustom: false,
     isEdited: false,
+    ...(unitGrams ? { unitGrams } : {}),
     nutritionPer100g: (() => {
       const fat = constituentAmount(food, NUTRIENT_IDS.fat);
       const saturatedFat = constituentAmount(food, NUTRIENT_IDS.saturatedFat);
@@ -536,6 +544,7 @@ export function mergeFoodImports(
       isCustom: previous.isCustom || candidate.isCustom,
       isEdited: previous.isEdited || candidate.isEdited || previous.isCustom !== true,
       nutritionSyncedAt: new Date().toISOString(),
+      unitGrams: mergeUnitGramsMaps(previous.unitGrams, candidate.unitGrams),
     };
     updated += 1;
   }

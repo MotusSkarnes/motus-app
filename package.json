@@ -8,6 +8,7 @@
     "generate:icons": "node ./scripts/generate-pwa-icons.mjs",
     "generate:test-plans": "node ./scripts/generate-test-plans.mjs",
     "generate:food-micronutrients": "node ./scripts/enrich-food-bank-micronutrients.mjs",
+    "generate:food-unit-grams": "node ./scripts/enrich-food-bank-unit-grams.mjs",
     "prebuild": "npm run generate:icons",
     "build": "node ./node_modules/vite/bin/vite.js build",
     "postbuild": "node ./scripts/write-service-worker.mjs",

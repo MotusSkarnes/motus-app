@@ -5,20 +5,7 @@ import {
   type RecipeIngredientFoodOverrides,
 } from "./recipeMacros";
 
-export const RECIPE_INGREDIENT_UNITS = [
-  "g",
-  "kg",
-  "dl",
-  "ss",
-  "ts",
-  "stk",
-  "skive",
-  "boks",
-  "fedd",
-  "håndfull",
-] as const;
-
-export type RecipeIngredientUnit = (typeof RECIPE_INGREDIENT_UNITS)[number];
+export { RECIPE_INGREDIENT_UNITS, type RecipeIngredientUnit } from "./recipeUnits";
 
 export type RecipeIngredientDraft = {
   id: string;
