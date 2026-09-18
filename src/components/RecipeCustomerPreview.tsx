@@ -1,5 +1,5 @@
 import type { FoodItem } from "../app/foodBankTypes";
-import { recipePeopleLabel, type RecipeIngredientDraft } from "../app/recipeBody";
+import { recipePeopleLabel, resolvedRecipeIngredientName, type RecipeIngredientDraft } from "../app/recipeBody";
 import { TextInput } from "../app/ui";
 import { RecipeMethodSection } from "./RecipeMethodSection";
 
@@ -22,8 +22,7 @@ export function RecipeCustomerPreview({
   foodItems,
   onNameChange,
 }: RecipeCustomerPreviewProps) {
-  const rows = ingredients.filter((row) => row.quantity.trim() || row.unit.trim() || row.name.trim());
-  if (!rows.length) return null;
+  if (!ingredients.length) return null;
 
   return (
     <section className="motus-recipe-customer-preview" aria-label="Slik ser kunden det">
@@ -40,9 +39,10 @@ export function RecipeCustomerPreview({
           <span className="text-xs text-slate-500">{recipePeopleLabel(servings)}</span>
         </div>
         <ul className="motus-recipe-ingredient-list">
-          {rows.map((row) => {
+          {ingredients.map((row) => {
             const bankName = row.foodId ? foodItems.find((item) => item.id === row.foodId)?.name : undefined;
             const amount = amountLabel(row);
+            const placeholder = resolvedRecipeIngredientName({ ...row, name: "" }, bankName) || "Navn kunden ser";
             return (
               <li key={row.id} className="motus-recipe-ingredient-row motus-recipe-customer-preview__row">
                 {amount ? <span className="motus-recipe-ingredient-amount">{amount}</span> : null}
@@ -51,7 +51,8 @@ export function RecipeCustomerPreview({
                     className="motus-recipe-ingredient-name-input"
                     value={row.name}
                     onChange={(event) => onNameChange(row.id, event.target.value)}
-                    aria-label={`Navn kunden ser${row.name.trim() ? ` for ${row.name.trim()}` : ""}`}
+                    placeholder={placeholder}
+                    aria-label={`Navn kunden ser${row.name.trim() ? ` for ${row.name.trim()}` : bankName ? ` for ${bankName}` : ""}`}
                     autoComplete="off"
                   />
                   {bankName && bankName.trim() !== row.name.trim() ? (

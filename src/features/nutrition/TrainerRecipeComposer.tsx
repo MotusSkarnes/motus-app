@@ -35,6 +35,7 @@ import {
   overridesFromIngredientDrafts,
   parseRecipeBaseServings,
   parseRecipeIngredientDrafts,
+  resolvedRecipeIngredientName,
   type RecipeIngredientDraft,
 } from "../../app/recipeBody";
 import { RecipeAvoidanceWarning } from "../../components/RecipeAvoidanceWarning";
@@ -102,6 +103,17 @@ function withMatchedFoodIds(
     return { ...row, foodId };
   });
   return changed ? next : drafts;
+}
+
+function withResolvedIngredientNames(
+  rows: RecipeIngredientDraft[],
+  foodItems: FoodItem[],
+): RecipeIngredientDraft[] {
+  return rows.map((row) => {
+    const bankName = row.foodId ? foodItems.find((item) => item.id === row.foodId)?.name : undefined;
+    const name = resolvedRecipeIngredientName(row, bankName);
+    return name === row.name ? row : { ...row, name };
+  });
 }
 
 function snapshotRecipeDraft(input: RecipeDraftSnapshot): string {
@@ -234,11 +246,11 @@ export function TrainerRecipeComposer({
     () =>
       buildRecipeBody({
         servings: draftServings,
-        ingredients,
+        ingredients: withResolvedIngredientNames(ingredients, foodItemsForMacros),
         method,
         tips,
       }),
-    [draftServings, ingredients, method, tips],
+    [draftServings, foodItemsForMacros, ingredients, method, tips],
   );
 
   const recipeMacros = useMemo(
@@ -288,8 +300,10 @@ export function TrainerRecipeComposer({
       setStatus("Velg minst én kategori (frokost, lunsj, middag eller snack).");
       return;
     }
-    const namedIngredients = ingredients.filter((row) => row.name.trim());
-    if (!namedIngredients.length) {
+    const ingredientsToSave = withResolvedIngredientNames(ingredients, foodItemsForMacros).filter((row) =>
+      row.name.trim(),
+    );
+    if (!ingredientsToSave.length) {
       setStatus("Legg til minst én ingrediens.");
       return;
     }
@@ -298,10 +312,10 @@ export function TrainerRecipeComposer({
       return;
     }
     const servingsNumber = Math.max(1, Math.round(Number(servings) || 1));
-    const saveOverrides = overridesFromIngredientDrafts(namedIngredients);
+    const saveOverrides = overridesFromIngredientDrafts(ingredientsToSave);
     const body = buildRecipeBody({
       servings: servingsNumber,
-      ingredients: namedIngredients,
+      ingredients: ingredientsToSave,
       method,
       tips,
     });
@@ -520,7 +534,7 @@ export function TrainerRecipeComposer({
               }}
             />
           ) : null}
-          {ingredients.some((row) => row.name.trim()) ? (
+          {ingredients.length > 0 ? (
             <RecipeCustomerPreview
               ingredients={ingredients}
               servings={draftServings}

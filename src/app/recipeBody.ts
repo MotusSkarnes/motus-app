@@ -28,6 +28,16 @@ export function suggestRecipeDisplayName(foodName: string): string {
   return beforeComma || trimmed;
 }
 
+/** Navn i oppskriften: det treneren skrev, ellers matvaren fra banken. */
+export function resolvedRecipeIngredientName(
+  row: Pick<RecipeIngredientDraft, "name" | "foodId">,
+  bankName?: string,
+): string {
+  const typed = row.name.trim();
+  if (typed) return typed;
+  return suggestRecipeDisplayName(bankName ?? "") || (bankName ?? "").trim();
+}
+
 export function formatRecipeIngredientLine(row: RecipeIngredientDraft): string {
   const qty = row.quantity.trim().replace(".", ",");
   const unit = row.unit.trim();

@@ -8,6 +8,7 @@ import {
   recipePeopleLabel,
   recipePortionsLabel,
   suggestRecipeDisplayName,
+  resolvedRecipeIngredientName,
 } from "./recipeBody";
 
 const SAMPLE_BODY = `**Til 2 porsjoner**
@@ -70,5 +71,17 @@ describe("recipeBody", () => {
   it("korter ned lange matvarenavn til visningsnavn", () => {
     expect(suggestRecipeDisplayName("Cottage cheese, 1,7% protein, naturell")).toBe("Cottage cheese");
     expect(suggestRecipeDisplayName("Kyllingbryst")).toBe("Kyllingbryst");
+  });
+
+  it("beholder matvarenavn fra banken når kundens navn er tomt", () => {
+    expect(resolvedRecipeIngredientName({ id: "1", quantity: "1", unit: "stk", name: "", foodId: "avocado" }, "Avokado")).toBe(
+      "Avokado",
+    );
+    expect(
+      resolvedRecipeIngredientName(
+        { id: "1", quantity: "1", unit: "stk", name: "Avokado moset", foodId: "avocado" },
+        "Avokado",
+      ),
+    ).toBe("Avokado moset");
   });
 });
