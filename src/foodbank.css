@@ -5658,29 +5658,6 @@
   color: #94a3b8;
 }
 
-.motus-food-log-form__measure-row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.3rem;
-}
-
-.motus-food-log-form__measure-chip {
-  border: 1px solid #e2e8f0;
-  background: #ffffff;
-  border-radius: 9999px;
-  padding: 0.25rem 0.55rem;
-  font-size: 0.6875rem;
-  font-weight: 600;
-  color: #475569;
-  cursor: pointer;
-}
-
-.motus-food-log-form__measure-chip--active {
-  border-color: #0d9488;
-  background: #ccfbf1;
-  color: #0f766e;
-}
-
 .motus-food-log-form__row {
   display: flex;
   align-items: flex-end;
@@ -5689,9 +5666,22 @@
 
 .motus-food-log-form__qty {
   flex: 1;
+  min-width: 0;
   display: flex;
   flex-direction: column;
   gap: 0.2rem;
+}
+
+.motus-food-log-form__unit {
+  flex: 0 0 7.25rem;
+  min-width: 6.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.motus-food-log-form__unit-select {
+  height: 2.5rem;
 }
 
 .motus-food-log-form__qty-label {

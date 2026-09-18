@@ -2,16 +2,17 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { formatMacro, type FoodItem } from "../../app/foodBankTypes";
 import { normalizeFoodBankNameKey } from "../../app/foodBankNameKey";
 import {
-  defaultMeasureModeForFood,
-  foodMeasureOptionsForItem,
-  resolveFoodLogGrams,
-  type FoodMeasureMode,
+  defaultFoodLogQuantityForUnit,
+  defaultFoodLogUnitForItem,
+  foodLogUnitOptionsForItem,
+  resolveFoodLogGramsForUnit,
 } from "../../app/foodPortionMeasure";
 import { defaultPortionGramsForFood } from "../../app/foodPortionDefaults";
 import { findFoodItemById } from "../../app/foodBankDedup";
 import { searchFoodBankItems } from "../../app/foodBankSearch";
+import { formatGramsAmount } from "../../app/foodUnitGrams";
 import { useFoodBankItems } from "../../app/useFoodBankItems";
-import { OutlineButton, TextInput } from "../../app/ui";
+import { OutlineButton, SelectBox, TextInput } from "../../app/ui";
 
 export type FoodLogDraft = {
   food: FoodItem;
@@ -45,7 +46,7 @@ export function FoodLogFormFields({ onSubmit, submitLabel = "Logg", compact = fa
   const foodItems = useFoodBankItems();
   const [search, setSearch] = useState("");
   const [selectedFood, setSelectedFood] = useState<FoodItem | null>(null);
-  const [measureMode, setMeasureMode] = useState<FoodMeasureMode>("grams");
+  const [unit, setUnit] = useState("g");
   const [quantityInput, setQuantityInput] = useState("100");
   const [error, setError] = useState<string | null>(null);
   const quantityInputRef = useRef<HTMLInputElement | null>(null);
@@ -70,11 +71,10 @@ export function FoodLogFormFields({ onSubmit, submitLabel = "Logg", compact = fa
     });
   }, [foodItems]);
 
-  const measureOptions = useMemo(() => foodMeasureOptionsForItem(selectedFood), [selectedFood]);
-
-  const activeMeasure = useMemo(
-    () => measureOptions.find((option) => option.mode === measureMode) ?? measureOptions[0]!,
-    [measureMode, measureOptions],
+  const unitOptions = useMemo(() => foodLogUnitOptionsForItem(selectedFood), [selectedFood]);
+  const activeUnit = useMemo(
+    () => unitOptions.find((option) => option.unit === unit) ?? unitOptions[0]!,
+    [unit, unitOptions],
   );
 
   useEffect(() => {
@@ -85,16 +85,16 @@ export function FoodLogFormFields({ onSubmit, submitLabel = "Logg", compact = fa
     const configKey = `${selectedFood.id}:${selectedFood.portionGrams}:${selectedFood.portionLabel}`;
     if (lastConfiguredFoodIdRef.current === configKey) return;
     lastConfiguredFoodIdRef.current = configKey;
-    const mode = defaultMeasureModeForFood(selectedFood);
-    setMeasureMode(mode);
-    setQuantityInput(mode === "portion" ? "1" : String(defaultPortionGramsForFood(selectedFood)));
+    const nextUnit = defaultFoodLogUnitForItem(selectedFood);
+    setUnit(nextUnit);
+    setQuantityInput(defaultFoodLogQuantityForUnit(selectedFood, nextUnit));
   }, [selectedFood]);
 
   const previewGrams = useMemo(() => {
     if (!selectedFood) return 0;
     const quantity = Number(quantityInput.replace(",", "."));
-    return resolveFoodLogGrams(selectedFood, activeMeasure.mode, quantity, activeMeasure.gramsPerUnit);
-  }, [activeMeasure, quantityInput, selectedFood]);
+    return resolveFoodLogGramsForUnit(quantity, activeUnit.gramsPerUnit);
+  }, [activeUnit, quantityInput, selectedFood]);
 
   function selectFood(item: FoodItem) {
     lastConfiguredFoodIdRef.current = "";
@@ -108,7 +108,7 @@ export function FoodLogFormFields({ onSubmit, submitLabel = "Logg", compact = fa
     setSelectedFood(null);
     lastConfiguredFoodIdRef.current = "";
     setQuantityInput("100");
-    setMeasureMode("grams");
+    setUnit("g");
   }
 
   function handleSubmit() {
@@ -117,9 +117,9 @@ export function FoodLogFormFields({ onSubmit, submitLabel = "Logg", compact = fa
       return;
     }
     const quantity = Number(quantityInput.replace(",", "."));
-    const grams = resolveFoodLogGrams(selectedFood, activeMeasure.mode, quantity, activeMeasure.gramsPerUnit);
+    const grams = resolveFoodLogGramsForUnit(quantity, activeUnit.gramsPerUnit);
     if (!Number.isFinite(grams) || grams <= 0) {
-      setError(activeMeasure.mode === "portion" ? "Skriv inn gyldig antall." : "Skriv inn gyldig gram.");
+      setError(activeUnit.unit === "g" ? "Skriv inn gyldig gram." : "Skriv inn gyldig mengde.");
       return;
     }
     setError(null);
@@ -177,32 +177,28 @@ export function FoodLogFormFields({ onSubmit, submitLabel = "Logg", compact = fa
       )}
       {selectedFood ? (
         <>
-          <div className="motus-food-log-form__measure-row">
-            {measureOptions.map((option) => (
-              <button
-                key={option.mode}
-                type="button"
-                className={`motus-food-log-form__measure-chip ${measureMode === option.mode ? "motus-food-log-form__measure-chip--active" : ""}`}
-                onClick={() => {
-                  setMeasureMode(option.mode);
-                  setQuantityInput(option.mode === "portion" ? "1" : String(defaultPortionGramsForFood(selectedFood)));
-                }}
-              >
-                {option.mode === "grams" ? "Gram" : option.label}
-              </button>
-            ))}
-          </div>
           <div className="motus-food-log-form__row">
             <label className="motus-food-log-form__qty">
-              <span className="motus-food-log-form__qty-label">
-                {measureMode === "portion" ? `Antall (${activeMeasure.label})` : "Gram"}
-              </span>
+              <span className="motus-food-log-form__qty-label">Mengde</span>
               <TextInput
                 ref={quantityInputRef}
                 value={quantityInput}
                 onChange={(e) => setQuantityInput(e.target.value)}
                 inputMode="decimal"
                 className="motus-food-log-form__qty-input"
+                aria-label="Mengde"
+              />
+            </label>
+            <label className="motus-food-log-form__unit">
+              <span className="motus-food-log-form__qty-label">Enhet</span>
+              <SelectBox
+                value={activeUnit.unit}
+                onChange={(nextUnit) => {
+                  setUnit(nextUnit);
+                  setQuantityInput(defaultFoodLogQuantityForUnit(selectedFood, nextUnit));
+                }}
+                options={unitOptions.map((option) => ({ value: option.unit, label: option.label }))}
+                className="motus-food-log-form__unit-select"
               />
             </label>
             <OutlineButton type="button" onClick={handleSubmit}>
@@ -211,7 +207,7 @@ export function FoodLogFormFields({ onSubmit, submitLabel = "Logg", compact = fa
           </div>
           {previewGrams > 0 ? (
             <p className="motus-food-log-form__preview">
-              {selectedFood.name} · {formatMacro(previewGrams, 0)} g
+              {quantityInput.trim() || "0"} {activeUnit.label} · {formatGramsAmount(previewGrams)} · {selectedFood.name}
             </p>
           ) : null}
         </>

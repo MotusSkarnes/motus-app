@@ -1,5 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { foodMeasureOptionsForItem, formatLoggedQuantityLabel, resolveFoodLogGrams } from "./foodPortionMeasure";
+import {
+  defaultFoodLogQuantityForUnit,
+  defaultFoodLogUnitForItem,
+  foodLogUnitOptionsForItem,
+  foodMeasureOptionsForItem,
+  formatLoggedQuantityLabel,
+  resolveFoodLogGrams,
+  resolveFoodLogGramsForUnit,
+} from "./foodPortionMeasure";
 import type { FoodItem } from "./foodBankTypes";
 
 function food(partial: Partial<FoodItem>): FoodItem {
@@ -22,6 +30,28 @@ describe("foodPortionMeasure", () => {
   it("offers gram and portion when food has portion", () => {
     const options = foodMeasureOptionsForItem(food({}));
     expect(options.map((o) => o.mode)).toEqual(["grams", "portion"]);
+  });
+
+  it("lists registered household units from the meal builder", () => {
+    const item = food({
+      name: "Avokado",
+      portionLabel: "1/2 stk",
+      portionGrams: 100,
+      unitGrams: { "stk liten": 120, stk: 200, "stk stor": 280, ss: 15 },
+    });
+    const units = foodLogUnitOptionsForItem(item).map((option) => option.unit);
+    expect(units).toContain("g");
+    expect(units).toContain("stk");
+    expect(units).toContain("stk liten");
+    expect(units).toContain("stk stor");
+    expect(units).toContain("ss");
+  });
+
+  it("defaults to the food portion unit and converts amount to grams", () => {
+    const item = food({});
+    expect(defaultFoodLogUnitForItem(item)).toBe("dl");
+    expect(defaultFoodLogQuantityForUnit(item, "dl")).toBe("1");
+    expect(resolveFoodLogGramsForUnit(2, 100)).toBe(200);
   });
 
   it("converts portion count to grams", () => {
