@@ -37,6 +37,17 @@ afterEach(() => {
   localStorage.removeItem(FOOD_BANK_STORAGE_KEY);
 });
 
+describe("food bank load cache", () => {
+  it("does not rewrite storage on a second load", () => {
+    persistFoodBankItems([vitaminbamser()]);
+    const first = loadFoodBankItems();
+    const rawAfterFirst = localStorage.getItem(FOOD_BANK_STORAGE_KEY);
+    const second = loadFoodBankItems();
+    expect(second).toBe(first);
+    expect(localStorage.getItem(FOOD_BANK_STORAGE_KEY)).toBe(rawAfterFirst);
+  });
+});
+
 describe("food bank micronutrient zeros", () => {
   it("keeps measured 0 on a custom food after save and reload", () => {
     persistFoodBankItems([vitaminbamser()]);

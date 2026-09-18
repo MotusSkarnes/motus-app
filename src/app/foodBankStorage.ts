@@ -67,24 +67,57 @@ function dedupeAndNormalizeItems(items: FoodItem[]): ReturnType<typeof dedupeFoo
 
 function unitGramsSignature(items: FoodItem[]): string {
   return [...items]
-    .map((item) => `${item.id}:${JSON.stringify(item.unitGrams ?? null)}`)
+    .map((item) => {
+      const units = item.unitGrams;
+      if (!units) return `${item.id}:`;
+      const body = Object.keys(units)
+        .sort()
+        .map((unit) => `${unit}=${units[unit]}`)
+        .join(",");
+      return `${item.id}:${body}`;
+    })
     .sort()
     .join("\n");
 }
 
+let cachedFoodBankRaw: string | null | undefined;
+let cachedFoodBankItems: FoodItem[] | null = null;
+
+function readFoodBankRaw(): string | null {
+  if (typeof window === "undefined") return null;
+  return window.localStorage.getItem(FOOD_BANK_STORAGE_KEY);
+}
+
+function rememberFoodBankItems(items: FoodItem[], raw = readFoodBankRaw()): FoodItem[] {
+  cachedFoodBankRaw = raw;
+  cachedFoodBankItems = items;
+  return items;
+}
+
+function writeFoodBankItems(items: FoodItem[]): void {
+  writeJson(FOOD_BANK_STORAGE_KEY, items);
+  rememberFoodBankItems(items);
+}
+
 export function loadFoodBankItems(): FoodItem[] {
-  const stored = readJson<FoodItem[]>(FOOD_BANK_STORAGE_KEY);
+  const raw = readFoodBankRaw();
+  if (cachedFoodBankItems && cachedFoodBankRaw === raw) return cachedFoodBankItems;
+
+  const stored = raw ? readJson<FoodItem[]>(FOOD_BANK_STORAGE_KEY) : null;
   if (stored?.length) {
     const withSeeds = appendMissingSeedFoodItems(stored);
     const { items: deduped, idRemap } = dedupeAndNormalizeItems(withSeeds);
     const unitsChanged = unitGramsSignature(stored) !== unitGramsSignature(deduped);
-    if (
+    const shouldPersist =
       deduped.length !== stored.length ||
       withSeeds.length !== stored.length ||
       unitsChanged ||
-      Object.keys(idRemap).length > 0
-    ) {
-      persistFoodBankItems(deduped);
+      Object.keys(idRemap).length > 0;
+    if (shouldPersist) {
+      writeFoodBankItems(deduped);
+      notifyFoodBankChanged();
+    } else {
+      rememberFoodBankItems(deduped, raw);
     }
     if (Object.keys(idRemap).length > 0) {
       const previousFavorites = loadFavoriteFoodIds();
@@ -97,12 +130,15 @@ export function loadFoodBankItems(): FoodItem[] {
     return deduped;
   }
   const seeded = dedupeAndNormalizeItems(buildDefaultFoodBankItems()).items;
-  persistFoodBankItems(seeded);
+  writeFoodBankItems(seeded);
+  notifyFoodBankChanged();
   return seeded;
 }
 
 export function persistFoodBankItems(items: FoodItem[]): void {
-  writeJson(FOOD_BANK_STORAGE_KEY, items.map(normalizeFoodItem));
+  const normalized = items.map(normalizeFoodItem);
+  writeJson(FOOD_BANK_STORAGE_KEY, normalized);
+  rememberFoodBankItems(normalized);
   notifyFoodBankChanged();
 }
 

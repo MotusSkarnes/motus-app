@@ -105,24 +105,65 @@ function tableMatchScore(seedName: string, table: FoodItem): number {
   return score;
 }
 
+function addNameKeys(keys: Set<string>, name: string): void {
+  const full = canonicalFoodBankNameKey(name);
+  const primary = foodNamePrimaryKey(name);
+  if (full) keys.add(full);
+  if (primary) keys.add(primary);
+}
+
+/** Navnenøkler som allerede finnes, inkludert primærnavn fra tabellvarer (Gulrot, rå → gulrot). */
+export function foodBankCoveredNameKeys(items: FoodItem[]): Set<string> {
+  const keys = new Set<string>();
+  for (const item of items) {
+    addNameKeys(keys, item.name);
+  }
+  return keys;
+}
+
+function officialCoveredNameKeys(items: FoodItem[]): Set<string> {
+  const keys = new Set<string>();
+  for (const item of items) {
+    if (!isOfficialTableFood(item)) continue;
+    addNameKeys(keys, item.name);
+  }
+  return keys;
+}
+
 export function existingFoodCoversSeedName(items: FoodItem[], seedName: string): boolean {
-  return items.some((item) => isOfficialTableFood(item) && tableNameCoversSeedName(item.name, seedName));
+  const seedKey = canonicalFoodBankNameKey(seedName);
+  if (!seedKey) return false;
+  return officialCoveredNameKeys(items).has(seedKey);
 }
 
 export function withoutCoveredSeedPlaceholders(items: FoodItem[]): FoodItem[] {
-  return items.filter((item) => !isCollapsiblePlaceholder(item) || !existingFoodCoversSeedName(items, item.name));
+  const covered = officialCoveredNameKeys(items);
+  if (!covered.size) return items;
+  return items.filter((item) => {
+    if (!isCollapsiblePlaceholder(item)) return true;
+    const key = canonicalFoodBankNameKey(item.name);
+    return !key || !covered.has(key);
+  });
 }
 
 function collapseSeedPlaceholders(items: FoodItem[], idRemap: Record<string, string>): FoodItem[] {
   const official = items.filter(isOfficialTableFood);
   if (!official.length) return items;
 
+  const byPrimary = new Map<string, FoodItem[]>();
+  for (const item of official) {
+    const key = foodNamePrimaryKey(item.name);
+    if (!key) continue;
+    const list = byPrimary.get(key) ?? [];
+    list.push(item);
+    byPrimary.set(key, list);
+  }
+
   const keep = new Map(items.map((item) => [item.id, item]));
   for (const placeholder of items) {
     if (!isCollapsiblePlaceholder(placeholder)) continue;
-    const covers = official.filter(
-      (item) => item.id !== placeholder.id && tableNameCoversSeedName(item.name, placeholder.name),
-    );
+    const key = canonicalFoodBankNameKey(placeholder.name);
+    const covers = (byPrimary.get(key) ?? []).filter((item) => item.id !== placeholder.id);
     if (!covers.length) continue;
     const best = [...covers].sort((left, right) => tableMatchScore(placeholder.name, right) - tableMatchScore(placeholder.name, left))[0];
     if (!best || tableMatchScore(placeholder.name, best) < 0) continue;
