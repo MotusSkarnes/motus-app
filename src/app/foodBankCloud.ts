@@ -320,44 +320,54 @@ export async function syncTrainerFoodBankFromRemote(
   return { ok: uploaded, source: uploaded ? "local" : "none" };
 }
 
+let memberFoodBankSyncInFlight: Promise<{ ok: boolean }> | null = null;
+
 /** Medlem: hent PT sin matvarebank + felles varer + egne godkjente forslag. */
 export async function syncMemberFoodBankFromTrainer(
   ownerUserId: string,
   memberId?: string,
 ): Promise<{ ok: boolean }> {
   if (!isSupabaseConfigured || !ownerUserId.trim()) return { ok: false };
+  if (memberFoodBankSyncInFlight) return memberFoodBankSyncInFlight;
 
-  const [sharedItems, remote, approvedItems] = await Promise.all([
-    fetchSharedFoodItemsFromSupabase(),
-    fetchTrainerFoodBankFromSupabase(ownerUserId),
-    memberId?.trim() ? fetchApprovedFoodItemsForMember(memberId) : Promise.resolve([]),
-  ]);
+  memberFoodBankSyncInFlight = (async () => {
+    try {
+      const [sharedItems, remote, approvedItems] = await Promise.all([
+        fetchSharedFoodItemsFromSupabase(),
+        fetchTrainerFoodBankFromSupabase(ownerUserId),
+        memberId?.trim() ? fetchApprovedFoodItemsForMember(memberId) : Promise.resolve([]),
+      ]);
 
-  const baseItems = loadFoodBankItems();
-  const ptItems = remote?.items ?? [];
-  // PT bank is source of truth for shared ids. Stale member cache must not keep old portion/macros.
-  const mergedItems = mergeFoodBankItems(
-    approvedItems,
-    mergeFoodBankItems(ptItems, mergeFoodBankItems(sharedItems, baseItems)),
-  );
+      const baseItems = loadFoodBankItems();
+      const ptItems = remote?.items ?? [];
+      // PT bank is source of truth for shared ids. Stale member cache must not keep old portion/macros.
+      const mergedItems = mergeFoodBankItems(
+        approvedItems,
+        mergeFoodBankItems(ptItems, mergeFoodBankItems(sharedItems, baseItems)),
+      );
 
-  cacheTrainerFoodBankSnapshot({
-    items: mergedItems,
-    favoriteIds: loadFavoriteFoodIds(),
-    recentIds: loadRecentFoodIds(),
-    updatedAt: Date.now(),
-  });
+      cacheTrainerFoodBankSnapshot({
+        items: mergedItems,
+        favoriteIds: loadFavoriteFoodIds(),
+        recentIds: loadRecentFoodIds(),
+        updatedAt: Date.now(),
+      });
 
-  const memberKey = memberId?.trim() ?? "";
-  if (memberKey) {
-    const state = loadMemberMealPlanState(memberKey);
-    const { next, updates } = rehydrateMemberMealPlanState(state, mergedItems);
-    if (updates > 0) {
-      persistMemberMealPlanStateLocalAndScheduleCloud(memberKey, next);
+      const memberKey = memberId?.trim() ?? "";
+      if (memberKey) {
+        const state = loadMemberMealPlanState(memberKey);
+        const { next, updates } = rehydrateMemberMealPlanState(state, mergedItems);
+        if (updates > 0) {
+          persistMemberMealPlanStateLocalAndScheduleCloud(memberKey, next);
+        }
+      }
+
+      return { ok: true };
+    } finally {
+      memberFoodBankSyncInFlight = null;
     }
-  }
-
-  return { ok: true };
+  })();
+  return memberFoodBankSyncInFlight;
 }
 
 let memberFoodBankSyncTimer: ReturnType<typeof setTimeout> | null = null;

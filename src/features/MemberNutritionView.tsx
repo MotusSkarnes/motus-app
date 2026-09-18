@@ -84,7 +84,6 @@ export function MemberNutritionView({
   useEffect(() => {
     const ptOwnerUserId = member.ownerUserId?.trim() ?? "";
     if (ptOwnerUserId) void syncMemberFoodBankFromTrainer(ptOwnerUserId, member.id);
-    refreshMemberFoodBank();
     const onVisible = () => {
       if (document.visibilityState === "visible") refreshMemberFoodBank();
     };
@@ -150,7 +149,6 @@ export function MemberNutritionView({
           <LogMealPanel
             memberId={memberId}
             mealPlanTargets={dailyTargets}
-            onRefreshFoodBank={refreshMemberFoodBank}
             hasMealPlan={false}
           />
         </div>
@@ -169,7 +167,6 @@ export function MemberNutritionView({
           memberId={memberId}
           memberName={memberName}
           onOpenAvoidances={() => setNutritionTab("avoidances")}
-          onRefreshFoodBank={refreshMemberFoodBank}
         />
       </div>
     );
@@ -183,7 +180,6 @@ export function MemberNutritionView({
     memberName,
     onOpenMessages,
     setNutritionTab,
-    refreshMemberFoodBank,
   ]);
 
   return (
@@ -193,7 +189,7 @@ export function MemberNutritionView({
       mealPlan={
         <>
           {mealPlanContent}
-          <MemberSubmitFoodPanel member={member} onRefreshFoodBank={refreshMemberFoodBank} />
+          <MemberSubmitFoodPanel member={member} />
         </>
       }
       mealPlanTargets={dailyTargets}

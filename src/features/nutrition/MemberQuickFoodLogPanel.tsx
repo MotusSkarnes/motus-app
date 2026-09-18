@@ -15,14 +15,13 @@ import { Card, OutlineButton, TextInput } from "../../app/ui";
 type MemberQuickFoodLogPanelProps = {
   memberId: string;
   readOnly?: boolean;
-  onRefreshFoodBank?: () => void;
 };
 
 function todayKey(): string {
   return toIsoDateKey(new Date());
 }
 
-export function MemberQuickFoodLogPanel({ memberId, readOnly = false, onRefreshFoodBank }: MemberQuickFoodLogPanelProps) {
+export function MemberQuickFoodLogPanel({ memberId, readOnly = false }: MemberQuickFoodLogPanelProps) {
   const foodItems = useFoodBankItems();
   const { items: recipes } = useInspirationRecipeItems();
   const [search, setSearch] = useState("");
@@ -33,10 +32,6 @@ export function MemberQuickFoodLogPanel({ memberId, readOnly = false, onRefreshF
 
   const key = todayKey();
   const logs = state.quickFoodLogs[key] ?? [];
-
-  useEffect(() => {
-    onRefreshFoodBank?.();
-  }, [onRefreshFoodBank]);
 
   useEffect(() => {
     let mounted = true;

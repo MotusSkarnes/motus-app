@@ -92,7 +92,6 @@ type MemberMealPlanDashboardProps = {
   memberId: string;
   memberName: string;
   onOpenAvoidances?: () => void;
-  onRefreshFoodBank?: () => void;
 };
 
 function mealSlotLabel(name: string): string {
@@ -227,7 +226,7 @@ export function loggedMealEntriesFromPlanMeal(
   return [...fromPlan, ...selfLogs];
 }
 
-export function MemberMealPlanDashboard({ plan, memberId, onOpenAvoidances, onRefreshFoodBank }: MemberMealPlanDashboardProps) {
+export function MemberMealPlanDashboard({ plan, memberId, onOpenAvoidances }: MemberMealPlanDashboardProps) {
   const foodItems = useFoodBankItems();
   const { items: inspirationRecipes } = useInspirationRecipeItems();
   const foodById = useMemo(() => foodItemsToById(foodItems), [foodItems]);
@@ -441,15 +440,22 @@ export function MemberMealPlanDashboard({ plan, memberId, onOpenAvoidances, onRe
   const displayMacrosProgress = isSelectedToday ? combinedMacrosToday : combinedMacrosSelected;
   const waterLiters = tracking.waterLiters[todayKey] ?? 0;
   const waterFromQuickLogsTodayLiters = useMemo(() => {
+    const indexes = { byId: foodById };
     const gramsFromQuickLogs = quickLogsToday.reduce((sum, entry) => {
-      const resolvedNutrition = resolveNutritionFromFoodItems(entry.name, entry.nutritionPer100g, foodItems, entry.foodId);
+      const resolvedNutrition = resolveNutritionFromFoodItems(
+        entry.name,
+        entry.nutritionPer100g,
+        foodItems,
+        entry.foodId,
+        indexes,
+      );
       const waterPer100g = foodWaterPer100g(resolvedNutrition) ?? 0;
       if (!Number.isFinite(waterPer100g) || waterPer100g <= 0) return sum;
       const scale = entry.grams > 0 ? entry.grams / 100 : 0;
       return sum + waterPer100g * scale;
     }, 0);
     return gramsFromQuickLogs / 1000;
-  }, [quickLogsToday, foodItems]);
+  }, [foodById, foodItems, quickLogsToday]);
   const waterFromLoggedPlanFoodTodayLiters = useMemo(
     () => sumLoggedWaterLitersFromFoodItems(todayDayResolved, loggedFoodToday, foodById, foodItems),
     [todayDayResolved, loggedFoodToday, foodById, foodItems],
@@ -926,7 +932,6 @@ export function MemberMealPlanDashboard({ plan, memberId, onOpenAvoidances, onRe
           <LogMealPanel
             memberId={memberId}
             mealPlanTargets={plan.targets}
-            onRefreshFoodBank={onRefreshFoodBank}
             hasMealPlan
             showWaterSection={false}
             preferredDateKey={selectedDateKey}

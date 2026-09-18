@@ -1,5 +1,5 @@
 import { mergeMicronutrientsPreferKnown } from "./foodBankMicronutrients";
-import { findFoodItemById } from "./foodBankDedup";
+import { findFoodItemById, foodItemsById } from "./foodBankDedup";
 import type { FoodItem, FoodNutrition } from "./foodBankTypes";
 import type { MemberMealPlanState, MemberQuickFoodLogEntry } from "./memberMealPlanState";
 
@@ -132,27 +132,32 @@ export function resolveNutritionFromFoodItems(
   stored: MemberQuickFoodLogEntry["nutritionPer100g"],
   items: FoodItem[],
   foodId?: string,
+  indexes?: { byId?: Map<string, FoodItem>; byName?: NutritionLookup },
 ): MemberQuickFoodLogEntry["nutritionPer100g"] {
   if (!items.length) return stored;
 
-  let merged = cloneNutritionSnapshot(stored);
-  let matched = false;
-
   const id = foodId?.trim();
   if (id) {
-    const byId = findFoodItemById(items, id);
+    const byId = indexes?.byId?.get(id) ?? findFoodItemById(items, id);
     if (byId) {
-      matched = true;
-      merged = mergeNutritionWithBank(byId.nutritionPer100g, merged);
+      return mergeNutritionWithBank(byId.nutritionPer100g, cloneNutritionSnapshot(stored));
     }
   }
 
-  if (normalizeFoodLookupKey(foodName)) {
-    for (const item of items) {
-      if (!foodNameKeysMatch(foodName, item.name)) continue;
-      matched = true;
-      merged = mergeNutritionWithBank(merged, item.nutritionPer100g);
-    }
+  const nameKey = normalizeFoodLookupKey(foodName);
+  if (!nameKey) return stored;
+
+  const exact = indexes?.byName?.get(nameKey);
+  if (exact) {
+    return mergeNutritionWithBank(cloneNutritionSnapshot(stored), exact);
+  }
+
+  let merged = cloneNutritionSnapshot(stored);
+  let matched = false;
+  for (const item of items) {
+    if (!foodNameKeysMatch(foodName, item.name)) continue;
+    matched = true;
+    merged = mergeNutritionWithBank(merged, item.nutritionPer100g);
   }
 
   return matched ? merged : stored;
@@ -162,12 +167,15 @@ export function rehydrateMemberMealPlanState(
   state: MemberMealPlanState,
   foodItems: FoodItem[],
 ): { next: MemberMealPlanState; updates: number } {
+  const byId = foodItemsById(foodItems);
+  const byName = buildNutritionLookupByFoodName(foodItems);
+  const indexes = { byId, byName };
   let updates = 0;
   const quickFoodLogs = Object.fromEntries(
     Object.entries(state.quickFoodLogs).map(([dateKey, logs]) => [
       dateKey,
       logs.map((entry) => {
-        const latest = resolveNutritionFromFoodItems(entry.name, entry.nutritionPer100g, foodItems, entry.foodId);
+        const latest = resolveNutritionFromFoodItems(entry.name, entry.nutritionPer100g, foodItems, entry.foodId, indexes);
         if (nutritionSnapshotsEqual(entry.nutritionPer100g, latest)) return entry;
         updates += 1;
         return { ...entry, nutritionPer100g: latest };
@@ -177,7 +185,7 @@ export function rehydrateMemberMealPlanState(
   const savedMeals = (state.savedMeals ?? []).map((meal) => ({
     ...meal,
     items: meal.items.map((item) => {
-      const latest = resolveNutritionFromFoodItems(item.name, item.nutritionPer100g, foodItems, item.foodId);
+      const latest = resolveNutritionFromFoodItems(item.name, item.nutritionPer100g, foodItems, item.foodId, indexes);
       if (nutritionSnapshotsEqual(item.nutritionPer100g, latest)) return item;
       updates += 1;
       return { ...item, nutritionPer100g: latest };

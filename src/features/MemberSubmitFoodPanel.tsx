@@ -20,7 +20,6 @@ import { Card, OutlineButton } from "../app/ui";
 
 type MemberSubmitFoodPanelProps = {
   member: Member;
-  onRefreshFoodBank?: () => void;
 };
 
 function emptyDraft(): FoodSubmissionDraft {
@@ -56,7 +55,7 @@ function cloneDraft(draft: FoodSubmissionDraft): FoodSubmissionDraft {
   };
 }
 
-export function MemberSubmitFoodPanel({ member, onRefreshFoodBank }: MemberSubmitFoodPanelProps) {
+export function MemberSubmitFoodPanel({ member }: MemberSubmitFoodPanelProps) {
   const [createOpen, setCreateOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [draft, setDraft] = useState<FoodSubmissionDraft>(() => emptyDraft());
@@ -70,8 +69,7 @@ export function MemberSubmitFoodPanel({ member, onRefreshFoodBank }: MemberSubmi
   const reloadHistory = useCallback(async () => {
     const rows = await fetchMemberFoodSubmissions(member.id);
     setHistory(rows);
-    onRefreshFoodBank?.();
-  }, [member.id, onRefreshFoodBank]);
+  }, [member.id]);
 
   useEffect(() => {
     void reloadHistory();

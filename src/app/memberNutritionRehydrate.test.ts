@@ -208,4 +208,12 @@ describe("memberNutritionRehydrate", () => {
     expect(resolved.carbs).toBe(0.8);
     expect(resolved.water).toBe(1);
   });
+
+  it("does not scan other foods when foodId already matches", () => {
+    const carrot = food("Gulrot, norsk, rå", 90);
+    const cake = food("Gulrotkake", 99);
+    cake.id = "food-cake";
+    const resolved = resolveNutritionFromFoodItems("Gulrot", carrot.nutritionPer100g, [cake, carrot], carrot.id);
+    expect(resolved.water).toBe(90);
+  });
 });

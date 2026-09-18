@@ -3,7 +3,6 @@ import { ChevronLeft, ChevronRight, Plus, UtensilsCrossed } from "lucide-react";
 import { formatMacro } from "../../app/foodBankTypes";
 import { MEMBER_MEAL_SLOTS, memberMealSlotLabel } from "../../app/memberMealSlots";
 import { draftToQuickLogEntry, type MealDraftItem } from "../../app/mealDraft";
-import { resolveNutritionFromFoodItems } from "../../app/memberNutritionRehydrate";
 import {
   toIsoDateKey,
   type MemberMealPlanState,
@@ -31,7 +30,6 @@ const FOOD_LOG_LOOKBACK_DAYS = 14;
 type LogMealPanelProps = {
   memberId: string;
   mealPlanTargets?: MealPlanTargets | null;
-  onRefreshFoodBank?: () => void;
   hasMealPlan?: boolean;
   /** Vann logges nederst i matplan-dashboard; skjul her for å unngå duplikat. */
   showWaterSection?: boolean;
@@ -75,7 +73,6 @@ function formatLogDateLabel(dateKey: string): string {
 export function LogMealPanel({
   memberId,
   mealPlanTargets,
-  onRefreshFoodBank,
   hasMealPlan = false,
   showWaterSection = true,
   planFoodWaterLiters = 0,
@@ -115,10 +112,6 @@ export function LogMealPanel({
     if (!open) return;
     formWrapRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
   }, [open]);
-
-  useEffect(() => {
-    onRefreshFoodBank?.();
-  }, [onRefreshFoodBank]);
 
   useEffect(() => {
     let mounted = true;
@@ -169,10 +162,7 @@ export function LogMealPanel({
 
   const handleCommitLog = useCallback(() => {
     if (!draftItems.length) return;
-    const entries = draftItems.map((item) => {
-      const nutritionPer100g = resolveNutritionFromFoodItems(item.name, item.nutritionPer100g, foodItems, item.foodId);
-      return draftToQuickLogEntry({ ...item, nutritionPer100g }, mealSlotId);
-    });
+    const entries = draftItems.map((item) => draftToQuickLogEntry(item, mealSlotId));
     const next = addQuickFoodLogs(memberId, state, dateKey, entries);
     setState(next);
     setDraftForSlot(mealSlotId, []);
@@ -186,7 +176,6 @@ export function LogMealPanel({
     dateKey,
     dateLabel,
     draftItems,
-    foodItems,
     hasLogs,
     isToday,
     mealSlotId,
