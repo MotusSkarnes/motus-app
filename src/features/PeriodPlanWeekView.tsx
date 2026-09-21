@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Check, ChevronRight, Coffee, Play, RotateCcw, X, CircleDot } from "lucide-react";
+import { Check, ChevronRight, CircleDot, Coffee, Play, Plus, RotateCcw, X } from "lucide-react";
 import {
   findProgramForPeriodPlanEntry,
   getPeriodPlanDayListLabel,
@@ -294,6 +294,12 @@ export function PeriodPlanWeekView({
           const isProgramChangeOpen = programChangeDay === dayKey;
           const canStartFromPreview =
             canLogWorkouts && canOpenPreview && !completed && entryAction.kind === "start-program" && !isFutureDate;
+          const canAddSession =
+            Boolean(plannedDate) &&
+            periodPlanChangeOptions.length > 0 &&
+            !visibleEntry &&
+            status !== "rest";
+          const showDayActions = (Boolean(visibleEntry) && status !== "rest") || canAddSession || (Boolean(plannedDate) && !visibleEntry && status !== "rest");
           const isLast = index === WEEKDAY_PLAN_ORDER.length - 1;
 
           return (
@@ -370,14 +376,16 @@ export function PeriodPlanWeekView({
                       <p className="motus-period-plan-day-sub">Restitusjon er også trening</p>
                     ) : sourceDay ? (
                       <p className="motus-period-plan-day-sub">Flyttet fra {WEEKDAY_PLAN_LABELS[sourceDay].toLowerCase()}</p>
+                    ) : canAddSession ? (
+                      <p className="motus-period-plan-day-sub">Legg til en økt denne dagen</p>
                     ) : null}
                     {canOpenPreview ? <ChevronRight className="motus-period-plan-day-chevron" aria-hidden /> : null}
                     </div>
                   </button>
 
-                  {visibleEntry && status !== "rest" ? (
+                  {showDayActions ? (
                     <div className="motus-period-plan-day-footer">
-                      {canLogWorkouts ? (
+                      {visibleEntry && canLogWorkouts ? (
                         entryAction.kind === "start-program" && !completed && status !== "partial" && !isFutureDate ? (
                           <button
                             type="button"
@@ -422,6 +430,21 @@ export function PeriodPlanWeekView({
                             {completed ? "Angre fullført" : "Marker fullført"}
                           </button>
                         )
+                      ) : canAddSession ? (
+                        <button
+                          type="button"
+                          onClick={() => handleProgramChangeButtonClick(dayKey)}
+                          className="motus-period-plan-day-primary motus-period-plan-day-primary--start"
+                          aria-expanded={isProgramChangeOpen}
+                          aria-label={
+                            isProgramChangeOpen
+                              ? `Avbryt å legge til økt på ${dayLabel}`
+                              : `Legg til økt på ${dayLabel}`
+                          }
+                        >
+                          <Plus className="h-4 w-4 shrink-0" strokeWidth={2.5} aria-hidden />
+                          {isProgramChangeOpen ? "Avbryt" : "Legg til økt"}
+                        </button>
                       ) : null}
                       <button
                         type="button"
@@ -431,7 +454,7 @@ export function PeriodPlanWeekView({
                       >
                         {isSwapSource ? "Avbryt bytte" : "Bytt dag"}
                       </button>
-                      {periodPlanChangeOptions.length > 0 ? (
+                      {visibleEntry && periodPlanChangeOptions.length > 0 ? (
                         <button
                           type="button"
                           onClick={() => handleProgramChangeButtonClick(dayKey)}
@@ -480,7 +503,9 @@ export function PeriodPlanWeekView({
                 {isProgramChangeOpen ? (
                   <div className="motus-period-plan-swap-panel">
                     <div className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">
-                      Velg program eller gruppetime for {dayLabel.toLowerCase()}
+                      {visibleEntry
+                        ? `Velg program eller gruppetime for ${dayLabel.toLowerCase()}`
+                        : `Legg til økt på ${dayLabel.toLowerCase()}`}
                     </div>
                     <div className="mt-2 grid gap-1.5">
                       {periodPlanChangeOptions.map((option) => {
