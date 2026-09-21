@@ -2,7 +2,7 @@ import { cleanup, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ComponentProps } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import type { PeriodSchedulePlan, TrainingProgram, WeeklySchedulePlan } from "../app/types";
+import type { PeriodSchedulePlan, TrainingProgram, WeeklySchedulePlan, WorkoutLog } from "../app/types";
 import { PeriodPlanWeekView } from "./PeriodPlanWeekView";
 
 afterEach(() => {
@@ -108,5 +108,39 @@ describe("PeriodPlanWeekView", () => {
   it("hides add-session on days before the plan starts", () => {
     renderWeek({ resolveEntryDate: () => null });
     expect(screen.queryByRole("button", { name: /Legg til økt/ })).toBeNull();
+  });
+
+  it("lets the trainer open a session and see the plan plus what the customer logged", async () => {
+    const user = userEvent.setup();
+    const customerLog: WorkoutLog = {
+      id: "log-1",
+      memberId: "m1",
+      programTitle: "Styrke A",
+      date: "21.09.2026",
+      status: "Fullført",
+      note: "Tungt i dag",
+      results: [
+        {
+          exerciseId: "pe-1-set-1",
+          programExerciseId: "pe-1",
+          setNumber: 1,
+          exerciseName: "Knebøy",
+          plannedSets: "3",
+          plannedReps: "8",
+          plannedWeight: "40",
+          performedWeight: "42.5",
+          performedReps: "8",
+          completed: true,
+        },
+      ],
+    };
+    renderWeek({ canLogWorkouts: false, logs: [customerLog] });
+
+    await user.click(screen.getByRole("button", { name: "Se økt for Mandag" }));
+
+    expect(screen.getByRole("dialog", { name: "Styrke A" })).toBeTruthy();
+    expect(screen.getByText(/Tungt i dag/)).toBeTruthy();
+    expect(screen.getByText(/Plan:/)).toBeTruthy();
+    expect(screen.getByText(/42\.5/)).toBeTruthy();
   });
 });

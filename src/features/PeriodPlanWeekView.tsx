@@ -30,9 +30,9 @@ import {
 } from "../app/programImage";
 import { buildExerciseCategoryById } from "../app/trainingProgramKind";
 import { GradientButton, OutlineButton } from "../app/ui";
-import type { Exercise, PeriodSchedulePlan, TrainingProgram, WeekdayPlanKey, WeeklySchedulePlan } from "../app/types";
+import type { Exercise, PeriodSchedulePlan, TrainingProgram, WeekdayPlanKey, WeeklySchedulePlan, WorkoutLog } from "../app/types";
 import { TrainingProgramPreviewModal } from "./TrainingProgramPreviewModal";
-import type { PeriodPlanDayCompletion } from "../app/periodPlanSessionCompletion";
+import { pickBestPeriodPlanDayLog, type PeriodPlanDayCompletion } from "../app/periodPlanSessionCompletion";
 
 const WEEKDAY_SHORT: Record<WeekdayPlanKey, string> = {
   monday: "MAN",
@@ -90,6 +90,8 @@ type PeriodPlanWeekViewProps = {
   }) => void;
   resolveEntryDate: (plan: PeriodSchedulePlan, weekNumber: number, day: WeekdayPlanKey) => string | null;
   exerciseLibrary?: Exercise[];
+  /** Når satt kan trener åpne økta og se kundens logging. */
+  logs?: WorkoutLog[];
 };
 
 export function PeriodPlanWeekView({
@@ -112,6 +114,7 @@ export function PeriodPlanWeekView({
   onLogGroup,
   resolveEntryDate,
   exerciseLibrary = [],
+  logs,
 }: PeriodPlanWeekViewProps) {
   const exerciseCategoryById = useMemo(() => buildExerciseCategoryById(exerciseLibrary), [exerciseLibrary]);
   const resolvedActivityTemplates = useMemo(
@@ -153,6 +156,7 @@ export function PeriodPlanWeekView({
   const [swapFromDay, setSwapFromDay] = useState<WeekdayPlanKey | null>(null);
   const [programChangeDay, setProgramChangeDay] = useState<WeekdayPlanKey | null>(null);
   const [previewProgram, setPreviewProgram] = useState<TrainingProgram | null>(null);
+  const [previewPerformedLog, setPreviewPerformedLog] = useState<WorkoutLog | null>(null);
   const [previewCanStart, setPreviewCanStart] = useState(false);
   const [previewStartContext, setPreviewStartContext] = useState<{
     planId: string;
@@ -171,6 +175,7 @@ export function PeriodPlanWeekView({
     setProgramChangeDay(null);
     setPendingOverwriteMove(null);
     setPreviewProgram(null);
+    setPreviewPerformedLog(null);
     setPreviewCanStart(false);
     setPreviewStartContext(null);
   }, [plan.id, week.weekNumber]);
@@ -179,14 +184,17 @@ export function PeriodPlanWeekView({
     program: TrainingProgram,
     canStart: boolean,
     context: { planId: string; weekNumber: number; day: WeekdayPlanKey; entry: string },
+    performedLog: WorkoutLog | null = null,
   ) {
     setPreviewProgram(program);
+    setPreviewPerformedLog(performedLog);
     setPreviewCanStart(canStart);
     setPreviewStartContext(context);
   }
 
   function closeProgramPreview() {
     setPreviewProgram(null);
+    setPreviewPerformedLog(null);
     setPreviewCanStart(false);
     setPreviewStartContext(null);
   }
@@ -294,6 +302,9 @@ export function PeriodPlanWeekView({
           const isProgramChangeOpen = programChangeDay === dayKey;
           const canStartFromPreview =
             canLogWorkouts && canOpenPreview && !completed && entryAction.kind === "start-program" && !isFutureDate;
+          const inspectProgram = previewProgramForEntry ?? activityTemplateForEntry;
+          const canInspectSession =
+            Boolean(visibleEntry) && status !== "rest" && (Boolean(inspectProgram) || logs !== undefined);
           const canAddSession =
             Boolean(plannedDate) &&
             periodPlanChangeOptions.length > 0 &&
@@ -326,19 +337,42 @@ export function PeriodPlanWeekView({
                 >
                   <button
                     type="button"
-                    disabled={!canOpenPreview}
+                    disabled={!canInspectSession}
                     onClick={() => {
-                      if (previewProgramForEntry) {
-                        openProgramPreview(previewProgramForEntry, canStartFromPreview, {
+                      if (!canInspectSession) return;
+                      const performedLog = logs
+                        ? pickBestPeriodPlanDayLog({
+                            entry: visibleEntry,
+                            plannedDate,
+                            logs,
+                            programs: memberPrograms,
+                          })
+                        : null;
+                      const program =
+                        inspectProgram ??
+                        ({
+                          id: `period-entry-${dayKey}`,
+                          memberId: "",
+                          title: visibleEntry,
+                          goal: "",
+                          notes: "",
+                          createdAt: "",
+                          exercises: [],
+                        } satisfies TrainingProgram);
+                      openProgramPreview(
+                        program,
+                        canStartFromPreview,
+                        {
                           planId: plan.id,
                           weekNumber: week.weekNumber,
                           day: dayKey,
                           entry: visibleEntry,
-                        });
-                      }
+                        },
+                        performedLog,
+                      );
                     }}
-                    className={`motus-period-plan-day-main ${canOpenPreview ? "motus-period-plan-day-main--clickable" : ""}`}
-                    aria-label={canOpenPreview ? `Se økt for ${dayLabel}` : undefined}
+                    className={`motus-period-plan-day-main ${canInspectSession ? "motus-period-plan-day-main--clickable" : ""}`}
+                    aria-label={canInspectSession ? `Se økt for ${dayLabel}` : undefined}
                   >
                     {coverImageSrc ? (
                       <div className="motus-period-plan-day-cover motus-member-program-thumb motus-image-frame motus-image-frame--program-cover" aria-hidden>
@@ -379,7 +413,7 @@ export function PeriodPlanWeekView({
                     ) : canAddSession ? (
                       <p className="motus-period-plan-day-sub">Legg til en økt denne dagen</p>
                     ) : null}
-                    {canOpenPreview ? <ChevronRight className="motus-period-plan-day-chevron" aria-hidden /> : null}
+                    {canInspectSession ? <ChevronRight className="motus-period-plan-day-chevron" aria-hidden /> : null}
                     </div>
                   </button>
 
@@ -546,6 +580,8 @@ export function PeriodPlanWeekView({
         open={previewProgram !== null}
         onClose={closeProgramPreview}
         exerciseLibrary={exerciseLibrary}
+        performedLog={previewPerformedLog}
+        showCustomerPerformance={logs !== undefined}
         primaryAction={
           canLogWorkouts && previewCanStart && previewProgram
             ? {

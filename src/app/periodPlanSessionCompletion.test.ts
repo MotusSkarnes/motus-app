@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { resolvePeriodPlanDayCompletion, workoutLogSessionCompletion } from "./periodPlanSessionCompletion";
+import { pickBestPeriodPlanDayLog, resolvePeriodPlanDayCompletion, workoutLogSessionCompletion } from "./periodPlanSessionCompletion";
 import type { TrainingProgram, WorkoutLog } from "./types";
 
 function result(exerciseId: string, completed: boolean): NonNullable<WorkoutLog["results"]>[number] {
@@ -100,5 +100,20 @@ describe("resolvePeriodPlanDayCompletion", () => {
         markedComplete: true,
       }),
     ).toBe("partial");
+  });
+});
+
+describe("pickBestPeriodPlanDayLog", () => {
+  it("prefers the fully logged session when several logs match the same day", () => {
+    const picked = pickBestPeriodPlanDayLog({
+      entry: "Styrke A",
+      plannedDate: "21.09.2026",
+      logs: [
+        log({ id: "partial", results: [result("ex-1", true), result("ex-2", false)] }),
+        log({ id: "complete" }),
+      ],
+      programs: [program()],
+    });
+    expect(picked?.id).toBe("complete");
   });
 });

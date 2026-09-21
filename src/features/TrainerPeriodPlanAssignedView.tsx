@@ -230,6 +230,7 @@ export function TrainerPeriodPlanAssignedView({
       onStartProgram={() => undefined}
       onLogGroup={() => undefined}
       exerciseLibrary={exerciseLibrary}
+      logs={logs}
       showHeader={false}
     />
   );

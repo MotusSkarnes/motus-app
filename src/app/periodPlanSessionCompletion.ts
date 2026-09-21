@@ -64,6 +64,29 @@ export function matchingPeriodPlanLogsForDay(input: {
   });
 }
 
+function completionRank(status: PeriodPlanDayCompletion): number {
+  if (status === "complete") return 2;
+  if (status === "partial") return 1;
+  return 0;
+}
+
+/** Velger den mest utfylte loggen for dagen, slik at treneren ser det kunden faktisk gjorde. */
+export function pickBestPeriodPlanDayLog(input: {
+  entry: string;
+  plannedDate: string | null;
+  logs: WorkoutLog[];
+  programs: TrainingProgram[];
+}): WorkoutLog | null {
+  const matches = matchingPeriodPlanLogsForDay(input);
+  if (matches.length === 0) return null;
+  const program = findProgramForPeriodPlanEntry(input.entry, input.programs);
+  return [...matches].sort((a, b) => {
+    const byStatus = completionRank(workoutLogSessionCompletion(b, program)) - completionRank(workoutLogSessionCompletion(a, program));
+    if (byStatus !== 0) return byStatus;
+    return b.id.localeCompare(a.id);
+  })[0] ?? null;
+}
+
 export function resolvePeriodPlanDayCompletion(input: {
   entry: string;
   plannedDate: string | null;

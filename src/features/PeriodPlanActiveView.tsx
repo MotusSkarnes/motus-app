@@ -6,7 +6,7 @@ import {
   type PeriodPlanWeekNavItem,
 } from "../app/periodPlanMerge";
 import type { PeriodPlanSwapsByPlan } from "../app/periodPlanSwaps";
-import type { Exercise, PeriodSchedulePlan, TrainingProgram, WeekdayPlanKey } from "../app/types";
+import type { Exercise, PeriodSchedulePlan, TrainingProgram, WeekdayPlanKey, WorkoutLog } from "../app/types";
 import type { PeriodPlanDayCompletion } from "../app/periodPlanSessionCompletion";
 import { PeriodPlanMetadataCards } from "./PeriodPlanMetadataCards";
 import { PeriodPlanPeriodProgressCard } from "./PeriodPlanPeriodProgressCard";
@@ -48,6 +48,7 @@ type PeriodPlanActiveViewProps = {
     day: WeekdayPlanKey;
   }) => void;
   exerciseLibrary?: Exercise[];
+  logs?: WorkoutLog[];
   showHeader?: boolean;
 };
 
@@ -74,6 +75,7 @@ export function PeriodPlanActiveView({
   onStartProgram,
   onLogGroup,
   exerciseLibrary = [],
+  logs,
   showHeader = true,
 }: PeriodPlanActiveViewProps) {
   const weekNavItems: PeriodPlanWeekNavItem[] = buildPeriodPlanWeekNavItemsFromPlan(plan);
@@ -128,6 +130,7 @@ export function PeriodPlanActiveView({
           onLogGroup={onLogGroup}
           resolveEntryDate={resolveEntryDate}
           exerciseLibrary={exerciseLibrary}
+          logs={logs}
         />
       ) : null}
 
