@@ -10714,6 +10714,37 @@ html:has(.motus-trainer-app) {
   padding: 0.75rem;
 }
 
+.motus-period-plan-category-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.375rem;
+  margin-top: 0.5rem;
+}
+
+.motus-period-plan-category-chip {
+  border: none;
+  border-radius: 9999px;
+  background: #ffffff;
+  padding: 0.375rem 0.75rem;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  color: #475569;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06);
+}
+
+.motus-period-plan-category-chip--active {
+  background: #0f766e;
+  color: #ffffff;
+}
+
+.motus-period-plan-change-list {
+  display: grid;
+  gap: 0.375rem;
+  margin-top: 0.5rem;
+  max-height: 14rem;
+  overflow-y: auto;
+}
+
 .motus-period-plan-swap-row {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto auto;

@@ -87,6 +87,7 @@ describe("PeriodPlanWeekView", () => {
 
     const addButton = screen.getByRole("button", { name: "Legg til økt på Tirsdag" });
     await user.click(addButton);
+    await user.click(screen.getByRole("tab", { name: "Egne programmer" }));
     await user.click(screen.getByRole("button", { name: /Styrke A/ }));
 
     expect(onChangeDayProgram).toHaveBeenCalledWith("plan-1", 1, "tuesday", "Styrke A");
@@ -100,6 +101,7 @@ describe("PeriodPlanWeekView", () => {
     expect(screen.queryByRole("button", { name: "Legg til økt på Søndag" })).toBeNull();
 
     await user.click(screen.getByRole("button", { name: "Legg til økt på Onsdag" }));
+    await user.click(screen.getByRole("tab", { name: "Egne programmer" }));
     await user.click(screen.getByRole("button", { name: /Styrke A/ }));
 
     expect(onChangeDayProgram).toHaveBeenCalledWith("plan-1", 1, "wednesday", "Styrke A");
@@ -142,5 +144,19 @@ describe("PeriodPlanWeekView", () => {
     expect(screen.getByText(/Tungt i dag/)).toBeTruthy();
     expect(screen.getByText(/Plan:/)).toBeTruthy();
     expect(screen.getByText(/42\.5/)).toBeTruthy();
+  });
+
+  it("lets member and trainer add rest via the Annet category", async () => {
+    const user = userEvent.setup();
+    const { onChangeDayProgram } = renderWeek();
+
+    await user.click(screen.getByRole("button", { name: "Legg til økt på Tirsdag" }));
+    expect(screen.queryByRole("button", { name: /Smilepuls/ })).toBeNull();
+    expect(screen.queryByRole("button", { name: /Hvile \/ restitusjon/ })).toBeNull();
+
+    await user.click(screen.getByRole("tab", { name: "Annet" }));
+    await user.click(screen.getByRole("button", { name: /Hvile \/ restitusjon/ }));
+
+    expect(onChangeDayProgram).toHaveBeenCalledWith("plan-1", 1, "tuesday", "Hvile / restitusjon");
   });
 });

@@ -18,9 +18,13 @@ import {
 import {
   activityTemplateMatchesPeriodEntry,
   listActivityTemplates,
-  periodPlanEntryForActivityTemplate,
 } from "../app/activityTemplate";
-import { DEFAULT_MOTUS_GROUP_CLASS_NAMES } from "../app/motusGroupClassTemplates";
+import {
+  buildPeriodPlanChangeOptions,
+  inferPeriodPlanChangeCategory,
+  PERIOD_PLAN_CHANGE_CATEGORIES,
+  type PeriodPlanChangeCategoryId,
+} from "../app/periodPlanBuilder";
 import { imageObjectPositionFromSrc, programCustomCoverImageStyle } from "../app/imageFocalPoint";
 import {
   isUploadedProgramCoverSrc,
@@ -121,40 +125,19 @@ export function PeriodPlanWeekView({
     () => (activityTemplates.length > 0 ? activityTemplates : listActivityTemplates(memberPrograms)),
     [activityTemplates, memberPrograms],
   );
-  const periodPlanChangeOptions = useMemo(() => {
-    const options = new Map<string, { value: string; label: string; meta: string }>();
-    memberPrograms
-        .filter(
-          (program) =>
-            !program.ephemeral &&
-            program.memberId !== "__template__" &&
-            program.memberLibraryStatus !== "archived" &&
-            program.memberLibraryStatus !== "hidden" &&
-            program.exercises.length > 0,
-        )
-        .sort((a, b) => a.title.localeCompare(b.title, "nb"))
-        .forEach((program) => {
-          const value = program.title.trim();
-          if (!value) return;
-          options.set(value, { value, label: value, meta: "Program" });
-        });
-    listActivityTemplates(resolvedActivityTemplates, "group")
-      .sort((a, b) => a.title.localeCompare(b.title, "nb"))
-      .forEach((template) => {
-        const value = periodPlanEntryForActivityTemplate(template);
-        if (!value.trim()) return;
-        options.set(value, { value, label: value, meta: "Gruppetime" });
-      });
-    DEFAULT_MOTUS_GROUP_CLASS_NAMES.forEach((className) => {
-      const value = `Gruppetime: ${className}`;
-      if (!options.has(value)) options.set(value, { value, label: value, meta: "Gruppetime" });
-    });
-    return Array.from(options.values());
-  }, [memberPrograms, resolvedActivityTemplates]);
+  const periodPlanChangeOptions = useMemo(
+    () =>
+      buildPeriodPlanChangeOptions({
+        memberPrograms,
+        activityTemplates: resolvedActivityTemplates,
+      }),
+    [memberPrograms, resolvedActivityTemplates],
+  );
   const weekSwaps = getSwapsForWeek(swapsByPlan, plan.id, week.weekNumber);
   const effectiveDays = applyPeriodPlanSwaps(week.days, weekSwaps);
   const [swapFromDay, setSwapFromDay] = useState<WeekdayPlanKey | null>(null);
   const [programChangeDay, setProgramChangeDay] = useState<WeekdayPlanKey | null>(null);
+  const [programChangeCategory, setProgramChangeCategory] = useState<PeriodPlanChangeCategoryId | null>(null);
   const [previewProgram, setPreviewProgram] = useState<TrainingProgram | null>(null);
   const [previewPerformedLog, setPreviewPerformedLog] = useState<WorkoutLog | null>(null);
   const [previewCanStart, setPreviewCanStart] = useState(false);
@@ -173,6 +156,7 @@ export function PeriodPlanWeekView({
   useEffect(() => {
     setSwapFromDay(null);
     setProgramChangeDay(null);
+    setProgramChangeCategory(null);
     setPendingOverwriteMove(null);
     setPreviewProgram(null);
     setPreviewPerformedLog(null);
@@ -201,6 +185,7 @@ export function PeriodPlanWeekView({
 
   function handleSwapButtonClick(dayKey: WeekdayPlanKey) {
     setProgramChangeDay(null);
+    setProgramChangeCategory(null);
     if (swapFromDay && swapFromDay !== dayKey) {
       onSwapDays(plan.id, week.weekNumber, swapFromDay, dayKey);
       setSwapFromDay(null);
@@ -211,7 +196,14 @@ export function PeriodPlanWeekView({
 
   function handleProgramChangeButtonClick(dayKey: WeekdayPlanKey) {
     setSwapFromDay(null);
-    setProgramChangeDay((prev) => (prev === dayKey ? null : dayKey));
+    setProgramChangeDay((prev) => {
+      if (prev === dayKey) {
+        setProgramChangeCategory(null);
+        return null;
+      }
+      setProgramChangeCategory(inferPeriodPlanChangeCategory(effectiveDays[dayKey] ?? "", periodPlanChangeOptions));
+      return dayKey;
+    });
   }
 
   function handleMoveDayClick(dayA: WeekdayPlanKey, dayB: WeekdayPlanKey) {
@@ -538,34 +530,67 @@ export function PeriodPlanWeekView({
                   <div className="motus-period-plan-swap-panel">
                     <div className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">
                       {visibleEntry
-                        ? `Velg program eller gruppetime for ${dayLabel.toLowerCase()}`
+                        ? `Velg økt for ${dayLabel.toLowerCase()}`
                         : `Legg til økt på ${dayLabel.toLowerCase()}`}
                     </div>
-                    <div className="mt-2 grid gap-1.5">
-                      {periodPlanChangeOptions.map((option) => {
-                        const isCurrentProgram = visibleEntry.trim().toLowerCase() === option.value.trim().toLowerCase();
+                    <div className="motus-period-plan-category-row" role="tablist" aria-label="Kategori">
+                      {PERIOD_PLAN_CHANGE_CATEGORIES.filter((category) =>
+                        periodPlanChangeOptions.some((option) => option.category === category.id),
+                      ).map((category) => {
+                        const isActive = programChangeCategory === category.id;
                         return (
                           <button
-                            key={option.value}
+                            key={category.id}
                             type="button"
-                            disabled={isCurrentProgram}
-                            onClick={() => {
-                              onChangeDayProgram(plan.id, week.weekNumber, dayKey, option.value);
-                              setProgramChangeDay(null);
-                            }}
-                            className={`motus-period-plan-swap-row text-left transition ${
-                              isCurrentProgram ? "cursor-default opacity-60" : "hover:border-slate-300 hover:bg-white"
+                            role="tab"
+                            aria-selected={isActive}
+                            onClick={() =>
+                              setProgramChangeCategory((prev) => (prev === category.id ? null : category.id))
+                            }
+                            className={`motus-period-plan-category-chip${
+                              isActive ? " motus-period-plan-category-chip--active" : ""
                             }`}
                           >
-                            <span className="min-w-0">
-                              <span className="block text-[11px] font-semibold text-slate-800">{option.label}</span>
-                              <span className="mt-0.5 block text-[10px] font-semibold text-slate-500">{option.meta}</span>
-                            </span>
-                            <span className="shrink-0 text-[10px] font-semibold text-slate-500">{isCurrentProgram ? "Valgt" : "Velg"}</span>
+                            {category.label}
                           </button>
                         );
                       })}
                     </div>
+                    {programChangeCategory ? (
+                      <div className="motus-period-plan-change-list">
+                        {periodPlanChangeOptions
+                          .filter((option) => option.category === programChangeCategory)
+                          .map((option) => {
+                            const isCurrentProgram =
+                              visibleEntry.trim().toLowerCase() === option.value.trim().toLowerCase();
+                            return (
+                              <button
+                                key={option.value}
+                                type="button"
+                                disabled={isCurrentProgram}
+                                onClick={() => {
+                                  onChangeDayProgram(plan.id, week.weekNumber, dayKey, option.value);
+                                  setProgramChangeDay(null);
+                                  setProgramChangeCategory(null);
+                                }}
+                                className={`motus-period-plan-swap-row text-left transition ${
+                                  isCurrentProgram ? "cursor-default opacity-60" : "hover:border-slate-300 hover:bg-white"
+                                }`}
+                              >
+                                <span className="min-w-0">
+                                  <span className="block text-[11px] font-semibold text-slate-800">{option.label}</span>
+                                  <span className="mt-0.5 block text-[10px] font-semibold text-slate-500">{option.meta}</span>
+                                </span>
+                                <span className="shrink-0 text-[10px] font-semibold text-slate-500">
+                                  {isCurrentProgram ? "Valgt" : "Velg"}
+                                </span>
+                              </button>
+                            );
+                          })}
+                      </div>
+                    ) : (
+                      <p className="mt-1 text-[11px] text-slate-500">Velg en kategori for å se øktene.</p>
+                    )}
                   </div>
                 ) : null}
 
