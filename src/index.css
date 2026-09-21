@@ -10477,6 +10477,12 @@ html:has(.motus-trainer-app) {
   color: #0d9488;
 }
 
+.motus-period-plan-day-node--partial {
+  border-color: #f59e0b;
+  background: #fffbeb;
+  color: #d97706;
+}
+
 .motus-period-plan-day-node--rest {
   border-color: rgba(217, 18, 120, 0.25);
   background: #ffffff;
@@ -10510,6 +10516,10 @@ html:has(.motus-trainer-app) {
 
 .motus-period-plan-day-card--completed {
   box-shadow: 0 2px 12px rgba(48, 227, 190, 0.12);
+}
+
+.motus-period-plan-day-card--partial {
+  box-shadow: 0 2px 12px rgba(245, 158, 11, 0.14);
 }
 
 .motus-period-plan-day-card--swap-source {
@@ -10592,6 +10602,11 @@ html:has(.motus-trainer-app) {
 .motus-period-plan-day-status--completed {
   background: rgba(48, 227, 190, 0.14);
   color: #0f766e;
+}
+
+.motus-period-plan-day-status--partial {
+  background: rgba(245, 158, 11, 0.16);
+  color: #b45309;
 }
 
 .motus-period-plan-day-status--rest {

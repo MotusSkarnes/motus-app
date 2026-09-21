@@ -1,11 +1,13 @@
 import {
   buildPeriodPlanWeekNavItemsFromPlan,
   computePeriodPlanSessionProgress,
+  formatPeriodPlanWeekDateRange,
   resolvePeriodPlanWeek,
   type PeriodPlanWeekNavItem,
 } from "../app/periodPlanMerge";
 import type { PeriodPlanSwapsByPlan } from "../app/periodPlanSwaps";
 import type { Exercise, PeriodSchedulePlan, TrainingProgram, WeekdayPlanKey } from "../app/types";
+import type { PeriodPlanDayCompletion } from "../app/periodPlanSessionCompletion";
 import { PeriodPlanMetadataCards } from "./PeriodPlanMetadataCards";
 import { PeriodPlanPeriodProgressCard } from "./PeriodPlanPeriodProgressCard";
 import { PeriodPlanWeekNavigator } from "./PeriodPlanWeekNavigator";
@@ -24,6 +26,8 @@ type PeriodPlanActiveViewProps = {
   noPlanDayCoverSrc?: string | null;
   actionStatus: string | null;
   isEntryCompleted: (planId: string, weekNumber: number, day: WeekdayPlanKey) => boolean;
+  getDayCompletion?: (planId: string, weekNumber: number, day: WeekdayPlanKey) => PeriodPlanDayCompletion;
+  canLogWorkouts?: boolean;
   onToggleCompleted: (input: {
     planId: string;
     weekNumber: number;
@@ -44,6 +48,7 @@ type PeriodPlanActiveViewProps = {
     day: WeekdayPlanKey;
   }) => void;
   exerciseLibrary?: Exercise[];
+  showHeader?: boolean;
 };
 
 export function PeriodPlanActiveView({
@@ -59,6 +64,8 @@ export function PeriodPlanActiveView({
   noPlanDayCoverSrc,
   actionStatus,
   isEntryCompleted,
+  getDayCompletion,
+  canLogWorkouts = true,
   onToggleCompleted,
   onSwapDays,
   onMoveDay,
@@ -67,6 +74,7 @@ export function PeriodPlanActiveView({
   onStartProgram,
   onLogGroup,
   exerciseLibrary = [],
+  showHeader = true,
 }: PeriodPlanActiveViewProps) {
   const weekNavItems: PeriodPlanWeekNavItem[] = buildPeriodPlanWeekNavItemsFromPlan(plan);
   const selectedWeek = resolvePeriodPlanWeek(plan, selectedWeekNumber);
@@ -74,15 +82,17 @@ export function PeriodPlanActiveView({
 
   return (
     <div className="motus-period-plan-active space-y-4">
-      <div className="px-0.5">
-        <h2 className="text-lg font-bold tracking-tight text-slate-950">{plan.title}</h2>
-        {plan.notes ? <p className="mt-1 text-sm leading-relaxed text-slate-600">{plan.notes}</p> : null}
-      </div>
+      {showHeader ? (
+        <div className="px-0.5">
+          <h2 className="text-lg font-bold tracking-tight text-slate-950">{plan.title}</h2>
+          {plan.notes ? <p className="mt-1 text-sm leading-relaxed text-slate-600">{plan.notes}</p> : null}
+        </div>
+      ) : null}
 
       <PeriodPlanMetadataCards
         startDate={plan.startDate}
         weeks={plan.weeks}
-        sourceLabel={isMemberOwned ? "Lagt til av deg" : "Fra trener"}
+        sourceLabel={isMemberOwned ? "Lagt til av deg" : showHeader ? "Fra trener" : "Kundens ukeplan"}
       />
 
       {weekNavItems.length > 0 ? (
@@ -92,12 +102,7 @@ export function PeriodPlanActiveView({
           selectedWeekNumber={selectedWeekNumber}
           onWeekSelectByNumber={onWeekSelectByNumber}
           currentWeekNumber={currentWeekNumber}
-          formatWeekRange={(weekNumber) => {
-            const monday = resolveEntryDate(plan, weekNumber, "monday");
-            const sunday = resolveEntryDate(plan, weekNumber, "sunday");
-            if (!monday || !sunday) return null;
-            return `${monday} – ${sunday}`;
-          }}
+          formatWeekRange={(weekNumber) => formatPeriodPlanWeekDateRange(plan, weekNumber)}
         />
       ) : null}
 
@@ -112,6 +117,8 @@ export function PeriodPlanActiveView({
           noPlanDayCoverSrc={noPlanDayCoverSrc}
           actionStatus={actionStatus}
           isEntryCompleted={isEntryCompleted}
+          getDayCompletion={getDayCompletion}
+          canLogWorkouts={canLogWorkouts}
           onToggleCompleted={onToggleCompleted}
           onSwapDays={onSwapDays}
           onMoveDay={onMoveDay}

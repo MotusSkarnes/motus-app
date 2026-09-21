@@ -236,6 +236,7 @@ import {
   dedupeSharedOrgActivityTemplates,
   listSharedOrgTemplatesForTrainerSubTab,
   findNoPlanDayCoverTemplate,
+  listActivityTemplates,
   NO_PLAN_DAY_TEMPLATE_TITLE,
   parseActivityTemplateKind,
   stripActivityTemplateMarker,
@@ -252,6 +253,7 @@ import {
   pickCanonicalMemberIdForPeriodPlans,
   sortPeriodPlansByRecency,
   syncGradientMarkedWeekDays,
+  formatPeriodPlanWeekDateRange,
 } from "../app/periodPlanMerge";
 import { buildDefaultStartWorkoutOptions } from "../app/buildStartWorkoutOptions";
 import { MemberMonthlyCheckInSummary } from "./MemberMonthlyCheckInSummary";
@@ -266,7 +268,7 @@ import {
 } from "../app/programBlocks";
 import { LiveWorkoutSessionModal } from "./LiveWorkoutSessionModal";
 import { ProgramExerciseBlockActions } from "./ProgramExerciseBlockActions";
-import { PeriodPlanWeekNavigator } from "./PeriodPlanWeekNavigator";
+import { TrainerPeriodPlanAssignedView } from "./TrainerPeriodPlanAssignedView";
 import { TrainingProgramPreviewModal } from "./TrainingProgramPreviewModal";
 import { ProgramCoverImageField } from "./ProgramCoverImageField";
 import { uploadProgramCoverImageToSupabase } from "../app/programImageUpload";
@@ -858,7 +860,6 @@ function pickFirstName(value: unknown): string {
     { id: uid("period-week"), weekNumber: 1, days: createEmptyWeeklyDayPlan() },
   ]);
   const [activePeriodWeekId, setActivePeriodWeekId] = useState<string>(periodWeeklyPlansDraft[0]?.id ?? "");
-  const [savedPeriodPlanWeekByPlanId, setSavedPeriodPlanWeekByPlanId] = useState<Record<string, number>>({});
   const [periodPlanStatus, setPeriodPlanStatus] = useState<string | null>(null);
   const [periodPlanPreviewProgram, setPeriodPlanPreviewProgram] = useState<TrainingProgram | null>(null);
   const [favoriteExerciseIds, setFavoriteExerciseIds] = useState<string[]>(() => {
@@ -6515,10 +6516,14 @@ function pickFirstName(value: unknown): string {
                         {periodWeeklyPlansDraft.length > 0 ? (
                           <div className="rounded-xl border bg-white p-4 space-y-3" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
                             <div className="text-base font-semibold text-slate-900">Uker i planen</div>
-                            <div className="grid grid-cols-3 gap-1.5 sm:grid-cols-5 lg:grid-cols-8 xl:grid-cols-10">
+                            <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-3 lg:grid-cols-4">
                               {periodWeeklyPlansDraft.slice(0, Math.max(1, Math.min(MAX_PERIOD_PLAN_WEEKS, Number(periodPlanWeeksDraft) || 1))).map((week) => {
                                 const marked = week.usesGradientPlan === true;
                                 const isActive = activePeriodWeekId === week.id;
+                                const weekRange = formatPeriodPlanWeekDateRange(
+                                  { startDate: periodPlanStartDateDraft, weeks: Number(periodPlanWeeksDraft) || 1 },
+                                  week.weekNumber,
+                                );
                                 return (
                                   <button
                                     key={week.id}
@@ -6531,6 +6536,7 @@ function pickFirstName(value: unknown): string {
                                     aria-pressed={marked}
                                   >
                                     Uke {week.weekNumber}
+                                    {weekRange ? <span className="mt-0.5 block text-[10px] font-medium opacity-80">{weekRange}</span> : null}
                                   </button>
                                 );
                               })}
@@ -6610,7 +6616,10 @@ function pickFirstName(value: unknown): string {
                           ) : null}
                         </div>
                         <div className="space-y-3">
-                          <div className="text-base font-semibold text-slate-900">Lagrede periodeplaner</div>
+                          <div className="text-base font-semibold text-slate-900">Kundens ukeplan</div>
+                          <p className="text-sm text-slate-600">
+                            Se ukene med dato, bytt og flytt økter som kunden, og se om økten er fullført eller bare delvis logget.
+                          </p>
                           {periodPlanStatus &&
                           (periodPlanStatus.toLowerCase().includes("slettet") ||
                             periodPlanStatus.toLowerCase().includes("lagret") ||
@@ -6627,9 +6636,7 @@ function pickFirstName(value: unknown): string {
                             </div>
                           ) : (
                             selectedPeriodPlans.slice(0, 4).map((plan) => {
-                              const sortedWeeks = [...plan.weeklyPlans].sort((a, b) => a.weekNumber - b.weekNumber);
-                              const selectedWeekNumber = savedPeriodPlanWeekByPlanId[plan.id] ?? sortedWeeks[0]?.weekNumber ?? 1;
-                              const selectedWeek = sortedWeeks.find((week) => week.weekNumber === selectedWeekNumber) ?? sortedWeeks[0] ?? null;
+                              const memberForPlan = selectedMemberProfile ?? selectedMember;
                               return (
                                 <div key={plan.id} className="rounded-xl border bg-slate-50 p-4 text-sm text-slate-700" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
                                   <div className="flex items-start justify-between gap-2">
@@ -6664,45 +6671,19 @@ function pickFirstName(value: unknown): string {
                                       </OutlineButton>
                                     </div>
                                   </div>
-                                  <div className="mt-3">
-                                    <PeriodPlanWeekNavigator
-                                      weeks={sortedWeeks}
-                                      selectedWeekNumber={selectedWeek?.weekNumber ?? 1}
-                                      onWeekSelectByNumber={(weekNumber) =>
-                                        setSavedPeriodPlanWeekByPlanId((prev) => ({ ...prev, [plan.id]: weekNumber }))
-                                      }
-                                    />
-                                  </div>
-                                  {selectedWeek ? (
-                                    <div className="mt-3 rounded-lg border bg-white p-3" style={{ borderColor: "rgba(15,23,42,0.08)" }}>
-                                      <div className="text-sm font-semibold text-slate-900">Uke {selectedWeek.weekNumber}</div>
-                                      <div className="mt-2 grid gap-2 sm:grid-cols-2">
-                                        {WEEKDAY_PLAN_FIELDS.map((field) => {
-                                          const entry = selectedWeek.days[field.key]?.trim();
-                                          const previewProgram = entry
-                                            ? findProgramForPeriodPlanEntry(entry, selectedPrograms)
-                                            : null;
-                                          return (
-                                            <div key={field.key} className="rounded-lg bg-slate-50 px-3 py-2">
-                                              <div className="flex items-start justify-between gap-2">
-                                                <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">{field.label}</div>
-                                                {previewProgram ? (
-                                                  <button
-                                                    type="button"
-                                                    onClick={() => setPeriodPlanPreviewProgram(previewProgram)}
-                                                    className="rounded-md border border-teal-200 bg-white p-1 text-teal-800 transition hover:border-teal-300 hover:bg-teal-50"
-                                                    aria-label={`Se økt for ${field.label}`}
-                                                    title="Se økt"
-                                                  >
-                                                    <Eye className="h-3.5 w-3.5" aria-hidden />
-                                                  </button>
-                                                ) : null}
-                                              </div>
-                                              <div className="mt-1 text-sm text-slate-800">{entry || "Ingen plan"}</div>
-                                            </div>
-                                          );
-                                        })}
-                                      </div>
+                                  {memberForPlan ? (
+                                    <div className="mt-4">
+                                      <TrainerPeriodPlanAssignedView
+                                        plan={plan}
+                                        member={memberForPlan}
+                                        relatedMemberIds={selectedMemberRelatedIds}
+                                        programs={selectedPrograms}
+                                        activityTemplates={listActivityTemplates(templatePrograms)}
+                                        logs={selectedLogs}
+                                        exerciseLibrary={exercises}
+                                        noPlanDayCoverSrc={noPlanDayCoverTemplate?.imageUrl ?? null}
+                                        updateMember={updateMember}
+                                      />
                                     </div>
                                   ) : null}
                                 </div>

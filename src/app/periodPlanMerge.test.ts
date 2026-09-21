@@ -21,6 +21,7 @@ import {
   resolvePeriodPlanWeekNumberForDate,
   writeActivePeriodPlanIdForMembers,
   resolvePeriodPlanPlannedDate,
+  formatPeriodPlanWeekDateRange,
   resolvePeriodPlanWeek,
   syncGradientMarkedWeekDays,
   writeHiddenPeriodPlanIdsForMembers,
@@ -80,6 +81,15 @@ describe("resolvePeriodPlanPlannedDate", () => {
     expect(resolvePeriodPlanPlannedDate(plan, 1, "wednesday")?.toLocaleDateString("sv-SE")).toBe("2026-06-10");
     expect(resolvePeriodPlanPlannedDate(plan, 2, "monday")?.toLocaleDateString("sv-SE")).toBe("2026-06-15");
     expect(resolvePeriodPlanPlannedDate(plan, 2, "tuesday")?.toLocaleDateString("sv-SE")).toBe("2026-06-16");
+  });
+});
+
+describe("formatPeriodPlanWeekDateRange", () => {
+  it("uses the first and last visible dates in a mid-week start week", () => {
+    const plan = makePlan([{ id: "w1", weekNumber: 1, days: { ...empty } }]);
+    plan.startDate = "2026-05-22";
+    expect(formatPeriodPlanWeekDateRange(plan, 1)).toBe("22.05.2026 – 24.05.2026");
+    expect(formatPeriodPlanWeekDateRange(plan, 2)).toBe("25.05.2026 – 31.05.2026");
   });
 });
 

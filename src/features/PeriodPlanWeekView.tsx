@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Check, ChevronRight, Coffee, Play, RotateCcw, X } from "lucide-react";
+import { Check, ChevronRight, Coffee, Play, RotateCcw, X, CircleDot } from "lucide-react";
 import {
   findProgramForPeriodPlanEntry,
   getPeriodPlanDayListLabel,
@@ -32,6 +32,7 @@ import { buildExerciseCategoryById } from "../app/trainingProgramKind";
 import { GradientButton, OutlineButton } from "../app/ui";
 import type { Exercise, PeriodSchedulePlan, TrainingProgram, WeekdayPlanKey, WeeklySchedulePlan } from "../app/types";
 import { TrainingProgramPreviewModal } from "./TrainingProgramPreviewModal";
+import type { PeriodPlanDayCompletion } from "../app/periodPlanSessionCompletion";
 
 const WEEKDAY_SHORT: Record<WeekdayPlanKey, string> = {
   monday: "MAN",
@@ -43,12 +44,13 @@ const WEEKDAY_SHORT: Record<WeekdayPlanKey, string> = {
   sunday: "SØN",
 };
 
-type DayStatus = "completed" | "rest" | "planned" | "empty";
+type DayStatus = "completed" | "partial" | "rest" | "planned" | "empty";
 
-function resolveDayStatus(entry: string, completed: boolean): DayStatus {
+function resolveDayStatus(entry: string, completion: PeriodPlanDayCompletion): DayStatus {
   if (!entry.trim()) return "empty";
   if (isRestPeriodPlanEntry(entry)) return "rest";
-  if (completed) return "completed";
+  if (completion === "complete") return "completed";
+  if (completion === "partial") return "partial";
   return "planned";
 }
 
@@ -61,6 +63,9 @@ type PeriodPlanWeekViewProps = {
   noPlanDayCoverSrc?: string | null;
   actionStatus: string | null;
   isEntryCompleted: (planId: string, weekNumber: number, day: WeekdayPlanKey) => boolean;
+  getDayCompletion?: (planId: string, weekNumber: number, day: WeekdayPlanKey) => PeriodPlanDayCompletion;
+  /** Når false skjules start/fullfør — brukt i trenervisning. */
+  canLogWorkouts?: boolean;
   onToggleCompleted: (input: {
     planId: string;
     weekNumber: number;
@@ -96,6 +101,8 @@ export function PeriodPlanWeekView({
   noPlanDayCoverSrc,
   actionStatus,
   isEntryCompleted,
+  getDayCompletion,
+  canLogWorkouts = true,
   onToggleCompleted,
   onSwapDays,
   onMoveDay,
@@ -275,17 +282,19 @@ export function PeriodPlanWeekView({
           const coverImageStyle = coverUsesPhotoStyle
             ? programCustomCoverImageStyle(coverStyleSrc)
             : { objectPosition: imageObjectPositionFromSrc(coverImageSrc) };
-          const completed = isEntryCompleted(plan.id, week.weekNumber, dayKey);
-          const status = resolveDayStatus(visibleEntry, completed);
+          const completion =
+            getDayCompletion?.(plan.id, week.weekNumber, dayKey) ??
+            (isEntryCompleted(plan.id, week.weekNumber, dayKey) ? "complete" : "none");
+          const completed = completion === "complete";
+          const status = resolveDayStatus(visibleEntry, completion);
           const isFutureDate = isPeriodPlanEntryDateInFuture(plannedDate);
           const canMarkCompleted = completed || !isFutureDate;
           const isSwapSource = swapFromDay === dayKey;
           const canOpenPreview = Boolean(previewProgramForEntry);
           const isProgramChangeOpen = programChangeDay === dayKey;
           const canStartFromPreview =
-            canOpenPreview && !completed && entryAction.kind === "start-program" && !isFutureDate;
+            canLogWorkouts && canOpenPreview && !completed && entryAction.kind === "start-program" && !isFutureDate;
           const isLast = index === WEEKDAY_PLAN_ORDER.length - 1;
-          const dateShort = plannedDate?.split(".")?.slice(0, 2).join(".") ?? null;
 
           return (
             <li
@@ -296,6 +305,8 @@ export function PeriodPlanWeekView({
                 <span className={`motus-period-plan-day-node motus-period-plan-day-node--${status}`}>
                   {status === "completed" ? (
                     <Check className="h-3 w-3" strokeWidth={3} />
+                  ) : status === "partial" ? (
+                    <CircleDot className="h-3 w-3" strokeWidth={2.5} />
                   ) : status === "rest" ? (
                     <Coffee className="h-3 w-3" strokeWidth={2.25} />
                   ) : null}
@@ -343,10 +354,12 @@ export function PeriodPlanWeekView({
                     <div className="motus-period-plan-day-meta">
                       <span className="motus-period-plan-day-date">
                         {WEEKDAY_SHORT[dayKey]}
-                        {dateShort ? ` ${dateShort}` : ""}
+                        {plannedDate ? ` ${plannedDate}` : ""}
                       </span>
                       {completed ? (
                         <span className="motus-period-plan-day-status motus-period-plan-day-status--completed">Fullført</span>
+                      ) : status === "partial" ? (
+                        <span className="motus-period-plan-day-status motus-period-plan-day-status--partial">Delvis fullført</span>
                       ) : status === "rest" ? (
                         <span className="motus-period-plan-day-status motus-period-plan-day-status--rest">Restitusjon</span>
                       ) : visibleEntry ? (
@@ -364,50 +377,52 @@ export function PeriodPlanWeekView({
 
                   {visibleEntry && status !== "rest" ? (
                     <div className="motus-period-plan-day-footer">
-                      {entryAction.kind === "start-program" && !completed && !isFutureDate ? (
-                        <button
-                          type="button"
-                          onClick={() =>
-                            onStartProgram(entryAction.program.id, {
-                              planId: plan.id,
-                              weekNumber: week.weekNumber,
-                              day: dayKey,
-                              entry: visibleEntry,
-                            })
-                          }
-                          className="motus-period-plan-day-primary motus-period-plan-day-primary--start"
-                          aria-label={`Start økt for ${dayLabel}`}
-                        >
-                          <Play className="h-4 w-4 shrink-0" strokeWidth={2.5} aria-hidden />
-                          Start økt
-                        </button>
-                      ) : (
-                        <button
-                          type="button"
-                          disabled={!canMarkCompleted}
-                          onClick={() => {
-                            if (!canMarkCompleted) return;
-                            onToggleCompleted({
-                              planId: plan.id,
-                              weekNumber: week.weekNumber,
-                              day: dayKey,
-                              entry: visibleEntry,
-                              plannedDate,
-                            });
-                          }}
-                          className={`motus-period-plan-day-primary ${completed ? "motus-period-plan-day-primary--done" : ""}`}
-                          aria-label={
-                            completed
-                              ? `Angre fullført for ${dayLabel}`
-                              : isFutureDate
-                                ? `${dayLabel} kan markeres fra og med planlagt dato`
-                                : `Marker ${dayLabel} som fullført`
-                          }
-                        >
-                          <Check className="h-4 w-4 shrink-0" strokeWidth={completed ? 3 : 2.25} aria-hidden />
-                          {completed ? "Angre fullført" : "Marker fullført"}
-                        </button>
-                      )}
+                      {canLogWorkouts ? (
+                        entryAction.kind === "start-program" && !completed && status !== "partial" && !isFutureDate ? (
+                          <button
+                            type="button"
+                            onClick={() =>
+                              onStartProgram(entryAction.program.id, {
+                                planId: plan.id,
+                                weekNumber: week.weekNumber,
+                                day: dayKey,
+                                entry: visibleEntry,
+                              })
+                            }
+                            className="motus-period-plan-day-primary motus-period-plan-day-primary--start"
+                            aria-label={`Start økt for ${dayLabel}`}
+                          >
+                            <Play className="h-4 w-4 shrink-0" strokeWidth={2.5} aria-hidden />
+                            Start økt
+                          </button>
+                        ) : (
+                          <button
+                            type="button"
+                            disabled={!canMarkCompleted}
+                            onClick={() => {
+                              if (!canMarkCompleted) return;
+                              onToggleCompleted({
+                                planId: plan.id,
+                                weekNumber: week.weekNumber,
+                                day: dayKey,
+                                entry: visibleEntry,
+                                plannedDate,
+                              });
+                            }}
+                            className={`motus-period-plan-day-primary ${completed ? "motus-period-plan-day-primary--done" : ""}`}
+                            aria-label={
+                              completed
+                                ? `Angre fullført for ${dayLabel}`
+                                : isFutureDate
+                                  ? `${dayLabel} kan markeres fra og med planlagt dato`
+                                  : `Marker ${dayLabel} som fullført`
+                            }
+                          >
+                            <Check className="h-4 w-4 shrink-0" strokeWidth={completed ? 3 : 2.25} aria-hidden />
+                            {completed ? "Angre fullført" : "Marker fullført"}
+                          </button>
+                        )
+                      ) : null}
                       <button
                         type="button"
                         onClick={() => handleSwapButtonClick(dayKey)}
@@ -507,7 +522,7 @@ export function PeriodPlanWeekView({
         onClose={closeProgramPreview}
         exerciseLibrary={exerciseLibrary}
         primaryAction={
-          previewCanStart && previewProgram
+          canLogWorkouts && previewCanStart && previewProgram
             ? {
                 label: "Start økt",
                 onClick: () => {

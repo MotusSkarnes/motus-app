@@ -1,4 +1,4 @@
-import { getDefaultPeriodPlanStartMondayISO, parseStoredLogDate } from "./dateFormat";
+import { formatDateDdMmYyyy, getDefaultPeriodPlanStartMondayISO, parseStoredLogDate } from "./dateFormat";
 import { logsAttributedToMember } from "./memberActivity";
 import { findProgramForPeriodPlanEntry, isPassivePeriodPlanEntry, isGroupPeriodPlanEntry, groupWorkoutLogTitle, resolveGroupClassNameFromPeriodEntry } from "./periodPlanEntryActions";
 import { applyPeriodPlanSwaps, getSwapsForWeek, WEEKDAY_PLAN_ORDER, type PeriodPlanSwapsByPlan } from "./periodPlanSwaps";
@@ -63,6 +63,35 @@ export function resolvePeriodPlanPlannedDate(plan: PeriodSchedulePlan, weekNumbe
   const startWeekMonday = new Date(start.getFullYear(), start.getMonth(), start.getDate() - localMondayBasedWeekdayIndex(start));
   const plannedDate = new Date(startWeekMonday.getFullYear(), startWeekMonday.getMonth(), startWeekMonday.getDate() + weekIndex * 7 + WEEKDAY_INDEX[day]);
   return startOfLocalDay(plannedDate).getTime() < startOfLocalDay(start).getTime() ? null : plannedDate;
+}
+
+/** Første og siste kalenderdag i en planuke (hopper over dager før startdato). */
+export function resolvePeriodPlanWeekDateSpan(
+  plan: Pick<PeriodSchedulePlan, "startDate">,
+  weekNumber: number,
+): { start: Date; end: Date } | null {
+  const asPlan = plan as PeriodSchedulePlan;
+  let start: Date | null = null;
+  let end: Date | null = null;
+  for (const day of WEEKDAY_PLAN_ORDER) {
+    const date = resolvePeriodPlanPlannedDate(asPlan, weekNumber, day);
+    if (!date) continue;
+    if (!start) start = date;
+    end = date;
+  }
+  return start && end ? { start, end } : null;
+}
+
+export function formatPeriodPlanWeekDateRange(
+  plan: Pick<PeriodSchedulePlan, "startDate">,
+  weekNumber: number,
+): string | null {
+  const span = resolvePeriodPlanWeekDateSpan(plan, weekNumber);
+  if (!span) return null;
+  const start = formatDateDdMmYyyy(span.start);
+  const end = formatDateDdMmYyyy(span.end);
+  if (!start || !end) return null;
+  return start === end ? start : `${start} – ${end}`;
 }
 
 /** Finn økt for en kalenderdag — samme dato-beregning som vises i periodeplan-radene. */
