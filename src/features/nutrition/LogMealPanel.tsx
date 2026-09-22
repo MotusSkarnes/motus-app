@@ -14,6 +14,8 @@ import { MEAL_PLAN_STATE_CHANGED_EVENT } from "../../app/memberMealPlanState";
 import type { MemberSavedMeal } from "../../app/memberSavedMeals";
 import { addMemberSavedMeal, addQuickFoodLogs, removeMemberSavedMeal, updateQuickFoodLog } from "../../app/memberMealPlanTracking";
 import { SaveLoggedMealCopyButton, SaveLoggedMealModal } from "./SaveLoggedMealModal";
+import { CopyLoggedFoodToDateButton } from "./CopyLoggedFoodToDateButton";
+import { copyLoggedFoodEntries } from "../../app/copyLoggedFood";
 import type { MealPlanTargets } from "../../app/mealPlanTypes";
 import { useFoodBankItems } from "../../app/useFoodBankItems";
 import { GradientButton } from "../../app/ui";
@@ -225,6 +227,13 @@ export function LogMealPanel({
     [dateKey, memberId, state],
   );
 
+  const copyLogsToDate = useCallback((entries: MemberQuickFoodLogEntry[], targetDateKey: string) => {
+    if (!entries.length || targetDateKey === dateKey) return;
+    const next = addQuickFoodLogs(memberId, state, targetDateKey, copyLoggedFoodEntries(entries));
+    setState(next);
+    setStatus(`${entries.length} ${entries.length === 1 ? "post" : "poster"} kopiert til ${formatLogDateLabel(targetDateKey)}.`);
+  }, [dateKey, memberId, state]);
+
   const renderLogEntries = (entries: MemberQuickFoodLogEntry[]) =>
     entries.map((entry) => (
       <LoggedQuickFoodEntryRow
@@ -382,6 +391,8 @@ export function LogMealPanel({
                 </p>
               </div>
             </div>
+            <CopyLoggedFoodToDateButton label="hele dagen" sourceDateKey={dateKey}
+              onCopy={(targetDateKey) => copyLogsToDate(logsForDate, targetDateKey)} />
             {!open ? (
               <GradientButton type="button" className="motus-log-meal-cta motus-log-meal-cta--compact" onClick={() => setOpen(true)}>
                 <Plus className="h-4 w-4" aria-hidden />
@@ -403,6 +414,8 @@ export function LogMealPanel({
                         mealLabel={slot.label}
                         onClick={() => setSaveLoggedMeal({ mealSlotId: slot.id, mealLabel: slot.label, entries })}
                       />
+                      <CopyLoggedFoodToDateButton label={slot.label} sourceDateKey={dateKey}
+                        onCopy={(targetDateKey) => copyLogsToDate(entries, targetDateKey)} />
                     </div>
                     <span className="motus-log-meal-panel__meal-sum">
                       {formatMacro(slotMacros.kcal, 0)} kcal · P {formatMacro(slotMacros.protein, 0)} g
@@ -427,6 +440,8 @@ export function LogMealPanel({
                         })
                       }
                     />
+                    <CopyLoggedFoodToDateButton label="Annet" sourceDateKey={dateKey}
+                      onCopy={(targetDateKey) => copyLogsToDate(logsBySlot.get("other") ?? [], targetDateKey)} />
                   </div>
                   <span className="motus-log-meal-panel__meal-sum">
                     {formatMacro(sumQuickFoodLogMacros(logsBySlot.get("other")).kcal, 0)} kcal

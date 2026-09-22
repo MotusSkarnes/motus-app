@@ -61,6 +61,7 @@ import {
   toggleShoppingChecked,
   skipMealItems,
   addMemberSavedMeal,
+  addQuickFoodLogs,
   toIsoDateKey,
   weekdayShortLabel,
 } from "../../app/memberMealPlanTracking";
@@ -76,6 +77,8 @@ import { resolveNutritionFromFoodItems } from "../../app/memberNutritionRehydrat
 import { foodWaterPer100g } from "../../app/foodBankWater";
 import { LogMealPanel } from "./LogMealPanel";
 import { SaveLoggedMealCopyButton, SaveLoggedMealModal } from "./SaveLoggedMealModal";
+import { CopyLoggedFoodToDateButton } from "./CopyLoggedFoodToDateButton";
+import { copyLoggedFoodEntries } from "../../app/copyLoggedFood";
 import { MemberWaterIntakeSection } from "./MemberWaterIntakeSection";
 import { WaterTotalSummary } from "./WaterTotalSummary";
 import "../../foodbank.css";
@@ -267,6 +270,7 @@ export function MemberMealPlanDashboard({ plan, memberId, onOpenAvoidances }: Me
   const [showFullWeekView, setShowFullWeekView] = useState(false);
   const [fullWeekDayId, setFullWeekDayId] = useState(plan.days[todayWeekdayIndex]?.id ?? plan.days[0]?.id ?? "");
   const [tracking, setTracking] = useState<MemberMealPlanState>(() => loadMealPlanTracking(memberId));
+  const [copyStatus, setCopyStatus] = useState("");
   const [swapMeal, setSwapMeal] = useState<MealPlanMeal | null>(null);
   const [showShopping, setShowShopping] = useState(false);
   const [showCoachTips, setShowCoachTips] = useState(false);
@@ -633,6 +637,23 @@ export function MemberMealPlanDashboard({ plan, memberId, onOpenAvoidances }: Me
   const displayLoggedFood = isSelectedToday ? loggedFoodToday : loggedFoodSelected;
   const displaySkippedFood = isSelectedToday ? skippedFoodToday : skippedFoodSelected;
   const displayQuickLogs = isSelectedToday ? quickLogsToday : quickLogsSelected;
+  const loggedDayEntries = [
+    ...displayMeals.flatMap((meal) => loggedMealEntriesFromPlanMeal(meal, displayLoggedFood, displaySkippedFood, [])),
+    ...displayQuickLogs,
+  ];
+  function copyLoggedEntriesToDate(entries: MemberQuickFoodLogEntry[], targetDateKey: string) {
+    if (!entries.length || targetDateKey === selectedDateKey) return;
+    const targetDay = plan.days[getWeekdayIndex(new Date(`${targetDateKey}T12:00:00`))];
+    const copied = copyLoggedFoodEntries(entries).map((entry) => {
+      const sourceMeal = displayMeals.find((meal) => meal.id === entry.mealId);
+      if (!sourceMeal) return entry;
+      const slot = canonicalMemberMealSlotId(sourceMeal.id, sourceMeal.name);
+      const targetMeal = targetDay?.meals.find((meal) => canonicalMemberMealSlotId(meal.id, meal.name) === slot);
+      return { ...entry, mealId: targetMeal?.id ?? slot ?? entry.mealId };
+    });
+    setTracking((previous) => addQuickFoodLogs(memberId, previous, targetDateKey, copied));
+    setCopyStatus(`${copied.length} ${copied.length === 1 ? "post" : "poster"} kopiert til ${targetDateKey}.`);
+  }
   const displayMacros = isSelectedToday ? displayMacrosToday : displayMacrosProgress;
   const planMealIds = useMemo(() => new Set(displayMeals.map((meal) => meal.id)), [displayMeals]);
   const outsidePlanLogs = useMemo(() => logsOutsidePlanMeals(displayQuickLogs, planMealIds), [displayQuickLogs, planMealIds]);
@@ -749,6 +770,8 @@ export function MemberMealPlanDashboard({ plan, memberId, onOpenAvoidances }: Me
           <h2 className="motus-matplan-section-title">
             {isSelectedToday ? "Dagens måltider" : `Måltider — ${selectedDay?.label ?? ""}`}
           </h2>
+          {loggedDayEntries.length > 0 ? <CopyLoggedFoodToDateButton label="hele dagen" sourceDateKey={selectedDateKey}
+            onCopy={(targetDateKey) => copyLoggedEntriesToDate(loggedDayEntries, targetDateKey)} /> : null}
           <button
             type="button"
             className="motus-matplan-link-btn"
@@ -758,6 +781,7 @@ export function MemberMealPlanDashboard({ plan, memberId, onOpenAvoidances }: Me
             <ChevronRight className={`h-3.5 w-3.5 ${showFullWeekView ? "rotate-90" : ""}`} aria-hidden />
           </button>
         </div>
+        {copyStatus ? <p className="text-sm text-teal-800" role="status">{copyStatus}</p> : null}
 
         {showFullWeekView ? (
           <>
@@ -870,7 +894,7 @@ export function MemberMealPlanDashboard({ plan, memberId, onOpenAvoidances }: Me
                     <div className="motus-matplan-meal-card__slot-row">
                       <span className="motus-matplan-meal-card__slot">{slotLabel}</span>
                       {saveEntries.length > 0 ? (
-                        <SaveLoggedMealCopyButton
+                        <><SaveLoggedMealCopyButton
                           mealLabel={slotLabel}
                           onClick={() => {
                             setSaveLoggedMeal({
@@ -880,6 +904,8 @@ export function MemberMealPlanDashboard({ plan, memberId, onOpenAvoidances }: Me
                             });
                           }}
                         />
+                        <CopyLoggedFoodToDateButton label={slotLabel} sourceDateKey={selectedDateKey}
+                          onCopy={(targetDateKey) => copyLoggedEntriesToDate(saveEntries, targetDateKey)} /></>
                       ) : null}
                     </div>
                   </div>
