@@ -1,6 +1,7 @@
 import { computeRelatedMemberIdSet, logsAttributedToMember } from "./memberActivity";
 import { toCalendarDateKey, type TrainingCalendarDayStatus } from "./memberTrainingCalendar";
-import { findPeriodPlanEntryForCalendarDate } from "./periodPlanMerge";
+import { dedupePeriodPlansById, findPeriodPlanEntryForCalendarDate } from "./periodPlanMerge";
+import { readPeriodPlanSwapsFromPersonalGoals, type PeriodPlanSwapsByPlan } from "./periodPlanSwaps";
 import {
   getPeriodPlanDayListLabel,
   isPassivePeriodPlanEntry,
@@ -30,13 +31,23 @@ function collectMemberPeriodPlans(
   periodPlansByMemberId: Record<string, PeriodSchedulePlan[]>,
 ): PeriodSchedulePlan[] {
   const relatedIds = computeRelatedMemberIdSet(member, allMembers);
-  const dedup = new Map<string, PeriodSchedulePlan>();
+  const plans: PeriodSchedulePlan[] = [];
   relatedIds.forEach((memberId) => {
     for (const plan of periodPlansByMemberId[memberId] ?? []) {
-      if (!dedup.has(plan.id)) dedup.set(plan.id, plan);
+      plans.push(plan);
     }
   });
-  return Array.from(dedup.values());
+  return dedupePeriodPlansById(plans);
+}
+
+function collectMemberPeriodPlanSwaps(member: Member, allMembers: Member[]): PeriodPlanSwapsByPlan {
+  const relatedIds = computeRelatedMemberIdSet(member, allMembers);
+  const prefs = allMembers
+    .filter((candidate) => relatedIds.has(candidate.id))
+    .map((candidate) => readPeriodPlanSwapsFromPersonalGoals(candidate.personalGoals))
+    .filter((candidate) => candidate !== null)
+    .sort((a, b) => b.updatedAt - a.updatedAt);
+  return prefs[0]?.swapsByPlan ?? {};
 }
 
 function memberHasCompletedWorkoutOnDate(member: Member, allMembers: Member[], logs: WorkoutLog[], date: Date): boolean {
@@ -91,9 +102,10 @@ export function buildTrainerPeriodPlanCalendarByMonth(input: {
     for (const member of activeMembers) {
       const plans = collectMemberPeriodPlans(member, input.members, input.periodPlansByMemberId);
       if (!plans.length) continue;
+      const swapsByPlan = collectMemberPeriodPlanSwaps(member, input.members);
 
       for (const plan of plans) {
-        const match = findPeriodPlanEntryForCalendarDate(plan, date);
+        const match = findPeriodPlanEntryForCalendarDate(plan, date, swapsByPlan);
         const entry = match?.entry.trim() ?? "";
         if (!entry) continue;
 

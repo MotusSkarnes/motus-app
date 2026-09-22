@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { buildTrainerPeriodPlanCalendarByMonth, summarizeTrainerCalendarDay } from "./trainerPeriodPlanCalendar";
 import type { Member, PeriodSchedulePlan } from "./types";
+import { mergePeriodPlanSwapsIntoPersonalGoals } from "./periodPlanSwaps";
 
 const member: Member = {
   id: "m1",
@@ -39,6 +40,26 @@ const plan: PeriodSchedulePlan = {
 };
 
 describe("buildTrainerPeriodPlanCalendarByMonth", () => {
+  it("uses the latest plan and the member's changed days", () => {
+    const updatedPlan: PeriodSchedulePlan = {
+      ...plan,
+      trainerSavedAtIso: "2026-05-03T12:00:00Z",
+      weeklyPlans: [{ ...plan.weeklyPlans[0], days: { ...plan.weeklyPlans[0].days, monday: "Ny økt" } }],
+    };
+    const oldPlan: PeriodSchedulePlan = { ...plan, trainerSavedAtIso: "2026-05-01T12:00:00Z" };
+    const alias: Member = { ...member, id: "m2", personalGoals: mergePeriodPlanSwapsIntoPersonalGoals("", {
+      version: 1, updatedAt: 10,
+      swapsByPlan: { [plan.id]: { "1": [{ dayA: "monday", dayB: "tuesday", mode: "swap" }] } },
+    }) };
+    const { byDay } = buildTrainerPeriodPlanCalendarByMonth({
+      members: [member, alias],
+      periodPlansByMemberId: { m1: [oldPlan], m2: [updatedPlan] },
+      logs: [], calendarMonth: new Date(2026, 4, 1), today: new Date(2026, 4, 1),
+    });
+    expect(byDay.get(4)?.some((entry) => entry.memberId === "m1")).toBe(false);
+    expect(byDay.get(5)?.find((entry) => entry.memberId === "m1")?.entry).toBe("Ny økt");
+  });
+
   it("includes planned entry on matching calendar day", () => {
     const calendarMonth = new Date(2026, 4, 1);
     const { byDay } = buildTrainerPeriodPlanCalendarByMonth({
