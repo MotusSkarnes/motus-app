@@ -63,50 +63,40 @@ function intervalTimerBadgeToneClass(tone: IntervalTimerStep["tone"]): string {
   }
 }
 
-function parseIntervalSpeedKmHint(hint: string): string {
-  const match = String(hint ?? "").match(/([\d]+(?:[.,]\d+)?)/);
-  return match ? match[1].replace(",", ".") : "";
-}
-
-function parseIntervalInclinePercentHint(hint: string): string {
-  const match = String(hint ?? "").match(/([\d]+(?:[.,]\d+)?)/);
-  return match ? match[1].replace(",", ".") : "";
-}
-
 function intervalStepAllowsSpeedInclineEdit(step: IntervalTimerStep | null): boolean {
   if (!step || step.tone === "rest") return false;
   return step.speedHint !== "-" || step.inclineHint !== "-";
 }
 
-function buildIntervalSessionResults(
+export function buildIntervalSessionResults(
   program: TrainingProgram,
   exercises: Exercise[],
   steps: IntervalTimerStep[],
-  stepOverrides: Record<number, { speed: string; incline: string }>,
+  stepOverrides: Record<number, { speed: string; incline: string; heartRate: string }>,
 ): WorkoutExerciseResult[] {
   const base = expandProgramExercisesToWorkoutResults(program.exercises, exercises);
-  const overrideByExerciseIndex = new Map<number, { speed: string; incline: string }>();
-  steps.forEach((step, stepIndex) => {
-    if (step.sourceExerciseIndex === undefined) return;
+  const countByExerciseId = new Map<string, number>();
+  return steps.flatMap((step, stepIndex) => {
+    if (step.sourceExerciseIndex === undefined) return [];
+    const exercise = program.exercises[step.sourceExerciseIndex];
+    if (!exercise) return [];
+    const template = base.find((row) => row.programExerciseId === exercise.id);
+    if (!template) return [];
+    const setNumber = (countByExerciseId.get(exercise.id) ?? 0) + 1;
+    countByExerciseId.set(exercise.id, setNumber);
     const override = stepOverrides[stepIndex];
-    if (override) overrideByExerciseIndex.set(step.sourceExerciseIndex, override);
+    return [{
+      ...template,
+      exerciseId: `${exercise.id}-set-${setNumber}`,
+      setNumber,
+      exerciseName: step.headline,
+      completed: true,
+      performedDurationMinutes: String(step.durationSeconds / 60),
+      performedSpeed: override?.speed?.trim() ?? "",
+      performedIncline: override?.incline?.trim() ?? "",
+      performedHeartRate: override?.heartRate?.trim() ?? "",
+    }];
   });
-  return base
-    .map((row) => {
-      const exerciseIndex = program.exercises.findIndex((item) => item.id === row.programExerciseId);
-      const exercise = exerciseIndex >= 0 ? program.exercises[exerciseIndex] : null;
-      const workMinutes = Number(exercise?.durationMinutes ?? row.plannedDurationMinutes ?? 0);
-      if (workMinutes <= 0) return null;
-      const override = exerciseIndex >= 0 ? overrideByExerciseIndex.get(exerciseIndex) : undefined;
-      return {
-        ...row,
-        completed: true,
-        performedDurationMinutes: String(workMinutes),
-        performedSpeed: override?.speed?.trim() || row.plannedSpeed || "",
-        performedIncline: override?.incline?.trim() || row.plannedIncline || "",
-      };
-    })
-    .filter((row): row is WorkoutExerciseResult => row !== null);
 }
 
 export function IntervalWorkoutSessionModal({
@@ -132,7 +122,7 @@ export function IntervalWorkoutSessionModal({
   const [isRunning, setIsRunning] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
-  const [stepOverrides, setStepOverrides] = useState<Record<number, { speed: string; incline: string }>>({});
+  const [stepOverrides, setStepOverrides] = useState<Record<number, { speed: string; incline: string; heartRate: string }>>({});
   const [showComplete, setShowComplete] = useState(false);
   const [sessionNote, setSessionNote] = useState("");
   const [energyLevel, setEnergyLevel] = useState<1 | 2 | 3 | 4 | 5>(3);
@@ -190,6 +180,13 @@ export function IntervalWorkoutSessionModal({
     setStatus(null);
   }
 
+  function updateStepValue(index: number, field: "speed" | "incline" | "heartRate", value: string) {
+    setStepOverrides((previous) => ({
+      ...previous,
+      [index]: { speed: "", incline: "", heartRate: "", ...previous[index], [field]: value },
+    }));
+  }
+
   function resetTimer() {
     setIsRunning(false);
     setIsPaused(false);
@@ -224,8 +221,9 @@ export function IntervalWorkoutSessionModal({
       return {
         ...previous,
         [stepIndex]: {
-          speed: parseIntervalSpeedKmHint(currentStep.speedHint),
-          incline: parseIntervalInclinePercentHint(currentStep.inclineHint),
+          speed: "",
+          incline: "",
+          heartRate: "",
         },
       };
     });
@@ -342,7 +340,7 @@ export function IntervalWorkoutSessionModal({
 
   if (!open || !program) return null;
 
-  const currentOverride = stepOverrides[stepIndex] ?? { speed: "", incline: "" };
+  const currentOverride = stepOverrides[stepIndex] ?? { speed: "", incline: "", heartRate: "" };
   const canEditSpeedIncline = intervalStepAllowsSpeedInclineEdit(currentStep);
 
   const progressDegrees = (progressPercent / 100) * 360;
@@ -523,7 +521,34 @@ export function IntervalWorkoutSessionModal({
             >
               <div>
                 <div className="text-sm font-semibold text-slate-900">Økta er fullført</div>
-                <div className="mt-0.5 text-xs text-slate-500">Svar med emoji og eventuell kommentar, deretter lagre nederst.</div>
+                <div className="mt-0.5 text-xs text-slate-500">Fyll inn faktiske verdier for hvert steg, deretter lagre nederst.</div>
+              </div>
+              <div className="mt-3 space-y-3">
+                {intervalProgramSteps.map((step, index) => {
+                  if (step.sourceExerciseIndex === undefined) return null;
+                  const canEdit = intervalStepAllowsSpeedInclineEdit(step);
+                  if (!canEdit && !step.hrHint) return null;
+                  const values = stepOverrides[index] ?? { speed: "", incline: "", heartRate: "" };
+                  const equipment = resolveCardioEquipmentIdForProgramRow(
+                    program.exercises[step.sourceExerciseIndex],
+                    exercises.find((item) => item.id === program.exercises[step.sourceExerciseIndex]?.exerciseId),
+                  );
+                  const labels = cardioIntervalEditFieldLabels(equipment);
+                  return <div key={index} className="rounded-xl border border-slate-200 p-3">
+                    <div className="text-sm font-semibold">{step.headline}</div>
+                    <div className="mt-2 grid gap-2 sm:grid-cols-3">
+                      {canEdit ? <label className="space-y-1 text-xs">{labels.primary} <span className="text-slate-500">(mål: {step.speedHint})</span>
+                        <TextInput value={values.speed} onChange={(event) => updateStepValue(index, "speed", event.target.value)} inputMode="decimal" placeholder="Faktisk verdi" />
+                      </label> : null}
+                      {canEdit ? <label className="space-y-1 text-xs">{labels.secondary} <span className="text-slate-500">(mål: {step.inclineHint})</span>
+                        <TextInput value={values.incline} onChange={(event) => updateStepValue(index, "incline", event.target.value)} inputMode="decimal" placeholder="Faktisk verdi" />
+                      </label> : null}
+                      {step.hrHint ? <label className="space-y-1 text-xs">Puls <span className="text-slate-500">(mål: {step.hrHint})</span>
+                        <TextInput value={values.heartRate} onChange={(event) => updateStepValue(index, "heartRate", event.target.value)} inputMode="numeric" placeholder="Faktisk puls" />
+                      </label> : null}
+                    </div>
+                  </div>;
+                })}
               </div>
               <label className="block space-y-1">
                 <span className="text-xs font-semibold text-slate-700">Kommentar til økten (valgfritt)</span>
@@ -628,7 +653,7 @@ export function IntervalWorkoutSessionModal({
                               [stepIndex]: { ...currentOverride, speed: event.target.value },
                             }))
                           }
-                          placeholder="0"
+                          placeholder={`Mål: ${currentStep.speedHint}`}
                         />
                       </label>
                       <label className="space-y-1">
@@ -641,18 +666,16 @@ export function IntervalWorkoutSessionModal({
                               [stepIndex]: { ...currentOverride, incline: event.target.value },
                             }))
                           }
-                          placeholder="0"
+                          placeholder={`Mål: ${currentStep.inclineHint}`}
                         />
                       </label>
                     </div>
                   ) : null}
                   {currentStep.hrHint ? (
-                    <div
-                      className={`flex items-start justify-between gap-4 text-sm ${canEditSpeedIncline ? "mt-3 border-t border-slate-200 pt-3" : ""}`}
-                    >
-                      <span className="shrink-0 text-slate-600">Målpuls</span>
-                      <span className="text-right font-semibold text-slate-900">{currentStep.hrHint}</span>
-                    </div>
+                    <label className={`block space-y-1 text-xs ${canEditSpeedIncline ? "mt-3 border-t border-slate-200 pt-3" : ""}`}>
+                      Puls <span className="text-slate-500">(mål: {currentStep.hrHint})</span>
+                      <TextInput value={currentOverride.heartRate} onChange={(event) => updateStepValue(stepIndex, "heartRate", event.target.value)} inputMode="numeric" placeholder="Faktisk puls" />
+                    </label>
                   ) : null}
                 </div>
               ) : null}
