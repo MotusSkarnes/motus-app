@@ -42,10 +42,11 @@ export function CopyLoggedFoodToDateButton({ label, sourceDateKey, entries, onCo
     setReviewOpen(false);
   }
   return <>
-    <button type="button" className={onSaveMeal ? "motus-save-logged-meal__copy motus-pressable" : "motus-pressable inline-flex items-center gap-1 rounded-full border border-teal-200 bg-teal-50 px-2 py-1 text-xs font-semibold text-teal-800"}
+    <button type="button" className="motus-save-logged-meal__copy motus-pressable"
       onClick={(event) => { event.stopPropagation(); if (onSaveMeal) setChooseOpen(true); else startCopy(); }}
-      aria-label={onSaveMeal ? `Kopier ${label}` : `Kopier ${label} til en annen dag`} title={`Kopier ${label}`}>
-      <Copy className="h-3.5 w-3.5" aria-hidden /> {onSaveMeal ? null : "Kopier til dato"}
+      aria-label={onSaveMeal ? `Kopier ${label}` : `Kopier ${label} til en annen dag`}
+      title={onSaveMeal ? `Kopier ${label}` : `Kopier ${label} til en annen dag`}>
+      <Copy className="h-3.5 w-3.5" aria-hidden />
     </button>
     {chooseOpen && typeof document !== "undefined" ? createPortal(<div className="motus-foodbank-modal-backdrop !z-[10060]" role="presentation" onClick={() => setChooseOpen(false)}>
       <div className="motus-foodbank-modal max-w-sm" role="dialog" aria-modal="true" aria-label={`Kopier ${label}`}
