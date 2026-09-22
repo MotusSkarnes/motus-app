@@ -12328,11 +12328,12 @@ html:has(.motus-trainer-app) {
 .motus-workout-celebration-backdrop {
   position: fixed;
   inset: 0;
-  z-index: 1200;
+  z-index: 10050;
   display: flex;
-  align-items: flex-end;
+  align-items: center;
   justify-content: center;
-  padding: 1.25rem;
+  padding: max(1.25rem, env(safe-area-inset-top)) 1.25rem max(5.5rem, env(safe-area-inset-bottom));
+  overflow-y: auto;
   background: rgba(15, 23, 42, 0.55);
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
@@ -12358,6 +12359,7 @@ html:has(.motus-trainer-app) {
   position: relative;
   width: 100%;
   max-width: 26rem;
+  max-height: calc(100dvh - 7rem);
   border-radius: 1.5rem;
   background:
     radial-gradient(120% 90% at 50% 0%, rgba(217, 18, 120, 0.18) 0%, rgba(217, 18, 120, 0) 55%),
@@ -12370,8 +12372,14 @@ html:has(.motus-trainer-app) {
   flex-direction: column;
   gap: 1.25rem;
   animation: motus-celebration-card-in 0.32s cubic-bezier(0.16, 1, 0.3, 1);
-  overflow: hidden;
+  overflow-y: auto;
 }
+
+.motus-workout-celebration-results { display: grid; gap: 0.75rem; }
+.motus-workout-celebration-result { padding: 0.75rem; border-radius: 0.75rem; background: #fff; border: 1px solid #e2e8f0; }
+.motus-workout-celebration-result h3 { font-weight: 700; margin-bottom: 0.5rem; }
+.motus-workout-celebration-result-line { display: grid; grid-template-columns: 1fr auto; gap: 0.15rem 0.5rem; padding: 0.25rem 0; }
+.motus-workout-celebration-result-line small { grid-column: 1 / -1; color: #64748b; }
 
 @keyframes motus-celebration-card-in {
   from {
@@ -12587,6 +12595,10 @@ html:has(.motus-trainer-app) {
 }
 
 .motus-workout-celebration-confirm {
+  position: sticky;
+  bottom: 0;
+  flex-shrink: 0;
+  z-index: 1;
   margin-top: 0.25rem;
   border: none;
   border-radius: 999px;

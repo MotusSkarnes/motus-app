@@ -26,14 +26,14 @@ export function WorkoutCelebrationModal({ open, programTitle, stats, onClose }: 
 
   if (!open || typeof document === "undefined") return null;
 
-  const newRecordsCount = stats.newRecords.length;
+  const newRecordsCount = stats.isConditioning ? 0 : stats.newRecords.length;
   const hasNewRecords = newRecordsCount > 0;
   const headline = hasNewRecords ? "Ny rekord!" : "Økt fullført!";
   const subline = hasNewRecords
     ? newRecordsCount === 1
       ? `Du satte 1 ny personlig rekord i denne økta.`
       : `Du satte ${newRecordsCount} nye personlige rekorder i denne økta!`
-    : "Bra jobba — du logget en hel økt i dag.";
+    : stats.isConditioning ? "Her er tallene du registrerte i økta." : "Bra jobba — du logget en hel økt i dag.";
 
   const statCells = [
     {
@@ -90,7 +90,22 @@ export function WorkoutCelebrationModal({ open, programTitle, stats, onClose }: 
           {programTitle ? <p className="motus-workout-celebration-program">{programTitle}</p> : null}
         </div>
 
-        <div className="motus-workout-celebration-grid">
+        {stats.isConditioning ? (
+          <div className="motus-workout-celebration-results">
+            {stats.conditioningResults.length ? stats.conditioningResults.map((result, index) => (
+              <div key={`${result.exerciseName}-${index}`} className="motus-workout-celebration-result">
+                <h3>{result.exerciseName}</h3>
+                {result.values.map((item) => (
+                  <div key={item.label} className="motus-workout-celebration-result-line">
+                    <span>{item.label}</span>
+                    <strong>{item.value}</strong>
+                    {item.previous ? <small>Forrige: {item.previous}</small> : null}
+                  </div>
+                ))}
+              </div>
+            )) : <p>Ingen kondisjonstall ble registrert i denne økta.</p>}
+          </div>
+        ) : <div className="motus-workout-celebration-grid">
           {statCells.map((cell) => (
             <div key={cell.key} className={`motus-workout-celebration-stat motus-workout-celebration-stat--${cell.tone}`}>
               <span className={`motus-workout-celebration-stat-icon motus-workout-celebration-stat-icon--${cell.tone}`}>{cell.icon}</span>
@@ -98,7 +113,7 @@ export function WorkoutCelebrationModal({ open, programTitle, stats, onClose }: 
               <p className="motus-workout-celebration-stat-label">{cell.label}</p>
             </div>
           ))}
-        </div>
+        </div>}
 
         {hasNewRecords ? (
           <div className="motus-workout-celebration-records">
