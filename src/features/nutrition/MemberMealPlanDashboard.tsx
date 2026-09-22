@@ -645,9 +645,7 @@ export function MemberMealPlanDashboard({ plan, memberId, onOpenAvoidances }: Me
     if (!entries.length || targetDateKey === selectedDateKey) return;
     const targetDay = plan.days[getWeekdayIndex(new Date(`${targetDateKey}T12:00:00`))];
     const copied = copyLoggedFoodEntries(entries).map((entry) => {
-      const sourceMeal = displayMeals.find((meal) => meal.id === entry.mealId);
-      if (!sourceMeal) return entry;
-      const slot = canonicalMemberMealSlotId(sourceMeal.id, sourceMeal.name);
+      const slot = canonicalMemberMealSlotId(entry.mealId);
       const targetMeal = targetDay?.meals.find((meal) => canonicalMemberMealSlotId(meal.id, meal.name) === slot);
       return { ...entry, mealId: targetMeal?.id ?? slot ?? entry.mealId };
     });

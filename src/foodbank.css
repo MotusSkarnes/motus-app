@@ -4858,6 +4858,15 @@
   opacity: 0.55;
 }
 
+.motus-copy-food-row {
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
+.motus-copy-food-row__slot {
+  grid-column: 1 / -1;
+  width: 100%;
+}
+
 .motus-save-logged-meal-modal__check {
   display: flex;
   align-items: center;

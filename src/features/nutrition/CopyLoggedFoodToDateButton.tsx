@@ -3,6 +3,7 @@ import { createPortal } from "react-dom";
 import { Copy } from "lucide-react";
 import type { MemberQuickFoodLogEntry } from "../../app/memberMealPlanState";
 import { includedLoggedMealSaveRows, loggedMealSaveRowsFromEntries } from "../../app/memberSavedMeals";
+import { MEMBER_MEAL_SLOTS, canonicalMemberMealSlotId } from "../../app/memberMealSlots";
 
 type Props = {
   label: string;
@@ -17,18 +18,26 @@ export function CopyLoggedFoodToDateButton({ label, sourceDateKey, entries, onCo
   const [open, setOpen] = useState(false);
   const [reviewOpen, setReviewOpen] = useState(false);
   const [targetDateKey, setTargetDateKey] = useState("");
+  const [targetMealSlotId, setTargetMealSlotId] = useState("");
+  const [slotByEntryId, setSlotByEntryId] = useState<Record<string, string>>({});
   const [rows, setRows] = useState(() => loggedMealSaveRowsFromEntries(entries));
   function startCopy() {
     setTargetDateKey("");
     setRows(loggedMealSaveRowsFromEntries(entries));
+    const nextSlots = Object.fromEntries(entries.map((entry) => {
+      const slot = canonicalMemberMealSlotId(entry.mealId, label);
+      return [entry.id, MEMBER_MEAL_SLOTS.some((item) => item.id === slot) ? slot! : ""];
+    }));
+    setSlotByEntryId(nextSlots);
+    setTargetMealSlotId("");
     setOpen(true);
   }
   function confirmCopy() {
     const selected = includedLoggedMealSaveRows(rows).map((row) => {
       const entry = entries.find((item) => item.id === row.id)!;
-      return { ...entry, grams: row.grams };
+      return { ...entry, grams: row.grams, mealId: slotByEntryId[row.id] };
     });
-    if (!selected.length) return;
+    if (!selected.length || selected.some((entry) => !entry.mealId)) return;
     onCopy(targetDateKey, selected);
     setReviewOpen(false);
   }
@@ -79,8 +88,18 @@ export function CopyLoggedFoodToDateButton({ label, sourceDateKey, entries, onCo
             <p className="motus-save-logged-meal-modal__lead">Fjern haken på det du ikke vil kopiere, og juster mengder om du vil.</p>
           </div></header>
           <div className="motus-save-logged-meal-modal__body">
+            <label className="motus-saved-meals__save-label" htmlFor="copy-target-meal-slot">Legg alle til som</label>
+            <select id="copy-target-meal-slot" className="mb-3 w-full rounded-lg border border-slate-300 bg-white p-2"
+              value={targetMealSlotId} onChange={(event) => {
+                const slot = event.target.value;
+                setTargetMealSlotId(slot);
+                if (slot) setSlotByEntryId(Object.fromEntries(entries.map((entry) => [entry.id, slot])));
+              }}>
+              <option value="">Velg for alle</option>
+              {MEMBER_MEAL_SLOTS.map((slot) => <option key={slot.id} value={slot.id}>{slot.label}</option>)}
+            </select>
             <ul className="motus-save-logged-meal-modal__list">{rows.map((row) => <li key={row.id}
-              className={`motus-save-logged-meal-modal__row ${row.included ? "" : "motus-save-logged-meal-modal__row--excluded"}`}>
+              className={`motus-save-logged-meal-modal__row motus-copy-food-row ${row.included ? "" : "motus-save-logged-meal-modal__row--excluded"}`}>
               <label className="motus-save-logged-meal-modal__check"><input type="checkbox" checked={row.included}
                 onChange={(event) => setRows((previous) => previous.map((item) => item.id === row.id ? { ...item, included: event.target.checked } : item))}
                 aria-label={`Ta med ${row.name}`} /><span className="motus-save-logged-meal-modal__name">{row.name}</span></label>
@@ -88,11 +107,18 @@ export function CopyLoggedFoodToDateButton({ label, sourceDateKey, entries, onCo
                 value={row.grams > 0 ? row.grams : ""} disabled={!row.included} aria-label={`Mengde i gram for ${row.name}`}
                 onChange={(event) => { const grams = Number(event.target.value.replace(",", ".")); setRows((previous) => previous.map((item) => item.id === row.id ? { ...item, grams: Number.isFinite(grams) ? grams : 0 } : item)); }} />
                 <span aria-hidden>g</span></label>
+              <select className="motus-copy-food-row__slot rounded-lg border border-slate-300 bg-white p-1 text-sm" value={slotByEntryId[row.id] ?? ""}
+                aria-label={`Måltid for ${row.name}`} disabled={!row.included}
+                onChange={(event) => setSlotByEntryId((previous) => ({ ...previous, [row.id]: event.target.value }))}>
+                <option value="">Velg måltid</option>
+                {MEMBER_MEAL_SLOTS.map((slot) => <option key={slot.id} value={slot.id}>{slot.label}</option>)}
+              </select>
             </li>)}</ul>
             <div className="motus-save-logged-meal-modal__actions">
               <button type="button" className="rounded-lg border px-4 py-2" onClick={() => { setReviewOpen(false); setOpen(true); }}>Tilbake</button>
               <button type="button" className="rounded-lg bg-teal-700 px-4 py-2 font-semibold text-white"
-                disabled={includedLoggedMealSaveRows(rows).length === 0} onClick={confirmCopy}>Kopier valgte</button>
+                disabled={includedLoggedMealSaveRows(rows).length === 0 || includedLoggedMealSaveRows(rows).some((row) => !slotByEntryId[row.id])}
+                onClick={confirmCopy}>Kopier valgte</button>
             </div>
           </div>
         </div>

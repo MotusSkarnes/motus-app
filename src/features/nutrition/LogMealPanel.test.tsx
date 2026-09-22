@@ -65,10 +65,13 @@ describe("LogMealPanel", () => {
     await user.click(within(dialog).getByRole("button", { name: "Velg matvarer" }));
     const review = screen.getByRole("dialog", { name: "Velg matvarer fra hele dagen" });
     await user.click(within(review).getByRole("checkbox", { name: "Ta med Brød" }));
+    await user.selectOptions(within(review).getByLabelText("Legg alle til som"), "member-middag");
+    await user.selectOptions(within(review).getByLabelText("Måltid for Egg"), "member-kvelds");
     await user.click(within(review).getByRole("button", { name: "Kopier valgte" }));
     const state = loadMemberMealPlanState(MEMBER_ID);
     expect(state.quickFoodLogs[targetKey]).toHaveLength(1);
     expect(state.quickFoodLogs[targetKey][0].name).toBe("Egg");
+    expect(state.quickFoodLogs[targetKey][0].mealId).toBe("member-kvelds");
     expect(state.quickFoodLogs[targetKey][0].id).not.toBe("egg-original");
     expect(state.quickFoodLogs[dateKey][0].id).toBe("egg-original");
   });
