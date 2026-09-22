@@ -73,14 +73,11 @@ import { MotusFlameIcon } from "../MotusFlameIcon";
 import { MacroProgressBar } from "./MacroProgressBar";
 import { MacroProgressRing } from "./MacroProgressRing";
 import { type MealDraftItem } from "../../app/mealDraft";
-import { resolveNutritionFromFoodItems } from "../../app/memberNutritionRehydrate";
-import { foodWaterPer100g } from "../../app/foodBankWater";
 import { LogMealPanel } from "./LogMealPanel";
 import { SaveLoggedMealModal } from "./SaveLoggedMealModal";
 import { CopyLoggedFoodToDateButton } from "./CopyLoggedFoodToDateButton";
 import { copyLoggedFoodEntries } from "../../app/copyLoggedFood";
 import { MemberWaterIntakeSection } from "./MemberWaterIntakeSection";
-import { WaterTotalSummary } from "./WaterTotalSummary";
 import "../../foodbank.css";
 
 const RECIPE_PORTION_GRAMS = 100;
@@ -442,30 +439,10 @@ export function MemberMealPlanDashboard({ plan, memberId, onOpenAvoidances }: Me
 
   const displayMacrosToday = combinedMacrosToday;
   const displayMacrosProgress = isSelectedToday ? combinedMacrosToday : combinedMacrosSelected;
-  const waterLiters = tracking.waterLiters[todayKey] ?? 0;
-  const waterFromQuickLogsTodayLiters = useMemo(() => {
-    const indexes = { byId: foodById };
-    const gramsFromQuickLogs = quickLogsToday.reduce((sum, entry) => {
-      const resolvedNutrition = resolveNutritionFromFoodItems(
-        entry.name,
-        entry.nutritionPer100g,
-        foodItems,
-        entry.foodId,
-        indexes,
-      );
-      const waterPer100g = foodWaterPer100g(resolvedNutrition) ?? 0;
-      if (!Number.isFinite(waterPer100g) || waterPer100g <= 0) return sum;
-      const scale = entry.grams > 0 ? entry.grams / 100 : 0;
-      return sum + waterPer100g * scale;
-    }, 0);
-    return gramsFromQuickLogs / 1000;
-  }, [foodById, foodItems, quickLogsToday]);
-  const waterFromLoggedPlanFoodTodayLiters = useMemo(
-    () => sumLoggedWaterLitersFromFoodItems(todayDayResolved, loggedFoodToday, foodById, foodItems),
-    [todayDayResolved, loggedFoodToday, foodById, foodItems],
+  const waterFromLoggedPlanFoodSelectedLiters = useMemo(
+    () => sumLoggedWaterLitersFromFoodItems(selectedDayResolved ?? todayDayResolved, loggedFoodSelected, foodById, foodItems),
+    [selectedDayResolved, todayDayResolved, loggedFoodSelected, foodById, foodItems],
   );
-  const waterFromFoodTodayLiters = waterFromQuickLogsTodayLiters + waterFromLoggedPlanFoodTodayLiters;
-  const totalWaterTodayLiters = waterLiters + waterFromFoodTodayLiters;
   const kcalRemaining = Math.max(0, Math.round(targetKcal - displayMacrosToday.kcal));
   const streakDays = computeNutritionStreak(tracking.loggedMeals, tracking.loggedFoodIds);
   const todayMealsWithFood = useMemo(
@@ -757,11 +734,15 @@ export function MemberMealPlanDashboard({ plan, memberId, onOpenAvoidances }: Me
             />
           </div>
         </div>
-        <WaterTotalSummary
-          totalLiters={totalWaterTodayLiters}
-          className="motus-matplan-progress-card__water-summary"
-        />
       </section>
+
+      <MemberWaterIntakeSection
+        memberId={memberId}
+        dateKey={selectedDateKey}
+        foodItems={foodItems}
+        planFoodWaterLiters={waterFromLoggedPlanFoodSelectedLiters}
+        className="motus-log-meal-panel__water"
+      />
 
       <section className="motus-matplan-section" aria-label="Måltider" ref={mealSectionRef}>
         <div className="motus-matplan-section-head">
@@ -956,13 +937,6 @@ export function MemberMealPlanDashboard({ plan, memberId, onOpenAvoidances }: Me
             hasMealPlan
             showWaterSection={false}
             preferredDateKey={selectedDateKey}
-          />
-          <MemberWaterIntakeSection
-            memberId={memberId}
-            dateKey={selectedDateKey}
-            foodItems={foodItems}
-            planFoodWaterLiters={waterFromLoggedPlanFoodTodayLiters}
-            className="motus-log-meal-panel__water"
           />
         </div>
       </section>

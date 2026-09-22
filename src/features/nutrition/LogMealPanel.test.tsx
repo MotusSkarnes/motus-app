@@ -38,6 +38,25 @@ beforeEach(() => {
 });
 
 describe("LogMealPanel", () => {
+  it("shows water between the daily totals and logged meals", () => {
+    const dateKey = toIsoDateKey(new Date());
+    saveMemberMealPlanState(MEMBER_ID, {
+      ...EMPTY_MEMBER_MEAL_PLAN_STATE,
+      quickFoodLogs: { [dateKey]: [{
+        id: "water-order-food", name: "Egg", grams: 100, source: "food", mealId: "member-frokost",
+        loggedAt: new Date().toISOString(), nutritionPer100g: {
+          kcal: 140, protein: 13, carbs: 1, fat: 10, fiber: 0, sugar: 0, saturatedFat: 3, sodium: 120,
+        },
+      }] },
+    });
+    render(<LogMealPanel memberId={MEMBER_ID} />);
+    const totals = document.querySelector(".motus-log-meal-macros")!;
+    const water = screen.getByRole("region", { name: "Vanninntak i dag" });
+    const logged = document.querySelector(".motus-log-meal-panel__summary")!;
+    expect(totals.compareDocumentPosition(water) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(water.compareDocumentPosition(logged) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
   it("copies a logged day directly to another date", async () => {
     const user = userEvent.setup();
     const dateKey = toIsoDateKey(new Date());

@@ -23,7 +23,7 @@ import { sumQuickFoodLogMacros } from "../../app/quickFoodLogMacros";
 import { DailyLoggedMacrosSummary } from "./DailyLoggedMacrosSummary";
 import { LoggedQuickFoodEntryRow } from "./LoggedQuickFoodEntryRow";
 import { MealDraftComposer } from "./MealDraftComposer";
-import { computeTotalWaterLiters, MemberWaterIntakeSection } from "./MemberWaterIntakeSection";
+import { MemberWaterIntakeSection } from "./MemberWaterIntakeSection";
 import "../../foodbank.css";
 
 /** How far back members may backfill meal logs. */
@@ -133,10 +133,6 @@ export function LogMealPanel({
   }, [memberId]);
 
   const macrosForDate = useMemo(() => sumQuickFoodLogMacros(logsForDate), [logsForDate]);
-  const totalWaterForDateLiters = useMemo(
-    () => computeTotalWaterLiters(state, dateKey, foodItems, planFoodWaterLiters),
-    [dateKey, foodItems, planFoodWaterLiters, state],
-  );
   const logsBySlot = useMemo(() => {
     const grouped = new Map<string, MemberQuickFoodLogEntry[]>();
     for (const slot of MEMBER_MEAL_SLOTS) {
@@ -372,7 +368,16 @@ export function LogMealPanel({
           macros={macrosForDate}
           targets={mealPlanTargets}
           title={`${dateLabel} — totalt`}
-          totalWaterLiters={totalWaterForDateLiters}
+        />
+      ) : null}
+
+      {showWaterSection ? (
+        <MemberWaterIntakeSection
+          memberId={memberId}
+          dateKey={dateKey}
+          foodItems={foodItems}
+          planFoodWaterLiters={planFoodWaterLiters}
+          className="motus-log-meal-panel__water"
         />
       ) : null}
 
@@ -440,16 +445,6 @@ export function LogMealPanel({
             ) : null}
           </div>
         </section>
-      ) : null}
-
-      {showWaterSection ? (
-        <MemberWaterIntakeSection
-          memberId={memberId}
-          dateKey={dateKey}
-          foodItems={foodItems}
-          planFoodWaterLiters={planFoodWaterLiters}
-          className="motus-log-meal-panel__water"
-        />
       ) : null}
 
       {status ? <p className="motus-log-meal-panel__status">{status}</p> : null}
