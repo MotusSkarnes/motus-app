@@ -317,12 +317,14 @@ export function formatWorkoutSegmentPlanLabel(
 }
 
 export function resolveWorkoutGroupExerciseName(
-  group: Pick<WorkoutResultGroup, "groupId" | "exerciseName">,
+  group: Pick<WorkoutResultGroup, "groupId" | "exerciseName" | "blockType">,
   program: TrainingProgram | null | undefined,
 ): string {
+  if (group.blockType) return group.exerciseName;
   if (!program) return group.exerciseName;
   const exerciseIndex = program.exercises.findIndex((exercise) => exercise.id === group.groupId);
   if (exerciseIndex < 0) return group.exerciseName;
+  if (group.exerciseName !== program.exercises[exerciseIndex].exerciseName) return group.exerciseName;
   return resolveProgramExerciseName(program.exercises, exerciseIndex);
 }
 

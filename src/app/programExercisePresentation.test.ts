@@ -4,6 +4,7 @@ import {
   formatWorkoutGroupPlanLabel,
   formatWorkoutResultPerformedLabel,
   formatWorkoutResultSetPlanLabel,
+  resolveWorkoutGroupExerciseName,
 } from "./programExercisePresentation";
 import type { ProgramExercise, TrainingProgram, WorkoutExerciseResult } from "./types";
 
@@ -42,6 +43,16 @@ function workoutRow(overrides: Partial<WorkoutExerciseResult> = {}): WorkoutExer
     ...overrides,
   };
 }
+
+describe("resolveWorkoutGroupExerciseName", () => {
+  it("shows the replacement exercise during an active workout", () => {
+    const program: TrainingProgram = {
+      id: "p1", memberId: "m1", title: "Styrke", goal: "", notes: "", createdAt: "",
+      exercises: [programExercise({ exerciseName: "Bulgarsk utfall" })],
+    };
+    expect(resolveWorkoutGroupExerciseName({ groupId: "pe-1", exerciseName: "Goblet squat" }, program)).toBe("Goblet squat");
+  });
+});
 
 describe("formatWorkoutGroupPlanLabel", () => {
   it("matches program prescription for strength exercise", () => {
