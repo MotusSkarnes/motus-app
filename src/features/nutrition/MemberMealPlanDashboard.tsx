@@ -76,7 +76,7 @@ import { type MealDraftItem } from "../../app/mealDraft";
 import { resolveNutritionFromFoodItems } from "../../app/memberNutritionRehydrate";
 import { foodWaterPer100g } from "../../app/foodBankWater";
 import { LogMealPanel } from "./LogMealPanel";
-import { SaveLoggedMealCopyButton, SaveLoggedMealModal } from "./SaveLoggedMealModal";
+import { SaveLoggedMealModal } from "./SaveLoggedMealModal";
 import { CopyLoggedFoodToDateButton } from "./CopyLoggedFoodToDateButton";
 import { copyLoggedFoodEntries } from "../../app/copyLoggedFood";
 import { MemberWaterIntakeSection } from "./MemberWaterIntakeSection";
@@ -894,18 +894,15 @@ export function MemberMealPlanDashboard({ plan, memberId, onOpenAvoidances }: Me
                     <div className="motus-matplan-meal-card__slot-row">
                       <span className="motus-matplan-meal-card__slot">{slotLabel}</span>
                       {saveEntries.length > 0 ? (
-                        <><SaveLoggedMealCopyButton
-                          mealLabel={slotLabel}
-                          onClick={() => {
+                        <CopyLoggedFoodToDateButton label={slotLabel} sourceDateKey={selectedDateKey}
+                          onCopy={(targetDateKey) => copyLoggedEntriesToDate(saveEntries, targetDateKey)}
+                          onSaveMeal={() => {
                             setSaveLoggedMeal({
                               mealSlotId: canonicalMemberMealSlotId(meal.id, meal.name) ?? meal.id,
                               mealLabel: slotLabel,
                               entries: saveEntries,
                             });
-                          }}
-                        />
-                        <CopyLoggedFoodToDateButton label={slotLabel} sourceDateKey={selectedDateKey}
-                          onCopy={(targetDateKey) => copyLoggedEntriesToDate(saveEntries, targetDateKey)} /></>
+                          }} />
                       ) : null}
                     </div>
                   </div>

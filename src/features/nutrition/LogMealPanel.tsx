@@ -13,7 +13,7 @@ import { persistMemberMealPlanStateLocalAndScheduleCloud, syncMemberMealPlanStat
 import { MEAL_PLAN_STATE_CHANGED_EVENT } from "../../app/memberMealPlanState";
 import type { MemberSavedMeal } from "../../app/memberSavedMeals";
 import { addMemberSavedMeal, addQuickFoodLogs, removeMemberSavedMeal, updateQuickFoodLog } from "../../app/memberMealPlanTracking";
-import { SaveLoggedMealCopyButton, SaveLoggedMealModal } from "./SaveLoggedMealModal";
+import { SaveLoggedMealModal } from "./SaveLoggedMealModal";
 import { CopyLoggedFoodToDateButton } from "./CopyLoggedFoodToDateButton";
 import { copyLoggedFoodEntries } from "../../app/copyLoggedFood";
 import type { MealPlanTargets } from "../../app/mealPlanTypes";
@@ -410,12 +410,9 @@ export function LogMealPanel({
                   <header className="motus-log-meal-panel__meal-head">
                     <div className="motus-log-meal-panel__meal-title-row">
                       <h3 className="motus-log-meal-panel__meal-title">{slot.label}</h3>
-                      <SaveLoggedMealCopyButton
-                        mealLabel={slot.label}
-                        onClick={() => setSaveLoggedMeal({ mealSlotId: slot.id, mealLabel: slot.label, entries })}
-                      />
                       <CopyLoggedFoodToDateButton label={slot.label} sourceDateKey={dateKey}
-                        onCopy={(targetDateKey) => copyLogsToDate(entries, targetDateKey)} />
+                        onCopy={(targetDateKey) => copyLogsToDate(entries, targetDateKey)}
+                        onSaveMeal={() => setSaveLoggedMeal({ mealSlotId: slot.id, mealLabel: slot.label, entries })} />
                     </div>
                     <span className="motus-log-meal-panel__meal-sum">
                       {formatMacro(slotMacros.kcal, 0)} kcal · P {formatMacro(slotMacros.protein, 0)} g
@@ -430,18 +427,9 @@ export function LogMealPanel({
                 <header className="motus-log-meal-panel__meal-head">
                   <div className="motus-log-meal-panel__meal-title-row">
                     <h3 className="motus-log-meal-panel__meal-title">Annet</h3>
-                    <SaveLoggedMealCopyButton
-                      mealLabel="Annet"
-                      onClick={() =>
-                        setSaveLoggedMeal({
-                          mealSlotId: "other",
-                          mealLabel: "Annet",
-                          entries: logsBySlot.get("other") ?? [],
-                        })
-                      }
-                    />
                     <CopyLoggedFoodToDateButton label="Annet" sourceDateKey={dateKey}
-                      onCopy={(targetDateKey) => copyLogsToDate(logsBySlot.get("other") ?? [], targetDateKey)} />
+                      onCopy={(targetDateKey) => copyLogsToDate(logsBySlot.get("other") ?? [], targetDateKey)}
+                      onSaveMeal={() => setSaveLoggedMeal({ mealSlotId: "other", mealLabel: "Annet", entries: logsBySlot.get("other") ?? [] })} />
                   </div>
                   <span className="motus-log-meal-panel__meal-sum">
                     {formatMacro(sumQuickFoodLogMacros(logsBySlot.get("other")).kcal, 0)} kcal

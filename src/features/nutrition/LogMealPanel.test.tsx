@@ -64,6 +64,26 @@ describe("LogMealPanel", () => {
     expect(state.quickFoodLogs[dateKey][0].id).toBe("egg-original");
   });
 
+  it("offers date copy and saved meal from one meal copy icon", async () => {
+    const user = userEvent.setup();
+    const dateKey = toIsoDateKey(new Date());
+    saveMemberMealPlanState(MEMBER_ID, {
+      ...EMPTY_MEMBER_MEAL_PLAN_STATE,
+      quickFoodLogs: { [dateKey]: [{
+        id: "egg", name: "Egg", grams: 100, source: "food", mealId: "member-frokost",
+        loggedAt: new Date().toISOString(), nutritionPer100g: {
+          kcal: 140, protein: 13, carbs: 1, fat: 10, fiber: 0, sugar: 0, saturatedFat: 3, sodium: 120,
+        },
+      }] },
+    });
+    render(<LogMealPanel memberId={MEMBER_ID} showWaterSection={false} />);
+    await user.click(screen.getByRole("button", { name: "Kopier Frokost" }));
+    const dialog = screen.getByRole("dialog", { name: "Kopier Frokost" });
+    expect(within(dialog).getByRole("button", { name: "Kopier til en annen dag" })).toBeInTheDocument();
+    await user.click(within(dialog).getByRole("button", { name: "Lagre i lagrede måltider" }));
+    expect(screen.getByRole("dialog", { name: "Lagre som måltid" })).toBeInTheDocument();
+  });
+
   it("opens the log form above already-logged meals", async () => {
     const user = userEvent.setup();
     const dateKey = toIsoDateKey(new Date());
