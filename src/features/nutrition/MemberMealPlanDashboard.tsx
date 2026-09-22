@@ -771,7 +771,7 @@ export function MemberMealPlanDashboard({ plan, memberId, onOpenAvoidances }: Me
             {isSelectedToday ? "Dagens måltider" : `Måltider — ${selectedDay?.label ?? ""}`}
           </h2>
           {loggedDayEntries.length > 0 ? <CopyLoggedFoodToDateButton label="hele dagen" sourceDateKey={selectedDateKey}
-            onCopy={(targetDateKey) => copyLoggedEntriesToDate(loggedDayEntries, targetDateKey)} /> : null}
+            entries={loggedDayEntries} onCopy={(targetDateKey, selected) => copyLoggedEntriesToDate(selected, targetDateKey)} /> : null}
           <button
             type="button"
             className="motus-matplan-link-btn"
@@ -894,8 +894,8 @@ export function MemberMealPlanDashboard({ plan, memberId, onOpenAvoidances }: Me
                     <div className="motus-matplan-meal-card__slot-row">
                       <span className="motus-matplan-meal-card__slot">{slotLabel}</span>
                       {saveEntries.length > 0 ? (
-                        <CopyLoggedFoodToDateButton label={slotLabel} sourceDateKey={selectedDateKey}
-                          onCopy={(targetDateKey) => copyLoggedEntriesToDate(saveEntries, targetDateKey)}
+                        <CopyLoggedFoodToDateButton label={slotLabel} sourceDateKey={selectedDateKey} entries={saveEntries}
+                          onCopy={(targetDateKey, selected) => copyLoggedEntriesToDate(selected, targetDateKey)}
                           onSaveMeal={() => {
                             setSaveLoggedMeal({
                               mealSlotId: canonicalMemberMealSlotId(meal.id, meal.name) ?? meal.id,

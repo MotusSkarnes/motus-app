@@ -51,15 +51,24 @@ describe("LogMealPanel", () => {
         loggedAt: new Date().toISOString(), nutritionPer100g: {
           kcal: 140, protein: 13, carbs: 1, fat: 10, fiber: 0, sugar: 0, saturatedFat: 3, sodium: 120,
         },
+      }, {
+        id: "bread-original", name: "Brød", grams: 80, source: "food", mealId: "member-frokost",
+        loggedAt: new Date().toISOString(), nutritionPer100g: {
+          kcal: 250, protein: 8, carbs: 45, fat: 3, fiber: 6, sugar: 2, saturatedFat: 1, sodium: 400,
+        },
       }] },
     });
     render(<LogMealPanel memberId={MEMBER_ID} showWaterSection={false} />);
     await user.click(screen.getByRole("button", { name: "Kopier hele dagen til en annen dag" }));
     const dialog = screen.getByRole("dialog", { name: "Kopier hele dagen til en annen dag" });
     await user.type(within(dialog).getByLabelText("Til dato"), targetKey);
-    await user.click(within(dialog).getByRole("button", { name: "Kopier" }));
+    await user.click(within(dialog).getByRole("button", { name: "Velg matvarer" }));
+    const review = screen.getByRole("dialog", { name: "Velg matvarer fra hele dagen" });
+    await user.click(within(review).getByRole("checkbox", { name: "Ta med Brød" }));
+    await user.click(within(review).getByRole("button", { name: "Kopier valgte" }));
     const state = loadMemberMealPlanState(MEMBER_ID);
     expect(state.quickFoodLogs[targetKey]).toHaveLength(1);
+    expect(state.quickFoodLogs[targetKey][0].name).toBe("Egg");
     expect(state.quickFoodLogs[targetKey][0].id).not.toBe("egg-original");
     expect(state.quickFoodLogs[dateKey][0].id).toBe("egg-original");
   });

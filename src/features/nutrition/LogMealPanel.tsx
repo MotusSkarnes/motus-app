@@ -227,7 +227,7 @@ export function LogMealPanel({
     [dateKey, memberId, state],
   );
 
-  const copyLogsToDate = useCallback((entries: MemberQuickFoodLogEntry[], targetDateKey: string) => {
+  const copyLogsToDate = useCallback((targetDateKey: string, entries: MemberQuickFoodLogEntry[]) => {
     if (!entries.length || targetDateKey === dateKey) return;
     const next = addQuickFoodLogs(memberId, state, targetDateKey, copyLoggedFoodEntries(entries));
     setState(next);
@@ -391,8 +391,8 @@ export function LogMealPanel({
                 </p>
               </div>
             </div>
-            <CopyLoggedFoodToDateButton label="hele dagen" sourceDateKey={dateKey}
-              onCopy={(targetDateKey) => copyLogsToDate(logsForDate, targetDateKey)} />
+            <CopyLoggedFoodToDateButton label="hele dagen" sourceDateKey={dateKey} entries={logsForDate}
+              onCopy={copyLogsToDate} />
             {!open ? (
               <GradientButton type="button" className="motus-log-meal-cta motus-log-meal-cta--compact" onClick={() => setOpen(true)}>
                 <Plus className="h-4 w-4" aria-hidden />
@@ -410,8 +410,8 @@ export function LogMealPanel({
                   <header className="motus-log-meal-panel__meal-head">
                     <div className="motus-log-meal-panel__meal-title-row">
                       <h3 className="motus-log-meal-panel__meal-title">{slot.label}</h3>
-                      <CopyLoggedFoodToDateButton label={slot.label} sourceDateKey={dateKey}
-                        onCopy={(targetDateKey) => copyLogsToDate(entries, targetDateKey)}
+                      <CopyLoggedFoodToDateButton label={slot.label} sourceDateKey={dateKey} entries={entries}
+                        onCopy={copyLogsToDate}
                         onSaveMeal={() => setSaveLoggedMeal({ mealSlotId: slot.id, mealLabel: slot.label, entries })} />
                     </div>
                     <span className="motus-log-meal-panel__meal-sum">
@@ -427,8 +427,8 @@ export function LogMealPanel({
                 <header className="motus-log-meal-panel__meal-head">
                   <div className="motus-log-meal-panel__meal-title-row">
                     <h3 className="motus-log-meal-panel__meal-title">Annet</h3>
-                    <CopyLoggedFoodToDateButton label="Annet" sourceDateKey={dateKey}
-                      onCopy={(targetDateKey) => copyLogsToDate(logsBySlot.get("other") ?? [], targetDateKey)}
+                    <CopyLoggedFoodToDateButton label="Annet" sourceDateKey={dateKey} entries={logsBySlot.get("other") ?? []}
+                      onCopy={copyLogsToDate}
                       onSaveMeal={() => setSaveLoggedMeal({ mealSlotId: "other", mealLabel: "Annet", entries: logsBySlot.get("other") ?? [] })} />
                   </div>
                   <span className="motus-log-meal-panel__meal-sum">
