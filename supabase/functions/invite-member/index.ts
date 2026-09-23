@@ -1,4 +1,11 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import {
+  canInviteTrainerMember,
+  isTrainerCaller,
+  normalizeTrainerMutationEmail,
+  type TrainerMutationAuthUser,
+  type TrainerMutationMemberRow,
+} from "../_shared/trainerMemberMutationSecurity.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -25,7 +32,7 @@ function jsonResponse(status: number, body: Record<string, unknown>) {
 }
 
 function normalizeEmail(value: unknown): string {
-  return String(value ?? "").trim().toLowerCase();
+  return normalizeTrainerMutationEmail(value);
 }
 
 function trimSlash(value: string): string {
@@ -59,29 +66,6 @@ function resolveInviteRedirectTo(payload: InvitePayload): { redirectTo: string }
     };
   }
   return { redirectTo: buildInviteRedirectUrl(fromClient) };
-}
-
-function isTrainerUser(user: {
-  app_metadata?: Record<string, unknown>;
-  user_metadata?: Record<string, unknown>;
-}): boolean {
-  const appRole = String(user.app_metadata?.role ?? "").trim().toLowerCase();
-  if (appRole === "trainer") return true;
-  const metaRole = String(user.user_metadata?.role ?? "").trim().toLowerCase();
-  return metaRole === "trainer";
-}
-
-/** Eldre trenerkontoer kan mangle role-metadata — tillat hvis JWT-bruker-id matcher ownerUserId fra klient. */
-function canInviteAsTrainer(
-  user: {
-    id: string;
-    app_metadata?: Record<string, unknown>;
-    user_metadata?: Record<string, unknown>;
-  },
-  ownerUserId: string,
-): boolean {
-  if (isTrainerUser(user)) return true;
-  return Boolean(ownerUserId && user.id === ownerUserId.trim());
 }
 
 function isExistingUserInviteError(message: string): boolean {
@@ -263,7 +247,6 @@ Deno.serve(async (req) => {
   const email = normalizeEmail(payload.email);
   const memberId = String(payload.memberId ?? "").trim();
   const accessToken = String(payload.accessToken ?? "").trim();
-  const ownerUserId = String(payload.ownerUserId ?? "").trim();
 
   if (!email || !email.includes("@")) {
     return jsonResponse(400, { error: "Valid email is required" });
@@ -286,11 +269,28 @@ Deno.serve(async (req) => {
   if (userErr || !user?.id) {
     return jsonResponse(401, { error: "Invalid trainer session" });
   }
-  if (!canInviteAsTrainer(user, ownerUserId)) {
+  if (!isTrainerCaller(user as TrainerMutationAuthUser)) {
     return jsonResponse(403, { error: "Only trainers can invite members" });
   }
-  if (ownerUserId && user.id !== ownerUserId) {
-    return jsonResponse(403, { error: "Session does not match ownerUserId" });
+
+  const { data: memberRow, error: memberError } = await adminClient
+    .from("members")
+    .select("id, email, owner_user_id, customer_type, is_active")
+    .eq("id", memberId)
+    .maybeSingle();
+  if (memberError) {
+    return jsonResponse(500, { error: memberError.message });
+  }
+  if (
+    !canInviteTrainerMember({
+      requesterUserId: user.id,
+      inviteEmail: email,
+      memberRow: (memberRow as TrainerMutationMemberRow | null) ?? null,
+    })
+  ) {
+    return jsonResponse(403, {
+      error: "Not allowed to invite this member",
+    });
   }
 
   const redirect = resolveInviteRedirectTo(payload);

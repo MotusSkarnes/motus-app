@@ -1,4 +1,10 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import {
+  canUpsertTrainerOwnedMember,
+  isTrainerCaller,
+  normalizeTrainerMutationEmail,
+  type TrainerMutationAuthUser,
+} from "../_shared/trainerMemberMutationSecurity.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -27,25 +33,7 @@ function jsonResponse(status: number, body: Record<string, unknown>) {
 }
 
 function normalizeEmail(value: unknown): string {
-  return String(value ?? "").trim().toLowerCase();
-}
-
-function isTrainerUser(user: {
-  app_metadata?: Record<string, unknown>;
-  user_metadata?: Record<string, unknown>;
-}): boolean {
-  const appRole = String(user.app_metadata?.role ?? "").trim().toLowerCase();
-  if (appRole === "trainer") return true;
-  const metaRole = String(user.user_metadata?.role ?? "").trim().toLowerCase();
-  return metaRole === "trainer";
-}
-
-function canCreateAsTrainer(
-  user: { id: string; app_metadata?: Record<string, unknown>; user_metadata?: Record<string, unknown> },
-  ownerUserId: string,
-): boolean {
-  if (isTrainerUser(user)) return true;
-  return Boolean(ownerUserId && user.id === ownerUserId.trim());
+  return normalizeTrainerMutationEmail(value);
 }
 
 function mapMembershipType(value: unknown): string {
@@ -91,7 +79,6 @@ Deno.serve(async (req) => {
   const name = String(payload.name ?? "").trim();
   const memberId = String(payload.memberId ?? "").trim() || crypto.randomUUID();
   const accessToken = String(payload.accessToken ?? "").trim();
-  const ownerUserIdHint = String(payload.ownerUserId ?? "").trim();
 
   if (!email || !email.includes("@")) {
     return jsonResponse(400, { error: "Valid email is required" });
@@ -114,14 +101,32 @@ Deno.serve(async (req) => {
   if (userErr || !user?.id) {
     return jsonResponse(401, { error: "Invalid trainer session" });
   }
-  if (!canCreateAsTrainer(user, ownerUserIdHint)) {
+  if (!isTrainerCaller(user as TrainerMutationAuthUser)) {
     return jsonResponse(403, { error: "Only trainers can create members" });
   }
 
-  const sessionOwnerId = ownerUserIdHint || user.id;
+  // Never trust client ownerUserId — ownership is always the authenticated trainer.
+  const sessionOwnerId = user.id;
   const customerType = mapCustomerType(payload.customerType);
   const membershipType = mapMembershipType(payload.membershipType);
   const ownerUserId = resolveOwnerUserId(customerType, sessionOwnerId);
+
+  const { data: existingById, error: existingByIdError } = await adminClient
+    .from("members")
+    .select("id, email, is_active, owner_user_id, customer_type, membership_type")
+    .eq("id", memberId)
+    .maybeSingle();
+  if (existingByIdError) {
+    return jsonResponse(500, { error: existingByIdError.message });
+  }
+  if (
+    !canUpsertTrainerOwnedMember({
+      requesterUserId: user.id,
+      existingRow: (existingById as { id?: string; owner_user_id?: string | null } | null) ?? null,
+    })
+  ) {
+    return jsonResponse(403, { error: "Member id belongs to another trainer" });
+  }
 
   const { data: existingRows, error: existingError } = await adminClient
     .from("members")
