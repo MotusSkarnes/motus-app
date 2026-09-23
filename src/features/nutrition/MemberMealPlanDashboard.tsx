@@ -255,6 +255,7 @@ export function MemberMealPlanDashboard({ plan, memberId, onOpenAvoidances }: Me
         saturatedFat: nutrition.saturatedFat,
         sodium: nutrition.sodium,
         water: nutrition.water,
+        fattyAcids: nutrition.fattyAcids ? { ...nutrition.fattyAcids } : undefined,
         micronutrients: { ...macros.perServingMicronutrients },
       });
     }

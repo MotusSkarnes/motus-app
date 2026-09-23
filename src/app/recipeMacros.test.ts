@@ -41,6 +41,7 @@ describe("recipeMacros", () => {
     expect(result!.perServing.protein).toBeGreaterThan(15);
     expect(result!.perServingMicronutrients.calcium).toBeGreaterThanOrEqual(0);
     expect(result!.perServingNutrition.fiber).toBeGreaterThan(0);
+    expect(result!.perServingNutrition.fattyAcids?.monounsaturatedFat).toBeGreaterThan(0);
   });
 
   it("finner ingredienser uten fet skrift på overskrift", () => {

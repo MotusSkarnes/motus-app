@@ -62,6 +62,7 @@ export function buildInspirationRecipeNutritionById(
       saturatedFat: nutrition.saturatedFat,
       sodium: nutrition.sodium,
       water: nutrition.water,
+      fattyAcids: nutrition.fattyAcids ? { ...nutrition.fattyAcids } : undefined,
       micronutrients: { ...macros.perServingMicronutrients },
     });
   }
@@ -127,6 +128,7 @@ export function recipeToMealPlanEntry(
         saturatedFat: nutrition.saturatedFat,
         sodium: nutrition.sodium,
         water: nutrition.water,
+        fattyAcids: nutrition.fattyAcids ? { ...nutrition.fattyAcids } : undefined,
         micronutrients: { ...scaled.macros.perServingMicronutrients },
       },
     };

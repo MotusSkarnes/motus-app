@@ -1,4 +1,5 @@
 import { DEFAULT_RECIPE_BODY_BY_ID } from "./defaultInspirationRecipes";
+import { EMPTY_FATTY_ACIDS, normalizeFattyAcids, type FoodFattyAcids } from "./foodBankFattyAcids";
 import { EMPTY_MICRONUTRIENTS, type FoodMicronutrients } from "./foodBankMicronutrients";
 import { buildDefaultFoodBankItems } from "./foodBankSeed";
 import { findFoodItemById } from "./foodBankDedup";
@@ -723,6 +724,14 @@ export function computeRecipeMacros(
     },
     { fiber: 0, sugar: 0, saturatedFat: 0, sodium: 0, water: 0 },
   );
+  const fattyAcidTotals = ingredients.reduce((acc, row) => {
+    const factor = row.grams / 100;
+    const fattyAcids = normalizeFattyAcids(row.nutritionPer100g.fattyAcids);
+    for (const key of Object.keys(acc) as Array<keyof FoodFattyAcids>) {
+      acc[key] += fattyAcids[key] * factor;
+    }
+    return acc;
+  }, { ...EMPTY_FATTY_ACIDS });
 
   const perServingMicronutrients = Object.fromEntries(
     (Object.keys(micronutrientTotals) as (keyof FoodMicronutrients)[]).map((key) => [
@@ -746,6 +755,13 @@ export function computeRecipeMacros(
       saturatedFat: additionalTotals.saturatedFat / servings,
       sodium: additionalTotals.sodium / servings,
       water: additionalTotals.water / servings,
+      fattyAcids: (Object.keys(fattyAcidTotals) as Array<keyof FoodFattyAcids>).reduce(
+        (acc, key) => {
+          acc[key] = fattyAcidTotals[key] / servings;
+          return acc;
+        },
+        { ...EMPTY_FATTY_ACIDS },
+      ),
       micronutrients: perServingMicronutrients,
     },
     perServingMicronutrients,

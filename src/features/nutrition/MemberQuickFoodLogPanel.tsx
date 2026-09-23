@@ -127,6 +127,7 @@ export function MemberQuickFoodLogPanel({ memberId, readOnly = false }: MemberQu
           saturatedFat: nutrition.saturatedFat,
           sodium: nutrition.sodium,
           water: nutrition.water,
+          fattyAcids: nutrition.fattyAcids ? { ...nutrition.fattyAcids } : undefined,
           micronutrients: { ...macros.perServingMicronutrients },
         },
       };

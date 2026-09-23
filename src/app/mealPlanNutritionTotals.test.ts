@@ -74,6 +74,7 @@ describe("mealPlanNutritionTotals", () => {
       sugar: 0,
       saturatedFat: 0,
       sodium: 0,
+      fattyAcids: { monounsaturatedFat: 4, polyunsaturatedFat: 2, omega3: 1, omega6: 1, epa: 0.2, dha: 0.3, ala: 0.5 },
       micronutrients: { iron: 5, vitaminC: 0, vitaminA: 0, vitaminD: 0, vitaminE: 0, vitaminB1: 0, vitaminB2: 0, niacin: 0, vitaminB6: 0, folate: 0, vitaminB12: 0, calcium: 0, potassium: 0, magnesium: 0, phosphorus: 0, zinc: 0, selenium: 0, iodine: 0, copper: 0 },
     };
     plan.days[0]!.meals[0]!.items = [
@@ -90,5 +91,7 @@ describe("mealPlanNutritionTotals", () => {
     });
     expect(report.dayTotals[0]?.totals.micronutrients.iron).toBe(5);
     expect(report.dayTotals[0]?.totals.fiber).toBe(8);
+    expect(report.dayTotals[0]?.totals.fattyAcids.monounsaturatedFat).toBe(4);
+    expect(report.dayTotals[0]?.totals.fattyAcids.omega3).toBe(1);
   });
 });
