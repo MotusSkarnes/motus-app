@@ -37,6 +37,8 @@ describe("nutritionReportClientGraphics", () => {
       ],
     });
     expect(html).toContain("Slik ligger kosten an");
+    expect(html).toContain("Status for næringsstoffer");
+    expect(html).toContain(">vurdert</text>");
     expect(html).toContain("Energifordeling");
     expect(html).toContain("Mot anbefaling");
     expect(html).toContain("Energi gjennom perioden");

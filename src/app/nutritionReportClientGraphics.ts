@@ -208,7 +208,7 @@ export function buildClientReportGraphicsHtml(input: {
     <h2>Slik ligger kosten an</h2>
     <div class="viz-board">
       <article class="viz-card">
-        <p class="viz-title">Status</p>
+        <p class="viz-title">Status for næringsstoffer</p>
         ${donutSvg(
           [
             { value: status.ok, color: TONE_COLOR.ok, label: "Innenfor" },
@@ -216,7 +216,7 @@ export function buildClientReportGraphicsHtml(input: {
             { value: status.danger, color: TONE_COLOR.danger, label: "Utenfor" },
           ],
           String(statusTotal),
-          "status",
+          "vurdert",
         )}
         <p class="viz-legend">${statusLegend || "<span>Ingen referanser å sammenligne med ennå.</span>"}</p>
       </article>
