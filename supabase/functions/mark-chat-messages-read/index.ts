@@ -1,4 +1,9 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import {
+  canMarkChatMessagesRead,
+  normalizeMemberAccessEmail,
+  readTrustedAuthMemberId,
+} from "../_shared/memberAccessSecurity.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -48,6 +53,39 @@ Deno.serve(async (req) => {
   const adminClient = createClient(supabaseUrl, serviceRoleKey);
   const { data: userData, error: userError } = await adminClient.auth.getUser(token);
   if (userError || !userData.user) return jsonResponse(401, { error: "Invalid session" });
+
+  const requesterUserId = String(userData.user.id ?? "").trim();
+  const requesterEmail = normalizeMemberAccessEmail(userData.user.email);
+  const trustedMemberId = readTrustedAuthMemberId(
+    userData.user as { app_metadata?: Record<string, unknown>; user_metadata?: Record<string, unknown> },
+  );
+
+  const { data: memberRow, error: memberError } = await adminClient
+    .from("members")
+    .select("id, email, owner_user_id, customer_type, is_active")
+    .eq("id", memberId)
+    .maybeSingle();
+  if (memberError) return jsonResponse(500, { error: memberError.message });
+  if (!memberRow) return jsonResponse(404, { error: "Member not found" });
+
+  if (
+    !canMarkChatMessagesRead({
+      reader,
+      requesterUserId,
+      requesterEmail,
+      trustedMemberId,
+      requestedMemberId: memberId,
+      memberRow: memberRow as {
+        id?: string;
+        email?: string;
+        owner_user_id?: string;
+        customer_type?: string;
+        is_active?: boolean | null;
+      },
+    })
+  ) {
+    return jsonResponse(403, { error: "Not allowed to mark messages read for this member" });
+  }
 
   const now = new Date().toISOString();
   const column = reader === "trainer" ? "read_by_trainer_at" : "read_by_member_at";
