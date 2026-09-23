@@ -42,6 +42,13 @@ describe("nutritionReportClientGraphics", () => {
     expect(html).toContain("Energifordeling");
     expect(html).toContain("Mot anbefaling");
     expect(html).toContain("Energi gjennom perioden");
+    expect(html).toContain(">1600</text>");
+    expect(html).toContain(">1700</text>");
+    expect(html).toContain(">1800</text>");
+    expect(html).toContain(">1900</text>");
+    expect(html).toContain(">2000</text>");
+    expect(html).toContain(">2100</text>");
+    expect(html).toContain(">kcal</text>");
     expect(html).toContain("<svg");
     expect(html).toContain("Kalorier");
   });

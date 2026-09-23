@@ -119,18 +119,32 @@ function sparklineSvg(points: Array<{ label: string; kcal: number }>): string {
   if (points.length < 2) return "";
   const width = 520;
   const height = 96;
-  const padX = 36;
+  const padLeft = 42;
+  const padRight = 12;
   const padTop = 10;
   const padBottom = 22;
   const values = points.map((row) => row.kcal);
   const min = Math.min(...values);
   const max = Math.max(...values);
-  const span = Math.max(1, max - min);
+  const axisMin = Math.floor(min / 100) * 100;
+  const roundedAxisMax = Math.ceil(max / 100) * 100;
+  const axisMax = roundedAxisMax > axisMin ? roundedAxisMax : axisMin + 100;
+  const span = axisMax - axisMin;
+  const plotHeight = height - padTop - padBottom;
+  const yForKcal = (kcal: number) => height - padBottom - ((kcal - axisMin) / span) * plotHeight;
   const coords = points.map((row, index) => {
-    const x = padX + (index / (points.length - 1)) * (width - padX * 2);
-    const y = height - padBottom - ((row.kcal - min) / span) * (height - padTop - padBottom);
+    const x = padLeft + (index / (points.length - 1)) * (width - padLeft - padRight);
+    const y = yForKcal(row.kcal);
     return { x, y, ...row };
   });
+  const yTicks = Array.from({ length: Math.floor((axisMax - axisMin) / 100) + 1 }, (_, index) => axisMin + index * 100);
+  const grid = yTicks
+    .map((tick) => {
+      const y = yForKcal(tick).toFixed(1);
+      return `<line x1="${padLeft}" y1="${y}" x2="${width - padRight}" y2="${y}" stroke="#e2e8f0" stroke-width="0.8" />
+      <text x="${padLeft - 5}" y="${y}" text-anchor="end" dominant-baseline="middle" class="viz-spark-label">${tick}</text>`;
+    })
+    .join("");
   const line = coords.map((row, index) => `${index === 0 ? "M" : "L"} ${row.x.toFixed(1)} ${row.y.toFixed(1)}`).join(" ");
   const area = `${line} L ${coords[coords.length - 1]!.x.toFixed(1)} ${height - padBottom} L ${coords[0]!.x.toFixed(1)} ${height - padBottom} Z`;
   const dots = coords
@@ -153,6 +167,8 @@ function sparklineSvg(points: Array<{ label: string; kcal: number }>): string {
         <stop offset="100%" stop-color="#30E3BE" stop-opacity="0.02" />
       </linearGradient>
     </defs>
+    ${grid}
+    <text x="2" y="8" class="viz-spark-label">kcal</text>
     <path d="${area}" fill="url(#kcalFill)" />
     <path d="${line}" fill="none" stroke="#0d9488" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round" />
     ${dots}
