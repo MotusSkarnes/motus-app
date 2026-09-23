@@ -40,6 +40,7 @@ import { LogRecipeAsMealModal } from "./LogRecipeAsMealModal";
 import { parseInspirationRecipeFoodId } from "../../app/mealPlanRecipeEntry";
 import {
   MEAL_PLAN_STATE_CHANGED_EVENT,
+  ingredientSwapKey,
   mealSwapKey,
   resolveMealWithSwaps,
   saveMemberMealPlanState,
@@ -53,11 +54,13 @@ import {
   syncMemberMealPlanState,
 } from "../../app/memberMealPlanStateCloud";
 import {
+  clearIngredientSwap,
   computeNutritionStreak,
   getWeekdayIndex,
   loadMealPlanTracking,
   prepareMealPlanTracking,
   toggleMealLogged,
+  setIngredientSwap,
   setRecipePortionMultiplier,
   toggleShoppingChecked,
   skipMealItems,
@@ -550,6 +553,29 @@ export function MemberMealPlanDashboard({ plan, memberId, onOpenAvoidances }: Me
       setSwapMeal(null);
     },
     [memberId, selectedDateKey, swapMeal, tracking],
+  );
+
+  const customerIngredientOverridesForMeal = useCallback(
+    (mealId: string) => {
+      const prefix = `${selectedDateKey}:${mealId}:`;
+      return Object.fromEntries(
+        Object.entries(tracking.ingredientSwaps)
+          .filter(([key]) => key.startsWith(prefix))
+          .map(([key, value]) => [key.slice(prefix.length), value]),
+      );
+    },
+    [selectedDateKey, tracking.ingredientSwaps],
+  );
+
+  const handleCustomerIngredientOverride = useCallback(
+    (mealId: string, ingredientKey: string, value: { foodId: string; grams: number } | null) => {
+      setTracking((prev) =>
+        value
+          ? setIngredientSwap(memberId, prev, selectedDateKey, mealId, ingredientKey, value.foodId, value.grams)
+          : clearIngredientSwap(memberId, prev, selectedDateKey, mealId, ingredientKey),
+      );
+    },
+    [memberId, selectedDateKey],
   );
 
   const coachTips = useMemo(() => {
@@ -1169,6 +1195,10 @@ export function MemberMealPlanDashboard({ plan, memberId, onOpenAvoidances }: Me
                     foodItems={foodItems}
                     viewServings={recipeViewServings}
                     onViewServingsChange={setRecipeViewServings}
+                    customerIngredientOverrides={customerIngredientOverridesForMeal(meal.id)}
+                    onCustomerIngredientOverrideChange={(ingredientKey, value) =>
+                      handleCustomerIngredientOverride(meal.id, ingredientKey, value)
+                    }
                   />
                 ) : null}
               </div>

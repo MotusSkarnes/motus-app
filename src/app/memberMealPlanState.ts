@@ -7,6 +7,11 @@ export type MealSwapRef = {
   sourceMealId: string;
 };
 
+export type MemberIngredientSwap = {
+  foodId: string;
+  grams: number;
+};
+
 export type MemberQuickFoodLogEntry = {
   id: string;
   name: string;
@@ -40,6 +45,8 @@ export type MemberMealPlanState = {
   recipePortions: Record<string, number>;
   /** `${dateKey}:${targetMealId}` → kilde-måltid fra planen */
   mealSwaps: Record<string, MealSwapRef>;
+  /** `${dateKey}:${mealId}:${ingredientKey}` → kundens matvarebytte for oppskriftsingrediensen. */
+  ingredientSwaps: Record<string, MemberIngredientSwap>;
   /** dateKey → frie matlogger uten matplan */
   quickFoodLogs: Record<string, MemberQuickFoodLogEntry[]>;
   /** dateKey → planlagte matvarer medlem har hoppet over for dagen */
@@ -56,6 +63,7 @@ export const EMPTY_MEMBER_MEAL_PLAN_STATE: MemberMealPlanState = {
   checkedShopping: [],
   recipePortions: {},
   mealSwaps: {},
+  ingredientSwaps: {},
   quickFoodLogs: {},
   skippedFoodIds: {},
   savedMeals: [],
@@ -71,6 +79,7 @@ const STATE_KEYS: Array<keyof MemberMealPlanState> = [
   "checkedShopping",
   "recipePortions",
   "mealSwaps",
+  "ingredientSwaps",
   "quickFoodLogs",
   "skippedFoodIds",
   "savedMeals",
@@ -82,6 +91,10 @@ function storageKey(memberId: string): string {
 
 export function mealSwapKey(dateKey: string, targetMealId: string): string {
   return `${dateKey}:${targetMealId}`;
+}
+
+export function ingredientSwapKey(dateKey: string, mealId: string, ingredientKey: string): string {
+  return `${dateKey}:${mealId}:${ingredientKey}`;
 }
 
 export function parseMemberMealPlanState(value: unknown): MemberMealPlanState {
@@ -98,6 +111,17 @@ export function parseMemberMealPlanState(value: unknown): MemberMealPlanState {
       if (sourceDayId && sourceMealId) {
         mealSwaps[key] = { sourceDayId, sourceMealId };
       }
+    }
+  }
+  const ingredientSwapsRaw = row.ingredientSwaps ?? row.ingredient_swaps;
+  const ingredientSwaps: Record<string, MemberIngredientSwap> = {};
+  if (ingredientSwapsRaw && typeof ingredientSwapsRaw === "object") {
+    for (const [key, swap] of Object.entries(ingredientSwapsRaw as Record<string, unknown>)) {
+      if (!swap || typeof swap !== "object") continue;
+      const value = swap as Record<string, unknown>;
+      const foodId = String(value.foodId ?? value.food_id ?? "").trim();
+      const grams = Number(value.grams);
+      if (foodId && Number.isFinite(grams) && grams > 0) ingredientSwaps[key] = { foodId, grams };
     }
   }
   return {
@@ -141,6 +165,7 @@ export function parseMemberMealPlanState(value: unknown): MemberMealPlanState {
             )
           : {},
     mealSwaps,
+    ingredientSwaps,
     quickFoodLogs:
       row.quickFoodLogs && typeof row.quickFoodLogs === "object"
         ? (row.quickFoodLogs as Record<string, MemberQuickFoodLogEntry[]>)
@@ -168,6 +193,7 @@ function needsStateNormalization(raw: unknown): boolean {
     "checked_shopping" in row ||
     "recipe_portions" in row ||
     "meal_swaps" in row ||
+    "ingredient_swaps" in row ||
     "quick_food_logs" in row ||
     "skipped_food_ids" in row ||
     "saved_meals" in row
@@ -325,6 +351,10 @@ export function mergeMemberMealPlanStates(local: MemberMealPlanState, remote: Me
     checkedShopping: [...new Set([...remote.checkedShopping, ...local.checkedShopping])],
     recipePortions: { ...remote.recipePortions, ...local.recipePortions },
     mealSwaps: remoteMs >= localMs ? { ...local.mealSwaps, ...remote.mealSwaps } : { ...remote.mealSwaps, ...local.mealSwaps },
+    ingredientSwaps:
+      remoteMs >= localMs
+        ? { ...local.ingredientSwaps, ...remote.ingredientSwaps }
+        : { ...remote.ingredientSwaps, ...local.ingredientSwaps },
     quickFoodLogs: mergeQuickFoodLogsByDate(remote.quickFoodLogs, local.quickFoodLogs, localMs, remoteMs),
     skippedFoodIds:
       remoteMs >= localMs ? { ...local.skippedFoodIds, ...remote.skippedFoodIds } : { ...remote.skippedFoodIds, ...local.skippedFoodIds },

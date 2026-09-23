@@ -18,6 +18,8 @@ type RecipeCookPanelProps = {
   mealSlot?: RecipeMealSlot | null;
   viewServings?: number;
   onViewServingsChange?: (value: number) => void;
+  customerIngredientOverrides?: Record<string, { foodId: string; grams: number }>;
+  onCustomerIngredientOverrideChange?: (ingredientKey: string, value: { foodId: string; grams: number } | null) => void;
 };
 
 export function RecipeCookPanel({
@@ -27,6 +29,8 @@ export function RecipeCookPanel({
   mealSlot: mealSlotProp,
   viewServings: viewServingsProp,
   onViewServingsChange,
+  customerIngredientOverrides,
+  onCustomerIngredientOverrideChange,
 }: RecipeCookPanelProps) {
   const mealSlot = mealSlotProp ?? recipeMealSlotFor(item);
   const baseServings = parseRecipeBaseServings(item.body, item.servings);
@@ -85,6 +89,8 @@ export function RecipeCookPanel({
         servings={item.servings}
         viewServings={viewServings}
         foodOverrides={item.ingredientFoodOverrides}
+        customerOverrides={customerIngredientOverrides}
+        onCustomerOverrideChange={onCustomerIngredientOverrideChange}
       />
       <RecipeMethodSection body={item.body} />
       {macros ? (

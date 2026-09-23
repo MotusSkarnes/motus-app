@@ -7156,6 +7156,25 @@
   font-size: 0.72rem;
 }
 
+.motus-mealplan-completion {
+  display: inline-flex;
+  margin-top: 0.45rem;
+  padding: 0.2rem 0.5rem;
+  border-radius: 999px;
+  font-size: 0.68rem;
+  font-weight: 750;
+}
+
+.motus-mealplan-completion.is-complete {
+  background: #ecfdf5;
+  color: #047857;
+}
+
+.motus-mealplan-completion.is-changed {
+  background: #fff7ed;
+  color: #9a3412;
+}
+
 @media (max-width: 520px) {
   .motus-client-plan-overview__stats { grid-template-columns: 1fr; }
   .motus-client-plan-overview__head > button { width: 100%; justify-content: center; }

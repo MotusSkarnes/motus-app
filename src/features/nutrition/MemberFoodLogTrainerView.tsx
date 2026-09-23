@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { BarChart3, Check, ChevronLeft, ChevronRight, RefreshCw } from "lucide-react";
+import { BarChart3, ChevronLeft, ChevronRight } from "lucide-react";
 import { formatMacro } from "../../app/foodBankTypes";
 import { MEMBER_MEAL_SLOTS, memberMealSlotLabel } from "../../app/memberMealSlots";
 import { toIsoDateKey, type MemberMealPlanState, type MemberQuickFoodLogEntry } from "../../app/memberMealPlanState";
@@ -8,9 +8,6 @@ import { syncMemberMealPlanState } from "../../app/memberMealPlanStateCloud";
 import { MEAL_PLAN_STATE_CHANGED_EVENT } from "../../app/memberMealPlanState";
 import { sumQuickFoodLogNutrition } from "../../app/quickFoodLogNutrition";
 import type { MealPlanTargets } from "../../app/mealPlanTypes";
-import type { MealPlan } from "../../app/mealPlanTypes";
-import { loadMealPlanForTrainerEditor } from "../../app/mealPlanCloud";
-import { completedMealRowsForTrainer, mealPlanActivityDateKeys } from "../../app/trainerMealPlanCompletion";
 import { Card, OutlineButton } from "../../app/ui";
 import { DailyLoggedMacrosSummary } from "./DailyLoggedMacrosSummary";
 import { MemberFoodLogNutritionReportModal } from "./MemberFoodLogNutritionReportModal";
@@ -19,7 +16,6 @@ import "../../foodbank.css";
 type MemberFoodLogTrainerViewProps = {
   memberId: string;
   memberName: string;
-  memberEmail?: string;
   memberBirthDate?: string;
   memberGender?: string;
   mealPlanTargets?: MealPlanTargets | null;
@@ -61,7 +57,6 @@ function entryMacroLine(entry: MemberQuickFoodLogEntry): string {
 export function MemberFoodLogTrainerView({
   memberId,
   memberName,
-  memberEmail = "",
   memberBirthDate = "",
   memberGender = "",
   mealPlanTargets,
@@ -71,7 +66,6 @@ export function MemberFoodLogTrainerView({
   const [state, setState] = useState<MemberMealPlanState>(() => loadMemberMealPlanState(memberId));
   const [selectedDateKey, setSelectedDateKey] = useState(todayKey);
   const [reportOpen, setReportOpen] = useState(false);
-  const [mealPlan, setMealPlan] = useState<MealPlan | null>(null);
 
   useEffect(() => {
     onRefreshFoodBank?.();
@@ -80,19 +74,13 @@ export function MemberFoodLogTrainerView({
   useEffect(() => {
     let mounted = true;
     void (async () => {
-      const [synced, loadedPlan] = await Promise.all([
-        syncMemberMealPlanState(memberId),
-        loadMealPlanForTrainerEditor(memberId, "", memberEmail),
-      ]);
-      if (mounted) {
-        setState(synced);
-        setMealPlan("plan" in loadedPlan ? loadedPlan.plan : null);
-      }
+      const synced = await syncMemberMealPlanState(memberId);
+      if (mounted) setState(synced);
     })();
     return () => {
       mounted = false;
     };
-  }, [memberEmail, memberId]);
+  }, [memberId]);
 
   useEffect(() => {
     const handler = () => setState(loadMemberMealPlanState(memberId));
@@ -101,10 +89,10 @@ export function MemberFoodLogTrainerView({
   }, [memberId]);
 
   const availableDateKeys = useMemo(() => {
-    const keys = mealPlanActivityDateKeys(state);
+    const keys = Object.keys(state.quickFoodLogs).filter((key) => (state.quickFoodLogs[key]?.length ?? 0) > 0);
     if (!keys.includes(todayKey())) keys.unshift(todayKey());
     return [...new Set(keys)].sort((a, b) => b.localeCompare(a));
-  }, [state]);
+  }, [state.quickFoodLogs]);
 
   useEffect(() => {
     if (!availableDateKeys.includes(selectedDateKey) && availableDateKeys.length > 0) {
@@ -116,11 +104,6 @@ export function MemberFoodLogTrainerView({
   const totals = useMemo(() => sumQuickFoodLogNutrition(logs), [logs]);
   const logsBySlot = useMemo(() => groupLogsByMealSlot(logs), [logs]);
   const hasAnyLogs = availableDateKeys.some((key) => (state.quickFoodLogs[key]?.length ?? 0) > 0);
-  const completedMeals = useMemo(
-    () => completedMealRowsForTrainer(mealPlan, state, selectedDateKey),
-    [mealPlan, selectedDateKey, state],
-  );
-  const hasSelectedActivity = logs.length > 0 || completedMeals.length > 0;
 
   const selectedDateIndex = availableDateKeys.indexOf(selectedDateKey);
 
@@ -168,8 +151,7 @@ export function MemberFoodLogTrainerView({
             >
               {availableDateKeys.map((key) => (
                 <option key={key} value={key}>
-                  {formatDateKeyLabel(key)} ({completedMealRowsForTrainer(mealPlan, state, key).length} fullført
-                  {(state.quickFoodLogs[key]?.length ?? 0) > 0 ? ` · ${state.quickFoodLogs[key]!.length} egne` : ""})
+                  {formatDateKeyLabel(key)} ({state.quickFoodLogs[key]?.length ?? 0} poster)
                 </option>
               ))}
             </select>
@@ -185,47 +167,15 @@ export function MemberFoodLogTrainerView({
           </button>
         </div>
 
-        {!hasSelectedActivity ? (
+        {!logs.length ? (
           <p className="rounded-xl border border-dashed border-slate-200 bg-slate-50 p-4 text-sm text-slate-600">
             Ingen matlogg registrert denne dagen.
           </p>
         ) : (
           <>
-            {completedMeals.length > 0 ? (
-              <section className="motus-trainer-food-log__section" aria-label="Fullførte planmåltider">
-                <h4 className="motus-trainer-food-log__section-title">Fullført fra matplanen</h4>
-                <div className="motus-trainer-food-log__meals">
-                  {completedMeals.map((meal) => (
-                    <article key={meal.mealId} className="motus-trainer-food-log__meal-group">
-                      <header className="motus-trainer-food-log__meal-head">
-                        <div>
-                          <h5 className="motus-trainer-food-log__meal-title">
-                            <Check className="inline h-4 w-4 text-emerald-700" aria-hidden /> {meal.mealName}
-                          </h5>
-                          <p className="motus-trainer-food-log__item-meta">{meal.displayTitle}</p>
-                        </div>
-                        {meal.changed ? (
-                          <span className="motus-trainer-food-log__changed-badge">
-                            <RefreshCw className="h-3.5 w-3.5" aria-hidden /> Endret av kunden
-                          </span>
-                        ) : (
-                          <span className="motus-trainer-food-log__completed-badge">Som planlagt</span>
-                        )}
-                      </header>
-                      {meal.changeLabels.length > 0 ? (
-                        <p className="motus-trainer-food-log__change-line">{meal.changeLabels.join(" · ")}</p>
-                      ) : null}
-                    </article>
-                  ))}
-                </div>
-              </section>
-            ) : null}
+            <DailyLoggedMacrosSummary macros={totals} targets={mealPlanTargets} title={`${formatDateKeyLabel(selectedDateKey)} — totalt`} />
 
-            {logs.length > 0 ? (
-              <DailyLoggedMacrosSummary macros={totals} targets={mealPlanTargets} title={`${formatDateKeyLabel(selectedDateKey)} — egne logger`} />
-            ) : null}
-
-            {logs.length > 0 ? <section className="motus-trainer-food-log__section" aria-label="Måltider">
+            <section className="motus-trainer-food-log__section" aria-label="Måltider">
               <h4 className="motus-trainer-food-log__section-title">Per måltid</h4>
               <div className="motus-trainer-food-log__meals">
                 {MEMBER_MEAL_SLOTS.map((slot) => {
@@ -271,15 +221,15 @@ export function MemberFoodLogTrainerView({
                   </article>
                 ) : null}
               </div>
-            </section> : null}
+            </section>
 
-            {logs.length > 0 ? <p className="text-xs text-slate-500">
+            <p className="text-xs text-slate-500">
               Makro- og mikronæring over flere dager finner du i{" "}
               <button type="button" className="font-semibold text-teal-700 underline" onClick={() => setReportOpen(true)}>
                 næringsrapporten
               </button>
               .
-            </p> : null}
+            </p>
           </>
         )}
       </Card>

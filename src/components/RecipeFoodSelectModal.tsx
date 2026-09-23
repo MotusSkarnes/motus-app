@@ -3,15 +3,16 @@ import { Search, X } from "lucide-react";
 import { searchFoodBankItems } from "../app/foodBankSearch";
 import { formatMacro } from "../app/foodBankTypes";
 import type { FoodItem } from "../app/foodBankTypes";
-import { OutlineButton } from "../app/ui";
+import { GradientButton, OutlineButton, TextInput } from "../app/ui";
 
 type RecipeFoodSelectModalProps = {
   open: boolean;
   ingredientLabel: string;
   foodItems: FoodItem[];
   selectedFoodId?: string;
+  initialGrams?: number;
   onClose: () => void;
-  onSelect: (foodId: string) => void;
+  onSelect: (foodId: string, grams: number) => void;
 };
 
 export function RecipeFoodSelectModal({
@@ -19,10 +20,13 @@ export function RecipeFoodSelectModal({
   ingredientLabel,
   foodItems,
   selectedFoodId,
+  initialGrams = 100,
   onClose,
   onSelect,
 }: RecipeFoodSelectModalProps) {
   const [search, setSearch] = useState("");
+  const [pendingFoodId, setPendingFoodId] = useState(selectedFoodId ?? "");
+  const [gramsInput, setGramsInput] = useState(String(Math.max(1, Math.round(initialGrams))));
 
   const filteredFoods = useMemo(
     () => (search.trim() ? searchFoodBankItems(foodItems, search, 80) : foodItems.slice(0, 80)),
@@ -68,7 +72,7 @@ export function RecipeFoodSelectModal({
               </p>
             ) : (
               filteredFoods.map((food) => {
-                const selected = food.id === selectedFoodId;
+                const selected = food.id === pendingFoodId;
                 const n = food.nutritionPer100g;
                 return (
                   <button
@@ -79,7 +83,7 @@ export function RecipeFoodSelectModal({
                         ? "border-teal-300 bg-teal-50 ring-1 ring-teal-200"
                         : "border-slate-100 hover:border-teal-200 hover:bg-teal-50/60"
                     }`}
-                    onClick={() => onSelect(food.id)}
+                    onClick={() => setPendingFoodId(food.id)}
                   >
                     <span className="text-lg" aria-hidden>
                       {food.imageEmoji ?? "🍽️"}
@@ -95,10 +99,23 @@ export function RecipeFoodSelectModal({
               })
             )}
           </div>
-          <div className="flex justify-end">
+          {pendingFoodId ? (
+            <label className="space-y-1 text-xs font-medium text-slate-700">
+              <span>Mengde i gram</span>
+              <TextInput value={gramsInput} inputMode="decimal" onChange={(event) => setGramsInput(event.target.value)} />
+            </label>
+          ) : null}
+          <div className="flex justify-end gap-2">
             <OutlineButton type="button" onClick={onClose}>
-              Lukk
+              Avbryt
             </OutlineButton>
+            <GradientButton
+              type="button"
+              disabled={!pendingFoodId || !(Number(gramsInput.replace(",", ".")) > 0)}
+              onClick={() => onSelect(pendingFoodId, Number(gramsInput.replace(",", ".")))}
+            >
+              Lagre bytte
+            </GradientButton>
           </div>
         </div>
       </div>

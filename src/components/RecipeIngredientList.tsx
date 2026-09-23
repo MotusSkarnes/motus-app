@@ -51,6 +51,8 @@ type RecipeIngredientListProps = {
   editable?: boolean;
   foodOverrides?: RecipeIngredientFoodOverrides;
   onFoodOverrideChange?: (ingredientKey: string, foodId: string | null) => void;
+  customerOverrides?: Record<string, { foodId: string; grams: number }>;
+  onCustomerOverrideChange?: (ingredientKey: string, value: { foodId: string; grams: number } | null) => void;
 };
 
 function formatGramsLabel(grams: number, servings: number): string {
@@ -177,6 +179,8 @@ export function RecipeIngredientList({
   editable = false,
   foodOverrides,
   onFoodOverrideChange,
+  customerOverrides,
+  onCustomerOverrideChange,
 }: RecipeIngredientListProps) {
   const servings = useMemo(() => parseRecipeServings(body, servingsProp), [body, servingsProp]);
   const scalingMode = useMemo(
@@ -205,7 +209,7 @@ export function RecipeIngredientList({
     () => scaledView?.ingredients ?? applyRecipeIngredientFoodOverrides(baseIngredients, foodOverrides, foodItems),
     [scaledView, baseIngredients, foodOverrides, foodItems],
   );
-  const [previewSwaps, setPreviewSwaps] = useState<Record<string, string>>({});
+  const [previewSwaps, setPreviewSwaps] = useState<Record<string, { foodId: string; grams: number }>>({});
   const [swapTarget, setSwapTarget] = useState<RecipeIngredient | null>(null);
   const [pickTarget, setPickTarget] = useState<RecipeIngredient | null>(null);
 
@@ -220,18 +224,17 @@ export function RecipeIngredientList({
       const auto = baseIngredients.find((row) => row.key === ing.key);
       const autoName = auto?.foodName ?? ing.foodName;
       const manualOverride = Boolean(foodOverrides?.[ing.key]);
-      const previewSwapId = editable ? undefined : previewSwaps[ing.key];
-      const effectiveId = previewSwapId ?? ing.foodId;
+      const customerSwap = editable ? undefined : customerOverrides?.[ing.key] ?? previewSwaps[ing.key];
       let row: DisplayIngredient = {
         ...ing,
         autoMatchedName: autoName,
         isManualOverride: manualOverride,
         needsReview: editable && !manualOverride && !isConfidentIngredientFoodMatch(ing.searchText, ing.foodName),
       };
-      if (!previewSwapId || editable) return row;
-      const alt = foodItems.find((item) => item.id === previewSwapId);
+      if (!customerSwap || editable) return row;
+      const alt = foodItems.find((item) => item.id === customerSwap.foodId);
       if (!alt) return row;
-      const grams = roundRecipeGrams(gramsForEquivalentMacros(ing.macros, alt.nutritionPer100g));
+      const grams = roundRecipeGrams(customerSwap.grams);
       row = {
         ...row,
         foodId: alt.id,
@@ -245,16 +248,29 @@ export function RecipeIngredientList({
       };
       return row;
     });
-  }, [ingredients, baseIngredients, foodOverrides, foodItems, previewSwaps, editable]);
+  }, [ingredients, baseIngredients, foodOverrides, foodItems, previewSwaps, customerOverrides, editable]);
 
   if (!ingredients.length && extraLines.length === 0) return null;
 
-  function applyFoodChoice(ingredientKey: string, foodId: string) {
+  function applyFoodChoice(ingredientKey: string, foodId: string, grams: number) {
     if (editable && onFoodOverrideChange) {
       onFoodOverrideChange(ingredientKey, foodId);
       return;
     }
-    setPreviewSwaps((prev) => ({ ...prev, [ingredientKey]: foodId }));
+    if (onCustomerOverrideChange) {
+      onCustomerOverrideChange(ingredientKey, { foodId, grams });
+      return;
+    }
+    setPreviewSwaps((prev) => ({ ...prev, [ingredientKey]: { foodId, grams } }));
+  }
+
+  function clearCustomerChoice(ingredientKey: string) {
+    onCustomerOverrideChange?.(ingredientKey, null);
+    setPreviewSwaps((prev) => {
+      const next = { ...prev };
+      delete next[ingredientKey];
+      return next;
+    });
   }
 
   return (
@@ -337,30 +353,24 @@ export function RecipeIngredientList({
                 <button
                   type="button"
                   className="motus-recipe-ingredient-swap-btn motus-recipe-ingredient-swap-btn--muted"
-                  onClick={() =>
-                    setPreviewSwaps((prev) => {
-                      const next = { ...prev };
-                      delete next[row.key];
-                      return next;
-                    })
-                  }
+                  onClick={() => clearCustomerChoice(row.key)}
                 >
                   Angre
                 </button>
               ) : null}
-              <button
+              {editable ? <button
                 type="button"
                 className="motus-recipe-ingredient-swap-btn"
                 onClick={() => setPickTarget(ingredients.find((item) => item.key === row.key) ?? row)}
               >
                 <ListChecks className="h-3.5 w-3.5" aria-hidden />
                 Velg matvare
-              </button>
+              </button> : null}
               {!editable ? (
                 <button
                   type="button"
                   className="motus-recipe-ingredient-swap-btn"
-                  onClick={() => setSwapTarget(ingredients.find((item) => item.key === row.key) ?? row)}
+                  onClick={() => setPickTarget(ingredients.find((item) => item.key === row.key) ?? row)}
                 >
                   <ArrowLeftRight className="h-3.5 w-3.5" aria-hidden />
                   Bytt
@@ -392,7 +402,9 @@ export function RecipeIngredientList({
           foodItems={foodItems}
           onClose={() => setSwapTarget(null)}
           onSelect={(foodId) => {
-            applyFoodChoice(swapTarget.key, foodId);
+            const food = foodItems.find((item) => item.id === foodId);
+            const grams = food ? roundRecipeGrams(gramsForEquivalentMacros(swapTarget.macros, food.nutritionPer100g)) : swapTarget.grams;
+            applyFoodChoice(swapTarget.key, foodId, grams);
             setSwapTarget(null);
           }}
         />
@@ -402,10 +414,11 @@ export function RecipeIngredientList({
           open
           ingredientLabel={pickTarget.searchText || pickTarget.sourceLine}
           foodItems={foodItems}
-          selectedFoodId={foodOverrides?.[pickTarget.key] ?? pickTarget.foodId}
+          selectedFoodId={displayRows.find((row) => row.key === pickTarget.key)?.foodId ?? pickTarget.foodId}
+          initialGrams={displayRows.find((row) => row.key === pickTarget.key)?.grams ?? pickTarget.grams}
           onClose={() => setPickTarget(null)}
-          onSelect={(foodId) => {
-            applyFoodChoice(pickTarget.key, foodId);
+          onSelect={(foodId, grams) => {
+            applyFoodChoice(pickTarget.key, foodId, grams);
             setPickTarget(null);
           }}
         />

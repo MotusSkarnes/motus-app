@@ -7243,7 +7243,6 @@ function pickFirstName(value: unknown): string {
                     <MemberFoodLogTrainerView
                       memberId={selectedMember.id}
                       memberName={selectedMemberProfile?.name ?? selectedMember.name}
-                      memberEmail={selectedMemberProfile?.email ?? selectedMember.email}
                       memberBirthDate={selectedMemberProfile?.birthDate ?? selectedMember.birthDate}
                       memberGender={selectedMemberProfile?.gender ?? selectedMember.gender}
                       mealPlanTargets={resolveDailyNutritionTargets(

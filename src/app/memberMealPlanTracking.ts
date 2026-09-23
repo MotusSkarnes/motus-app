@@ -12,6 +12,7 @@ import {
   loadMemberMealPlanState,
   saveMemberMealPlanState,
   syncLoggedMealsFromFoodIds,
+  ingredientSwapKey,
 } from "./memberMealPlanState";
 
 /** @deprecated Bruk MemberMealPlanState — beholdt for kompatibilitet */
@@ -35,6 +36,44 @@ export function loadMealPlanTracking(memberId: string): MemberMealPlanState {
 
 export function saveMealPlanTracking(memberId: string, state: MemberMealPlanState): void {
   saveMemberMealPlanState(memberId, state);
+}
+
+export function setIngredientSwap(
+  memberId: string,
+  state: MemberMealPlanState,
+  dateKey: string,
+  mealId: string,
+  ingredientKey: string,
+  foodId: string,
+  grams: number,
+): MemberMealPlanState {
+  if (!foodId.trim() || !(grams > 0)) return state;
+  const next: MemberMealPlanState = {
+    ...state,
+    ingredientSwaps: {
+      ...state.ingredientSwaps,
+      [ingredientSwapKey(dateKey, mealId, ingredientKey)]: { foodId: foodId.trim(), grams },
+    },
+    updatedAt: new Date().toISOString(),
+  };
+  persistMemberMealPlanStateLocalAndScheduleCloud(memberId, next);
+  return next;
+}
+
+export function clearIngredientSwap(
+  memberId: string,
+  state: MemberMealPlanState,
+  dateKey: string,
+  mealId: string,
+  ingredientKey: string,
+): MemberMealPlanState {
+  const key = ingredientSwapKey(dateKey, mealId, ingredientKey);
+  if (!state.ingredientSwaps[key]) return state;
+  const ingredientSwaps = { ...state.ingredientSwaps };
+  delete ingredientSwaps[key];
+  const next = { ...state, ingredientSwaps, updatedAt: new Date().toISOString() };
+  persistMemberMealPlanStateLocalAndScheduleCloud(memberId, next);
+  return next;
 }
 
 export function isMealLogged(state: MemberMealPlanState, dateKey: string, mealId: string): boolean {

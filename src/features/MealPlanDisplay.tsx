@@ -8,6 +8,7 @@ import {
 import { formatMacro } from "../app/foodBankTypes";
 import { parseInspirationRecipeFoodId } from "../app/mealPlanRecipeEntry";
 import type { MealPlan, MealPlanDay } from "../app/mealPlanTypes";
+import type { TrainerMealStatus } from "../app/trainerMealPlanCompletion";
 import { Card } from "../app/ui";
 import { RecipePhoto } from "../components/RecipePhoto";
 import "../foodbank.css";
@@ -17,6 +18,7 @@ type MealPlanDisplayProps = {
   readOnly?: boolean;
   activeDayId?: string;
   onActiveDayIdChange?: (dayId: string) => void;
+  mealStatusByMealId?: Record<string, TrainerMealStatus>;
 };
 
 const RECIPE_PORTION_GRAMS = 100;
@@ -27,7 +29,7 @@ function formatMealEntryAmount(foodId: string, grams: number): string {
   return portions === 1 ? "1 porsjon" : `${formatMacro(portions, 1)} porsjoner`;
 }
 
-export function MealPlanDisplay({ plan, readOnly = true, activeDayId, onActiveDayIdChange }: MealPlanDisplayProps) {
+export function MealPlanDisplay({ plan, readOnly = true, activeDayId, onActiveDayIdChange, mealStatusByMealId }: MealPlanDisplayProps) {
   const selectedDay =
     plan.days.find((day) => day.id === activeDayId) ?? plan.days[0] ?? null;
   const targetsLabel = formatTargetsSummary(plan.targets);
@@ -67,22 +69,28 @@ export function MealPlanDisplay({ plan, readOnly = true, activeDayId, onActiveDa
         })}
       </div>
 
-      {selectedDay ? <MealPlanDayPanel day={selectedDay} /> : null}
+      {selectedDay ? <MealPlanDayPanel day={selectedDay} mealStatusByMealId={mealStatusByMealId} /> : null}
     </div>
   );
 }
 
-function MealPlanDayPanel({ day }: { day: MealPlanDay }) {
+function MealPlanDayPanel({ day, mealStatusByMealId }: { day: MealPlanDay; mealStatusByMealId?: Record<string, TrainerMealStatus> }) {
   return (
     <div className="space-y-3">
       {day.meals.map((meal) => {
         const mealMacros = formatMacroTotals(computeMealMacros(meal));
+        const status = mealStatusByMealId?.[meal.id];
         return (
           <Card key={meal.id} className="p-3">
             <div className="flex flex-wrap items-baseline justify-between gap-2">
               <div className="font-semibold text-slate-900">{meal.name}</div>
               <div className="text-[11px] font-medium text-slate-500">{mealMacros}</div>
             </div>
+            {status ? (
+              <div className={`motus-mealplan-completion ${status.changed ? "is-changed" : "is-complete"}`}>
+                {status.label}
+              </div>
+            ) : null}
             {meal.items.length === 0 ? (
               <p className="mt-2 text-xs text-slate-500">Ingen matvarer lagt til.</p>
             ) : (

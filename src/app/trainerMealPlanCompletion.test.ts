@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { createDefaultMealPlan } from "./mealPlanDefaults";
 import { EMPTY_MEMBER_MEAL_PLAN_STATE, mealSwapKey } from "./memberMealPlanState";
-import { completedMealRowsForTrainer, mealPlanActivityDateKeys } from "./trainerMealPlanCompletion";
+import { completedMealRowsForTrainer, latestMealStatusById, mealPlanActivityDateKeys } from "./trainerMealPlanCompletion";
 
 describe("trainerMealPlanCompletion", () => {
   it("shows completed meals and customer changes", () => {
@@ -19,6 +19,7 @@ describe("trainerMealPlanCompletion", () => {
       loggedMeals: { [dateKey]: [breakfast.id] },
       mealSwaps: { [mealSwapKey(dateKey, breakfast.id)]: { sourceDayId: plan.days[1]!.id, sourceMealId: lunch.id } },
       skippedFoodIds: { [dateKey]: ["replacement-1"] },
+      ingredientSwaps: { [`${dateKey}:${breakfast.id}:ing-0`]: { foodId: "food-2", grams: 125 } },
       quickFoodLogs: { [dateKey]: [{
         id: "extra-1", name: "Eple", grams: 100, source: "food" as const, mealId: breakfast.id,
         loggedAt: "2026-09-23T08:00:00Z",
@@ -29,7 +30,8 @@ describe("trainerMealPlanCompletion", () => {
     const rows = completedMealRowsForTrainer(plan, state, dateKey);
     expect(rows).toHaveLength(1);
     expect(rows[0]?.displayTitle).toBe("Salat");
-    expect(rows[0]?.changeLabels).toEqual(["Byttet måltid", "1 planvare fjernet", "1 egen matvare lagt til"]);
+    expect(rows[0]?.changeLabels).toEqual(["Byttet måltid", "1 planvare fjernet", "1 egen matvare lagt til", "1 ingrediens byttet"]);
     expect(mealPlanActivityDateKeys(state)).toContain(dateKey);
+    expect(latestMealStatusById(plan, state)[breakfast.id]?.label).toBe("Fullført · endret");
   });
 });

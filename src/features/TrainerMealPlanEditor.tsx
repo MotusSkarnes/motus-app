@@ -107,6 +107,9 @@ import { useFoodBankItems } from "../app/useFoodBankItems";
 import { uid } from "../app/storage";
 import { GradientButton, OutlineButton, StatusMessage, TextArea, TextInput } from "../app/ui";
 import { MealPlanDisplay } from "./MealPlanDisplay";
+import { EMPTY_MEMBER_MEAL_PLAN_STATE, type MemberMealPlanState } from "../app/memberMealPlanState";
+import { syncMemberMealPlanState } from "../app/memberMealPlanStateCloud";
+import { latestMealStatusById } from "../app/trainerMealPlanCompletion";
 import "../foodbank.css";
 
 type TrainerMealPlanEditorProps = {
@@ -177,6 +180,7 @@ export function TrainerMealPlanEditor({
   const [nutritionReportOpen, setNutritionReportOpen] = useState(false);
   const [builderWorkspaceOpen, setBuilderWorkspaceOpen] = useState(false);
   const [customerPlannerOpen, setCustomerPlannerOpen] = useState(false);
+  const [memberTracking, setMemberTracking] = useState<MemberMealPlanState>(EMPTY_MEMBER_MEAL_PLAN_STATE);
   const builderWorkspaceOpenRef = useRef(false);
   const builderSnapshotRef = useRef<MealPlan | null>(null);
   const planRef = useRef<MealPlan | null>(null);
@@ -616,6 +620,21 @@ export function TrainerMealPlanEditor({
     () => ({ foodById, foodItems: foodItemsForMacros, recipeNutritionById }),
     [foodById, foodItemsForMacros, recipeNutritionById],
   );
+  const trainerMealStatusById = useMemo(
+    () => latestMealStatusById(plan, memberTracking),
+    [memberTracking, plan],
+  );
+
+  useEffect(() => {
+    if (!overviewOnly || !memberId.trim()) return;
+    let mounted = true;
+    void syncMemberMealPlanState(memberId).then((state) => {
+      if (mounted) setMemberTracking(state);
+    });
+    return () => {
+      mounted = false;
+    };
+  }, [memberId, overviewOnly]);
   const resolvedWeight = useMemo(
     () => resolveMemberBodyWeight(memberWeight, memberPersonalGoals),
     [memberWeight, memberPersonalGoals],
@@ -1566,7 +1585,13 @@ export function TrainerMealPlanEditor({
                 Næringsoversikt
               </OutlineButton>
             </div>
-            <MealPlanDisplay plan={plan} activeDayId={activeDayId} onActiveDayIdChange={setActiveDayId} readOnly />
+            <MealPlanDisplay
+              plan={plan}
+              activeDayId={activeDayId}
+              onActiveDayIdChange={setActiveDayId}
+              readOnly
+              mealStatusByMealId={trainerMealStatusById}
+            />
           </div>
 
           <p className="motus-client-plan-overview__hint">
