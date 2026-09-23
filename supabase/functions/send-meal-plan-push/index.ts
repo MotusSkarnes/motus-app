@@ -85,7 +85,10 @@ Deno.serve(async (req) => {
     return jsonResponse(403, { error: "Not allowed to notify for this member" });
   }
 
-  const { data: recipientId, error: rpcError } = await admin.rpc("resolve_member_form_push_recipient", {
+  // Do not use resolve_member_form_push_recipient — that RPC returns the owning
+  // trainer (used when a member submits onboarding/check-in). Meal-plan saves
+  // must notify the client whose email is on the member row.
+  const { data: recipientId, error: rpcError } = await admin.rpc("resolve_meal_plan_push_recipient", {
     p_member_id: memberId,
   });
   if (rpcError) {
