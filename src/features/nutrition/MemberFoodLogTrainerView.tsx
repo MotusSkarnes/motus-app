@@ -106,15 +106,10 @@ export function MemberFoodLogTrainerView({
   }, [memberId]);
 
   const availableDateKeys = useMemo(() => {
-    const keys = new Set([
-      ...Object.keys(state.quickFoodLogs),
-      ...Object.keys(state.loggedMeals),
-      ...Object.keys(state.loggedFoodIds),
-    ]);
-    const populated = [...keys].filter((key) => trainerFoodLogsForDate(plan, state, key).length > 0);
+    const populated = Object.keys(state.quickFoodLogs).filter((key) => (state.quickFoodLogs[key]?.length ?? 0) > 0);
     if (!populated.includes(todayKey())) populated.unshift(todayKey());
     return [...new Set(populated)].sort((a, b) => b.localeCompare(a));
-  }, [plan, state]);
+  }, [state.quickFoodLogs]);
 
   useEffect(() => {
     if (!availableDateKeys.includes(selectedDateKey) && availableDateKeys.length > 0) {
@@ -122,10 +117,11 @@ export function MemberFoodLogTrainerView({
     }
   }, [availableDateKeys, selectedDateKey]);
 
-  const logs = useMemo(() => trainerFoodLogsForDate(plan, state, selectedDateKey), [plan, selectedDateKey, state]);
-  const totals = useMemo(() => sumQuickFoodLogNutrition(logs), [logs]);
+  const logs = state.quickFoodLogs[selectedDateKey] ?? [];
+  const nutritionRows = useMemo(() => trainerFoodLogsForDate(plan, state, selectedDateKey), [plan, selectedDateKey, state]);
+  const totals = useMemo(() => sumQuickFoodLogNutrition(nutritionRows), [nutritionRows]);
   const logsBySlot = useMemo(() => groupLogsByMealSlot(logs), [logs]);
-  const hasAnyLogs = availableDateKeys.some((key) => trainerFoodLogsForDate(plan, state, key).length > 0);
+  const hasAnyLogs = availableDateKeys.some((key) => (state.quickFoodLogs[key]?.length ?? 0) > 0);
 
   const selectedDateIndex = availableDateKeys.indexOf(selectedDateKey);
 
@@ -173,7 +169,7 @@ export function MemberFoodLogTrainerView({
             >
               {availableDateKeys.map((key) => (
                 <option key={key} value={key}>
-                  {formatDateKeyLabel(key)} ({trainerFoodLogsForDate(plan, state, key).length} poster)
+                  {formatDateKeyLabel(key)} ({state.quickFoodLogs[key]?.length ?? 0} poster)
                 </option>
               ))}
             </select>
@@ -189,7 +185,7 @@ export function MemberFoodLogTrainerView({
           </button>
         </div>
 
-        {!logs.length ? (
+        {!nutritionRows.length ? (
           <p className="rounded-xl border border-dashed border-slate-200 bg-slate-50 p-4 text-sm text-slate-600">
             Ingen matlogg registrert denne dagen.
           </p>
@@ -197,7 +193,7 @@ export function MemberFoodLogTrainerView({
           <>
             <DailyLoggedMacrosSummary macros={totals} targets={mealPlanTargets} title={`${formatDateKeyLabel(selectedDateKey)} — totalt`} />
 
-            <section className="motus-trainer-food-log__section" aria-label="Måltider">
+            {logs.length ? <section className="motus-trainer-food-log__section" aria-label="Måltider">
               <h4 className="motus-trainer-food-log__section-title">Per måltid</h4>
               <div className="motus-trainer-food-log__meals">
                 {MEMBER_MEAL_SLOTS.map((slot) => {
@@ -243,7 +239,11 @@ export function MemberFoodLogTrainerView({
                   </article>
                 ) : null}
               </div>
-            </section>
+            </section> : (
+              <p className="rounded-xl border border-dashed border-slate-200 bg-slate-50 p-4 text-sm text-slate-600">
+                Ingen egne matlogger registrert denne dagen. Fullførte planmåltider inngår kun i totalsummen over.
+              </p>
+            )}
 
             <p className="text-xs text-slate-500">
               Makro- og mikronæring over flere dager finner du i{" "}
@@ -263,7 +263,7 @@ export function MemberFoodLogTrainerView({
         memberBirthDate={memberBirthDate}
         memberGender={memberGender}
         selectedDateKey={selectedDateKey}
-        quickFoodLogs={Object.fromEntries(availableDateKeys.map((key) => [key, trainerFoodLogsForDate(plan, state, key)]))}
+        quickFoodLogs={state.quickFoodLogs}
         trackedWaterLiters={state.waterLiters}
         mealPlanTargets={mealPlanTargets}
       />

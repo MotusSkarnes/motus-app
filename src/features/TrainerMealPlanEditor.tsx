@@ -108,7 +108,12 @@ import { useFoodBankItems } from "../app/useFoodBankItems";
 import { uid } from "../app/storage";
 import { GradientButton, OutlineButton, StatusMessage, TextArea, TextInput } from "../app/ui";
 import { MealPlanDisplay } from "./MealPlanDisplay";
-import { EMPTY_MEMBER_MEAL_PLAN_STATE, type MemberMealPlanState } from "../app/memberMealPlanState";
+import {
+  EMPTY_MEMBER_MEAL_PLAN_STATE,
+  loadMemberMealPlanState,
+  MEAL_PLAN_STATE_CHANGED_EVENT,
+  type MemberMealPlanState,
+} from "../app/memberMealPlanState";
 import { syncMemberMealPlanState } from "../app/memberMealPlanStateCloud";
 import { latestMealStatusById } from "../app/trainerMealPlanCompletion";
 import "../foodbank.css";
@@ -638,6 +643,13 @@ export function TrainerMealPlanEditor({
       mounted = false;
     };
   }, [memberEmail, memberId, overviewOnly]);
+
+  useEffect(() => {
+    if (!overviewOnly || !memberId.trim()) return;
+    const handler = () => setMemberTracking(loadMemberMealPlanState(memberId));
+    window.addEventListener(MEAL_PLAN_STATE_CHANGED_EVENT, handler);
+    return () => window.removeEventListener(MEAL_PLAN_STATE_CHANGED_EVENT, handler);
+  }, [memberId, overviewOnly]);
   const resolvedWeight = useMemo(
     () => resolveMemberBodyWeight(memberWeight, memberPersonalGoals),
     [memberWeight, memberPersonalGoals],

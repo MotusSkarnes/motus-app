@@ -123,14 +123,14 @@ export async function syncMemberMealPlanState(memberId: string, aliasMemberIds: 
   const local = mergeMemberMealPlanStateList(lookupIds.map((id) => loadMemberMealPlanState(id))) ??
     loadMemberMealPlanState(primaryId);
   if (!remote) {
-    saveMemberMealPlanState(primaryId, local, { notify: false });
+    saveMemberMealPlanState(primaryId, local);
     if (stateHasTrackedActivity(local)) {
       await saveMemberMealPlanStateToSupabase(primaryId, local);
     }
     return local;
   }
   const merged = mergeMemberMealPlanStates(local, remote);
-  saveMemberMealPlanState(primaryId, merged, { notify: false });
+  saveMemberMealPlanState(primaryId, merged);
   if (!memberMealPlanStatesEqual(merged, remote)) {
     await saveMemberMealPlanStateToSupabase(primaryId, merged);
   }
