@@ -24,6 +24,7 @@ export type MicronutrientOverviewRow = {
 
 type TrainerMealPlanNutritionOverviewProps = {
   averageUsed: MacroTotals;
+  averageFiber?: number;
   targets?: MealPlanTargets;
   micronutrients?: MicronutrientOverviewRow[];
   referenceContext?: NutritionReferenceContext;
@@ -58,6 +59,7 @@ export function macroCoverageTone(value: number, target: number): MicronutrientD
 
 export function TrainerMealPlanNutritionOverview({
   averageUsed,
+  averageFiber = 0,
   targets,
   micronutrients = [],
   referenceContext,
@@ -118,6 +120,14 @@ export function TrainerMealPlanNutritionOverview({
       plan: formatMacro(averageUsed.fat, 0),
       recommended: formatTargetMacro(targetFat),
       tone: macroCoverageTone(averageUsed.fat, targetFat),
+    },
+    {
+      key: "fiber",
+      label: "Fiber",
+      unit: "g",
+      plan: formatMacro(averageFiber, 1),
+      recommended: formatMacro(referenceContext?.otherDaily.fiber ?? 25, 0),
+      tone: macroCoverageTone(averageFiber, referenceContext?.otherDaily.fiber ?? 25),
     },
   ];
 

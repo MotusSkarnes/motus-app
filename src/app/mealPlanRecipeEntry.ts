@@ -51,15 +51,17 @@ export function buildInspirationRecipeNutritionById(
     const macros = computeRecipeMacros(body, bank, { servings: recipe.servings });
     if (!macros) continue;
     const per = macros.perServing;
+    const nutrition = macros.perServingNutrition;
     byId.set(recipe.id, {
       kcal: Math.round(per.kcal),
       protein: Math.round(per.protein * 10) / 10,
       carbs: Math.round(per.carbs * 10) / 10,
       fat: Math.round(per.fat * 10) / 10,
-      fiber: 0,
-      sugar: 0,
-      saturatedFat: 0,
-      sodium: 0,
+      fiber: nutrition.fiber,
+      sugar: nutrition.sugar,
+      saturatedFat: nutrition.saturatedFat,
+      sodium: nutrition.sodium,
+      water: nutrition.water,
       micronutrients: { ...macros.perServingMicronutrients },
     });
   }
@@ -97,6 +99,7 @@ export function recipeToMealPlanEntry(
 
   if (scaled) {
     const per = scaled.macros.perServing;
+    const nutrition = scaled.macros.perServingNutrition;
     const adjustedNote =
       scaled.adjusted && scaled.targetMealKcal
         ? ` · tilpasset ca. ${scaled.targetMealKcal} kcal`
@@ -119,10 +122,11 @@ export function recipeToMealPlanEntry(
         protein: Math.round(per.protein * 10) / 10,
         carbs: Math.round(per.carbs * 10) / 10,
         fat: Math.round(per.fat * 10) / 10,
-        fiber: 0,
-        sugar: 0,
-        saturatedFat: 0,
-        sodium: 0,
+        fiber: nutrition.fiber,
+        sugar: nutrition.sugar,
+        saturatedFat: nutrition.saturatedFat,
+        sodium: nutrition.sodium,
+        water: nutrition.water,
         micronutrients: { ...scaled.macros.perServingMicronutrients },
       },
     };

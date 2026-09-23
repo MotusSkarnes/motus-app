@@ -110,6 +110,7 @@ export function MemberQuickFoodLogPanel({ memberId, readOnly = false }: MemberQu
       const picked = source === "ai" ? pool[Math.floor(Math.random() * pool.length)] : pool[0];
       const macros = computeRecipeMacros(picked.body, foodItems, { servings: picked.servings });
       if (!macros) return;
+      const nutrition = macros.perServingNutrition;
       const entry: MemberQuickFoodLogEntry = {
         id: `log-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`,
         name: picked.title,
@@ -121,10 +122,11 @@ export function MemberQuickFoodLogPanel({ memberId, readOnly = false }: MemberQu
           protein: Math.round(macros.perServing.protein * 10) / 10,
           carbs: Math.round(macros.perServing.carbs * 10) / 10,
           fat: Math.round(macros.perServing.fat * 10) / 10,
-          fiber: 0,
-          sugar: 0,
-          saturatedFat: 0,
-          sodium: 0,
+          fiber: nutrition.fiber,
+          sugar: nutrition.sugar,
+          saturatedFat: nutrition.saturatedFat,
+          sodium: nutrition.sodium,
+          water: nutrition.water,
           micronutrients: { ...macros.perServingMicronutrients },
         },
       };

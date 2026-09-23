@@ -1509,6 +1509,7 @@ export function TrainerMealPlanEditor({
         <TrainerMealPlanNutritionOverview
           compact
           averageUsed={weekAverageMacros}
+          averageFiber={displayNutritionTotals.fiber}
           targets={displayTargets}
           micronutrients={weekAverageMicronutrients}
           referenceContext={nutritionReferenceContext}
@@ -1731,6 +1732,7 @@ export function TrainerMealPlanEditor({
             <p className="text-xs text-slate-500 mb-2">{nutritionTableCaption}</p>
             <TrainerMealPlanNutritionOverview
               averageUsed={weekAverageMacros}
+              averageFiber={displayNutritionTotals.fiber}
               targets={displayTargets}
               micronutrients={weekAverageMicronutrients}
               referenceContext={nutritionReferenceContext}

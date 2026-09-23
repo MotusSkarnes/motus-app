@@ -244,15 +244,17 @@ export function MemberMealPlanDashboard({ plan, memberId, onOpenAvoidances }: Me
     for (const recipe of inspirationRecipes) {
       const macros = computeRecipeMacros(recipe.body, foodItems, { servings: recipe.servings });
       if (!macros) continue;
+      const nutrition = macros.perServingNutrition;
       byId.set(recipe.id, {
         kcal: Math.round(macros.perServing.kcal),
         protein: Math.round(macros.perServing.protein * 10) / 10,
         carbs: Math.round(macros.perServing.carbs * 10) / 10,
         fat: Math.round(macros.perServing.fat * 10) / 10,
-        fiber: 0,
-        sugar: 0,
-        saturatedFat: 0,
-        sodium: 0,
+        fiber: nutrition.fiber,
+        sugar: nutrition.sugar,
+        saturatedFat: nutrition.saturatedFat,
+        sodium: nutrition.sodium,
+        water: nutrition.water,
         micronutrients: { ...macros.perServingMicronutrients },
       });
     }

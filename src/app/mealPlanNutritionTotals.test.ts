@@ -70,7 +70,7 @@ describe("mealPlanNutritionTotals", () => {
       protein: 30,
       carbs: 40,
       fat: 10,
-      fiber: 0,
+      fiber: 8,
       sugar: 0,
       saturatedFat: 0,
       sodium: 0,
@@ -89,5 +89,6 @@ describe("mealPlanNutritionTotals", () => {
       recipeNutritionById: new Map([[recipeId, recipeNutrition]]),
     });
     expect(report.dayTotals[0]?.totals.micronutrients.iron).toBe(5);
+    expect(report.dayTotals[0]?.totals.fiber).toBe(8);
   });
 });

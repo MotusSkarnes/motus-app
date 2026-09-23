@@ -9,6 +9,7 @@ import type { FoodCategoryId, FoodItem, FoodNutrition } from "./foodBankTypes";
 
 export type RecipeMacroResult = {
   perServing: MacroTotals;
+  perServingNutrition: FoodNutrition;
   perServingMicronutrients: FoodMicronutrients;
   servings: number;
   matchedCount: number;
@@ -709,20 +710,45 @@ export function computeRecipeMacros(
     }
     return acc;
   }, { ...EMPTY_MICRONUTRIENTS });
+  const additionalTotals = ingredients.reduce(
+    (acc, row) => {
+      const factor = row.grams / 100;
+      const nutrition = row.nutritionPer100g;
+      acc.fiber += (nutrition.fiber ?? 0) * factor;
+      acc.sugar += (nutrition.sugar ?? 0) * factor;
+      acc.saturatedFat += (nutrition.saturatedFat ?? 0) * factor;
+      acc.sodium += (nutrition.sodium ?? 0) * factor;
+      acc.water += (nutrition.water ?? 0) * factor;
+      return acc;
+    },
+    { fiber: 0, sugar: 0, saturatedFat: 0, sodium: 0, water: 0 },
+  );
+
+  const perServingMicronutrients = Object.fromEntries(
+    (Object.keys(micronutrientTotals) as (keyof FoodMicronutrients)[]).map((key) => [
+      key,
+      micronutrientTotals[key] / servings,
+    ]),
+  ) as FoodMicronutrients;
+  const perServing = {
+    kcal: totals.kcal / servings,
+    protein: totals.protein / servings,
+    carbs: totals.carbs / servings,
+    fat: totals.fat / servings,
+  };
 
   return {
-    perServing: {
-      kcal: totals.kcal / servings,
-      protein: totals.protein / servings,
-      carbs: totals.carbs / servings,
-      fat: totals.fat / servings,
+    perServing,
+    perServingNutrition: {
+      ...perServing,
+      fiber: additionalTotals.fiber / servings,
+      sugar: additionalTotals.sugar / servings,
+      saturatedFat: additionalTotals.saturatedFat / servings,
+      sodium: additionalTotals.sodium / servings,
+      water: additionalTotals.water / servings,
+      micronutrients: perServingMicronutrients,
     },
-    perServingMicronutrients: Object.fromEntries(
-      (Object.keys(micronutrientTotals) as (keyof FoodMicronutrients)[]).map((key) => [
-        key,
-        micronutrientTotals[key] / servings,
-      ]),
-    ) as FoodMicronutrients,
+    perServingMicronutrients,
     servings,
     matchedCount: ingredients.length,
     ingredientCount: lines.length,
