@@ -85,7 +85,9 @@ Deno.serve(async (req) => {
     return jsonResponse(403, { error: "Not allowed to notify for this member" });
   }
 
-  const { data: recipientId, error: rpcError } = await admin.rpc("resolve_member_form_push_recipient", {
+  // Member-facing payload ("Ny periodeplan") must reach the member auth user, not the owning trainer.
+  // The form-submission recipient RPC returns owner_user_id and is only correct for form→PT alerts.
+  const { data: recipientId, error: rpcError } = await admin.rpc("resolve_period_plan_push_recipient", {
     p_member_id: memberId,
   });
   if (rpcError) {
