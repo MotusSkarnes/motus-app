@@ -1,10 +1,4 @@
-import {
-  computeDayMacros,
-  computeEntryMacros,
-  computeMealMacros,
-  formatMacroTotals,
-  formatTargetsSummary,
-} from "../app/mealPlanMacros";
+import { computeDayMacros, computeMealMacros, formatMacroTotals, formatTargetsSummary } from "../app/mealPlanMacros";
 import { formatMacro } from "../app/foodBankTypes";
 import { parseInspirationRecipeFoodId } from "../app/mealPlanRecipeEntry";
 import type { MealPlan, MealPlanDay } from "../app/mealPlanTypes";
@@ -109,9 +103,6 @@ function MealPlanDayPanel({ day, mealStatusByMealId }: { day: MealPlanDay; mealS
                         {item.note ? ` · ${item.note}` : ""}
                       </div>
                       </div>
-                    </div>
-                    <div className="shrink-0 text-right text-[10px] font-medium text-slate-500">
-                      {formatMacroTotals(computeEntryMacros(item))}
                     </div>
                   </li>
                 ))}
