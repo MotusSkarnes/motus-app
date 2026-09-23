@@ -44,6 +44,20 @@ describe("nutritionReportClientGraphics", () => {
     expect(html).toContain("Kalorier");
   });
 
+  it("shows the reported kcal total in both energy graphics when macro-derived energy differs", () => {
+    const totals = { ...EMPTY_FOOD_LOG_NUTRITION, kcal: 1800, protein: 90, carbs: 180, fat: 60 };
+    const html = buildClientReportGraphicsHtml({
+      totals,
+      mealPlanTargets: { kcal: 2000, protein: 120, carbs: 200, fat: 70 },
+      microRows: [],
+    });
+
+    expect(energySplitFromTotals(totals).totalKcal).toBe(1620);
+    expect(html).toContain(">1800</text>");
+    expect(html).not.toContain(">1620</text>");
+    expect(html).toContain("1800 kcal");
+  });
+
   it("prints trainer comments and keeps an empty lined box when missing", () => {
     expect(buildClientReportCommentHtml("Hold igjen på kveldsmat.")).toContain("Hold igjen på kveldsmat.");
     expect(buildClientReportCommentHtml("")).toContain("comment-lines");

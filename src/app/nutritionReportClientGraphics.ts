@@ -180,6 +180,7 @@ export function buildClientReportGraphicsHtml(input: {
   const statusTotal = status.ok + status.warn + status.danger;
   const split = energySplitFromTotals(input.totals);
   const gaugeRows = macroRows.filter((row) => row.id === "kcal" || row.id === "protein" || row.id === "carbs" || row.id === "fat");
+  const reportedKcal = macroRows.find((row) => row.id === "kcal")?.value ?? input.totals.kcal;
   const sparkPoints = (input.dailyKcal ?? [])
     .map((row) => ({
       label: row.dateLabel.replace(/^([a-zæøå]{3})\s+/i, "$1 ").slice(0, 10),
@@ -227,7 +228,7 @@ export function buildClientReportGraphicsHtml(input: {
             { value: split.carbsKcal, color: "#38bdf8", label: "Karbo" },
             { value: split.fatKcal, color: "#D91278", label: "Fett" },
           ],
-          String(Math.round(split.totalKcal)),
+          String(Math.round(reportedKcal)),
           "kcal",
         )}
         <p class="viz-legend">${splitLegend}</p>
