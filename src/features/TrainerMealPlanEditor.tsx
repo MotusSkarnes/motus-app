@@ -57,6 +57,7 @@ import {
   persistMealPlanBundle,
   persistMealPlanLocalAndScheduleCloud,
   pickPreferredMealPlan,
+  resolveMealPlanLookupIds,
 } from "../app/mealPlanCloud";
 import { useInspirationRecipeItems } from "../app/inspirationRecipeItems";
 import { defaultPortionGramsForFood } from "../app/foodPortionDefaults";
@@ -628,13 +629,15 @@ export function TrainerMealPlanEditor({
   useEffect(() => {
     if (!overviewOnly || !memberId.trim()) return;
     let mounted = true;
-    void syncMemberMealPlanState(memberId).then((state) => {
-      if (mounted) setMemberTracking(state);
-    });
+    void resolveMealPlanLookupIds(memberId, memberEmail, { forTrainerView: true })
+      .then((lookupIds) => syncMemberMealPlanState(memberId, lookupIds))
+      .then((state) => {
+        if (mounted) setMemberTracking(state);
+      });
     return () => {
       mounted = false;
     };
-  }, [memberId, overviewOnly]);
+  }, [memberEmail, memberId, overviewOnly]);
   const resolvedWeight = useMemo(
     () => resolveMemberBodyWeight(memberWeight, memberPersonalGoals),
     [memberWeight, memberPersonalGoals],

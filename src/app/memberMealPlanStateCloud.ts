@@ -99,8 +99,9 @@ export function persistMemberMealPlanStateLocalAndScheduleCloud(memberId: string
   scheduleMemberMealPlanStateCloudSave(memberId, state);
 }
 
-export async function syncMemberMealPlanState(memberId: string): Promise<MemberMealPlanState> {
-  const lookupIds = await readLinkedMealPlanMemberIds(memberId);
+export async function syncMemberMealPlanState(memberId: string, aliasMemberIds: string[] = []): Promise<MemberMealPlanState> {
+  const linkedIds = await readLinkedMealPlanMemberIds(memberId);
+  const lookupIds = [...new Set([memberId.trim(), ...aliasMemberIds, ...linkedIds].map((id) => id.trim()).filter(Boolean))];
   const primaryId = memberId.trim() || lookupIds[0] || "";
   const remote = await fetchMemberMealPlanStateFromSupabase(lookupIds);
   // Reload local after the network round-trip so a delete/add during fetch is not overwritten.
