@@ -76,9 +76,21 @@ export async function saveMemberMealPlanStateToSupabase(
     if (!isStateTableMissing(error.message)) {
       console.warn("member_meal_plan_state save failed:", error.message);
     }
-    return false;
+    return saveMemberMealPlanStateViaEdge(memberId, payload);
   }
   return true;
+}
+
+async function saveMemberMealPlanStateViaEdge(memberId: string, state: MemberMealPlanState): Promise<boolean> {
+  if (!supabaseClient) return false;
+  const { data, error } = await supabaseClient.functions.invoke("persist-member-meal-plan-state", {
+    body: { memberId: memberId.trim(), state },
+  });
+  if (error) {
+    console.warn("persist-member-meal-plan-state failed:", error.message);
+    return false;
+  }
+  return (data as { ok?: boolean } | null)?.ok === true;
 }
 
 let saveTimer: ReturnType<typeof setTimeout> | null = null;

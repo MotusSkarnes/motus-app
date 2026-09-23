@@ -7,6 +7,10 @@ import { loadMemberMealPlanState } from "../../app/memberMealPlanState";
 import { syncMemberMealPlanState } from "../../app/memberMealPlanStateCloud";
 import { MEAL_PLAN_STATE_CHANGED_EVENT } from "../../app/memberMealPlanState";
 import { sumQuickFoodLogNutrition } from "../../app/quickFoodLogNutrition";
+import { trainerFoodLogsForDate } from "../../app/trainerDailyNutrition";
+import { loadMealPlanForTrainerEditor } from "../../app/mealPlanCloud";
+import { loadMealPlanForMember } from "../../app/mealPlanStorage";
+import type { MealPlan } from "../../app/mealPlanTypes";
 import type { MealPlanTargets } from "../../app/mealPlanTypes";
 import { Card, OutlineButton } from "../../app/ui";
 import { DailyLoggedMacrosSummary } from "./DailyLoggedMacrosSummary";
@@ -16,6 +20,7 @@ import "../../foodbank.css";
 type MemberFoodLogTrainerViewProps = {
   memberId: string;
   memberName: string;
+  memberEmail?: string;
   memberBirthDate?: string;
   memberGender?: string;
   mealPlanTargets?: MealPlanTargets | null;
@@ -57,6 +62,7 @@ function entryMacroLine(entry: MemberQuickFoodLogEntry): string {
 export function MemberFoodLogTrainerView({
   memberId,
   memberName,
+  memberEmail = "",
   memberBirthDate = "",
   memberGender = "",
   mealPlanTargets,
@@ -64,6 +70,7 @@ export function MemberFoodLogTrainerView({
 }: MemberFoodLogTrainerViewProps) {
   const displayName = memberName.trim() || "Kunden";
   const [state, setState] = useState<MemberMealPlanState>(() => loadMemberMealPlanState(memberId));
+  const [plan, setPlan] = useState<MealPlan | null>(() => loadMealPlanForMember(memberId));
   const [selectedDateKey, setSelectedDateKey] = useState(todayKey);
   const [reportOpen, setReportOpen] = useState(false);
 
@@ -83,16 +90,31 @@ export function MemberFoodLogTrainerView({
   }, [memberId]);
 
   useEffect(() => {
+    let mounted = true;
+    void loadMealPlanForTrainerEditor(memberId, "", memberEmail).then((result) => {
+      if (mounted) setPlan(result.status === "cloud" || result.status === "local" ? result.plan : null);
+    });
+    return () => {
+      mounted = false;
+    };
+  }, [memberEmail, memberId]);
+
+  useEffect(() => {
     const handler = () => setState(loadMemberMealPlanState(memberId));
     window.addEventListener(MEAL_PLAN_STATE_CHANGED_EVENT, handler);
     return () => window.removeEventListener(MEAL_PLAN_STATE_CHANGED_EVENT, handler);
   }, [memberId]);
 
   const availableDateKeys = useMemo(() => {
-    const keys = Object.keys(state.quickFoodLogs).filter((key) => (state.quickFoodLogs[key]?.length ?? 0) > 0);
-    if (!keys.includes(todayKey())) keys.unshift(todayKey());
-    return [...new Set(keys)].sort((a, b) => b.localeCompare(a));
-  }, [state.quickFoodLogs]);
+    const keys = new Set([
+      ...Object.keys(state.quickFoodLogs),
+      ...Object.keys(state.loggedMeals),
+      ...Object.keys(state.loggedFoodIds),
+    ]);
+    const populated = [...keys].filter((key) => trainerFoodLogsForDate(plan, state, key).length > 0);
+    if (!populated.includes(todayKey())) populated.unshift(todayKey());
+    return [...new Set(populated)].sort((a, b) => b.localeCompare(a));
+  }, [plan, state]);
 
   useEffect(() => {
     if (!availableDateKeys.includes(selectedDateKey) && availableDateKeys.length > 0) {
@@ -100,10 +122,10 @@ export function MemberFoodLogTrainerView({
     }
   }, [availableDateKeys, selectedDateKey]);
 
-  const logs = state.quickFoodLogs[selectedDateKey] ?? [];
+  const logs = useMemo(() => trainerFoodLogsForDate(plan, state, selectedDateKey), [plan, selectedDateKey, state]);
   const totals = useMemo(() => sumQuickFoodLogNutrition(logs), [logs]);
   const logsBySlot = useMemo(() => groupLogsByMealSlot(logs), [logs]);
-  const hasAnyLogs = availableDateKeys.some((key) => (state.quickFoodLogs[key]?.length ?? 0) > 0);
+  const hasAnyLogs = availableDateKeys.some((key) => trainerFoodLogsForDate(plan, state, key).length > 0);
 
   const selectedDateIndex = availableDateKeys.indexOf(selectedDateKey);
 
@@ -151,7 +173,7 @@ export function MemberFoodLogTrainerView({
             >
               {availableDateKeys.map((key) => (
                 <option key={key} value={key}>
-                  {formatDateKeyLabel(key)} ({state.quickFoodLogs[key]?.length ?? 0} poster)
+                  {formatDateKeyLabel(key)} ({trainerFoodLogsForDate(plan, state, key).length} poster)
                 </option>
               ))}
             </select>
@@ -241,7 +263,7 @@ export function MemberFoodLogTrainerView({
         memberBirthDate={memberBirthDate}
         memberGender={memberGender}
         selectedDateKey={selectedDateKey}
-        quickFoodLogs={state.quickFoodLogs}
+        quickFoodLogs={Object.fromEntries(availableDateKeys.map((key) => [key, trainerFoodLogsForDate(plan, state, key)]))}
         trackedWaterLiters={state.waterLiters}
         mealPlanTargets={mealPlanTargets}
       />
