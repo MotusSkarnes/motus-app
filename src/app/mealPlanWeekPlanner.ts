@@ -21,6 +21,7 @@ export function normalizeMealSlotName(name: string): string {
 export function findMealForSlot(day: MealPlanDay, slotLabel: string): MealPlanMeal | undefined {
   const target = slotLabel.trim().toLowerCase();
   return (
+    day.meals.find((meal) => meal.name.trim().toLowerCase() === target) ??
     day.meals.find((meal) => normalizeMealSlotName(meal.name).toLowerCase() === target) ??
     day.meals.find((meal) => meal.name.trim().toLowerCase().includes(target.slice(0, 4)))
   );
@@ -91,8 +92,7 @@ export function autoFillWeekFromMonday(plan: MealPlan): MealPlan {
       return {
         ...day,
         meals: day.meals.map((meal) => {
-          const slot = normalizeMealSlotName(meal.name);
-          const sourceMeal = findMealForSlot(monday, slot);
+          const sourceMeal = findMealForSlot(monday, meal.name);
           if (!sourceMeal?.items.length) return meal;
           return {
             ...meal,

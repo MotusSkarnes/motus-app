@@ -87,6 +87,7 @@ import { TrainerMealPlanWeekGrid, type MealGridSelection } from "./nutrition/Tra
 import { MealPlanNutritionReportModal } from "./nutrition/MealPlanNutritionReportModal";
 import { TrainerMealPlanSlotSetup } from "./nutrition/TrainerMealPlanSlotSetup";
 import {
+  addMealPlanSnackSlot,
   DEFAULT_MEAL_PLAN_SLOT_IDS,
   toggleMealPlanSlotId,
   type MealPlanSlotId,
@@ -1287,6 +1288,14 @@ export function TrainerMealPlanEditor({
     setSaveStatus("Mandagens måltider er kopiert til resten av hver uke.");
   }
 
+  function handleAddSnackSlot() {
+    if (!plan) return;
+    updatePlan(addMealPlanSnackSlot(plan));
+    setGridSelection(null);
+    setPreviewSelection(null);
+    setSaveStatus("Et nytt mellommåltid er lagt til nederst for alle dager.");
+  }
+
   function handleSetPlanWeeks(nextWeeks: number) {
     if (!plan) return;
     const clamped = Math.max(1, Math.min(12, nextWeeks));
@@ -1400,6 +1409,10 @@ export function TrainerMealPlanEditor({
           <OutlineButton type="button" onClick={handleAutoFillWeek}>
             <Wand2 className="h-4 w-4" aria-hidden />
             Auto-fyll uke
+          </OutlineButton>
+          <OutlineButton type="button" onClick={handleAddSnackSlot}>
+            <Plus className="h-4 w-4" aria-hidden />
+            Mellommåltid
           </OutlineButton>
         </div>
         {totalWeeks > 1 ? (

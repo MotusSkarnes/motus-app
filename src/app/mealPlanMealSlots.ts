@@ -1,4 +1,5 @@
 import type { MealPlan, MealPlanDay, MealPlanMeal } from "./mealPlanTypes";
+import { uid } from "./storage";
 
 export type MealPlanSlotId = "frokost" | "lunsj" | "middag" | "kvelds" | "mellommaltid";
 
@@ -72,10 +73,41 @@ export function plannerSlotLabelsFromIds(slotIds: MealPlanSlotId[]): string[] {
 export function getPlannerMealSlotsForPlan(plan: MealPlan): string[] {
   const day = plan.days[0];
   if (!day?.meals.length) return plannerSlotLabelsFromIds(DEFAULT_MEAL_PLAN_SLOT_IDS);
-  return day.meals.map((meal) => {
+  const normalized = day.meals.map((meal) => {
     const slotId = mealNameToSlotId(meal.name);
     return slotId ? mealSlotLabelFromId(slotId) : meal.name.trim() || "Måltid";
   });
+  return day.meals.map((meal) => {
+    const slotId = mealNameToSlotId(meal.name);
+    const label = slotId ? mealSlotLabelFromId(slotId) : meal.name.trim() || "Måltid";
+    return normalized.filter((row) => row === label).length > 1 ? meal.name : label;
+  });
+}
+
+/** Legger til en egen mellommåltidsrad på alle dager, alltid samlet nederst i planen. */
+export function addMealPlanSnackSlot(plan: MealPlan): MealPlan {
+  const maxExisting = Math.max(
+    0,
+    ...plan.days.map((day) => day.meals.filter((meal) => mealNameToSlotId(meal.name) === "mellommaltid").length),
+  );
+  const nextNumber = maxExisting + 1;
+  return {
+    ...plan,
+    days: plan.days.map((day) => {
+      const regularMeals = day.meals.filter((meal) => mealNameToSlotId(meal.name) !== "mellommaltid");
+      const snackMeals = day.meals
+        .filter((meal) => mealNameToSlotId(meal.name) === "mellommaltid")
+        .map((meal, index) => ({ ...meal, name: `Mellommåltid ${index + 1}` }));
+      return {
+        ...day,
+        meals: [
+          ...regularMeals,
+          ...snackMeals,
+          { id: uid("meal"), name: `Mellommåltid ${nextNumber}`, items: [] },
+        ],
+      };
+    }),
+  };
 }
 
 export function isValidMealPlanSlotSelection(slotIds: MealPlanSlotId[]): boolean {
