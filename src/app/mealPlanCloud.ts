@@ -8,6 +8,7 @@ import {
 } from "./mealPlanStorage";
 import { parseMealPlanTargets } from "./mealPlanTargetBalance";
 import type { MealPlan, MealPlanDay, MealPlanFoodEntry, MealPlanMeal, MealPlanTargets } from "./mealPlanTypes";
+import { memberIdsMatchingExactEmail } from "../services/memberEmailExactMatch";
 import { isSupabaseConfigured, supabaseClient } from "../services/supabaseClient";
 
 export function mealPlansEqual(a: MealPlan | null | undefined, b: MealPlan | null | undefined): boolean {
@@ -258,10 +259,10 @@ export async function readLinkedMealPlanMemberIds(primaryMemberId: string): Prom
       .trim()
       .toLowerCase();
     if (email.includes("@")) {
-      const { data: rows } = await supabaseClient.from("members").select("id").ilike("email", email);
-      for (const row of rows ?? []) {
-        const id = String((row as { id?: string }).id ?? "").trim();
-        if (id) ids.add(id);
+      // ilike treats `_`/`%` as wildcards — keep only exact normalized emails.
+      const { data: rows } = await supabaseClient.from("members").select("id, email").ilike("email", email);
+      for (const id of memberIdsMatchingExactEmail(rows, email)) {
+        ids.add(id);
       }
     }
   } catch {
@@ -290,14 +291,13 @@ function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise
 async function memberIdsForEmail(email: string): Promise<string[]> {
   if (!supabaseClient || !email.includes("@")) return [];
   try {
+    // Select email too: raw ilike can match sibling clients (jane_doe → janexdoe).
     const { data: rows } = await withTimeout(
-      supabaseClient.from("members").select("id").ilike("email", email),
+      supabaseClient.from("members").select("id, email").ilike("email", email),
       MEAL_PLAN_FETCH_TIMEOUT_MS,
       "members lookup",
     );
-    return (rows ?? [])
-      .map((row) => String((row as { id?: string }).id ?? "").trim())
-      .filter(Boolean);
+    return memberIdsMatchingExactEmail(rows, email);
   } catch (error) {
     console.warn("meal plan member email lookup failed:", error);
     return [];
@@ -613,6 +613,12 @@ export function applyHydratedMealPlan(plan: MealPlan, aliasMemberIds: string[] =
   return changed;
 }
 
+/** Cloud upsert targets after lookup. Empty lookup falls back to the plan's own member id. */
+export function mealPlanCloudWriteMemberIds(planMemberId: string, lookupIds: string[]): string[] {
+  const ids = lookupIds.length ? lookupIds : [planMemberId];
+  return [...new Set(ids.map((id) => id.trim()).filter(Boolean))];
+}
+
 /** Lagrer samme plan under alle kjente member_id for personen (viktig ved duplikat-rader). */
 export async function persistMealPlanForLookupIds(
   plan: MealPlan,
@@ -656,7 +662,8 @@ export async function persistMealPlanBundle(
     };
   }
   let cloudSynced = false;
-  for (const id of ids.length ? ids : [plan.memberId.trim()].filter(Boolean)) {
+  // Lookup ids are exact-email duplicates of this person, not ILIKE siblings.
+  for (const id of mealPlanCloudWriteMemberIds(plan.memberId, ids)) {
     const ok = await saveMealPlanToSupabase(ownerUserId, { ...plan, memberId: id });
     if (ok) cloudSynced = true;
   }

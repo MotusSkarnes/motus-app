@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { createDefaultMealPlan } from "./mealPlanDefaults";
-import { pickPreferredMealPlan, resolveTrainerMealPlanLoadStatus } from "./mealPlanCloud";
+import { mealPlanCloudWriteMemberIds, pickPreferredMealPlan, resolveTrainerMealPlanLoadStatus } from "./mealPlanCloud";
 import type { MealPlan } from "./mealPlanTypes";
+import { memberIdsMatchingExactEmail } from "../services/memberEmailExactMatch";
 
 describe("pickPreferredMealPlan for trainer load", () => {
   it("prefers local plan with food over remote shell with empty meals", () => {
@@ -46,5 +47,29 @@ describe("pickPreferredMealPlan for trainer load", () => {
     const plan = createDefaultMealPlan("member-test");
     expect(resolveTrainerMealPlanLoadStatus(plan)).toBe("cloud");
     expect(resolveTrainerMealPlanLoadStatus(null)).toBe("local");
+  });
+});
+
+describe("mealPlanCloudWriteMemberIds", () => {
+  it("does not cloud-save a sibling client whose email only matches via ILIKE _", () => {
+    const lookupIds = memberIdsMatchingExactEmail(
+      [
+        { id: "jane-underscore", email: "jane_doe@motus.no" },
+        { id: "jane-wildcard", email: "janexdoe@motus.no" },
+      ],
+      "jane_doe@motus.no",
+    );
+    expect(mealPlanCloudWriteMemberIds("jane-underscore", lookupIds)).toEqual(["jane-underscore"]);
+  });
+
+  it("still fans out to true duplicate rows with the same email", () => {
+    const lookupIds = memberIdsMatchingExactEmail(
+      [
+        { id: "row-a", email: "kari@motus.no" },
+        { id: "row-b", email: "kari@motus.no" },
+      ],
+      "kari@motus.no",
+    );
+    expect(mealPlanCloudWriteMemberIds("row-a", lookupIds)).toEqual(["row-a", "row-b"]);
   });
 });
