@@ -15,6 +15,7 @@ const requiredPatches = [
   "fix_member_meal_plan_state_rls_no_user_metadata.sql",
   "fix_shared_food_bank_items_rls_no_user_metadata.sql",
   "fix_member_workout_log_auth_id_rls.sql",
+  "patch_members_insert_trainer_rls.sql",
   "verify_rls_no_user_metadata.sql",
 ];
 
