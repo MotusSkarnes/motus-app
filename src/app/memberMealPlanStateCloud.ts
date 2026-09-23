@@ -124,15 +124,34 @@ export async function syncMemberMealPlanState(memberId: string, aliasMemberIds: 
     loadMemberMealPlanState(primaryId);
   if (!remote) {
     saveMemberMealPlanState(primaryId, local, { notify: false });
+    if (stateHasTrackedActivity(local)) {
+      await saveMemberMealPlanStateToSupabase(primaryId, local);
+    }
     return local;
   }
   const merged = mergeMemberMealPlanStates(local, remote);
   saveMemberMealPlanState(primaryId, merged, { notify: false });
+  if (!memberMealPlanStatesEqual(merged, remote)) {
+    await saveMemberMealPlanStateToSupabase(primaryId, merged);
+  }
   return merged;
 }
 
+function stateHasTrackedActivity(state: MemberMealPlanState): boolean {
+  return (
+    Object.values(state.loggedMeals).some((ids) => ids.length > 0) ||
+    Object.values(state.loggedFoodIds).some((ids) => ids.length > 0) ||
+    Object.values(state.quickFoodLogs).some((rows) => rows.length > 0) ||
+    Object.values(state.skippedFoodIds).some((ids) => ids.length > 0) ||
+    Object.keys(state.mealSwaps).length > 0 ||
+    Object.keys(state.ingredientSwaps).length > 0
+  );
+}
+
 function memberMealPlanStatesEqual(a: MemberMealPlanState, b: MemberMealPlanState): boolean {
-  return JSON.stringify(a) === JSON.stringify(b);
+  const { updatedAt: _aUpdatedAt, ...aContent } = a;
+  const { updatedAt: _bUpdatedAt, ...bContent } = b;
+  return JSON.stringify(aContent) === JSON.stringify(bContent);
 }
 
 export function applyHydratedMemberMealPlanState(memberId: string, state: MemberMealPlanState): boolean {
