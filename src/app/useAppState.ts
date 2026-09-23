@@ -1440,6 +1440,15 @@ export function useAppState() {
         if (trainerHydrateStatus !== "invoke_error" && trainerHydrateStatus !== "invalid_payload") {
           setRemoteTrainerPeriodPlansByMemberId(hydratedTrainer.periodPlansByMemberId ?? {});
         }
+        if (hydratedTrainer.mealPlanStates?.length) {
+          let mealPlanStateChanged = false;
+          for (const row of hydratedTrainer.mealPlanStates) {
+            if (applyHydratedMemberMealPlanState(row.memberId, row.state)) mealPlanStateChanged = true;
+          }
+          if (mealPlanStateChanged && typeof window !== "undefined") {
+            window.dispatchEvent(new CustomEvent(MEAL_PLAN_STATE_CHANGED_EVENT));
+          }
+        }
       }
       if (isTrainerSession && ownerUserId) {
         void syncTrainerFoodBankFromRemote(ownerUserId);

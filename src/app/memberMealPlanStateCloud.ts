@@ -41,18 +41,20 @@ async function fetchStateRow(memberId: string): Promise<MemberMealPlanState | nu
 
 export async function fetchMemberMealPlanStateFromSupabase(memberIds: string | string[]): Promise<MemberMealPlanState | null> {
   const ids = [...new Set((Array.isArray(memberIds) ? memberIds : [memberIds]).map((id) => id.trim()).filter(Boolean))];
-  let best: MemberMealPlanState | null = null;
-  let bestMs = 0;
+  const states: MemberMealPlanState[] = [];
   for (const id of ids) {
     const row = await fetchStateRow(id);
-    if (!row) continue;
-    const ms = Date.parse(row.updatedAt ?? "") || 0;
-    if (!best || ms >= bestMs) {
-      best = row;
-      bestMs = ms;
-    }
+    if (row) states.push(row);
   }
-  return best;
+  return mergeMemberMealPlanStateList(states);
+}
+
+export function mergeMemberMealPlanStateList(states: MemberMealPlanState[]): MemberMealPlanState | null {
+  const ordered = [...states].sort((a, b) => stateUpdatedAtMs(a) - stateUpdatedAtMs(b));
+  return ordered.reduce<MemberMealPlanState | null>(
+    (merged, state) => (merged ? mergeMemberMealPlanStates(merged, state) : state),
+    null,
+  );
 }
 
 export async function saveMemberMealPlanStateToSupabase(
@@ -106,9 +108,8 @@ export async function syncMemberMealPlanState(memberId: string, aliasMemberIds: 
   const primaryId = memberId.trim() || lookupIds[0] || "";
   const remote = await fetchMemberMealPlanStateFromSupabase(lookupIds);
   // Reload local after the network round-trip so a delete/add during fetch is not overwritten.
-  const local = lookupIds
-    .map((id) => loadMemberMealPlanState(id))
-    .sort((a, b) => stateUpdatedAtMs(b) - stateUpdatedAtMs(a))[0] ?? loadMemberMealPlanState(primaryId);
+  const local = mergeMemberMealPlanStateList(lookupIds.map((id) => loadMemberMealPlanState(id))) ??
+    loadMemberMealPlanState(primaryId);
   if (!remote) {
     saveMemberMealPlanState(primaryId, local, { notify: false });
     return local;

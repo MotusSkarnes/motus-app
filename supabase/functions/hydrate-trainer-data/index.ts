@@ -664,6 +664,19 @@ Deno.serve(async (req) => {
       }));
   }
 
+  let mealPlanStateRows: Array<Record<string, unknown>> = [];
+  if (visibleMemberIds.length > 0) {
+    const { data, error } = await adminClient
+      .from("member_meal_plan_state")
+      .select("member_id, state, updated_at")
+      .in("member_id", visibleMemberIds);
+    if (error) {
+      console.warn("hydrate-trainer-data: member_meal_plan_state query failed (table may be missing):", error.message);
+    } else {
+      mealPlanStateRows = (data ?? []) as Array<Record<string, unknown>>;
+    }
+  }
+
   const mergedPrograms = uniqueById([
     ...programsByOwnerWithoutSharedTemplates,
     ...programsByMember,
@@ -690,6 +703,7 @@ Deno.serve(async (req) => {
     messages: mergedMessages,
     exercises: resolvedExercises,
     periodPlans: periodPlanRows,
+    mealPlanStates: mealPlanStateRows,
     debug: includeDebug
       ? {
           status: hasQueryErrors ? "partial_error" : "ok",

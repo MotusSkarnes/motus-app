@@ -3242,6 +3242,7 @@ export type HydratedTrainerData = {
   exercises: Exercise[];
   /** Synket periodeplan per medlem (Supabase). */
   periodPlansByMemberId: Record<string, PeriodSchedulePlan[]>;
+  mealPlanStates: Array<{ memberId: string; state: MemberMealPlanState }>;
   debug: HydratedTrainerDebug | null;
 };
 
@@ -3504,6 +3505,7 @@ export async function fetchHydratedTrainerData(ownerUserId: string): Promise<Hyd
       logs: [],
       exercises: [],
       periodPlansByMemberId: {},
+      mealPlanStates: [],
       debug: {
         status: "invoke_error",
         message: fallbackMessage,
@@ -3539,6 +3541,7 @@ export async function fetchHydratedTrainerData(ownerUserId: string): Promise<Hyd
       logs: [],
       exercises: [],
       periodPlansByMemberId: {},
+      mealPlanStates: [],
       debug: {
         status: "invalid_payload",
         message: "Function returned empty or non-object payload.",
@@ -3572,6 +3575,7 @@ export async function fetchHydratedTrainerData(ownerUserId: string): Promise<Hyd
   const logsRows = Array.isArray(payload.logs) ? payload.logs : [];
   const exercisesRows = Array.isArray(payload.exercises) ? payload.exercises : [];
   const periodPlanRowsRaw = Array.isArray(payload.periodPlans) ? payload.periodPlans : [];
+  const mealPlanStateRows = Array.isArray(payload.mealPlanStates) ? payload.mealPlanStates : [];
   const periodPlansByMemberId = periodPlanRowsToByMemberId(
     periodPlanRowsRaw.map((row) => {
       const r = row as Record<string, unknown>;
@@ -3646,6 +3650,14 @@ export async function fetchHydratedTrainerData(ownerUserId: string): Promise<Hyd
     }),
     exercises: exercisesRows.map((row) => mapExerciseBankRow(row as Record<string, unknown>)),
     periodPlansByMemberId,
+    mealPlanStates: mealPlanStateRows.flatMap((row) => {
+      const record = row as Record<string, unknown>;
+      const memberId = String(record.member_id ?? "").trim();
+      if (!memberId) return [];
+      const state = parseMemberMealPlanState(record.state);
+      if (typeof record.updated_at === "string") state.updatedAt = record.updated_at;
+      return [{ memberId, state }];
+    }),
     debug,
   };
 }
