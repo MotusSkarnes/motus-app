@@ -18,6 +18,7 @@ import { MOTUS } from "../../app/data";
 import { formatMacro } from "../../app/foodBankTypes";
 import type { FoodItem } from "../../app/foodBankTypes";
 import { foodItemsToById } from "../../app/mealPlanFoodNutrition";
+import { countMealPlanFoodItems } from "../../app/mealPlanCloud";
 import { canonicalMemberMealSlotId } from "../../app/memberMealSlots";
 import { sumQuickFoodLogMacros } from "../../app/quickFoodLogMacros";
 import {
@@ -154,7 +155,7 @@ function firstRecipeIdFromMeal(
 }
 
 export function isRecipeEntry(foodId: string, note?: string): boolean {
-  if (Boolean(parseInspirationRecipeFoodId(foodId))) return true;
+  if (parseInspirationRecipeFoodId(foodId)) return true;
   return String(note ?? "").toLowerCase().includes("oppskrift") || String(note ?? "").toLowerCase().includes("måltid ·");
 }
 
