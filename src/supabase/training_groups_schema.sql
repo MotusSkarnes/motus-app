@@ -132,8 +132,17 @@ create policy "group_chat_messages_insert"
   to authenticated
   with check (
     (
+      -- Trainer messages must come from the group owner. owner_user_id = auth.uid()
+      -- alone lets any authenticated user forge sender_role = 'trainer' into any group.
       owner_user_id = auth.uid()
       and sender_role = 'trainer'
+      and sender_member_id is null
+      and exists (
+        select 1
+        from public.training_groups g
+        where g.id = group_chat_messages.group_id
+          and g.owner_user_id = auth.uid()
+      )
     )
     or (
       sender_role = 'member'
