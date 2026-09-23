@@ -1,4 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { REASSIGN_MEMBER_OWNER_TABLES } from "../_shared/trainerMealPlanAccess.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -70,7 +71,7 @@ async function migrateMemberDataToTrainer(
   const ids = Array.from(new Set(memberIds.map((id) => id.trim()).filter(Boolean)));
   const owner = ownerUserId.trim();
   if (!ids.length || !owner) return;
-  for (const table of ["training_programs", "workout_logs", "chat_messages", "member_period_plans"] as const) {
+  for (const table of REASSIGN_MEMBER_OWNER_TABLES) {
     const { error } = await adminClient.from(table).update({ owner_user_id: owner }).in("member_id", ids);
     if (error) {
       console.warn(`reassign-member-owner: could not migrate ${table}.owner_user_id:`, error.message);
