@@ -23,8 +23,14 @@ create policy "inspiration_feed_write_authenticated"
   on public.inspiration_feed
   for all
   to authenticated
-  using (true)
-  with check (true);
+  using (
+    nullif(auth.jwt() -> 'app_metadata' ->> 'role', '') = 'trainer'
+    or lower(trim(coalesce(auth.jwt() ->> 'email', ''))) like '%@motus-skarnes.no'
+  )
+  with check (
+    nullif(auth.jwt() -> 'app_metadata' ->> 'role', '') = 'trainer'
+    or lower(trim(coalesce(auth.jwt() ->> 'email', ''))) like '%@motus-skarnes.no'
+  );
 
 insert into public.inspiration_feed (id, items)
 values ('shared', '[]'::jsonb)

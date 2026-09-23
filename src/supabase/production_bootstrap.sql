@@ -234,13 +234,37 @@ create policy "training_programs_select_trainer_or_member"
 create policy "training_programs_insert_own"
   on public.training_programs
   for insert to authenticated
-  with check (owner_user_id = auth.uid());
+  with check (
+    owner_user_id = auth.uid()
+    and (
+      member_id = '__template__'
+      or exists (
+        select 1
+        from public.members m
+        where m.id = training_programs.member_id
+          and m.owner_user_id = auth.uid()
+          and coalesce(m.is_active, true) is not false
+      )
+    )
+  );
 
 create policy "training_programs_update_own"
   on public.training_programs
   for update to authenticated
   using (owner_user_id = auth.uid())
-  with check (owner_user_id = auth.uid());
+  with check (
+    owner_user_id = auth.uid()
+    and (
+      member_id = '__template__'
+      or exists (
+        select 1
+        from public.members m
+        where m.id = training_programs.member_id
+          and m.owner_user_id = auth.uid()
+          and coalesce(m.is_active, true) is not false
+      )
+    )
+  );
 
 create policy "training_programs_delete_own"
   on public.training_programs
@@ -313,13 +337,31 @@ create policy "workout_logs_select_trainer_or_member"
 create policy "workout_logs_insert_own"
   on public.workout_logs
   for insert to authenticated
-  with check (owner_user_id = auth.uid());
+  with check (
+    owner_user_id = auth.uid()
+    and exists (
+      select 1
+      from public.members m
+      where m.id = workout_logs.member_id
+        and m.owner_user_id = auth.uid()
+        and coalesce(m.is_active, true) is not false
+    )
+  );
 
 create policy "workout_logs_update_own"
   on public.workout_logs
   for update to authenticated
   using (owner_user_id = auth.uid())
-  with check (owner_user_id = auth.uid());
+  with check (
+    owner_user_id = auth.uid()
+    and exists (
+      select 1
+      from public.members m
+      where m.id = workout_logs.member_id
+        and m.owner_user_id = auth.uid()
+        and coalesce(m.is_active, true) is not false
+    )
+  );
 
 create policy "workout_logs_delete_own"
   on public.workout_logs
@@ -421,13 +463,31 @@ create policy "member_period_plans_select_trainer_or_member"
 create policy "member_period_plans_insert_trainer"
   on public.member_period_plans
   for insert to authenticated
-  with check (owner_user_id = auth.uid());
+  with check (
+    owner_user_id = auth.uid()
+    and exists (
+      select 1
+      from public.members m
+      where m.id = member_period_plans.member_id
+        and m.owner_user_id = auth.uid()
+        and coalesce(m.is_active, true) is not false
+    )
+  );
 
 create policy "member_period_plans_update_trainer"
   on public.member_period_plans
   for update to authenticated
   using (owner_user_id = auth.uid())
-  with check (owner_user_id = auth.uid());
+  with check (
+    owner_user_id = auth.uid()
+    and exists (
+      select 1
+      from public.members m
+      where m.id = member_period_plans.member_id
+        and m.owner_user_id = auth.uid()
+        and coalesce(m.is_active, true) is not false
+    )
+  );
 
 create policy "member_period_plans_delete_trainer"
   on public.member_period_plans

@@ -36,5 +36,11 @@ create policy "exercise_bank_write_authenticated"
   on public.exercise_bank
   for all
   to authenticated
-  using (true)
-  with check (true);
+  using (
+    nullif(auth.jwt() -> 'app_metadata' ->> 'role', '') = 'trainer'
+    or lower(trim(coalesce(auth.jwt() ->> 'email', ''))) like '%@motus-skarnes.no'
+  )
+  with check (
+    nullif(auth.jwt() -> 'app_metadata' ->> 'role', '') = 'trainer'
+    or lower(trim(coalesce(auth.jwt() ->> 'email', ''))) like '%@motus-skarnes.no'
+  );
