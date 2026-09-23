@@ -1,4 +1,8 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import {
+  isSharedMedlemCustomerType,
+  memberIdsEligibleForRestoreClaimMigration,
+} from "../_shared/trainerOwnershipClaimScope.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -35,7 +39,7 @@ function normalizeEmail(value: string | null | undefined): string {
 }
 
 function isSharedMedlem(customerType: string | null | undefined): boolean {
-  return String(customerType ?? "").trim().toLowerCase() === "medlem";
+  return isSharedMedlemCustomerType(customerType);
 }
 
 function jsonResponse(status: number, body: Record<string, unknown>) {
@@ -206,8 +210,12 @@ async function relinkAuthLoginToDedicatedMemberRow(
     if (id) {
       const patch = buildMemberRestorePatch(row, email, ownerUserId, claimForTrainer);
       await adminClient.from("members").update(patch).eq("id", id);
-      if (claimForTrainer && ownerUserId) {
-        await migrateMemberDataToTrainer(adminClient, [id], ownerUserId);
+      const claimMigrateIds = memberIdsEligibleForRestoreClaimMigration([row], {
+        claimForTrainer,
+        ownerUserId,
+      });
+      if (claimMigrateIds.length) {
+        await migrateMemberDataToTrainer(adminClient, claimMigrateIds, ownerUserId);
       }
       await syncAuthMemberId(adminClient, authUser, id);
       const updated = await fetchMemberById(adminClient, id);
@@ -389,8 +397,12 @@ Deno.serve(async (req) => {
       restoredIds.push(id);
     }
 
-    if (claimForTrainer && ownerUserId && restoredIds.length) {
-      await migrateMemberDataToTrainer(adminClient, restoredIds, ownerUserId);
+    const claimMigrateIds = memberIdsEligibleForRestoreClaimMigration(
+      matchingRows.filter((row) => restoredIds.includes(String(row.id ?? "").trim())),
+      { claimForTrainer, ownerUserId },
+    );
+    if (claimMigrateIds.length) {
+      await migrateMemberDataToTrainer(adminClient, claimMigrateIds, ownerUserId);
     }
 
     const reactivatedCount = matchingRows.filter((row) => row.is_active === false).length;
