@@ -45,6 +45,15 @@ describe("foodBankMicronutrients", () => {
     expect(normalizeMicronutrients({ vitaminC: 5 }).copper).toBeUndefined();
   });
 
+  it("uses Matvaretabellen source metadata to distinguish zero from unknown", () => {
+    const micro = micronutrientsFromMatvaretabellen([
+      { nutrientId: "Vit D", quantity: 0, unit: "µg", sourceId: "50" },
+      { nutrientId: "Se", quantity: 0, unit: "µg", sourceId: "10" },
+    ]);
+    expect(micro.vitaminD).toBe(0);
+    expect(micro.selenium).toBeUndefined();
+  });
+
   it("puts unit after each AR, RI and UL value", () => {
     expect(formatMicronutrientWithUnit(540, 0, "µg")).toBe("540 µg");
     expect(

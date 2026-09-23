@@ -41,7 +41,6 @@ describe("memberNutritionRehydrate", () => {
   });
 
   it("updates water in quick logs and saved meals from food bank", () => {
-    const lookup = buildNutritionLookupByFoodName([food("Agurk", 95)]);
     const state = {
       ...EMPTY_MEMBER_MEAL_PLAN_STATE,
       quickFoodLogs: {
@@ -215,5 +214,17 @@ describe("memberNutritionRehydrate", () => {
     cake.id = "food-cake";
     const resolved = resolveNutritionFromFoodItems("Gulrot", carrot.nutritionPer100g, [cake, carrot], carrot.id);
     expect(resolved.water).toBe(90);
+  });
+
+  it("backfills measured zero micronutrients from exact Matvaretabellen matches", () => {
+    const cucumber = food("Agurk, norsk, rå", 95);
+    cucumber.nutritionPer100g.micronutrients = { vitaminC: 2, vitaminD: 0 };
+    const stored = {
+      ...cucumber.nutritionPer100g,
+      micronutrients: { vitaminC: 2 },
+    };
+
+    const resolved = resolveNutritionFromFoodItems("Agurk, norsk, rå", stored, [cucumber]);
+    expect(resolved.micronutrients?.vitaminD).toBe(0);
   });
 });

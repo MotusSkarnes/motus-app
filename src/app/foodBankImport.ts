@@ -35,7 +35,7 @@ export type MatvaretabellenFood = {
   foodGroupId?: string;
   calories?: { quantity?: number };
   portions?: Array<{ id?: string; portionName?: string; quantity?: number; unit?: string }>;
-  constituents?: Array<{ nutrientId?: string; quantity?: number; unit?: string }>;
+  constituents?: Array<{ nutrientId?: string; quantity?: number; unit?: string; sourceId?: string }>;
 };
 
 export type MatvaretabellenImportDiagnostics = {

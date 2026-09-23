@@ -85,11 +85,17 @@ export function cloneNutritionSnapshot(nutrition: FoodNutrition): FoodNutrition 
 }
 
 /** Beholder logget makro, men fyller inn vann/mikro fra matvarebank når loggen mangler det. */
-export function mergeNutritionWithBank(stored: FoodNutrition, bank: FoodNutrition): FoodNutrition {
+export function mergeNutritionWithBank(
+  stored: FoodNutrition,
+  bank: FoodNutrition,
+  options?: { keepBankZeroMicronutrients?: boolean },
+): FoodNutrition {
   const merged = cloneNutritionSnapshot(stored);
   const bankClone = cloneNutritionSnapshot(bank);
   if ((bankClone.water ?? 0) > (merged.water ?? 0)) merged.water = bankClone.water;
-  merged.micronutrients = mergeMicronutrientsPreferKnown(merged.micronutrients, bankClone.micronutrients);
+  merged.micronutrients = mergeMicronutrientsPreferKnown(merged.micronutrients, bankClone.micronutrients, {
+    keepFillZeros: options?.keepBankZeroMicronutrients,
+  });
   if (!merged.fattyAcids && bankClone.fattyAcids) merged.fattyAcids = bankClone.fattyAcids;
   return merged;
 }
@@ -149,7 +155,12 @@ export function resolveNutritionFromFoodItems(
 
   const exact = indexes?.byName?.get(nameKey);
   if (exact) {
-    return mergeNutritionWithBank(cloneNutritionSnapshot(stored), exact);
+    const exactIsMatvaretabellen = items.some(
+      (item) => normalizeFoodLookupKey(item.name) === nameKey && item.source === "matvaretabell",
+    );
+    return mergeNutritionWithBank(cloneNutritionSnapshot(stored), exact, {
+      keepBankZeroMicronutrients: exactIsMatvaretabellen,
+    });
   }
 
   let merged = cloneNutritionSnapshot(stored);
@@ -157,7 +168,9 @@ export function resolveNutritionFromFoodItems(
   for (const item of items) {
     if (!foodNameKeysMatch(foodName, item.name)) continue;
     matched = true;
-    merged = mergeNutritionWithBank(merged, item.nutritionPer100g);
+    merged = mergeNutritionWithBank(merged, item.nutritionPer100g, {
+      keepBankZeroMicronutrients: item.source === "matvaretabell",
+    });
   }
 
   return matched ? merged : stored;

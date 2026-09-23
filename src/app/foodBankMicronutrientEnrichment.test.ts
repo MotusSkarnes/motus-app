@@ -28,4 +28,15 @@ describe("foodBankMicronutrientEnrichment", () => {
     });
     expect(enriched.nutritionPer100g.micronutrients?.vitaminC).toBe(999);
   });
+
+  it("fills measured zero values on partial Matvaretabellen foods", () => {
+    const base = buildDefaultFoodBankItems().find((item) => item.name === "Agurk")!;
+    const enriched = enrichFoodItem({
+      ...base,
+      source: "matvaretabell",
+      nutritionPer100g: { ...base.nutritionPer100g, micronutrients: { vitaminC: 2 } },
+    });
+    expect(enriched.nutritionPer100g.micronutrients?.vitaminC).toBe(2);
+    expect(enriched.nutritionPer100g.micronutrients?.vitaminD).toBe(0);
+  });
 });

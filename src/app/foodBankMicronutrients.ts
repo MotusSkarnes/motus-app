@@ -79,7 +79,10 @@ const CSV_COLUMN_BY_KEY: Record<FoodMicronutrientKey, string> = {
   copper: "kobber_mg",
 };
 
-type MatvaretabellenConstituent = { nutrientId?: string; quantity?: number; unit?: string };
+type MatvaretabellenConstituent = { nutrientId?: string; quantity?: number; unit?: string; sourceId?: string };
+
+/** Matvaretabellen kilde 10: «Manglende verdi, ukjent innhold». */
+export const MATVARETABELLEN_UNKNOWN_SOURCE_ID = "10";
 
 function normalizeUnit(unit: string): string {
   return unit.trim().toLowerCase().replace("µ", "u");
@@ -112,7 +115,12 @@ export function parseMatvaretabellenConstituentOptional(
   targetUnit: string,
 ): number | undefined {
   const row = constituents?.find((entry) => entry.nutrientId === nutrientId);
-  if (!row || row.quantity === undefined || !Number.isFinite(row.quantity)) return undefined;
+  if (
+    !row ||
+    row.sourceId === MATVARETABELLEN_UNKNOWN_SOURCE_ID ||
+    row.quantity === undefined ||
+    !Number.isFinite(row.quantity)
+  ) return undefined;
   return convertNutrientAmount(row.quantity, row.unit ?? targetUnit, targetUnit);
 }
 
@@ -178,10 +186,11 @@ export function normalizeMicronutrients(value: Partial<FoodMicronutrients> | und
 export function mergeMicronutrientsPreferKnown(
   primary: FoodMicronutrients | undefined,
   fill: FoodMicronutrients | undefined,
+  options?: { keepFillZeros?: boolean },
 ): FoodMicronutrients {
   const result = compactMicronutrients(primary);
   const fillCompact = compactMicronutrients(fill);
-  const skipFillZeros = !isDenseMicronutrientObject(primary) && isDenseMicronutrientObject(fill);
+  const skipFillZeros = !options?.keepFillZeros && !isDenseMicronutrientObject(primary) && isDenseMicronutrientObject(fill);
   for (const field of FOOD_MICRONUTRIENT_FIELDS) {
     if (readMicronutrientValue(result, field.key) !== undefined) continue;
     const amount = readMicronutrientValue(fillCompact, field.key);

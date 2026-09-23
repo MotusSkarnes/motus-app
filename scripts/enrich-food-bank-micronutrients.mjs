@@ -189,17 +189,15 @@ function convertAmount(amount, fromUnit, toUnit) {
 
 function parseConstituent(constituents, nutrientId, targetUnit) {
   const row = constituents?.find((entry) => entry.nutrientId === nutrientId);
-  if (!row || row.quantity === undefined || !Number.isFinite(row.quantity)) return 0;
+  if (!row || row.sourceId === "10" || row.quantity === undefined || !Number.isFinite(row.quantity)) return undefined;
   return convertAmount(row.quantity, row.unit ?? targetUnit, targetUnit);
 }
 
 function micronutrientsFromConstituents(constituents) {
   const result = {};
   for (const field of MICRONUTRIENT_FIELDS) {
-    result[field.key] = roundMicro(
-      parseConstituent(constituents, field.matvaretabellId, field.unit),
-      field.unit,
-    );
+    const amount = parseConstituent(constituents, field.matvaretabellId, field.unit);
+    if (amount !== undefined) result[field.key] = roundMicro(amount, field.unit);
   }
   return result;
 }
@@ -210,14 +208,14 @@ function roundGrams(value) {
 }
 
 function fattyAcidsFromConstituents(constituents) {
-  const totalFat = parseConstituent(constituents, "Fett", "g");
-  const saturatedFat = parseConstituent(constituents, "Mettet", "g");
-  const omega3 = parseConstituent(constituents, "Omega-3", "g");
-  const omega6 = parseConstituent(constituents, "Omega-6", "g");
-  const epa = parseConstituent(constituents, "C20:5n-3Eikosapentaensyre", "g");
-  const dha = parseConstituent(constituents, "C22:6n-3Dokosaheksaensyre", "g");
-  const ala = parseConstituent(constituents, "C18:3n-3AlfaLinolensyre", "g");
-  const c181 = parseConstituent(constituents, "C18:1", "g");
+  const totalFat = parseConstituent(constituents, "Fett", "g") ?? 0;
+  const saturatedFat = parseConstituent(constituents, "Mettet", "g") ?? 0;
+  const omega3 = parseConstituent(constituents, "Omega-3", "g") ?? 0;
+  const omega6 = parseConstituent(constituents, "Omega-6", "g") ?? 0;
+  const epa = parseConstituent(constituents, "C20:5n-3Eikosapentaensyre", "g") ?? 0;
+  const dha = parseConstituent(constituents, "C22:6n-3Dokosaheksaensyre", "g") ?? 0;
+  const ala = parseConstituent(constituents, "C18:3n-3AlfaLinolensyre", "g") ?? 0;
+  const c181 = parseConstituent(constituents, "C18:1", "g") ?? 0;
   const polyunsaturatedFat = omega3 + omega6 > 0 ? omega3 + omega6 : 0;
   const monounsaturatedFat =
     c181 > 0 ? c181 : Math.max(0, totalFat - saturatedFat - polyunsaturatedFat);

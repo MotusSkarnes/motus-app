@@ -3,6 +3,7 @@ import type { FoodItem, FoodNutrition, FoodSource } from "./foodBankTypes";
 import { enrichFoodItemUnitGrams } from "./foodUnitGrams";
 import {
   hasMicronutrientData,
+  mergeMicronutrientsPreferKnown,
   normalizeMicronutrients,
   type FoodMicronutrients,
 } from "./foodBankMicronutrients";
@@ -38,10 +39,15 @@ export function enrichFoodNutrition(
 ): FoodNutrition {
   let next = nutrition;
   const normalized = normalizeMicronutrients(next.micronutrients);
-  if (hasMicronutrientData(normalized)) {
+  const fromLookup = lookupMicronutrientsForFoodName(foodName);
+  if (source === "matvaretabell" && fromLookup) {
+    next = {
+      ...next,
+      micronutrients: mergeMicronutrientsPreferKnown(normalized, fromLookup, { keepFillZeros: true }),
+    };
+  } else if (hasMicronutrientData(normalized)) {
     next = { ...next, micronutrients: normalized };
   } else {
-    const fromLookup = lookupMicronutrientsForFoodName(foodName);
     next =
       fromLookup && hasMicronutrientData(fromLookup)
         ? { ...next, micronutrients: fromLookup }
