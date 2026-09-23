@@ -7118,6 +7118,12 @@
 
 .motus-client-plan-overview__preview-head { margin-bottom: 0.65rem; }
 
+.motus-client-plan-overview .motus-mealplan-day-tabs button[aria-selected="true"] {
+  border-color: #9fb8b2;
+  background: #e6efed;
+  color: #23433e;
+}
+
 @media (max-width: 520px) {
   .motus-client-plan-overview__stats { grid-template-columns: 1fr; }
   .motus-client-plan-overview__head > button { width: 100%; justify-content: center; }
