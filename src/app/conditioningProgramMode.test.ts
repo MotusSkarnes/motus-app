@@ -6,6 +6,7 @@ import {
   parseConditioningDeliveryMode,
   serializeConditioningProgramNotes,
   stripConditioningModeMarker,
+  stripLogFieldKeysFromExercises,
 } from "./conditioningProgramMode";
 import type { TrainingProgram } from "./types";
 
@@ -73,5 +74,36 @@ describe("conditioningProgramMode", () => {
     expect(enriched.notes).toBe("Løpetur");
     expect(enriched.conditioningDeliveryMode).toBe("logAfter");
     expect(serializeConditioningProgramNotes(enriched)).toBe("__motusConditioningMode=logAfter\nLøpetur");
+  });
+
+  it("strips stale logFieldKeys when enriching explicit interval programs", () => {
+    const intervalProgram: TrainingProgram = {
+      id: "p3",
+      memberId: "m1",
+      title: "4x4 intervall",
+      goal: "",
+      notes: buildConditioningProgramNotes("interval", "Hard økt"),
+      createdAt: "",
+      exercises: [
+        {
+          id: "ex1",
+          exerciseId: "e1",
+          exerciseName: "Drag 1",
+          sets: "4",
+          reps: "",
+          weight: "",
+          holdSeconds: "",
+          durationMinutes: "4",
+          restSeconds: "180",
+          logFieldKeys: ["minutes", "distance"],
+          notes: "",
+        },
+      ],
+    };
+    const enriched = enrichProgramWithConditioningMode(intervalProgram);
+    expect(enriched.conditioningDeliveryMode).toBe("interval");
+    expect(enriched.exercises[0]?.logFieldKeys).toBeUndefined();
+    expect(enriched.exercises[0]?.durationMinutes).toBe("4");
+    expect(stripLogFieldKeysFromExercises(intervalProgram.exercises)[0]?.logFieldKeys).toBeUndefined();
   });
 });
