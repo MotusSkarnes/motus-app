@@ -73,6 +73,21 @@ export function createSavedMealFromDraft(
   return createSavedMealFromQuickLogs(pseudo, name, mealSlotId);
 }
 
+export function updateSavedMealFromDraft(
+  existing: MemberSavedMeal,
+  items: MealDraftItem[],
+  name: string,
+  mealSlotId?: string,
+): MemberSavedMeal {
+  const updated = createSavedMealFromDraft(items, name, mealSlotId);
+  return {
+    ...updated,
+    id: existing.id,
+    createdAt: existing.createdAt,
+    updatedAt: new Date().toISOString(),
+  };
+}
+
 export function defaultDraftMealName(items: MealDraftItem[], slotLabel: string): string {
   if (!items.length) return slotLabel;
   if (items.length === 1) return items[0]!.name;

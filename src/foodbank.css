@@ -5333,6 +5333,42 @@
   color: #64748b;
 }
 
+.motus-meal-draft__amount {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+  font-size: 0.6875rem;
+  color: #64748b;
+}
+
+.motus-meal-draft__amount input {
+  width: 4.25rem;
+  min-height: 2rem;
+  padding: 0.25rem 0.35rem;
+  border: 1px solid #cbd5e1;
+  border-radius: 0.4rem;
+  background: #fff;
+  font: inherit;
+  color: #0f172a;
+  text-align: right;
+}
+
+.motus-saved-meals__edit-form {
+  margin-bottom: 0.6rem;
+  padding: 0.65rem;
+  border: 1px solid #99f6e4;
+  border-radius: 0.65rem;
+  background: #f0fdfa;
+}
+
+.motus-saved-meals__edit-title {
+  margin: 0 0 0.5rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #0f766e;
+}
+
 .motus-meal-draft__remove {
   flex-shrink: 0;
   border: none;
@@ -5493,6 +5529,7 @@
   color: #64748b;
 }
 
+.motus-saved-meals-picker__option-edit,
 .motus-saved-meals-picker__option-delete {
   flex-shrink: 0;
   display: flex;
@@ -5504,6 +5541,11 @@
   background: none;
   color: #94a3b8;
   cursor: pointer;
+}
+
+.motus-saved-meals-picker__option-edit:hover {
+  color: #0f766e;
+  background: #ecfdf5;
 }
 
 .motus-saved-meals-picker__option-delete:hover {

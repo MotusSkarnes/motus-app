@@ -1,4 +1,4 @@
-import { Bookmark, ChevronDown, Trash2 } from "lucide-react";
+import { Bookmark, ChevronDown, Pencil, Trash2 } from "lucide-react";
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { formatMacro } from "../../app/foodBankTypes";
 import { memberMealSlotLabel } from "../../app/memberMealSlots";
@@ -40,10 +40,11 @@ type SavedMealsPickerProps = {
   meals: MemberSavedMeal[];
   slotLabel: string;
   onSelect: (meal: MemberSavedMeal) => void;
+  onEdit: (meal: MemberSavedMeal) => void;
   onDelete: (savedMealId: string) => void;
 };
 
-export function SavedMealsPicker({ meals, slotLabel, onSelect, onDelete }: SavedMealsPickerProps) {
+export function SavedMealsPicker({ meals, slotLabel, onSelect, onEdit, onDelete }: SavedMealsPickerProps) {
   const listId = useId();
   const rootRef = useRef<HTMLDivElement>(null);
   const [query, setQuery] = useState("");
@@ -125,6 +126,20 @@ export function SavedMealsPicker({ meals, slotLabel, onSelect, onDelete }: Saved
                   >
                     <span className="motus-saved-meals-picker__option-name">{meal.name}</span>
                     <span className="motus-saved-meals-picker__option-meta">{savedMealMetaLine(meal)}</span>
+                  </button>
+                  <button
+                    type="button"
+                    className="motus-saved-meals-picker__option-edit motus-pressable"
+                    aria-label={`Rediger ${meal.name}`}
+                    onMouseDown={(event) => {
+                      event.preventDefault();
+                      event.stopPropagation();
+                      onEdit(meal);
+                      setQuery("");
+                      setOpen(false);
+                    }}
+                  >
+                    <Pencil className="h-3.5 w-3.5" aria-hidden />
                   </button>
                   <button
                     type="button"

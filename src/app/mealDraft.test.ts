@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { createMealDraftItem, createSavedMealFromDraft, mealDraftItemsFromSavedMeal } from "./mealDraft";
+import {
+  createMealDraftItem,
+  createSavedMealFromDraft,
+  mealDraftItemsFromSavedMeal,
+  updateSavedMealFromDraft,
+} from "./mealDraft";
 import { createSavedMealFromQuickLogs } from "./memberSavedMeals";
 import type { MemberQuickFoodLogEntry } from "./memberMealPlanState";
 
@@ -41,5 +46,20 @@ describe("mealDraft", () => {
     const saved = createSavedMealFromQuickLogs([log], "Min frokost", "member-frokost");
     const draft = mealDraftItemsFromSavedMeal(saved);
     expect(draft).toHaveLength(1);
+  });
+
+  it("updates a saved meal while preserving its identity and creation time", () => {
+    const original = createSavedMealFromDraft([createMealDraftItem(food, 100)], "Min frokost", "member-frokost");
+    const updated = updateSavedMealFromDraft(
+      original,
+      [createMealDraftItem(food, 150)],
+      "Stor frokost",
+      "member-frokost",
+    );
+
+    expect(updated.id).toBe(original.id);
+    expect(updated.createdAt).toBe(original.createdAt);
+    expect(updated.name).toBe("Stor frokost");
+    expect(updated.items[0]?.grams).toBe(150);
   });
 });
