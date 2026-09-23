@@ -7124,6 +7124,10 @@
   color: #23433e;
 }
 
+.motus-client-plan-overview .motus-mealplan-targets {
+  color: #526b66;
+}
+
 @media (max-width: 520px) {
   .motus-client-plan-overview__stats { grid-template-columns: 1fr; }
   .motus-client-plan-overview__head > button { width: 100%; justify-content: center; }

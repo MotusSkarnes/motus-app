@@ -38,7 +38,7 @@ export function MealPlanDisplay({ plan, readOnly = true, activeDayId, onActiveDa
         <h2 className="text-lg font-bold text-slate-900">{plan.title}</h2>
         {plan.notes.trim() ? <p className="mt-1 text-sm text-slate-600">{plan.notes}</p> : null}
         {targetsLabel ? (
-          <p className="mt-2 text-xs font-medium text-teal-800">Daglig mål: {targetsLabel}</p>
+          <p className="motus-mealplan-targets mt-2 text-xs font-medium text-teal-800">Daglig mål: {targetsLabel}</p>
         ) : null}
       </div>
 
