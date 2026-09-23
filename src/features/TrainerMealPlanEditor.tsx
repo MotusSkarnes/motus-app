@@ -30,9 +30,11 @@ import { MacroSplitPercentControls } from "../components/MacroSplitPercentContro
 import {
   BarChart3,
   Calendar,
+  ChevronLeft,
   Copy,
   HelpCircle,
   Maximize2,
+  Pencil,
   Plus,
   Save,
   Search,
@@ -118,6 +120,8 @@ type TrainerMealPlanEditorProps = {
   memberWeight?: string;
   trainerOwnerUserId?: string;
   onSavePersonalGoals?: (personalGoals: string) => void;
+  /** Vis en kompakt kundeoversikt først. Full planlegger åpnes eksplisitt. */
+  overviewOnly?: boolean;
 };
 
 type MealPickerTarget = {
@@ -154,6 +158,7 @@ export function TrainerMealPlanEditor({
   memberWeight = "",
   trainerOwnerUserId,
   onSavePersonalGoals,
+  overviewOnly = false,
 }: TrainerMealPlanEditorProps) {
   const foodItems = useFoodBankItems();
   const foodItemsForMacros = useMemo(
@@ -171,6 +176,7 @@ export function TrainerMealPlanEditor({
   const [deletingPlan, setDeletingPlan] = useState(false);
   const [nutritionReportOpen, setNutritionReportOpen] = useState(false);
   const [builderWorkspaceOpen, setBuilderWorkspaceOpen] = useState(false);
+  const [customerPlannerOpen, setCustomerPlannerOpen] = useState(false);
   const builderWorkspaceOpenRef = useRef(false);
   const builderSnapshotRef = useRef<MealPlan | null>(null);
   const planRef = useRef<MealPlan | null>(null);
@@ -1517,7 +1523,64 @@ export function TrainerMealPlanEditor({
 
   return (
     <div className="motus-pt-planner">
+      {overviewOnly && !customerPlannerOpen ? (
+        <section className="motus-client-plan-overview" aria-label={`Matplan for ${memberName}`}>
+          <header className="motus-client-plan-overview__head">
+            <div>
+              <p className="motus-client-plan-overview__eyebrow">Kundens matplan</p>
+              <h2>{plan.title.trim() || `Matplan for ${memberName}`}</h2>
+              <p>{memberName} · {planSource === "cloud" ? "Publisert til kunden" : "Lokalt utkast"}</p>
+            </div>
+            <GradientButton type="button" onClick={() => setCustomerPlannerOpen(true)}>
+              <Pencil className="h-4 w-4" aria-hidden />
+              Åpne planlegger
+            </GradientButton>
+          </header>
+
+          <div className="motus-client-plan-overview__stats">
+            <div><strong>{planWeeks}</strong><span>{planWeeks === 1 ? "uke" : "uker"}</span></div>
+            <div><strong>{countMealPlanFoodItems(plan)}</strong><span>matvarer</span></div>
+            <div>
+              <strong>{plan.days.reduce((sum, day) => sum + day.meals.filter((meal) => meal.items.length > 0).length, 0)}</strong>
+              <span>utfylte måltider</span>
+            </div>
+          </div>
+
+          {displayTargets.kcal || displayTargets.protein || displayTargets.carbs || displayTargets.fat ? (
+            <div className="motus-client-plan-overview__targets" aria-label="Daglige mål">
+              {displayTargets.kcal ? <span><strong>{formatMacro(displayTargets.kcal, 0)}</strong> kcal</span> : null}
+              {displayTargets.protein ? <span><strong>{formatMacro(displayTargets.protein, 0)}</strong> g protein</span> : null}
+              {displayTargets.carbs ? <span><strong>{formatMacro(displayTargets.carbs, 0)}</strong> g karbo</span> : null}
+              {displayTargets.fat ? <span><strong>{formatMacro(displayTargets.fat, 0)}</strong> g fett</span> : null}
+            </div>
+          ) : null}
+
+          {plan.notes.trim() ? <p className="motus-client-plan-overview__note">{plan.notes}</p> : null}
+
+          <div className="motus-client-plan-overview__preview">
+            <div className="motus-client-plan-overview__preview-head">
+              <h3>Planoversikt</h3>
+              <OutlineButton type="button" className="text-xs" onClick={() => setNutritionReportOpen(true)}>
+                <BarChart3 className="h-4 w-4" aria-hidden />
+                Næringsoversikt
+              </OutlineButton>
+            </div>
+            <MealPlanDisplay plan={plan} activeDayId={activeDayId} onActiveDayIdChange={setActiveDayId} readOnly />
+          </div>
+
+          <p className="motus-client-plan-overview__hint">
+            Endringer fra planleggeren lagres kun på {memberName} og endrer ikke hovedmalen under Ernæring.
+          </p>
+        </section>
+      ) : (
+        <>
       <div className="motus-pt-planner__top-actions">
+        {overviewOnly ? (
+          <OutlineButton type="button" className="text-xs" onClick={() => setCustomerPlannerOpen(false)}>
+            <ChevronLeft className="h-4 w-4" aria-hidden />
+            Tilbake til planoversikt
+          </OutlineButton>
+        ) : null}
         <OutlineButton type="button" className="text-xs" onClick={() => setSaveStatus("Hjelp: Bygg uken i rutenettet. Klikk en celle for detaljer.")}>
           <HelpCircle className="h-4 w-4" aria-hidden />
           Hjelp
@@ -1775,6 +1838,8 @@ export function TrainerMealPlanEditor({
           <MealPlanDisplay plan={plan} activeDayId={activeDayId} onActiveDayIdChange={setActiveDayId} readOnly />
         </div>
       </details>
+        </>
+      )}
 
       {foodPicker ? (
         <div

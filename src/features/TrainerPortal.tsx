@@ -7230,6 +7230,7 @@ function pickFirstName(value: unknown): string {
                           memberGender={selectedMemberProfile?.gender ?? selectedMember.gender}
                           memberWeight={selectedMemberProfile?.weight ?? selectedMember.weight}
                           trainerOwnerUserId={currentTrainerOwnerUserId}
+                          overviewOnly
                           onSavePersonalGoals={(personalGoals) => {
                             updateMember({
                               memberId: selectedMember.id,
