@@ -1,5 +1,6 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { buildMemberEmailIlikeOrFilter } from "../_shared/memberEmailQueries.ts";
+import { filterTrainerNutritionFanoutMemberIds } from "../_shared/memberProfileNutritionFanout.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -469,21 +470,17 @@ Deno.serve(async (req) => {
     const { data: allMemberRows, error: nutritionFanoutError } = await fetchMembersByNormalizedEmails(
       adminClient,
       emailSet,
-      "id,email",
+      "id,email,owner_user_id,customer_type",
     );
     if (nutritionFanoutError) {
       return jsonResponse(500, { error: `Could not fan out nutrition access: ${nutritionFanoutError.message}` });
     }
-    const nutritionFanoutIds = Array.from(
-      new Set(
-        (allMemberRows ?? [])
-          .filter((row) => {
-            const rowEmail = normalizeEmail((row as { email?: string }).email);
-            return Boolean(rowEmail && emailSet.has(rowEmail));
-          })
-          .map((row) => normalizeString((row as { id?: string }).id))
-          .filter(Boolean),
-      ),
+    // Must match profile fanout ownership rules — email-only updates let any trainer
+    // toggle nutrition_access for another PT's customers with the same email.
+    const nutritionFanoutIds = filterTrainerNutritionFanoutMemberIds(
+      allMemberRows,
+      emailSet,
+      user.id,
     );
     if (nutritionFanoutIds.length) {
       const nutritionResult = await updateMembersById(adminClient, nutritionFields, nutritionFanoutIds);

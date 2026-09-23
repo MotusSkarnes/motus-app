@@ -1,4 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { filterRowsByExactEmail } from "../_shared/memberEmailExactMatch.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -248,9 +249,11 @@ async function resolveRelatedMemberIds(
     throw new Error("Cannot save program without a member email. Save the member row before assigning a program.");
   }
 
+  // `ilike` can match `_`/`%` wildcards; exact-filter afterward so related-member
+  // fanout never writes programs onto a different customer's row.
   const { data: rows, error: rowsError } = await adminClient
     .from("members")
-    .select("id")
+    .select("id, email")
     .ilike("email", email);
 
   if (rowsError) {
@@ -259,8 +262,8 @@ async function resolveRelatedMemberIds(
 
   const ids = Array.from(
     new Set(
-      (rows ?? [])
-        .map((row) => String((row as { id?: string }).id ?? "").trim())
+      filterRowsByExactEmail(rows as Array<{ id?: string; email?: string }> | null, email)
+        .map((row) => String(row.id ?? "").trim())
         .filter((id) => id && id !== "__template__" && !id.startsWith("auth-")),
     ),
   );
@@ -383,13 +386,16 @@ Deno.serve(async (req) => {
   if ((!memberId || memberId.startsWith("auth-")) && role === "member") {
     const email = normalizeEmail(userData.user.email);
     if (!email) return jsonResponse(400, { error: "Valid memberId is required" });
-    const { data: row } = await adminClient
+    const { data: authEmailRows } = await adminClient
       .from("members")
-      .select("id")
+      .select("id, email, created_at")
       .ilike("email", email)
       .order("created_at", { ascending: false })
-      .limit(1)
-      .maybeSingle();
+      .limit(20);
+    const row = filterRowsByExactEmail(
+      authEmailRows as Array<{ id?: string; email?: string }> | null,
+      email,
+    )[0];
     if (!row?.id) return jsonResponse(400, { error: "Valid memberId is required" });
     memberId = String(row.id).trim();
   }
@@ -442,10 +448,13 @@ Deno.serve(async (req) => {
     if (!email) {
       return jsonResponse(403, { error: "Du kan bare lagre programmer på din egen profil." });
     }
-    const { data: myMemberRows } = await adminClient.from("members").select("id").ilike("email", email);
+    const { data: myMemberRows } = await adminClient
+      .from("members")
+      .select("id, email")
+      .ilike("email", email);
     const myIds = new Set(
-      (myMemberRows ?? [])
-        .map((r) => String((r as { id?: string }).id ?? "").trim())
+      filterRowsByExactEmail(myMemberRows as Array<{ id?: string; email?: string }> | null, email)
+        .map((r) => String(r.id ?? "").trim())
         .filter((id) => Boolean(id)),
     );
     const allowed = targetMemberIds.some((tid) => myIds.has(tid));
