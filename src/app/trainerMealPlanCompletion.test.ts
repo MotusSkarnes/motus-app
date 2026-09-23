@@ -34,4 +34,20 @@ describe("trainerMealPlanCompletion", () => {
     expect(mealPlanActivityDateKeys(state)).toContain(dateKey);
     expect(latestMealStatusById(plan, state)[breakfast.id]?.label).toBe("Fullført · endret");
   });
+
+  it("derives completion from logged food ids when loggedMeals is missing", () => {
+    const plan = createDefaultMealPlan("member-1");
+    const breakfast = plan.days[0]!.meals[0]!;
+    breakfast.items = [{
+      id: "planned-1", foodId: "food-1", foodName: "Havregrøt", grams: 300,
+      nutritionPer100g: { kcal: 100, protein: 5, carbs: 15, fat: 2, fiber: 3, sugar: 1, saturatedFat: 0.2, sodium: 10 },
+    }];
+    const dateKey = "2026-09-23";
+    const state = {
+      ...EMPTY_MEMBER_MEAL_PLAN_STATE,
+      loggedFoodIds: { [dateKey]: ["planned-1"] },
+    };
+
+    expect(latestMealStatusById(plan, state)[breakfast.id]?.label).toBe("Fullført");
+  });
 });

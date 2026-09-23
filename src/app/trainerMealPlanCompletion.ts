@@ -26,16 +26,17 @@ export function completedMealRowsForTrainer(
 ): TrainerCompletedMealRow[] {
   if (!plan) return [];
   const completedIds = new Set(state.loggedMeals[dateKey] ?? []);
-  if (!completedIds.size) return [];
-
   const skippedIds = new Set(state.skippedFoodIds[dateKey] ?? []);
+  const loggedFoodIds = new Set(state.loggedFoodIds[dateKey] ?? []);
   const quickLogs = state.quickFoodLogs[dateKey] ?? [];
   const rows: TrainerCompletedMealRow[] = [];
 
   for (const day of plan.days) {
     for (const plannedMeal of day.meals) {
-      if (!completedIds.has(plannedMeal.id)) continue;
       const effectiveMeal = resolveMealWithSwaps(plan, plannedMeal, dateKey, state.mealSwaps);
+      const activeItems = effectiveMeal.items.filter((item) => !skippedIds.has(item.id));
+      const completedFromFoodIds = activeItems.length > 0 && activeItems.every((item) => loggedFoodIds.has(item.id));
+      if (!completedIds.has(plannedMeal.id) && !completedFromFoodIds) continue;
       const swapped = Boolean(state.mealSwaps[mealSwapKey(dateKey, plannedMeal.id)]);
       const removedCount = effectiveMeal.items.filter((item) => skippedIds.has(item.id)).length;
       const addedCount = quickLogs.filter((entry) => entry.mealId === plannedMeal.id).length;
