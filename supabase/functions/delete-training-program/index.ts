@@ -1,4 +1,8 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import {
+  isLinkedFingerprintDeleteCandidate,
+  memberIdsMatchingExactEmail,
+} from "../_shared/deleteTrainingProgramFingerprintScope.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -125,11 +129,10 @@ async function resolveRelatedMemberIds(
 
   if (email) {
     ids.add(email);
-    const { data: rows, error } = await adminClient.from("members").select("id").ilike("email", email);
+    const { data: rows, error } = await adminClient.from("members").select("id, email").ilike("email", email);
     if (error) throw new Error(error.message);
-    for (const row of rows ?? []) {
-      const id = normalizeId((row as { id?: string }).id);
-      if (id && id !== "__template__") ids.add(id);
+    for (const id of memberIdsMatchingExactEmail((rows ?? []) as Array<{ id?: string; email?: string }>, email)) {
+      ids.add(id);
     }
   }
 
@@ -242,8 +245,15 @@ Deno.serve(async (req) => {
     .from("training_programs")
     .select("id, member_id, title, goal, notes, exercises, created_at, owner_user_id, program_created_by")
     .eq("title", title);
-  if (ownerUserId) candidateQuery = candidateQuery.eq("owner_user_id", ownerUserId);
-  else if (relatedMemberIds.length) candidateQuery = candidateQuery.in("member_id", relatedMemberIds);
+  if (memberId === "__template__") {
+    candidateQuery = candidateQuery.eq("member_id", "__template__");
+  } else if (relatedMemberIds.length) {
+    candidateQuery = candidateQuery.in("member_id", relatedMemberIds);
+  } else if (memberId) {
+    candidateQuery = candidateQuery.eq("member_id", memberId);
+  } else if (ownerUserId) {
+    candidateQuery = candidateQuery.eq("owner_user_id", ownerUserId);
+  }
 
   const { data: candidateRows, error: candidateError } = await candidateQuery;
   if (candidateError) return jsonResponse(500, { error: candidateError.message });
@@ -254,15 +264,13 @@ Deno.serve(async (req) => {
         .filter((row) => {
           const candidate = row as ProgramRow;
           if (buildProgramFingerprint(candidate) !== targetFingerprint) return false;
-          const candidateMemberId = normalizeId(candidate.member_id);
-          if (role === "member") {
-            return (
-              String(candidate.program_created_by ?? "").trim() === "member" &&
-              relatedMemberIdSet.has(candidateMemberId)
-            );
-          }
-          if (ownerUserId) return normalizeId(candidate.owner_user_id) === ownerUserId;
-          return !relatedMemberIds.length || relatedMemberIdSet.has(candidateMemberId);
+          return isLinkedFingerprintDeleteCandidate({
+            role,
+            programMemberId: memberId,
+            candidateMemberId: normalizeId(candidate.member_id),
+            candidateCreatedBy: String(candidate.program_created_by ?? ""),
+            relatedMemberIds: relatedMemberIdSet,
+          });
         })
         .map((row) => normalizeId((row as ProgramRow).id))
         .filter(Boolean),
