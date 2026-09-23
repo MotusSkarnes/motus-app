@@ -1,5 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { buildMemberEmailIlikeOrFilter } from "../_shared/memberEmailQueries.ts";
+import { buildMemberEmailIlikeOrFilter, filterMemberRowsByExactEmails } from "../_shared/memberEmailQueries.ts";
 
 const PROGRAMS_SELECT =
   "id, member_id, title, goal, notes, exercises, created_at, owner_user_id, program_created_by, program_created_by_name, image_url, member_library_status";
@@ -333,7 +333,10 @@ Deno.serve(async (req) => {
       .or(orFilter)
       .order("created_at", { ascending: false });
     if (!attempt.error) {
-      return { rows: (attempt.data ?? []) as Array<Record<string, unknown>>, error: null };
+      return {
+        rows: filterMemberRowsByExactEmails((attempt.data ?? []) as Array<Record<string, unknown>>, emails),
+        error: null,
+      };
     }
     if (isMissingMembersColumnError(attempt.error.message, "nutrition_access")) {
       const withoutNutrition = await adminClient
@@ -342,7 +345,10 @@ Deno.serve(async (req) => {
         .or(orFilter)
         .order("created_at", { ascending: false });
       if (!withoutNutrition.error) {
-        return { rows: (withoutNutrition.data ?? []) as Array<Record<string, unknown>>, error: null };
+        return {
+          rows: filterMemberRowsByExactEmails((withoutNutrition.data ?? []) as Array<Record<string, unknown>>, emails),
+          error: null,
+        };
       }
       if (isMissingMembersColumnError(withoutNutrition.error.message, "avatar_url")) {
         const legacy = await adminClient
@@ -350,7 +356,10 @@ Deno.serve(async (req) => {
           .select(membersSelectLegacy)
           .or(orFilter)
           .order("created_at", { ascending: false });
-        return { rows: (legacy.data ?? []) as Array<Record<string, unknown>>, error: legacy.error };
+        return {
+          rows: filterMemberRowsByExactEmails((legacy.data ?? []) as Array<Record<string, unknown>>, emails),
+          error: legacy.error,
+        };
       }
       return { rows: [], error: withoutNutrition.error };
     }
@@ -360,7 +369,10 @@ Deno.serve(async (req) => {
         .select(membersSelectWithoutAvatar)
         .or(orFilter)
         .order("created_at", { ascending: false });
-      return { rows: (withoutAvatar.data ?? []) as Array<Record<string, unknown>>, error: withoutAvatar.error };
+      return {
+        rows: filterMemberRowsByExactEmails((withoutAvatar.data ?? []) as Array<Record<string, unknown>>, emails),
+        error: withoutAvatar.error,
+      };
     }
     return { rows: [], error: attempt.error };
   }
@@ -387,6 +399,7 @@ Deno.serve(async (req) => {
   } else {
     console.warn("hydrate-member-data: members ilike email failed:", emailRowsAttempt.error.message);
   }
+  rowsByLoginEmail = filterMemberRowsByExactEmails(rowsByLoginEmail, [requesterEmail]);
   addMemberRowsToMap(dedupedMembersById, rowsByLoginEmail);
 
   if (authMemberId && !dedupedMembersById.has(authMemberId)) {
