@@ -6972,3 +6972,57 @@
   background: #d91278;
 }
 
+.motus-nutrition-unknown > input {
+  margin: 0.65rem 0 0.8rem;
+}
+
+.motus-nutrition-unknown__list {
+  display: grid;
+  gap: 0.65rem;
+}
+
+.motus-nutrition-unknown__row {
+  padding: 0.75rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.75rem;
+  background: #fff;
+}
+
+.motus-nutrition-unknown__head {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 0.35rem 1rem;
+  color: #0f172a;
+}
+
+.motus-nutrition-unknown__head span {
+  font-size: 0.75rem;
+  color: #b45309;
+  font-weight: 700;
+}
+
+.motus-nutrition-unknown__foods {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-top: 0.55rem;
+}
+
+.motus-nutrition-unknown__foods span {
+  padding: 0.25rem 0.5rem;
+  border-radius: 999px;
+  background: #fff7ed;
+  color: #9a3412;
+  font-size: 0.75rem;
+}
+
+.motus-nutrition-unknown__empty {
+  margin: 0.75rem 0 0;
+  padding: 0.8rem;
+  border-radius: 0.7rem;
+  background: #f0fdfa;
+  color: #0f766e;
+  font-size: 0.8125rem;
+}
+

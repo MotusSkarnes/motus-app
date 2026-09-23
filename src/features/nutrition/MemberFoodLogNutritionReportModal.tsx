@@ -6,11 +6,11 @@ import {
   openNutritionReportPrintWindow,
   type NutritionReportPrintAudience,
 } from "../../app/memberFoodLogNutritionReportPrint";
+import { openUnknownValuesPrintWindow } from "../../app/nutritionReportUnknownValuesPrint";
 import { clearPrintOverlayLocks, restoreAppInteractivityAfterPrint } from "../../app/printHtmlDocument";
 import { buildDailyVariationTable, type DailyVariationGroupId } from "../../app/nutritionReportDailyVariation";
 import {
   buildMemberFoodLogNutritionPeriodReport,
-  dateKeysWithLogs,
   calendarDayKeysInRange,
   formatPeriodLabel,
   formatShortDateKey,
@@ -22,6 +22,7 @@ import {
   resolveFoodLogsNutrition,
 } from "../../app/nutritionReportContributors";
 import { buildNutrientCoverageLookup } from "../../app/nutritionReportCoverage";
+import { buildUnknownNutrientRows } from "../../app/nutritionReportUnknownValues";
 import type { MemberQuickFoodLogEntry } from "../../app/memberMealPlanState";
 import { useFoodBankItems } from "../../app/useFoodBankItems";
 import {
@@ -44,10 +45,11 @@ import type { MealPlanTargets } from "../../app/mealPlanTypes";
 import { GradientButton, OutlineButton } from "../../app/ui";
 import { NutritionReportClientCommentField } from "./NutritionReportClientCommentField";
 import { NutritionReportDailyVariation } from "./NutritionReportDailyVariation";
+import { NutritionReportUnknownValues } from "./NutritionReportUnknownValues";
 import { NutritionReportStackedBody } from "./NutritionReportTables";
 
 type PeriodPreset = "selected" | "7" | "14" | "30" | "custom";
-type ReportViewMode = "average" | "sum" | "variation";
+type ReportViewMode = "average" | "sum" | "variation" | "unknown";
 
 type MemberFoodLogNutritionReportModalProps = {
   open: boolean;
@@ -74,8 +76,6 @@ export function MemberFoodLogNutritionReportModal({
 }: MemberFoodLogNutritionReportModalProps) {
   const displayName = memberName.trim() || "Kunden";
   const foodItems = useFoodBankItems();
-  const loggedDateKeys = useMemo(() => dateKeysWithLogs(quickFoodLogs), [quickFoodLogs]);
-
   const [periodPreset, setPeriodPreset] = useState<PeriodPreset>("7");
   const [customFrom, setCustomFrom] = useState(selectedDateKey);
   const [customTo, setCustomTo] = useState(selectedDateKey);
@@ -180,6 +180,15 @@ export function MemberFoodLogNutritionReportModal({
     () => buildNutrientCoverageLookup(contributionSources),
     [contributionSources],
   );
+  const unknownRows = useMemo(
+    () => buildUnknownNutrientRows(coverageLookup, [
+      ...waterRows,
+      ...macroRows,
+      ...microRows.map((row) => ({ id: row.key, label: row.label })),
+      ...omegaRows,
+    ]),
+    [coverageLookup, macroRows, microRows, omegaRows, waterRows],
+  );
 
   const aggregateSummary =
     report.daysWithLogs === 0
@@ -190,7 +199,9 @@ export function MemberFoodLogNutritionReportModal({
           ? `Sum for perioden · ${report.daysWithLogs} dager (${formatPeriodLabel(report.dateKeys)})`
           : `Snitt per dag · ${report.daysWithLogs} dager (${formatPeriodLabel(report.dateKeys)})`;
   const periodSummary =
-    report.daysWithLogs > 1 && viewMode === "variation"
+    viewMode === "unknown"
+      ? `Ukjente næringsverdier · ${report.daysWithLogs} ${report.daysWithLogs === 1 ? "dag" : "dager"} (${formatPeriodLabel(report.dateKeys)})`
+      : report.daysWithLogs > 1 && viewMode === "variation"
       ? `Dagsvariasjon · ${report.daysWithLogs} dager (${formatPeriodLabel(report.dateKeys)})`
       : aggregateSummary;
 
@@ -242,6 +253,14 @@ export function MemberFoodLogNutritionReportModal({
       reviveCommentField,
     ],
   );
+
+  const handleUnknownPrint = useCallback(() => {
+    const ok = openUnknownValuesPrintWindow(
+      { memberName: displayName, periodSummary, rows: unknownRows },
+      () => reviveCommentField(),
+    );
+    setPrintError(ok ? null : "Kunne ikke åpne utskrift. Tillat popup-vinduer for Motus i nettleseren.");
+  }, [displayName, periodSummary, reviveCommentField, unknownRows]);
 
   if (!open || typeof document === "undefined") return null;
 
@@ -306,10 +325,18 @@ export function MemberFoodLogNutritionReportModal({
               </label>
             </div>
           ) : null}
-          {report.daysWithLogs > 1 ? (
-            <>
-              <p className="motus-nutrition-report-modal__control-label">Visning</p>
-              <div className="motus-nutrition-report-modal__chips">
+          <p className="motus-nutrition-report-modal__control-label">Visning</p>
+          <div className="motus-nutrition-report-modal__chips">
+            {report.daysWithLogs <= 1 ? (
+              <button
+                type="button"
+                className={`motus-nutrition-report-modal__chip ${viewMode === "average" ? "is-active" : ""}`}
+                onClick={() => setViewMode("average")}
+              >
+                Oversikt
+              </button>
+            ) : (
+              <>
                 <button
                   type="button"
                   className={`motus-nutrition-report-modal__chip ${viewMode === "average" ? "is-active" : ""}`}
@@ -331,9 +358,16 @@ export function MemberFoodLogNutritionReportModal({
                 >
                   Dagsvariasjon
                 </button>
-              </div>
-            </>
-          ) : null}
+              </>
+            )}
+            <button
+              type="button"
+              className={`motus-nutrition-report-modal__chip ${viewMode === "unknown" ? "is-active" : ""}`}
+              onClick={() => setViewMode("unknown")}
+            >
+              Ukjent
+            </button>
+          </div>
         </div>
 
         <div className="motus-nutrition-report-modal__summary">
@@ -343,6 +377,8 @@ export function MemberFoodLogNutritionReportModal({
         <div className="motus-nutrition-report-modal__body">
           {report.daysWithLogs === 0 ? (
             <p className="text-sm text-slate-600">Ingen matlogg i valgt periode.</p>
+          ) : viewMode === "unknown" ? (
+            <NutritionReportUnknownValues rows={unknownRows} />
           ) : viewMode === "variation" && report.daysWithLogs > 1 ? (
             <NutritionReportDailyVariation
               table={variationTable}
@@ -369,34 +405,45 @@ export function MemberFoodLogNutritionReportModal({
           )}
         </div>
 
-        <div className="motus-nutrition-report-modal__comment-wrap motus-nutrition-report-no-print">
-          <NutritionReportClientCommentField
-            key={commentFieldEpoch}
-            value={clientComment}
-            onChange={setClientComment}
-          />
-        </div>
+        {viewMode !== "unknown" ? (
+          <div className="motus-nutrition-report-modal__comment-wrap motus-nutrition-report-no-print">
+            <NutritionReportClientCommentField
+              key={commentFieldEpoch}
+              value={clientComment}
+              onChange={setClientComment}
+            />
+          </div>
+        ) : null}
 
         <footer className="motus-nutrition-report-modal__footer motus-nutrition-report-no-print">
           {printError ? <p className="w-full text-xs text-rose-700">{printError}</p> : null}
-          <OutlineButton
-            type="button"
-            className="gap-1.5"
-            onClick={() => handlePrint("trainer")}
-            disabled={report.daysWithLogs === 0}
-          >
-            <Printer className="h-4 w-4" aria-hidden />
-            Utskrift til trener
-          </OutlineButton>
-          <OutlineButton
-            type="button"
-            className="gap-1.5"
-            onClick={() => handlePrint("client")}
-            disabled={report.daysWithLogs === 0}
-          >
-            <Printer className="h-4 w-4" aria-hidden />
-            Utskrift til kunde
-          </OutlineButton>
+          {viewMode === "unknown" ? (
+            <OutlineButton type="button" className="gap-1.5" onClick={handleUnknownPrint} disabled={report.daysWithLogs === 0}>
+              <Printer className="h-4 w-4" aria-hidden />
+              Skriv ut ukjent-rapport
+            </OutlineButton>
+          ) : (
+            <>
+              <OutlineButton
+                type="button"
+                className="gap-1.5"
+                onClick={() => handlePrint("trainer")}
+                disabled={report.daysWithLogs === 0}
+              >
+                <Printer className="h-4 w-4" aria-hidden />
+                Utskrift til trener
+              </OutlineButton>
+              <OutlineButton
+                type="button"
+                className="gap-1.5"
+                onClick={() => handlePrint("client")}
+                disabled={report.daysWithLogs === 0}
+              >
+                <Printer className="h-4 w-4" aria-hidden />
+                Utskrift til kunde
+              </OutlineButton>
+            </>
+          )}
           <GradientButton type="button" onClick={onClose}>
             Lukk
           </GradientButton>
