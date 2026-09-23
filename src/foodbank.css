@@ -7128,6 +7128,34 @@
   color: #526b66;
 }
 
+.motus-trainer-food-log__changed-badge,
+.motus-trainer-food-log__completed-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.25rem 0.5rem;
+  border-radius: 999px;
+  font-size: 0.68rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.motus-trainer-food-log__changed-badge {
+  background: #fff7ed;
+  color: #9a3412;
+}
+
+.motus-trainer-food-log__completed-badge {
+  background: #ecfdf5;
+  color: #047857;
+}
+
+.motus-trainer-food-log__change-line {
+  margin: 0.55rem 0 0;
+  color: #9a3412;
+  font-size: 0.72rem;
+}
+
 @media (max-width: 520px) {
   .motus-client-plan-overview__stats { grid-template-columns: 1fr; }
   .motus-client-plan-overview__head > button { width: 100%; justify-content: center; }
