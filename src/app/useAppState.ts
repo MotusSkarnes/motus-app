@@ -63,7 +63,12 @@ import { applyHydratedMealPlan } from "./mealPlanCloud";
 import { applyHydratedMemberMealPlanState } from "./memberMealPlanStateCloud";
 import { MEAL_PLAN_STATE_CHANGED_EVENT } from "./memberMealPlanState";
 import { notifyMealPlanChanged } from "./mealPlanStorage";
-import { notifyInspirationItemsChanged, saveInspirationItemsToStorage } from "./inspirationStorage";
+import {
+  INSPIRATION_STORAGE_KEY,
+  notifyInspirationItemsChanged,
+  saveInspirationItemsToStorage,
+} from "./inspirationStorage";
+import { runStorageWriteSafely } from "./browserStorage";
 import {
   filterDeletedPrograms,
   isProgramDeleted,
@@ -1089,7 +1094,10 @@ export function useAppState() {
       appState.currentUser?.role === "member" && appState.role !== appState.currentUser.role
         ? { ...appState, role: appState.currentUser.role }
         : appState;
-    saveState(persisted);
+    runStorageWriteSafely(() => saveState(persisted), {
+      // Utforsk-innholdet synkroniseres fra skyen og kan trygt lastes inn på nytt.
+      evictOnQuota: [INSPIRATION_STORAGE_KEY],
+    });
   }, [appState]);
 
   useEffect(() => {

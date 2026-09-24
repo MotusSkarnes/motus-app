@@ -1,6 +1,7 @@
 import { compressImageDataUrl, dataUrlToBlob } from "./imageCompress";
 import { isInspirationRecipeItem } from "./inspirationHubItems";
 import { isSupabaseConfigured, supabaseClient } from "../services/supabaseClient";
+import { runStorageWriteSafely } from "./browserStorage";
 
 export const INSPIRATION_STORAGE_KEY = "motus.inspiration.items.v2";
 export const INSPIRATION_CHANGED_EVENT = "motus:inspiration-changed";
@@ -91,7 +92,9 @@ export function loadSuppressedInspirationIds(): Set<string> {
 
 export function saveSuppressedInspirationIds(ids: string[]): void {
   if (typeof window === "undefined") return;
-  window.localStorage.setItem(INSPIRATION_SUPPRESSED_IDS_KEY, JSON.stringify(parseSuppressedItemIds(ids)));
+  runStorageWriteSafely(() => {
+    window.localStorage.setItem(INSPIRATION_SUPPRESSED_IDS_KEY, JSON.stringify(parseSuppressedItemIds(ids)));
+  });
 }
 
 export function suppressInspirationItemId(id: string): void {

@@ -31,6 +31,7 @@ import {
   Users,
 } from "lucide-react";
 import { MOTUS } from "../app/data";
+import { runStorageWriteSafely } from "../app/browserStorage";
 import motusLogo from "../assets/motus-logo-transparent.svg";
 import motusSkrytekortLogo from "../assets/motus-skrytekort-logo.png";
 import {
@@ -3896,7 +3897,9 @@ export function MemberPortal(props: MemberPortalProps) {
       homeVisibility,
       favoritePersonalRecords: favoritePersonalRecordNames,
     });
-    window.localStorage.setItem(getUiPreferencesStorageKey(editableMember.id), payload);
+    runStorageWriteSafely(() => {
+      window.localStorage.setItem(getUiPreferencesStorageKey(editableMember.id), payload);
+    });
   }, [editableMember, microCelebrationsEnabled, celebrationSoundEnabled, restCountdownEnabled, homeVisibility, favoritePersonalRecordNames, favoritePersonalRecordPreferencesHydrated]);
   useEffect(() => {
     if (!editableMember) return;
