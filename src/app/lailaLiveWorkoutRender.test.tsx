@@ -134,4 +134,49 @@ describe("LiveWorkoutSessionModal with Laila programs", () => {
     expect(screen.getByText("Nytt treningsprogram")).toBeTruthy();
     expect(screen.getAllByText(/Goblet squat/i).length).toBeGreaterThan(0);
   });
+
+  it("uses the selected exercise id when duplicate names have different images", () => {
+    const program = nyttProgram();
+    const duplicateBank: Exercise[] = [
+      ...bank,
+      {
+        id: "goblet-stick-figure",
+        name: "Goblet squat",
+        category: "Styrke",
+        group: "Bein",
+        equipment: "Kettlebell",
+        level: "Nybegynner",
+        description: "",
+        imageUrl: "https://example.com/stick-figure.png",
+      },
+    ];
+    const selectedPhoto = "https://example.com/selected-photo.png";
+    const selectedBank = duplicateBank.map((exercise) =>
+      exercise.id === "e215" ? { ...exercise, imageUrl: selectedPhoto } : exercise,
+    );
+    const workoutMode = workoutModeFor(program);
+
+    render(
+      <LiveWorkoutSessionModal
+        variant="member"
+        workoutMode={workoutMode}
+        activeProgram={program}
+        exercises={selectedBank}
+        updateWorkoutExerciseResult={noop}
+        replaceWorkoutExerciseGroup={noop}
+        addWorkoutExerciseToWorkout={noop}
+        appendWorkoutSetForProgramExercise={noop}
+        removeLastWorkoutSetForProgramExercise={noop}
+        deferWorkoutExerciseGroup={noop}
+        updateWorkoutModeNote={noop}
+        updateWorkoutExerciseNote={noop}
+        finishWorkoutMode={noop}
+        cancelWorkoutMode={noop}
+        onDismissWorkout={noop}
+      />,
+    );
+
+    expect(document.querySelector(`img[src="${selectedPhoto}"]`)).toBeTruthy();
+    expect(document.querySelector('img[src="https://example.com/stick-figure.png"]')).toBeNull();
+  });
 });

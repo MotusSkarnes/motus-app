@@ -405,13 +405,19 @@ export function LiveWorkoutSessionModal({
     );
   }
 
-  function resolveExerciseForProgramExerciseId(programExerciseId: string, exerciseName: string): Exercise | null {
-    const byName = exerciseByName.get(exerciseName.trim().toLowerCase());
-    if (byName) return byName;
-    if (!resolvedProgram) return null;
-    const sourceProgramExercise = resolvedProgram.exercises.find((exercise) => exercise.id === programExerciseId);
-    if (!sourceProgramExercise) return null;
-    return exercises.find((exercise) => exercise.id === sourceProgramExercise.exerciseId) ?? null;
+  function resolveExerciseForProgramExerciseId(
+    programExerciseId: string,
+    exerciseName: string,
+    workoutExerciseId?: string,
+  ): Exercise | null {
+    // Navn er ikke unike i øvelsesbanken. Bruk ID-en som ble lagret på økten/programmet
+    // før navneoppslag, ellers kan to øvelser med samme navn vise feil bilde og metadata.
+    const byWorkoutId = exercises.find((exercise) => exercise.id === workoutExerciseId);
+    if (byWorkoutId) return byWorkoutId;
+    const sourceProgramExercise = resolvedProgram?.exercises.find((exercise) => exercise.id === programExerciseId);
+    const byProgramId = exercises.find((exercise) => exercise.id === sourceProgramExercise?.exerciseId);
+    if (byProgramId) return byProgramId;
+    return exerciseByName.get(exerciseName.trim().toLowerCase()) ?? null;
   }
 
   const replacementCandidates = useMemo(() => {
@@ -427,7 +433,11 @@ export function LiveWorkoutSessionModal({
   const blockExerciseInfos = useMemo(() => {
     if (!currentWorkoutGroup?.blockType) return [];
     return currentWorkoutGroup.segments.map((segment) => {
-      const exercise = resolveExerciseForProgramExerciseId(segment.programExerciseId, segment.exerciseName);
+      const exercise = resolveExerciseForProgramExerciseId(
+        segment.programExerciseId,
+        segment.exerciseName,
+        segment.rows[0]?.exerciseId,
+      );
       const candidates = computeReplacementCandidatesForExercise(exercise);
       const imageUrl = exercise ? resolveExerciseImageSrc(exercise) : "";
       return {
@@ -451,12 +461,11 @@ export function LiveWorkoutSessionModal({
 
   const currentWorkoutExercise = useMemo(() => {
     if (!currentWorkoutGroup) return null;
-    const byName = exerciseByName.get(currentWorkoutGroup.exerciseName.trim().toLowerCase());
-    if (byName) return byName;
-    if (!resolvedProgram) return null;
-    const sourceProgramExercise = resolvedProgram.exercises.find((exercise) => exercise.id === currentWorkoutGroup.groupId);
-    if (!sourceProgramExercise) return null;
-    return exercises.find((exercise) => exercise.id === sourceProgramExercise.exerciseId) ?? null;
+    return resolveExerciseForProgramExerciseId(
+      currentWorkoutGroup.groupId,
+      currentWorkoutGroup.exerciseName,
+      currentWorkoutGroup.rows[0]?.exerciseId,
+    );
   }, [activeProgram, currentWorkoutGroup, exerciseByName, exercises]);
 
   const currentWorkoutExerciseImageUrl = currentWorkoutExercise
@@ -474,12 +483,11 @@ export function LiveWorkoutSessionModal({
 
   const nextWorkoutExercise = useMemo(() => {
     if (!nextWorkoutGroup) return null;
-    const byName = exerciseByName.get(nextWorkoutGroup.exerciseName.trim().toLowerCase());
-    if (byName) return byName;
-    if (!resolvedProgram) return null;
-    const sourceProgramExercise = resolvedProgram.exercises.find((exercise) => exercise.id === nextWorkoutGroup.groupId);
-    if (!sourceProgramExercise) return null;
-    return exercises.find((exercise) => exercise.id === sourceProgramExercise.exerciseId) ?? null;
+    return resolveExerciseForProgramExerciseId(
+      nextWorkoutGroup.groupId,
+      nextWorkoutGroup.exerciseName,
+      nextWorkoutGroup.rows[0]?.exerciseId,
+    );
   }, [resolvedProgram, nextWorkoutGroup, exerciseByName, exercises]);
 
   const workoutProgressPct =
