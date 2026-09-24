@@ -81,7 +81,7 @@ export function MemberFoodLogTrainerView({
   useEffect(() => {
     let mounted = true;
     void (async () => {
-      const synced = await syncMemberMealPlanState(memberId);
+      const synced = await syncMemberMealPlanState(memberId, [], { writeBack: false });
       if (mounted) setState(synced);
     })();
     return () => {
