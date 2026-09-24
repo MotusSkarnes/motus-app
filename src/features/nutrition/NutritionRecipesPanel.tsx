@@ -64,7 +64,6 @@ function RecipeDetail({
   onEdit,
   onDuplicate,
   onDelete,
-  onAvailabilityChange,
   preferredMealSlot,
   memberId,
 }: {
@@ -75,7 +74,6 @@ function RecipeDetail({
   onEdit?: (item: InspirationRecipeItem) => void;
   onDuplicate?: (item: InspirationRecipeItem) => void;
   onDelete?: (item: InspirationRecipeItem) => void;
-  onAvailabilityChange?: (item: InspirationRecipeItem, available: boolean) => void;
   preferredMealSlot?: RecipeMealSlot | null;
   memberId?: string;
 }) {
@@ -194,6 +192,7 @@ function RecipeCard({
   onEdit,
   onDuplicate,
   onDelete,
+  onAvailabilityChange,
 }: {
   item: InspirationRecipeItem;
   macros: ReturnType<typeof computeRecipeMacros>;
@@ -203,6 +202,7 @@ function RecipeCard({
   onEdit?: (item: InspirationRecipeItem) => void;
   onDuplicate?: (item: InspirationRecipeItem) => void;
   onDelete?: (item: InspirationRecipeItem) => void;
+  onAvailabilityChange?: (item: InspirationRecipeItem, available: boolean) => void;
 }) {
   const mealSlots = recipeMealSlotsFor(item);
   const proteinCategory = resolveRecipeProteinCategory(item);
