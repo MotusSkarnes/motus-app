@@ -154,6 +154,7 @@ import {
   buildPeriodPlanLinkedProgramIdSet,
   findPeriodPlanForProgram,
   findProgramForPeriodPlanEntry,
+  getPeriodPlanDayListLabel,
   groupWorkoutLogTitle,
   isGroupPeriodPlanEntry,
   isPassivePeriodPlanEntry,
