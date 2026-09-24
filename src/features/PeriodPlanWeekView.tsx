@@ -12,6 +12,7 @@ import {
   getSwapsForWeek,
   periodPlanSourceDay,
   parsePeriodPlanDayEntries,
+  joinPeriodPlanDayEntries,
   WEEKDAY_PLAN_LABELS,
   WEEKDAY_PLAN_ORDER,
   type PeriodPlanSwapsByPlan,
@@ -137,6 +138,7 @@ export function PeriodPlanWeekView({
   const effectiveDays = applyPeriodPlanSwaps(week.days, weekSwaps);
   const [swapFromDay, setSwapFromDay] = useState<WeekdayPlanKey | null>(null);
   const [programChangeDay, setProgramChangeDay] = useState<WeekdayPlanKey | null>(null);
+  const [programChangeEntryIndex, setProgramChangeEntryIndex] = useState<number | null>(null);
   const [programChangeCategory, setProgramChangeCategory] = useState<PeriodPlanChangeCategoryId | null>(null);
   const [previewProgram, setPreviewProgram] = useState<TrainingProgram | null>(null);
   const [previewPerformedLog, setPreviewPerformedLog] = useState<WorkoutLog | null>(null);
@@ -151,6 +153,7 @@ export function PeriodPlanWeekView({
   useEffect(() => {
     setSwapFromDay(null);
     setProgramChangeDay(null);
+    setProgramChangeEntryIndex(null);
     setProgramChangeCategory(null);
     setPreviewProgram(null);
     setPreviewPerformedLog(null);
@@ -188,14 +191,18 @@ export function PeriodPlanWeekView({
     setSwapFromDay((prev) => (prev === dayKey ? null : dayKey));
   }
 
-  function handleProgramChangeButtonClick(dayKey: WeekdayPlanKey) {
+  function handleProgramChangeButtonClick(dayKey: WeekdayPlanKey, entryIndex: number | null = null) {
     setSwapFromDay(null);
     setProgramChangeDay((prev) => {
-      if (prev === dayKey) {
+      if (prev === dayKey && programChangeEntryIndex === entryIndex) {
         setProgramChangeCategory(null);
+        setProgramChangeEntryIndex(null);
         return null;
       }
-      setProgramChangeCategory(inferPeriodPlanChangeCategory(effectiveDays[dayKey] ?? "", periodPlanChangeOptions));
+      const entries = parsePeriodPlanDayEntries(effectiveDays[dayKey]);
+      const selectedEntry = entryIndex === null ? entries[0] ?? "" : entries[entryIndex] ?? "";
+      setProgramChangeEntryIndex(entryIndex);
+      setProgramChangeCategory(inferPeriodPlanChangeCategory(selectedEntry, periodPlanChangeOptions));
       return dayKey;
     });
   }
@@ -375,10 +382,43 @@ export function PeriodPlanWeekView({
                       <div className="mt-1 grid gap-1" aria-label={`${visibleEntries.length} planlagte økter`}>
                         {visibleEntries.map((sessionEntry, sessionIndex) => {
                           const sessionAction = resolvePeriodPlanEntryAction(sessionEntry, memberPrograms);
+                          const sessionProgram = findProgramForPeriodPlanEntry(sessionEntry, memberPrograms);
+                          const sessionActivity = resolvedActivityTemplates.find((template) =>
+                            activityTemplateMatchesPeriodEntry(template, sessionEntry),
+                          ) ?? null;
                           return (
                             <span
                               key={`${sessionEntry}-summary-${sessionIndex}`}
-                              className="block rounded-md bg-slate-100 px-2 py-1 text-[11px] font-semibold text-slate-700"
+                              role="button"
+                              tabIndex={0}
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                const selectedProgram = sessionProgram ?? sessionActivity;
+                                if (!selectedProgram) return;
+                                const performedLog = logs
+                                  ? pickBestPeriodPlanDayLog({
+                                      entry: sessionEntry,
+                                      plannedDate,
+                                      logs,
+                                      programs: memberPrograms,
+                                    })
+                                  : null;
+                                openProgramPreview(
+                                  selectedProgram,
+                                  canLogWorkouts && sessionAction.kind === "start-program" && !isFutureDate,
+                                  {
+                                    planId: plan.id,
+                                    weekNumber: week.weekNumber,
+                                    day: dayKey,
+                                    entry: sessionEntry,
+                                  },
+                                  performedLog,
+                                );
+                              }}
+                              onKeyDown={(event) => {
+                                if (event.key === "Enter" || event.key === " ") event.currentTarget.click();
+                              }}
+                              className="block cursor-pointer rounded-md bg-slate-100 px-2 py-1 text-[11px] font-semibold text-slate-700 hover:bg-slate-200"
                             >
                               {sessionIndex + 1}. {getPeriodPlanDayListLabel(sessionEntry, sessionAction)}
                             </span>
@@ -508,7 +548,27 @@ export function PeriodPlanWeekView({
                       >
                         {isSwapSource ? "Avbryt bytte" : "Bytt dag"}
                       </button>
-                      {visibleEntry && periodPlanChangeOptions.length > 0 ? (
+                      {visibleEntries.length > 1 && periodPlanChangeOptions.length > 0 ? (
+                        <div className="grid gap-1">
+                          {visibleEntries.map((sessionEntry, sessionIndex) => (
+                            <button
+                              key={`${sessionEntry}-edit-${sessionIndex}`}
+                              type="button"
+                              onClick={() => handleProgramChangeButtonClick(dayKey, sessionIndex)}
+                              className={`motus-period-plan-day-swap-link ${
+                                isProgramChangeOpen && programChangeEntryIndex === sessionIndex
+                                  ? "motus-period-plan-day-swap-link--active"
+                                  : ""
+                              }`}
+                            >
+                              Bytt {getPeriodPlanDayListLabel(
+                                sessionEntry,
+                                resolvePeriodPlanEntryAction(sessionEntry, memberPrograms),
+                              )}
+                            </button>
+                          ))}
+                        </div>
+                      ) : visibleEntry && periodPlanChangeOptions.length > 0 ? (
                         <button
                           type="button"
                           onClick={() => handleProgramChangeButtonClick(dayKey)}
@@ -558,7 +618,14 @@ export function PeriodPlanWeekView({
                   <div className="motus-period-plan-swap-panel">
                     <div className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">
                       {visibleEntry
-                        ? `Velg økt for ${dayLabel.toLowerCase()}`
+                        ? `Velg ny økt for ${
+                            programChangeEntryIndex === null
+                              ? dayLabel.toLowerCase()
+                              : getPeriodPlanDayListLabel(
+                                  visibleEntries[programChangeEntryIndex] ?? "",
+                                  resolvePeriodPlanEntryAction(visibleEntries[programChangeEntryIndex] ?? "", memberPrograms),
+                                )
+                          }`
                         : `Legg til økt på ${dayLabel.toLowerCase()}`}
                     </div>
                     <div className="motus-period-plan-category-row" role="tablist" aria-label="Kategori">
@@ -589,16 +656,31 @@ export function PeriodPlanWeekView({
                         {periodPlanChangeOptions
                           .filter((option) => option.category === programChangeCategory)
                           .map((option) => {
-                            const isCurrentProgram =
-                              visibleEntry.trim().toLowerCase() === option.value.trim().toLowerCase();
+                            const editedEntry =
+                              programChangeEntryIndex === null
+                                ? visibleEntry
+                                : visibleEntries[programChangeEntryIndex] ?? "";
+                            const isCurrentProgram = editedEntry.trim().toLowerCase() === option.value.trim().toLowerCase();
                             return (
                               <button
                                 key={option.value}
                                 type="button"
                                 disabled={isCurrentProgram}
                                 onClick={() => {
-                                  onChangeDayProgram(plan.id, week.weekNumber, dayKey, option.value);
+                                  const nextEntries = [...visibleEntries];
+                                  if (programChangeEntryIndex === null || nextEntries.length === 0) {
+                                    onChangeDayProgram(plan.id, week.weekNumber, dayKey, option.value);
+                                  } else {
+                                    nextEntries[programChangeEntryIndex] = option.value;
+                                    onChangeDayProgram(
+                                      plan.id,
+                                      week.weekNumber,
+                                      dayKey,
+                                      joinPeriodPlanDayEntries(nextEntries),
+                                    );
+                                  }
                                   setProgramChangeDay(null);
+                                  setProgramChangeEntryIndex(null);
                                   setProgramChangeCategory(null);
                                 }}
                                 className={`motus-period-plan-swap-row text-left transition ${

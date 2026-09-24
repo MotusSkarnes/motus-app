@@ -3,6 +3,7 @@ import userEvent from "@testing-library/user-event";
 import type { ComponentProps } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { PeriodSchedulePlan, TrainingProgram, WeeklySchedulePlan, WorkoutLog } from "../app/types";
+import { joinPeriodPlanDayEntries, parsePeriodPlanDayEntries } from "../app/periodPlanSwaps";
 import { PeriodPlanWeekView } from "./PeriodPlanWeekView";
 
 afterEach(() => {
@@ -54,6 +55,13 @@ const program: TrainingProgram = {
       notes: "",
     },
   ],
+};
+
+const runningProgram: TrainingProgram = {
+  ...program,
+  id: "p2",
+  title: "Løping utendørs",
+  exercises: [{ ...program.exercises[0]!, id: "pe-2", exerciseName: "Løping" }],
 };
 
 function renderWeek(overrides: Partial<ComponentProps<typeof PeriodPlanWeekView>> = {}) {
@@ -158,5 +166,43 @@ describe("PeriodPlanWeekView", () => {
     await user.click(screen.getByRole("button", { name: /Hvile \/ restitusjon/ }));
 
     expect(onChangeDayProgram).toHaveBeenCalledWith("plan-1", 1, "tuesday", "Hvile / restitusjon");
+  });
+
+  it("starts either of two sessions planned on the same day", async () => {
+    const user = userEvent.setup();
+    const onStartProgram = vi.fn();
+    renderWeek({
+      week: {
+        ...week,
+        days: { ...emptyDays, friday: joinPeriodPlanDayEntries(["Styrke A", "Løping utendørs"]) },
+      },
+      memberPrograms: [program, runningProgram],
+      onStartProgram,
+    });
+
+    await user.click(screen.getByRole("button", { name: "Start Styrke A" }));
+    await user.click(screen.getByRole("button", { name: "Start Løping utendørs" }));
+
+    expect(onStartProgram).toHaveBeenNthCalledWith(1, "p1", expect.objectContaining({ entry: "Styrke A" }));
+    expect(onStartProgram).toHaveBeenNthCalledWith(2, "p2", expect.objectContaining({ entry: "Løping utendørs" }));
+  });
+
+  it("edits only the selected session when a day contains two sessions", async () => {
+    const user = userEvent.setup();
+    const encoded = joinPeriodPlanDayEntries(["Styrke A", "Løping utendørs"]);
+    const { onChangeDayProgram } = renderWeek({
+      week: { ...week, days: { ...emptyDays, friday: encoded } },
+      memberPrograms: [program, runningProgram],
+    });
+
+    await user.click(screen.getByRole("button", { name: "Bytt Løping utendørs" }));
+    const strengthChoice = document.querySelector<HTMLButtonElement>(
+      ".motus-period-plan-change-list button:not([disabled])",
+    );
+    expect(strengthChoice).toBeTruthy();
+    await user.click(strengthChoice!);
+
+    const updated = onChangeDayProgram.mock.calls[0]?.[3] as string;
+    expect(parsePeriodPlanDayEntries(updated)).toEqual(["Styrke A", "Styrke A"]);
   });
 });

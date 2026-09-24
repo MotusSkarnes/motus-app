@@ -202,6 +202,7 @@ import {
   mergePeriodPlanSwapPrefs,
   mergePeriodPlanSwapsIntoPersonalGoals,
   parsePeriodPlanSwapsState,
+  parsePeriodPlanDayEntries,
   readPeriodPlanSwapsFromPersonalGoals,
   setSwapsForWeek,
   togglePeriodPlanMove,
@@ -5526,7 +5527,10 @@ export function MemberPortal(props: MemberPortalProps) {
       const dayKey = WEEKDAY_PLAN_ORDER[index];
       const entry = homePeriodPlanWeeklyDays[dayKey]?.trim();
       if (!entry) continue;
-      nextPlannedWorkout = { dayLabel: WEEKDAY_PLAN_LABELS[dayKey], entry };
+      const entryLabel = parsePeriodPlanDayEntries(entry)
+        .map((item) => getPeriodPlanDayListLabel(item, resolvePeriodPlanEntryAction(item, memberProgramsForPeriodPlan)))
+        .join(" + ");
+      nextPlannedWorkout = { dayLabel: WEEKDAY_PLAN_LABELS[dayKey], entry: entryLabel || entry };
       break;
     }
   }
