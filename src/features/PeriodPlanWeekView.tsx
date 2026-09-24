@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Check, ChevronRight, CircleDot, Coffee, Play, Plus, RotateCcw, X } from "lucide-react";
+import { Check, ChevronRight, CircleDot, Coffee, Play, Plus, RotateCcw } from "lucide-react";
 import {
   findProgramForPeriodPlanEntry,
   getPeriodPlanDayListLabel,
@@ -11,6 +11,7 @@ import {
   applyPeriodPlanSwaps,
   getSwapsForWeek,
   periodPlanSourceDay,
+  parsePeriodPlanDayEntries,
   WEEKDAY_PLAN_LABELS,
   WEEKDAY_PLAN_ORDER,
   type PeriodPlanSwapsByPlan,
@@ -33,7 +34,6 @@ import {
   resolvePeriodPlanEntryCoverImage,
 } from "../app/programImage";
 import { buildExerciseCategoryById } from "../app/trainingProgramKind";
-import { GradientButton, OutlineButton } from "../app/ui";
 import type { Exercise, PeriodSchedulePlan, TrainingProgram, WeekdayPlanKey, WeeklySchedulePlan, WorkoutLog } from "../app/types";
 import { TrainingProgramPreviewModal } from "./TrainingProgramPreviewModal";
 import { pickBestPeriodPlanDayLog, type PeriodPlanDayCompletion } from "../app/periodPlanSessionCompletion";
@@ -147,17 +147,11 @@ export function PeriodPlanWeekView({
     day: WeekdayPlanKey;
     entry: string;
   } | null>(null);
-  const [pendingOverwriteMove, setPendingOverwriteMove] = useState<{
-    dayA: WeekdayPlanKey;
-    dayB: WeekdayPlanKey;
-    targetEntry: string;
-  } | null>(null);
 
   useEffect(() => {
     setSwapFromDay(null);
     setProgramChangeDay(null);
     setProgramChangeCategory(null);
-    setPendingOverwriteMove(null);
     setPreviewProgram(null);
     setPreviewPerformedLog(null);
     setPreviewCanStart(false);
@@ -207,19 +201,7 @@ export function PeriodPlanWeekView({
   }
 
   function handleMoveDayClick(dayA: WeekdayPlanKey, dayB: WeekdayPlanKey) {
-    const targetEntry = effectiveDays[dayB]?.trim() ?? "";
-    if (targetEntry) {
-      setPendingOverwriteMove({ dayA, dayB, targetEntry });
-      return;
-    }
     onMoveDay(plan.id, week.weekNumber, dayA, dayB);
-    setSwapFromDay(null);
-  }
-
-  function confirmOverwriteMove() {
-    if (!pendingOverwriteMove) return;
-    onMoveDay(plan.id, week.weekNumber, pendingOverwriteMove.dayA, pendingOverwriteMove.dayB);
-    setPendingOverwriteMove(null);
     setSwapFromDay(null);
   }
 
@@ -253,15 +235,21 @@ export function PeriodPlanWeekView({
         {WEEKDAY_PLAN_ORDER.map((dayKey, index) => {
           const dayLabel = WEEKDAY_PLAN_LABELS[dayKey];
           const entry = effectiveDays[dayKey]?.trim() ?? "";
+          const dayEntries = parsePeriodPlanDayEntries(entry);
           const sourceDay = periodPlanSourceDay(dayKey, week.days, effectiveDays);
           const plannedDate = resolveEntryDate(plan, week.weekNumber, dayKey);
-          const visibleEntry = plannedDate ? entry : "";
+          const visibleEntries = plannedDate ? dayEntries : [];
+          const visibleEntry = visibleEntries[0] ?? "";
           const entryAction = visibleEntry ? resolvePeriodPlanEntryAction(visibleEntry, memberPrograms) : { kind: "none" as const };
           const previewProgramForEntry = visibleEntry ? findProgramForPeriodPlanEntry(visibleEntry, memberPrograms) : null;
           const activityTemplateForEntry = visibleEntry
             ? resolvedActivityTemplates.find((template) => activityTemplateMatchesPeriodEntry(template, visibleEntry)) ?? null
             : null;
-          const listLabel = getPeriodPlanDayListLabel(visibleEntry, entryAction);
+          const listLabel = visibleEntries.length > 1
+            ? visibleEntries
+                .map((item) => getPeriodPlanDayListLabel(item, resolvePeriodPlanEntryAction(item, memberPrograms)))
+                .join(" + ")
+            : getPeriodPlanDayListLabel(visibleEntry, entryAction);
           const coverImageSrc = visibleEntry.trim()
             ? resolvePeriodPlanEntryCoverImage(visibleEntry, {
                 activityTemplates: resolvedActivityTemplates,
@@ -411,7 +399,32 @@ export function PeriodPlanWeekView({
 
                   {showDayActions ? (
                     <div className="motus-period-plan-day-footer">
-                      {visibleEntry && canLogWorkouts ? (
+                      {visibleEntries.length > 1 && canLogWorkouts ? (
+                        <div className="grid flex-1 gap-1.5">
+                          {visibleEntries.map((sessionEntry, sessionIndex) => {
+                            const sessionAction = resolvePeriodPlanEntryAction(sessionEntry, memberPrograms);
+                            if (sessionAction.kind !== "start-program" || isFutureDate) return null;
+                            return (
+                              <button
+                                key={`${sessionEntry}-${sessionIndex}`}
+                                type="button"
+                                onClick={() =>
+                                  onStartProgram(sessionAction.program.id, {
+                                    planId: plan.id,
+                                    weekNumber: week.weekNumber,
+                                    day: dayKey,
+                                    entry: sessionEntry,
+                                  })
+                                }
+                                className="motus-period-plan-day-primary motus-period-plan-day-primary--start"
+                              >
+                                <Play className="h-4 w-4 shrink-0" strokeWidth={2.5} aria-hidden />
+                                Start {getPeriodPlanDayListLabel(sessionEntry, sessionAction)}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      ) : visibleEntry && canLogWorkouts ? (
                         entryAction.kind === "start-program" && !completed && status !== "partial" && !isFutureDate ? (
                           <button
                             type="button"
@@ -620,47 +633,6 @@ export function PeriodPlanWeekView({
         }
       />
 
-      {pendingOverwriteMove ? (
-        <div
-          className="fixed inset-0 z-[10050] flex items-end justify-center bg-slate-950/45 p-3 sm:items-center sm:p-6"
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="period-plan-overwrite-title"
-        >
-          <div className="w-full max-w-sm rounded-2xl bg-white p-4 shadow-2xl">
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <h3 id="period-plan-overwrite-title" className="text-base font-bold text-slate-950">
-                  Denne dagen har allerede en time
-                </h3>
-                <p className="mt-1 text-sm text-slate-600">
-                  Hvis du flytter hit, blir timen som ligger på {WEEKDAY_PLAN_LABELS[pendingOverwriteMove.dayB].toLowerCase()} slettet.
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setPendingOverwriteMove(null)}
-                className="rounded-lg p-1.5 text-slate-400 transition hover:bg-slate-100 hover:text-slate-700"
-                aria-label="Lukk"
-              >
-                <X className="h-4 w-4" aria-hidden />
-              </button>
-            </div>
-            <div className="mt-3 rounded-xl bg-slate-50 p-3 text-xs text-slate-600">
-              <div className="font-semibold text-slate-800">Time som blir slettet</div>
-              <div className="mt-1">{pendingOverwriteMove.targetEntry}</div>
-            </div>
-            <div className="mt-4 grid gap-2">
-              <GradientButton type="button" className="w-full" onClick={confirmOverwriteMove}>
-                Flytt likevel
-              </GradientButton>
-              <OutlineButton type="button" className="w-full" onClick={() => setPendingOverwriteMove(null)}>
-                Gå tilbake
-              </OutlineButton>
-            </div>
-          </div>
-        </div>
-      ) : null}
     </section>
   );
 }

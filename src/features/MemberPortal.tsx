@@ -206,6 +206,7 @@ import {
   setSwapsForWeek,
   togglePeriodPlanMove,
   togglePeriodPlanSwap,
+  joinPeriodPlanDayEntries,
   WEEKDAY_PLAN_LABELS,
   WEEKDAY_PLAN_ORDER,
   type PeriodPlanSwapsByPlan,
@@ -6021,7 +6022,13 @@ export function MemberPortal(props: MemberPortalProps) {
       const week = plan ? resolvePeriodPlanWeek(plan, weekNumber) : null;
       const current = getSwapsForWeek(prev, planId, weekNumber);
       const currentDays = week ? applyPeriodPlanSwaps(week.days, current) : null;
-      const nextDays = currentDays ? { ...currentDays, [dayB]: currentDays[dayA] ?? "", [dayA]: "" } : null;
+      const nextDays = currentDays
+        ? {
+            ...currentDays,
+            [dayB]: joinPeriodPlanDayEntries([currentDays[dayB], currentDays[dayA]]),
+            [dayA]: "",
+          }
+        : null;
       const nextSwaps = week && nextDays
         ? buildPeriodPlanWeekOverride(week.days, nextDays, dayA, dayB)
         : togglePeriodPlanMove(current, dayA, dayB);
@@ -6029,7 +6036,7 @@ export function MemberPortal(props: MemberPortalProps) {
       setPeriodPlanActionStatus(
         reverted
           ? `Flytting fra ${WEEKDAY_PLAN_LABELS[dayA]} til ${WEEKDAY_PLAN_LABELS[dayB]} er angret.`
-          : `Flyttet plan fra ${WEEKDAY_PLAN_LABELS[dayA]} til ${WEEKDAY_PLAN_LABELS[dayB]}.`,
+          : `Flyttet plan fra ${WEEKDAY_PLAN_LABELS[dayA]} til ${WEEKDAY_PLAN_LABELS[dayB]}. Begge øktene beholdes hvis dagen allerede var opptatt.`,
       );
       return setSwapsForWeek(prev, planId, weekNumber, nextSwaps);
     });

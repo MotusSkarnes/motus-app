@@ -34,6 +34,22 @@ export type PeriodPlanSwapsByPlan = Record<string, Record<string, PeriodPlanDayS
 
 export const PERIOD_PLAN_SWAP_PREFS_VERSION = 1;
 
+/** Separator used only inside the persisted day string to support several sessions on one date. */
+export const PERIOD_PLAN_DAY_ENTRY_SEPARATOR = "\n__motus_period_session__\n";
+
+export function parsePeriodPlanDayEntries(value: string | null | undefined): string[] {
+  return String(value ?? "")
+    .split(PERIOD_PLAN_DAY_ENTRY_SEPARATOR)
+    .map((entry) => entry.trim())
+    .filter(Boolean);
+}
+
+export function joinPeriodPlanDayEntries(entries: Array<string | null | undefined>): string {
+  return entries
+    .flatMap((entry) => parsePeriodPlanDayEntries(entry))
+    .join(PERIOD_PLAN_DAY_ENTRY_SEPARATOR);
+}
+
 export type PeriodPlanSwapPrefs = {
   version: typeof PERIOD_PLAN_SWAP_PREFS_VERSION;
   swapsByPlan: PeriodPlanSwapsByPlan;
@@ -171,7 +187,7 @@ export function applyPeriodPlanSwaps(days: WeeklyDayPlan, swaps: PeriodPlanDaySw
     if (swap.mode === "set") {
       Object.assign(next, swap.values ?? {});
     } else if (swap.mode === "move") {
-      next[swap.dayB] = next[swap.dayA];
+      next[swap.dayB] = joinPeriodPlanDayEntries([next[swap.dayB], next[swap.dayA]]);
       next[swap.dayA] = "";
     } else {
       const valueA = next[swap.dayA];
