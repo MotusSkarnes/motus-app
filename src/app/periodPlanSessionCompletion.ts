@@ -32,6 +32,11 @@ export function workoutLogSessionCompletion(log: WorkoutLog, program?: TrainingP
     if (result.completed) completedKeys.add(key);
   }
 
+  // Øktloggen er et øyeblikksbilde av programmet kunden faktisk gjennomførte.
+  // Programmet kan senere ha fått nye øvelser eller nye ID-er; da skal ikke en logg hvor
+  // samtlige lagrede rader er avhuket degraderes til «delvis» i trenervisningen.
+  if (seenKeys.size > 0 && results.every((result) => result.completed)) return "complete";
+
   const plannedExercises = program?.exercises ?? [];
   if (plannedExercises.length > 0) {
     const plannedLogged = plannedExercises.filter((exercise) => {

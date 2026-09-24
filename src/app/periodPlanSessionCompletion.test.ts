@@ -75,6 +75,22 @@ describe("workoutLogSessionCompletion", () => {
       ),
     ).toBe("partial");
   });
+
+  it("trusts a completed log snapshot when the program was changed afterwards", () => {
+    const changedProgram = program();
+    changedProgram.exercises.push({
+      id: "pe-added-later",
+      exerciseId: "ex-added-later",
+      exerciseName: "Ny øvelse",
+      sets: "3",
+      reps: "10",
+      weight: "20",
+      restSeconds: "60",
+      notes: "",
+    });
+
+    expect(workoutLogSessionCompletion(log(), changedProgram)).toBe("complete");
+  });
 });
 
 describe("resolvePeriodPlanDayCompletion", () => {
