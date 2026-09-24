@@ -319,6 +319,12 @@ export function PeriodPlanWeekView({
               </div>
 
               <div className="min-w-0 flex-1">
+                <div className="mb-2 flex items-baseline justify-between gap-3 px-1">
+                  <h4 className="text-sm font-bold text-slate-900">{dayLabel}</h4>
+                  <span className="text-xs font-semibold text-slate-500">
+                    {plannedDate ? `${WEEKDAY_SHORT[dayKey]} ${plannedDate}` : WEEKDAY_SHORT[dayKey]}
+                  </span>
+                </div>
                 <div
                   className={`motus-period-plan-day-card motus-period-plan-day-card--${status}${isSwapSource ? " motus-period-plan-day-card--swap-source" : ""}`}
                 >
@@ -361,7 +367,7 @@ export function PeriodPlanWeekView({
                     className={`motus-period-plan-day-main ${canInspectSession ? "motus-period-plan-day-main--clickable" : ""}`}
                     aria-label={canInspectSession ? `Se økt for ${dayLabel}` : undefined}
                   >
-                    {coverImageSrc ? (
+                    {coverImageSrc && visibleEntries.length <= 1 ? (
                       <div className="motus-period-plan-day-cover motus-member-program-thumb motus-image-frame motus-image-frame--program-cover" aria-hidden>
                         <img
                           src={coverImageSrc}
@@ -377,15 +383,21 @@ export function PeriodPlanWeekView({
                       </div>
                     ) : null}
                     <div className="motus-period-plan-day-body">
-                    <p className="motus-period-plan-day-title">{listLabel}</p>
+                    {visibleEntries.length <= 1 ? <p className="motus-period-plan-day-title">{listLabel}</p> : null}
                     {visibleEntries.length > 1 ? (
-                      <div className="mt-1 grid gap-1" aria-label={`${visibleEntries.length} planlagte økter`}>
+                      <div className="grid w-full gap-2" aria-label={`${visibleEntries.length} planlagte økter`}>
                         {visibleEntries.map((sessionEntry, sessionIndex) => {
                           const sessionAction = resolvePeriodPlanEntryAction(sessionEntry, memberPrograms);
                           const sessionProgram = findProgramForPeriodPlanEntry(sessionEntry, memberPrograms);
                           const sessionActivity = resolvedActivityTemplates.find((template) =>
                             activityTemplateMatchesPeriodEntry(template, sessionEntry),
                           ) ?? null;
+                          const sessionCover = resolvePeriodPlanEntryCoverImage(sessionEntry, {
+                            activityTemplates: resolvedActivityTemplates,
+                            memberPrograms,
+                            exercises: exerciseLibrary,
+                            exerciseCategoryById,
+                          });
                           return (
                             <span
                               key={`${sessionEntry}-summary-${sessionIndex}`}
@@ -418,19 +430,34 @@ export function PeriodPlanWeekView({
                               onKeyDown={(event) => {
                                 if (event.key === "Enter" || event.key === " ") event.currentTarget.click();
                               }}
-                              className="block cursor-pointer rounded-md bg-slate-100 px-2 py-1 text-[11px] font-semibold text-slate-700 hover:bg-slate-200"
+                              className="flex min-h-20 w-full cursor-pointer items-center gap-3 rounded-xl border bg-white p-2.5 text-left shadow-sm transition hover:border-teal-300 hover:bg-teal-50/40 hover:shadow"
                             >
-                              {sessionIndex + 1}. {getPeriodPlanDayListLabel(sessionEntry, sessionAction)}
+                              {sessionCover ? (
+                                <span className="h-16 w-20 shrink-0 overflow-hidden rounded-lg bg-slate-100" aria-hidden>
+                                  <img
+                                    src={sessionCover}
+                                    alt=""
+                                    className="h-full w-full object-cover"
+                                    loading="lazy"
+                                  />
+                                </span>
+                              ) : null}
+                              <span className="min-w-0 flex-1">
+                                <span className="block text-[10px] font-bold uppercase tracking-wide text-teal-700">
+                                  Økt {sessionIndex + 1}
+                                </span>
+                                <span className="mt-0.5 block text-sm font-bold leading-snug text-slate-900">
+                                  {getPeriodPlanDayListLabel(sessionEntry, sessionAction)}
+                                </span>
+                                <span className="mt-1 block text-xs font-medium text-slate-500">Trykk for å se økten</span>
+                              </span>
+                              <ChevronRight className="h-5 w-5 shrink-0 text-slate-400" aria-hidden />
                             </span>
                           );
                         })}
                       </div>
                     ) : null}
                     <div className="motus-period-plan-day-meta">
-                      <span className="motus-period-plan-day-date">
-                        {WEEKDAY_SHORT[dayKey]}
-                        {plannedDate ? ` ${plannedDate}` : ""}
-                      </span>
                       {completed ? (
                         <span className="motus-period-plan-day-status motus-period-plan-day-status--completed">Fullført</span>
                       ) : status === "partial" ? (
