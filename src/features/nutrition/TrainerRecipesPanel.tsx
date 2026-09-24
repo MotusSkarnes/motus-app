@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Plus } from "lucide-react";
 import {
   loadInspirationItemsFromLocalStorage,
@@ -31,6 +31,12 @@ export function TrainerRecipesPanel({
   const [deleting, setDeleting] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
+
+  useEffect(() => {
+    if (!status) return;
+    const timeoutId = window.setTimeout(() => setStatus(null), 4_000);
+    return () => window.clearTimeout(timeoutId);
+  }, [status]);
 
   const composerVisible = composerOpen || editItem !== null;
 
