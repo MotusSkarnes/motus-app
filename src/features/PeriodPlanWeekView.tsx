@@ -430,7 +430,7 @@ export function PeriodPlanWeekView({
                               onKeyDown={(event) => {
                                 if (event.key === "Enter" || event.key === " ") event.currentTarget.click();
                               }}
-                              className="flex min-h-20 w-full cursor-pointer items-center gap-3 rounded-xl border bg-white p-2.5 text-left shadow-sm transition hover:border-teal-300 hover:bg-teal-50/40 hover:shadow"
+                              className="flex h-24 w-full cursor-pointer items-center gap-3 overflow-hidden rounded-xl border bg-white p-2.5 text-left shadow-sm transition hover:border-teal-300 hover:bg-teal-50/40 hover:shadow"
                             >
                               {sessionCover ? (
                                 <span className="h-16 w-20 shrink-0 overflow-hidden rounded-lg bg-slate-100" aria-hidden>
@@ -446,7 +446,7 @@ export function PeriodPlanWeekView({
                                 <span className="block text-[10px] font-bold uppercase tracking-wide text-teal-700">
                                   Økt {sessionIndex + 1}
                                 </span>
-                                <span className="mt-0.5 block text-sm font-bold leading-snug text-slate-900">
+                                <span className="mt-0.5 line-clamp-2 block text-sm font-bold leading-snug text-slate-900">
                                   {getPeriodPlanDayListLabel(sessionEntry, sessionAction)}
                                 </span>
                                 <span className="mt-1 block text-xs font-medium text-slate-500">Trykk for å se økten</span>
