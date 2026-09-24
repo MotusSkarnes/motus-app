@@ -15,6 +15,7 @@ type NutritionHubProps = {
   /** Standard «Matplan» (medlem). Trener bruker f.eks. «Ukeplan». */
   mealPlanTabLabel?: string;
   memberId?: string;
+  hasMealPlan?: boolean;
 };
 
 export function NutritionHub({
@@ -26,6 +27,7 @@ export function NutritionHub({
   mealPlanTargets,
   mealPlanTabLabel = "Matplan",
   memberId,
+  hasMealPlan = false,
 }: NutritionHubProps) {
   const [internalTab, setInternalTab] = useState<NutritionHubTab>(defaultTab);
   const tab = controlledTab ?? internalTab;
@@ -49,7 +51,7 @@ export function NutritionHub({
           </PillButton>
         ) : null}
       </div>
-      {tab === "mealPlan" ? mealPlan : tab === "avoidances" ? avoidances : <NutritionRecipesPanel mealPlanTargets={mealPlanTargets} memberId={memberId} />}
+      {tab === "mealPlan" ? mealPlan : tab === "avoidances" ? avoidances : <NutritionRecipesPanel mealPlanTargets={mealPlanTargets} memberId={memberId} hasMealPlan={hasMealPlan} />}
     </div>
   );
 }

@@ -3,7 +3,11 @@ import { Plus } from "lucide-react";
 import {
   loadInspirationItemsFromLocalStorage,
 } from "../../app/inspirationStorage";
-import { deleteInspirationRecipe, type InspirationRecipeItem } from "../../app/inspirationRecipeItems";
+import {
+  deleteInspirationRecipe,
+  setInspirationRecipeAvailability,
+  type InspirationRecipeItem,
+} from "../../app/inspirationRecipeItems";
 import type { Member } from "../../app/types";
 import { ConfirmDialog, GradientButton, StatusMessage } from "../../app/ui";
 import { NutritionRecipesPanel } from "./NutritionRecipesPanel";
@@ -79,6 +83,21 @@ export function TrainerRecipesPanel({
     setReloadKey((n) => n + 1);
   }
 
+  async function changeAvailability(item: InspirationRecipeItem, available: boolean) {
+    setStatus(null);
+    const result = await setInspirationRecipeAvailability(item, available);
+    if (!result.ok) {
+      setStatus(result.error ?? "Kunne ikke oppdatere tilgjengeligheten.");
+      return;
+    }
+    setStatus(
+      available
+        ? `«${item.title}» er tilgjengelig for kunder uten matplan.`
+        : `«${item.title}» er skjult for kunder uten matplan.`,
+    );
+    setReloadKey((n) => n + 1);
+  }
+
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
@@ -98,6 +117,7 @@ export function TrainerRecipesPanel({
         onEdit={openEdit}
         onDuplicate={openDuplicate}
         onDelete={requestDelete}
+        onAvailabilityChange={(item, available) => void changeAvailability(item, available)}
       />
       <TrainerRecipeComposer
         open={composerVisible}

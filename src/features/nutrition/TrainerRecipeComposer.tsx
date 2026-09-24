@@ -316,6 +316,8 @@ export function TrainerRecipeComposer({
     const saveOverrides = overridesFromIngredientDrafts(ingredientsToSave);
     const body = buildRecipeBody({
       servings: servingsNumber,
+      availableWithoutMealPlan:
+        editItem && !duplicateFromItem ? editItem.availableWithoutMealPlan === true : false,
       ingredients: ingredientsToSave,
       method,
       tips,

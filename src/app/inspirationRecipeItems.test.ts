@@ -2,6 +2,28 @@ import { describe, expect, it } from "vitest";
 import { filterRecipeInspirationItems } from "./inspirationRecipeItems";
 
 describe("filterRecipeInspirationItems", () => {
+  it("har kundetilgang uten matplan avslått som standard", () => {
+    const merged = filterRecipeInspirationItems([], { suppressedIds: [] });
+    expect(merged.length).toBeGreaterThan(0);
+    expect(merged.every((row) => row.availableWithoutMealPlan === false)).toBe(true);
+  });
+
+  it("beholder eksplisitt kundetilgang uten matplan", () => {
+    const merged = filterRecipeInspirationItems(
+      [{
+        id: "customer-visible-recipe",
+        category: "recipes",
+        title: "Synlig måltid",
+        description: "Test",
+        body: "Test",
+        tag: "Frokost",
+        availableWithoutMealPlan: true,
+      }],
+      { suppressedIds: [] },
+    );
+    expect(merged.find((row) => row.id === "customer-visible-recipe")?.availableWithoutMealPlan).toBe(true);
+  });
+
   it("lar lagrede oppskrifter overstyre standardoppskrifter med samme id", () => {
     const merged = filterRecipeInspirationItems(
       [

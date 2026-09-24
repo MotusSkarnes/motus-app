@@ -64,6 +64,7 @@ function RecipeDetail({
   onEdit,
   onDuplicate,
   onDelete,
+  onAvailabilityChange,
   preferredMealSlot,
   memberId,
 }: {
@@ -74,6 +75,7 @@ function RecipeDetail({
   onEdit?: (item: InspirationRecipeItem) => void;
   onDuplicate?: (item: InspirationRecipeItem) => void;
   onDelete?: (item: InspirationRecipeItem) => void;
+  onAvailabilityChange?: (item: InspirationRecipeItem, available: boolean) => void;
   preferredMealSlot?: RecipeMealSlot | null;
   memberId?: string;
 }) {
@@ -242,6 +244,30 @@ function RecipeCard({
       {canManage && (onEdit || onDuplicate || onDelete) ? (
         <div className="border-t px-3 py-2" style={{ borderColor: "rgba(15,23,42,0.06)" }}>
           <div className="flex flex-wrap gap-1.5">
+            {onAvailabilityChange ? (
+              <button
+                type="button"
+                role="switch"
+                aria-checked={item.availableWithoutMealPlan === true}
+                aria-label={`Tilgjengelig uten matplan: ${item.title}`}
+                className="mb-1 flex w-full items-center justify-between rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-2 text-xs font-semibold text-slate-700"
+                onClick={() => onAvailabilityChange(item, item.availableWithoutMealPlan !== true)}
+              >
+                <span>Tilgjengelig uten matplan</span>
+                <span
+                  className={`relative h-5 w-9 rounded-full transition ${
+                    item.availableWithoutMealPlan ? "bg-teal-600" : "bg-slate-300"
+                  }`}
+                  aria-hidden
+                >
+                  <span
+                    className={`absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition ${
+                      item.availableWithoutMealPlan ? "left-[18px]" : "left-0.5"
+                    }`}
+                  />
+                </span>
+              </button>
+            ) : null}
             {onEdit ? (
             <button
               type="button"
@@ -295,6 +321,8 @@ type NutritionRecipesPanelProps = {
   onEdit?: (item: InspirationRecipeItem) => void;
   onDuplicate?: (item: InspirationRecipeItem) => void;
   onDelete?: (item: InspirationRecipeItem) => void;
+  onAvailabilityChange?: (item: InspirationRecipeItem, available: boolean) => void;
+  hasMealPlan?: boolean;
 };
 
 export function NutritionRecipesPanel({
@@ -304,6 +332,8 @@ export function NutritionRecipesPanel({
   onEdit,
   onDuplicate,
   onDelete,
+  onAvailabilityChange,
+  hasMealPlan = false,
 }: NutritionRecipesPanelProps) {
   const { items, loading } = useInspirationRecipeItems();
   const foodItems = useFoodItemsForMacros();
@@ -311,12 +341,17 @@ export function NutritionRecipesPanel({
   const [mealTab, setMealTab] = useState<RecipeMealListTab>("all");
   const [proteinFilter, setProteinFilter] = useState<RecipeProteinCategoryFilter>("all");
 
+  const accessibleItems = useMemo(
+    () => (canManage || hasMealPlan ? items : items.filter((item) => item.availableWithoutMealPlan === true)),
+    [canManage, hasMealPlan, items],
+  );
+
   const scaledById = useMemo(() => {
     const map = new Map<
       string,
       { macros: ReturnType<typeof computeRecipeMacros>; adjusted: boolean }
     >();
-    for (const item of items) {
+    for (const item of accessibleItems) {
       const mealSlot = recipeMealSlotFor(item);
       const scalingMode = resolveRecipeScalingMode({
         id: item.id,
@@ -336,13 +371,13 @@ export function NutritionRecipesPanel({
       map.set(item.id, { macros, adjusted: view?.adjusted ?? false });
     }
     return map;
-  }, [items, foodItems, mealPlanTargets]);
+  }, [accessibleItems, foodItems, mealPlanTargets]);
 
   const itemsByMeal = useMemo(() => {
     const grouped = new Map<RecipeMealSlot, InspirationRecipeItem[]>(
       RECIPE_MEAL_SLOTS.map((slot) => [slot.id, []]),
     );
-    for (const item of items) {
+    for (const item of accessibleItems) {
       for (const slot of recipeMealSlotsFor(item)) {
         grouped.get(slot)?.push(item);
       }
@@ -351,17 +386,17 @@ export function NutritionRecipesPanel({
       list.sort((a, b) => a.title.localeCompare(b.title, "no"));
     }
     return grouped;
-  }, [items]);
+  }, [accessibleItems]);
   const categoryMembershipCount = useMemo(
     () => RECIPE_MEAL_SLOTS.reduce((sum, slot) => sum + (itemsByMeal.get(slot.id)?.length ?? 0), 0),
     [itemsByMeal],
   );
 
-  const selected = items.find((item) => item.id === selectedId) ?? null;
+  const selected = accessibleItems.find((item) => item.id === selectedId) ?? null;
   const supportsProteinFilter = mealTab === "lunsj" || mealTab === "middag";
   const mealItems =
     mealTab === "all"
-      ? [...items].sort((a, b) => a.title.localeCompare(b.title, "no"))
+      ? [...accessibleItems].sort((a, b) => a.title.localeCompare(b.title, "no"))
       : (itemsByMeal.get(mealTab) ?? []);
   const proteinCounts = useMemo(() => {
     const counts = new Map<RecipeProteinCategoryFilter, number>([["all", mealItems.length]]);
@@ -396,12 +431,12 @@ export function NutritionRecipesPanel({
     );
   }
 
-  if (!items.length) {
+  if (!accessibleItems.length) {
     return (
       <EmptyState
         icon="🥗"
         title="Ingen måltider ennå"
-        description="Treneren legger ut måltider under Ernæring. De vises her når de er publisert."
+        description={canManage ? "Opprett et nytt måltid for å komme i gang." : "Treneren har ikke gjort noen måltider tilgjengelige ennå."}
         className="bg-white"
       />
     );
@@ -422,7 +457,7 @@ export function NutritionRecipesPanel({
           }}
         >
           Alle
-          {items.length > 0 ? ` (${items.length} unike)` : ""}
+          {accessibleItems.length > 0 ? ` (${accessibleItems.length} unike)` : ""}
         </PillButton>
         {RECIPE_MEAL_SLOTS.map((slot) => {
           const count = itemsByMeal.get(slot.id)?.length ?? 0;
@@ -441,9 +476,9 @@ export function NutritionRecipesPanel({
           );
         })}
       </div>
-      {categoryMembershipCount !== items.length ? (
+      {categoryMembershipCount !== accessibleItems.length ? (
         <p className="text-xs text-slate-500">
-          {items.length} unike måltider · {categoryMembershipCount} kategoriplasseringer. Et måltid kan være med i flere kategorier.
+          {accessibleItems.length} unike måltider · {categoryMembershipCount} kategoriplasseringer. Et måltid kan være med i flere kategorier.
         </p>
       ) : null}
       {supportsProteinFilter ? (
@@ -483,6 +518,7 @@ export function NutritionRecipesPanel({
                 onEdit={onEdit}
                 onDuplicate={onDuplicate}
                 onDelete={onDelete}
+                onAvailabilityChange={onAvailabilityChange}
               />
             </li>
           ))}

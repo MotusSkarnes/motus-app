@@ -127,12 +127,13 @@ export function MemberNutritionView({
     () => resolveDailyNutritionTargets(resolvedPersonalGoals, plan?.targets),
     [resolvedPersonalGoals, plan?.targets],
   );
+  const memberHasMealPlan = countMealPlanFoodItems(plan) > 0;
 
   const mealPlanContent = useMemo(() => {
     if (loading && !hasLoadedOnceRef.current) {
       return <Card className="p-6 text-center text-sm text-slate-600">Laster din matplan …</Card>;
     }
-    const planHasAssignedFood = countMealPlanFoodItems(plan) > 0;
+    const planHasAssignedFood = memberHasMealPlan;
     const showSyncWarning = !cloudSynced && !noMealPlanInCloud;
 
     if (!planHasAssignedFood) {
@@ -180,6 +181,7 @@ export function MemberNutritionView({
     memberName,
     onOpenMessages,
     setNutritionTab,
+    memberHasMealPlan,
   ]);
 
   return (
@@ -194,6 +196,7 @@ export function MemberNutritionView({
       }
       mealPlanTargets={dailyTargets}
       memberId={memberId}
+      hasMealPlan={memberHasMealPlan}
       avoidances={
         <MemberFoodAvoidancesPanel
           memberId={profileMember.id}

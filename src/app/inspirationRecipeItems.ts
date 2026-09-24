@@ -34,6 +34,8 @@ export type InspirationRecipeItem = {
   mealSlot?: RecipeMealSlot;
   servings?: number;
   ingredientFoodOverrides?: RecipeIngredientFoodOverrides;
+  /** Synlig i Måltider for medlemmer uten aktiv matplan. Standard er av. */
+  availableWithoutMealPlan?: boolean;
 };
 
 function pickPreferredRecipeVariant(
@@ -90,7 +92,35 @@ function normalizeRecipeItem(raw: unknown): InspirationRecipeItem | null {
       ? { ingredientFoodOverrides }
       : {}),
     ...(imageUrl ? { imageUrl } : {}),
+    availableWithoutMealPlan: row.availableWithoutMealPlan === true,
   };
+}
+
+export async function setInspirationRecipeAvailability(
+  recipe: InspirationRecipeItem,
+  availableWithoutMealPlan: boolean,
+): Promise<InspirationSaveResult> {
+  const latestItems =
+    (await fetchInspirationItemsForHub<Record<string, unknown>>()) ??
+    loadInspirationItemsFromLocalStorage<Record<string, unknown>>() ??
+    [];
+  let found = false;
+  const nextFeed = latestItems.map((item) => {
+    if (String(item.id ?? "") !== recipe.id) return item;
+    found = true;
+    return { ...item, availableWithoutMealPlan };
+  });
+  if (!found) {
+    nextFeed.push({
+      ...recipe,
+      category: "recipes",
+      kind: "article",
+      availableWithoutMealPlan,
+    });
+  }
+  const result = await persistInspirationItems(nextFeed);
+  if (result.ok) notifyInspirationItemsChanged();
+  return result;
 }
 
 export function filterRecipeInspirationItems(
@@ -158,6 +188,7 @@ function recipeItemListsEqual(a: InspirationRecipeItem[], b: InspirationRecipeIt
       JSON.stringify(left.mealSlots ?? []) !== JSON.stringify(right.mealSlots ?? []) ||
       left.mealSlot !== right.mealSlot ||
       left.servings !== right.servings ||
+      left.availableWithoutMealPlan !== right.availableWithoutMealPlan ||
       JSON.stringify(left.ingredientFoodOverrides ?? {}) !== JSON.stringify(right.ingredientFoodOverrides ?? {})
     ) {
       return false;
