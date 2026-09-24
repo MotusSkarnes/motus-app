@@ -4,7 +4,7 @@ export const RECIPE_MEAL_SLOTS: { id: RecipeMealSlot; label: string }[] = [
   { id: "frokost", label: "Frokost" },
   { id: "lunsj", label: "Lunsj" },
   { id: "middag", label: "Middag" },
-  { id: "snack", label: "Snack" },
+  { id: "snack", label: "Mellommåltid" },
 ];
 
 export type RecipeMealListTab = "all" | RecipeMealSlot;

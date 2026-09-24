@@ -298,7 +298,7 @@ export function TrainerRecipeComposer({
       return;
     }
     if (!mealSlots.length) {
-      setStatus("Velg minst én kategori (frokost, lunsj, middag eller snack).");
+      setStatus("Velg minst én kategori (frokost, lunsj, middag eller mellommåltid).");
       return;
     }
     const ingredientsToSave = withResolvedIngredientNames(ingredients, foodItemsForMacros).filter((row) =>
