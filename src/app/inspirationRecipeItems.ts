@@ -21,6 +21,13 @@ const DEFAULT_RECIPE_FEED_ROWS: unknown[] = DEFAULT_INSPIRATION_RECIPES.map((rec
   author: "Motus",
 }));
 
+const RECIPE_AVAILABILITY_CHANGED_EVENT = "motus:recipe-availability-changed";
+
+type RecipeAvailabilityChangedDetail = {
+  recipeId: string;
+  availableWithoutMealPlan: boolean;
+};
+
 export type InspirationRecipeItem = {
   id: string;
   title: string;
@@ -119,7 +126,11 @@ export async function setInspirationRecipeAvailability(
     });
   }
   const result = await persistInspirationItems(nextFeed);
-  if (result.ok) notifyInspirationItemsChanged();
+  if (result.ok && typeof window !== "undefined") {
+    window.dispatchEvent(new CustomEvent<RecipeAvailabilityChangedDetail>(RECIPE_AVAILABILITY_CHANGED_EVENT, {
+      detail: { recipeId: recipe.id, availableWithoutMealPlan },
+    }));
+  }
   return result;
 }
 
@@ -201,7 +212,10 @@ export function useInspirationRecipeItems(): { items: InspirationRecipeItem[]; l
   const [items, setItems] = useState<InspirationRecipeItem[]>([]);
   const [loading, setLoading] = useState(true);
   const hasItemsRef = useRef(false);
-  hasItemsRef.current = items.length > 0;
+
+  useEffect(() => {
+    hasItemsRef.current = items.length > 0;
+  }, [items.length]);
 
   const reload = useCallback((options?: { silent?: boolean }) => {
     let cancelled = false;
@@ -232,6 +246,20 @@ export function useInspirationRecipeItems(): { items: InspirationRecipeItem[]; l
       window.removeEventListener(INSPIRATION_CHANGED_EVENT, onChanged);
     };
   }, [reload]);
+
+  useEffect(() => {
+    const onAvailabilityChanged = (event: Event) => {
+      const detail = (event as CustomEvent<RecipeAvailabilityChangedDetail>).detail;
+      if (!detail?.recipeId) return;
+      setItems((current) => current.map((item) => (
+        item.id === detail.recipeId
+          ? { ...item, availableWithoutMealPlan: detail.availableWithoutMealPlan }
+          : item
+      )));
+    };
+    window.addEventListener(RECIPE_AVAILABILITY_CHANGED_EVENT, onAvailabilityChanged);
+    return () => window.removeEventListener(RECIPE_AVAILABILITY_CHANGED_EVENT, onAvailabilityChanged);
+  }, []);
 
   return { items, loading, reload };
 }
