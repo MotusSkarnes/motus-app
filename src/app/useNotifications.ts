@@ -44,6 +44,15 @@ import type { MealPlan } from "./mealPlanTypes";
 const MEMBER_INSPIRATION_BASELINE_KEY = "motus.notifications.memberInspirationBaselineAt";
 const TRAINER_NOTIFICATIONS_BASELINE_KEY = "motus.notifications.trainerBaselineAt";
 
+function safelyStoreNotificationValue(key: string, value: string): void {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(key, value);
+  } catch {
+    // Varsler skal aldri hindre appen i å starte dersom lagringen er full eller blokkert.
+  }
+}
+
 const ALERT_HISTORY_LIMIT = 5;
 /** Operational varsler har ikke reell mottatt-tid — 0 skjuler dato i UI. */
 const TRAINER_OPERATIONAL_TIMESTAMP = 0;
@@ -1091,6 +1100,7 @@ export function useNotifications({
       nextOpenedIds.add(alert.id);
       nextMemberAlertsSeenAt = Math.max(nextMemberAlertsSeenAt, alert.timestamp);
       if (alert.kind === "message") {
+        // Tidsstempelet og varsel-ID-en over er tilstrekkelig for meldinger.
       } else if (alert.kind === "program") {
         const programId = alert.programId ?? alert.id.replace(/^member-program-/, "");
         if (programId) nextProgramIds.add(programId);
@@ -1193,66 +1203,54 @@ export function useNotifications({
   }
 
   useEffect(() => {
-    if (typeof window === "undefined") return;
-    window.localStorage.setItem("motus.notifications.trainerSeenAt", String(trainerAlertsSeenAt));
+    safelyStoreNotificationValue("motus.notifications.trainerSeenAt", String(trainerAlertsSeenAt));
   }, [trainerAlertsSeenAt]);
 
   useEffect(() => {
-    if (typeof window === "undefined") return;
-    window.localStorage.setItem("motus.notifications.memberSeenAt", String(memberAlertsSeenAt));
+    safelyStoreNotificationValue("motus.notifications.memberSeenAt", String(memberAlertsSeenAt));
   }, [memberAlertsSeenAt]);
 
   useEffect(() => {
-    if (typeof window === "undefined") return;
-    window.localStorage.setItem("motus.notifications.memberSeenProgramIds", JSON.stringify(seenMemberProgramIds));
+    safelyStoreNotificationValue("motus.notifications.memberSeenProgramIds", JSON.stringify(seenMemberProgramIds));
   }, [seenMemberProgramIds]);
 
   useEffect(() => {
-    if (typeof window === "undefined") return;
-    window.localStorage.setItem(
+    safelyStoreNotificationValue(
       "motus.notifications.memberSeenWorkoutCommentKeys",
       JSON.stringify(seenMemberWorkoutCommentKeys),
     );
   }, [seenMemberWorkoutCommentKeys]);
 
   useEffect(() => {
-    if (typeof window === "undefined") return;
-    window.localStorage.setItem("motus.notifications.memberOpenedAlertIds", JSON.stringify(openedMemberAlertIds));
+    safelyStoreNotificationValue("motus.notifications.memberOpenedAlertIds", JSON.stringify(openedMemberAlertIds));
   }, [openedMemberAlertIds]);
 
   useEffect(() => {
-    if (typeof window === "undefined") return;
-    window.localStorage.setItem("motus.notifications.trainerOpenedAlertIds", JSON.stringify(openedTrainerAlertIds));
+    safelyStoreNotificationValue("motus.notifications.trainerOpenedAlertIds", JSON.stringify(openedTrainerAlertIds));
   }, [openedTrainerAlertIds]);
 
   useEffect(() => {
-    if (typeof window === "undefined") return;
-    window.localStorage.setItem("motus.notifications.trainerOperationalSeenKey", seenTrainerOperationalAlertKey);
+    safelyStoreNotificationValue("motus.notifications.trainerOperationalSeenKey", seenTrainerOperationalAlertKey);
   }, [seenTrainerOperationalAlertKey]);
 
   useEffect(() => {
-    if (typeof window === "undefined") return;
-    window.localStorage.setItem("motus.notifications.memberSeenInspirationIds", JSON.stringify(seenMemberInspirationIds));
+    safelyStoreNotificationValue("motus.notifications.memberSeenInspirationIds", JSON.stringify(seenMemberInspirationIds));
   }, [seenMemberInspirationIds]);
 
   useEffect(() => {
-    if (typeof window === "undefined") return;
-    window.localStorage.setItem("motus.notifications.memberSeenPeriodPlanKeys", JSON.stringify(seenMemberPeriodPlanKeys));
+    safelyStoreNotificationValue("motus.notifications.memberSeenPeriodPlanKeys", JSON.stringify(seenMemberPeriodPlanKeys));
   }, [seenMemberPeriodPlanKeys]);
 
   useEffect(() => {
-    if (typeof window === "undefined") return;
-    window.localStorage.setItem("motus.notifications.memberSeenMealPlanKeys", JSON.stringify(seenMemberMealPlanKeys));
+    safelyStoreNotificationValue("motus.notifications.memberSeenMealPlanKeys", JSON.stringify(seenMemberMealPlanKeys));
   }, [seenMemberMealPlanKeys]);
 
   useEffect(() => {
-    if (typeof window === "undefined") return;
-    window.localStorage.setItem("motus.notifications.trainerSeenMemberFormKeys", JSON.stringify(seenTrainerMemberFormKeys));
+    safelyStoreNotificationValue("motus.notifications.trainerSeenMemberFormKeys", JSON.stringify(seenTrainerMemberFormKeys));
   }, [seenTrainerMemberFormKeys]);
 
   useEffect(() => {
-    if (typeof window === "undefined") return;
-    window.localStorage.setItem(
+    safelyStoreNotificationValue(
       "motus.notifications.memberDismissedCheckInMonths",
       JSON.stringify(dismissedMemberCheckInMonths),
     );

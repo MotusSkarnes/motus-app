@@ -190,34 +190,38 @@ export function mergeMemberNotificationPreferencesIntoPersonalGoals(
 /** Skriv sky-synkede preferanser til localStorage slik at ny enhet ikke starter med tomme lister. */
 export function syncMemberNotificationPrefsToLocalStorage(preferences: MemberNotificationPreferences): void {
   if (typeof window === "undefined") return;
-  window.localStorage.setItem("motus.notifications.memberSeenAt", String(preferences.memberAlertsSeenAt || 0));
-  window.localStorage.setItem("motus.notifications.memberSeenProgramIds", JSON.stringify(preferences.seenMemberProgramIds));
-  window.localStorage.setItem(
-    "motus.notifications.memberSeenWorkoutCommentKeys",
-    JSON.stringify(preferences.seenMemberWorkoutCommentKeys),
-  );
-  window.localStorage.setItem("motus.notifications.memberOpenedAlertIds", JSON.stringify(preferences.openedMemberAlertIds));
-  window.localStorage.setItem(
-    "motus.notifications.memberSeenInspirationIds",
-    JSON.stringify(preferences.seenMemberInspirationIds),
-  );
-  window.localStorage.setItem(
-    "motus.notifications.memberSeenPeriodPlanKeys",
-    JSON.stringify(preferences.seenMemberPeriodPlanKeys),
-  );
-  window.localStorage.setItem(
-    "motus.notifications.memberSeenMealPlanKeys",
-    JSON.stringify(preferences.seenMemberMealPlanKeys ?? []),
-  );
-  window.localStorage.setItem(
-    "motus.notifications.memberDismissedCheckInMonths",
-    JSON.stringify(preferences.dismissedMemberCheckInMonths),
-  );
-  if (preferences.memberInspirationBaselineAt > 0) {
+  try {
+    window.localStorage.setItem("motus.notifications.memberSeenAt", String(preferences.memberAlertsSeenAt || 0));
+    window.localStorage.setItem("motus.notifications.memberSeenProgramIds", JSON.stringify(preferences.seenMemberProgramIds));
     window.localStorage.setItem(
-      "motus.notifications.memberInspirationBaselineAt",
-      String(preferences.memberInspirationBaselineAt),
+      "motus.notifications.memberSeenWorkoutCommentKeys",
+      JSON.stringify(preferences.seenMemberWorkoutCommentKeys),
     );
+    window.localStorage.setItem("motus.notifications.memberOpenedAlertIds", JSON.stringify(preferences.openedMemberAlertIds));
+    window.localStorage.setItem(
+      "motus.notifications.memberSeenInspirationIds",
+      JSON.stringify(preferences.seenMemberInspirationIds),
+    );
+    window.localStorage.setItem(
+      "motus.notifications.memberSeenPeriodPlanKeys",
+      JSON.stringify(preferences.seenMemberPeriodPlanKeys),
+    );
+    window.localStorage.setItem(
+      "motus.notifications.memberSeenMealPlanKeys",
+      JSON.stringify(preferences.seenMemberMealPlanKeys ?? []),
+    );
+    window.localStorage.setItem(
+      "motus.notifications.memberDismissedCheckInMonths",
+      JSON.stringify(preferences.dismissedMemberCheckInMonths),
+    );
+    if (preferences.memberInspirationBaselineAt > 0) {
+      window.localStorage.setItem(
+        "motus.notifications.memberInspirationBaselineAt",
+        String(preferences.memberInspirationBaselineAt),
+      );
+    }
+  } catch {
+    // Skyinnstillingene er fortsatt gyldige selv om nettleserlagring er blokkert eller full.
   }
 }
 

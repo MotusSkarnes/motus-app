@@ -1,11 +1,36 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
   mergeMemberNotificationPreferences,
   mergeMemberNotificationPreferencesIntoPersonalGoals,
   readMemberNotificationPreferencesFromPersonalGoals,
+  syncMemberNotificationPrefsToLocalStorage,
 } from "./notificationPreferences";
 
 describe("notificationPreferences", () => {
+  it("does not crash the app when browser storage rejects notification writes", () => {
+    const setItem = vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => {
+      throw new DOMException("Quota exceeded", "QuotaExceededError");
+    });
+
+    expect(() => syncMemberNotificationPrefsToLocalStorage({
+      version: 1,
+      memberAlertsSeenAt: Date.now(),
+      seenMemberProgramIds: ["program-1"],
+      seenMemberWorkoutCommentKeys: [],
+      openedMemberAlertIds: ["alert-1"],
+      seenMemberInspirationIds: [],
+      seenMemberPeriodPlanKeys: [],
+      seenMemberMealPlanKeys: [],
+      dismissedMemberCheckInMonths: [],
+      memberInspirationBaselineAt: 0,
+      seenHiddenBadgeIds: [],
+      lastCelebratedAchievedLevel: 0,
+      updatedAt: Date.now(),
+    })).not.toThrow();
+
+    setItem.mockRestore();
+  });
+
   it("round-trips member notification preferences in personal_goals", () => {
     const encoded = mergeMemberNotificationPreferencesIntoPersonalGoals("", {
       version: 1,
