@@ -46,7 +46,7 @@ Deno.serve(async (req) => {
 
   const { data: member, error: memberError } = await admin
     .from("members")
-    .select("id, email, owner_user_id, is_active")
+    .select("id, email, is_active")
     .eq("id", memberId)
     .maybeSingle();
   if (memberError) return jsonResponse(500, { error: memberError.message });
@@ -54,12 +54,12 @@ Deno.serve(async (req) => {
 
   const userEmail = normalize(user.email).toLowerCase();
   const memberEmail = normalize(member.email).toLowerCase();
-  const linkedMemberId = normalize(user.app_metadata?.member_id || user.user_metadata?.member_id);
-  const ownerUserId = normalize(member.owner_user_id);
+  // Same rule as member_meal_plan_state_upsert_own. user_metadata.member_id is
+  // client-writable, and trainers are not allowed to replace the food log.
+  const appMemberId = normalize(user.app_metadata?.member_id);
   const authorized =
-    memberId === linkedMemberId ||
-    (Boolean(userEmail) && userEmail === memberEmail) ||
-    ownerUserId === user.id;
+    (Boolean(appMemberId) && memberId === appMemberId) ||
+    (Boolean(userEmail) && userEmail === memberEmail);
   if (!authorized) return jsonResponse(403, { error: "Not allowed for this member" });
 
   const updatedAt = new Date().toISOString();

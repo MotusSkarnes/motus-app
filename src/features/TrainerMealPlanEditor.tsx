@@ -636,7 +636,7 @@ export function TrainerMealPlanEditor({
     if (!overviewOnly || !memberId.trim()) return;
     let mounted = true;
     void resolveMealPlanLookupIds(memberId, memberEmail, { forTrainerView: true })
-      .then((lookupIds) => syncMemberMealPlanState(memberId, lookupIds))
+      .then((lookupIds) => syncMemberMealPlanState(memberId, lookupIds, { writeBack: false }))
       .then((state) => {
         if (mounted) setMemberTracking(state);
       });
