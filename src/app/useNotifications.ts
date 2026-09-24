@@ -53,6 +53,10 @@ function safelyStoreNotificationValue(key: string, value: string): void {
   }
 }
 
+function memberNotificationPreferencesFingerprint(preferences: MemberNotificationPreferences): string {
+  return JSON.stringify({ ...preferences, updatedAt: 0 });
+}
+
 const ALERT_HISTORY_LIMIT = 5;
 /** Operational varsler har ikke reell mottatt-tid — 0 skjuler dato i UI. */
 const TRAINER_OPERATIONAL_TIMESTAMP = 0;
@@ -1279,7 +1283,7 @@ export function useNotifications({
       : emptyMemberNotificationPreferences();
     const merged = mergeMemberNotificationPreferences(localBase, remote);
     applyMemberNotificationSnapshot(merged);
-    lastPersistedMemberPrefsRef.current = JSON.stringify(merged);
+    lastPersistedMemberPrefsRef.current = memberNotificationPreferencesFingerprint(merged);
     memberPrefsHydratedRef.current = true;
     memberCloudPrefsSyncedRef.current = true;
   }, [applyMemberNotificationSnapshot, isMemberSession, memberPersonalGoals, memberProfileReady]);
@@ -1290,10 +1294,10 @@ export function useNotifications({
     if (skipMemberPersistRef.current) return;
     const timer = window.setTimeout(() => {
       const snapshot = buildMemberNotificationSnapshot();
-      const serialized = JSON.stringify(snapshot);
+      const serialized = memberNotificationPreferencesFingerprint(snapshot);
       if (serialized === lastPersistedMemberPrefsRef.current) return;
       lastPersistedMemberPrefsRef.current = serialized;
-      onPersistMemberNotificationPreferences(snapshot);
+      onPersistMemberNotificationPreferences({ ...snapshot, updatedAt: Date.now() });
     }, 700);
     return () => window.clearTimeout(timer);
   }, [
