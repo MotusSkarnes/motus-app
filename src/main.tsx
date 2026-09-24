@@ -44,7 +44,7 @@ if (import.meta.env.PROD && "serviceWorker" in navigator) {
     });
 
     void navigator.serviceWorker
-      .register("/sw.js", { scope: "/" })
+      .register("/sw.js", { scope: "/", updateViaCache: "none" })
       .then((registration) => {
         void registration.update();
 
