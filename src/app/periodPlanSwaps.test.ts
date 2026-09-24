@@ -6,6 +6,7 @@ import {
   mergePeriodPlanSwapPrefs,
   mergePeriodPlanSwapsIntoPersonalGoals,
   parsePeriodPlanDayEntries,
+  movePeriodPlanDayEntries,
   periodPlanSourceDay,
   readPeriodPlanSwapsFromPersonalGoals,
   setSwapsForWeek,
@@ -50,6 +51,18 @@ describe("periodPlanSwaps", () => {
     const effective = applyPeriodPlanSwaps(baseDays, swaps);
     expect(effective.monday).toBe("");
     expect(parsePeriodPlanDayEntries(effective.friday)).toEqual(["Program C", "Program A"]);
+  });
+
+  it("moves Saturday to an occupied Friday without losing either session", () => {
+    const days: WeeklyDayPlan = { ...baseDays, friday: "Fredagsøkt", saturday: "Lørdagsøkt" };
+    const effective = movePeriodPlanDayEntries(days, "saturday", "friday");
+    expect(effective.saturday).toBe("");
+    expect(parsePeriodPlanDayEntries(effective.friday)).toEqual(["Fredagsøkt", "Lørdagsøkt"]);
+  });
+
+  it("does not clear a day when the requested source is already empty", () => {
+    const effective = movePeriodPlanDayEntries(baseDays, "saturday", "friday");
+    expect(effective).toEqual(baseDays);
   });
 
   it("stores concrete week override so the visible result is deterministic", () => {

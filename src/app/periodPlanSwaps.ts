@@ -50,6 +50,23 @@ export function joinPeriodPlanDayEntries(entries: Array<string | null | undefine
     .join(PERIOD_PLAN_DAY_ENTRY_SEPARATOR);
 }
 
+/** Tapsfri flytting: behold eksisterende måløkter, legg til kilden, og tøm så kildedagen. */
+export function movePeriodPlanDayEntries(
+  days: WeeklyDayPlan,
+  dayA: WeekdayPlanKey,
+  dayB: WeekdayPlanKey,
+): WeeklyDayPlan {
+  if (dayA === dayB) return { ...days };
+  const sourceEntries = parsePeriodPlanDayEntries(days[dayA]);
+  if (sourceEntries.length === 0) return { ...days };
+  const targetEntries = parsePeriodPlanDayEntries(days[dayB]);
+  return {
+    ...days,
+    [dayA]: "",
+    [dayB]: joinPeriodPlanDayEntries([...targetEntries, ...sourceEntries]),
+  };
+}
+
 export type PeriodPlanSwapPrefs = {
   version: typeof PERIOD_PLAN_SWAP_PREFS_VERSION;
   swapsByPlan: PeriodPlanSwapsByPlan;
@@ -187,8 +204,7 @@ export function applyPeriodPlanSwaps(days: WeeklyDayPlan, swaps: PeriodPlanDaySw
     if (swap.mode === "set") {
       Object.assign(next, swap.values ?? {});
     } else if (swap.mode === "move") {
-      next[swap.dayB] = joinPeriodPlanDayEntries([next[swap.dayB], next[swap.dayA]]);
-      next[swap.dayA] = "";
+      Object.assign(next, movePeriodPlanDayEntries(next, swap.dayA, swap.dayB));
     } else {
       const valueA = next[swap.dayA];
       const valueB = next[swap.dayB];

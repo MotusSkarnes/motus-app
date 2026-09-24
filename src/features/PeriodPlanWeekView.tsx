@@ -371,6 +371,21 @@ export function PeriodPlanWeekView({
                     ) : null}
                     <div className="motus-period-plan-day-body">
                     <p className="motus-period-plan-day-title">{listLabel}</p>
+                    {visibleEntries.length > 1 ? (
+                      <div className="mt-1 grid gap-1" aria-label={`${visibleEntries.length} planlagte økter`}>
+                        {visibleEntries.map((sessionEntry, sessionIndex) => {
+                          const sessionAction = resolvePeriodPlanEntryAction(sessionEntry, memberPrograms);
+                          return (
+                            <span
+                              key={`${sessionEntry}-summary-${sessionIndex}`}
+                              className="block rounded-md bg-slate-100 px-2 py-1 text-[11px] font-semibold text-slate-700"
+                            >
+                              {sessionIndex + 1}. {getPeriodPlanDayListLabel(sessionEntry, sessionAction)}
+                            </span>
+                          );
+                        })}
+                      </div>
+                    ) : null}
                     <div className="motus-period-plan-day-meta">
                       <span className="motus-period-plan-day-date">
                         {WEEKDAY_SHORT[dayKey]}
