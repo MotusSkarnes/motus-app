@@ -2595,11 +2595,14 @@ export function MemberPortal(props: MemberPortalProps) {
 
     const plannedEntries =
       activePeriodPlan && activeWeeklyPlan && activeWeeklyPlanEffectiveDays
-        ? WEEKDAY_PLAN_ORDER.map((day) => ({
-            day,
-            entry: activeWeeklyPlanEffectiveDays[day]?.trim() ?? "",
-            plannedDate: resolvePeriodPlanPlannedDate(activePeriodPlan, activeWeeklyPlan.weekNumber, day),
-          })).filter((item) => item.plannedDate && item.entry && !isPassivePeriodPlanEntry(item.entry))
+        ? WEEKDAY_PLAN_ORDER.flatMap((day) => {
+            const plannedDate = resolvePeriodPlanPlannedDate(activePeriodPlan, activeWeeklyPlan.weekNumber, day);
+            return parsePeriodPlanDayEntries(activeWeeklyPlanEffectiveDays[day]).map((entry) => ({
+              day,
+              entry,
+              plannedDate,
+            }));
+          }).filter((item) => item.plannedDate && !isPassivePeriodPlanEntry(item.entry))
         : [];
 
     const plannedThisWeek = plannedEntries.length;
