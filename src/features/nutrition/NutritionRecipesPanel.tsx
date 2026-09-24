@@ -31,6 +31,8 @@ import type { MealDraftItem } from "../../app/mealDraft";
 import { LogRecipeAsMealModal } from "./LogRecipeAsMealModal";
 import "../../foodbank.css";
 
+type RecipePanelTab = RecipeMealListTab | "unavailable";
+
 function useFoodItemsForMacros() {
   const foodItems = useFoodBankItems();
   return useMemo(
@@ -338,7 +340,7 @@ export function NutritionRecipesPanel({
   const { items, loading } = useInspirationRecipeItems();
   const foodItems = useFoodItemsForMacros();
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [mealTab, setMealTab] = useState<RecipeMealListTab>("all");
+  const [mealTab, setMealTab] = useState<RecipePanelTab>("all");
   const [proteinFilter, setProteinFilter] = useState<RecipeProteinCategoryFilter>("all");
   const [availabilityOverrides, setAvailabilityOverrides] = useState<Record<string, boolean>>({});
 
@@ -436,7 +438,12 @@ export function NutritionRecipesPanel({
   const mealItems =
     mealTab === "all"
       ? [...accessibleItems].sort((a, b) => a.title.localeCompare(b.title, "no"))
-      : (itemsByMeal.get(mealTab) ?? []);
+      : mealTab === "unavailable"
+        ? accessibleItems
+            .filter((item) => item.availableWithoutMealPlan !== true)
+            .sort((a, b) => a.title.localeCompare(b.title, "no"))
+        : (itemsByMeal.get(mealTab) ?? []);
+  const unavailableCount = accessibleItems.filter((item) => item.availableWithoutMealPlan !== true).length;
   const proteinCounts = useMemo(() => {
     const counts = new Map<RecipeProteinCategoryFilter, number>([["all", mealItems.length]]);
     for (const item of mealItems) {
@@ -464,7 +471,7 @@ export function NutritionRecipesPanel({
         onEdit={onEdit}
         onDuplicate={onDuplicate}
         onDelete={onDelete}
-        preferredMealSlot={mealTab === "all" ? null : mealTab}
+        preferredMealSlot={mealTab === "all" || mealTab === "unavailable" ? null : mealTab}
         memberId={memberId}
       />
     );
@@ -514,6 +521,18 @@ export function NutritionRecipesPanel({
             </PillButton>
           );
         })}
+        {canManage ? (
+          <PillButton
+            active={mealTab === "unavailable"}
+            onClick={() => {
+              setMealTab("unavailable");
+              setProteinFilter("all");
+            }}
+          >
+            Ikke tilgjengelige
+            {unavailableCount > 0 ? ` (${unavailableCount})` : ""}
+          </PillButton>
+        ) : null}
       </div>
       {categoryMembershipCount !== accessibleItems.length ? (
         <p className="text-xs text-slate-500">
@@ -540,8 +559,12 @@ export function NutritionRecipesPanel({
       {visibleItems.length === 0 ? (
         <EmptyState
           icon="🍽️"
-          title={`Ingen ${RECIPE_MEAL_SLOTS.find((s) => s.id === mealTab)?.label?.toLowerCase() ?? "måltider"}`}
-          description="Velg Alle, eller en annen kategori. Nye måltider vises under alle kategoriene du huker av når du lagrer."
+          title={mealTab === "unavailable"
+            ? "Alle måltider er tilgjengelige"
+            : `Ingen ${RECIPE_MEAL_SLOTS.find((s) => s.id === mealTab)?.label?.toLowerCase() ?? "måltider"}`}
+          description={mealTab === "unavailable"
+            ? "Måltider du skjuler for kunder uten matplan, vises her."
+            : "Velg Alle, eller en annen kategori. Nye måltider vises under alle kategoriene du huker av når du lagrer."}
           className="bg-white"
         />
       ) : (
