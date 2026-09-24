@@ -713,12 +713,12 @@ export function useNotifications({
                 : `${authorName ? `${authorName}: ` : ""}${comment}`,
             timestamp,
             targetTab: "programs" as const,
-            unread: !seenMemberWorkoutCommentKeys.includes(seenKey),
+            unread: timestamp > memberAlertsSeenAt && !seenMemberWorkoutCommentKeys.includes(seenKey),
             seenKey,
             workoutLogId: log.id,
           };
         }),
-    [logs, memberViewId, seenMemberWorkoutCommentKeys],
+    [logs, memberAlertsSeenAt, memberViewId, seenMemberWorkoutCommentKeys],
   );
 
   const memberTrainerMessages = useMemo(
@@ -788,9 +788,11 @@ export function useNotifications({
       detail: copy.detail,
       timestamp: window.opensAt.getTime(),
       targetTab: "overview" as const,
-      unread: !dismissedMemberCheckInMonths.includes(window.monthKey),
+      unread:
+        window.opensAt.getTime() > memberAlertsSeenAt &&
+        !dismissedMemberCheckInMonths.includes(window.monthKey),
     };
-  }, [activeMember, currentUserRole, dismissedMemberCheckInMonths]);
+  }, [activeMember, currentUserRole, dismissedMemberCheckInMonths, memberAlertsSeenAt]);
 
   const memberPeriodPlanAlerts = useMemo(
     () => {
@@ -858,11 +860,12 @@ export function useNotifications({
           timestamp,
           targetTab: "inspiration" as const,
           unread:
-            timestamp > memberInspirationBaselineAt && !seenMemberInspirationIds.includes(item.id),
+            timestamp > Math.max(memberInspirationBaselineAt, memberAlertsSeenAt) &&
+            !seenMemberInspirationIds.includes(item.id),
           inspirationItemId: item.id,
         };
       }),
-    [inspirationItems, seenMemberInspirationIds, memberInspirationBaselineAt],
+    [inspirationItems, memberAlertsSeenAt, seenMemberInspirationIds, memberInspirationBaselineAt],
   );
 
   useEffect(() => {
@@ -1090,67 +1093,12 @@ export function useNotifications({
 
   const markAllMemberAlertsAsRead = useCallback(() => {
     if (!memberUnreadAlerts.length) return;
-
-    let nextMemberAlertsSeenAt = memberAlertsSeenAt;
-    const nextOpenedIds = new Set(openedMemberAlertIds);
-    const nextProgramIds = new Set(seenMemberProgramIds);
-    const nextWorkoutCommentKeys = new Set(seenMemberWorkoutCommentKeys);
-    const nextInspirationIds = new Set(seenMemberInspirationIds);
-    const nextPeriodPlanKeys = new Set(seenMemberPeriodPlanKeys);
-    const nextMealPlanKeys = new Set(seenMemberMealPlanKeys);
-    const nextDismissedCheckInMonths = new Set(dismissedMemberCheckInMonths);
-
-    for (const alert of memberUnreadAlerts) {
-      nextOpenedIds.add(alert.id);
-      nextMemberAlertsSeenAt = Math.max(nextMemberAlertsSeenAt, alert.timestamp);
-      if (alert.kind === "message") {
-        // Tidsstempelet og varsel-ID-en over er tilstrekkelig for meldinger.
-      } else if (alert.kind === "program") {
-        const programId = alert.programId ?? alert.id.replace(/^member-program-/, "");
-        if (programId) nextProgramIds.add(programId);
-        if (alert.seenKey) nextProgramIds.add(alert.seenKey);
-      } else if (alert.kind === "workout-comment") {
-        const workoutAlert = memberWorkoutCommentAlerts.find((item) => item.id === alert.id);
-        if (alert.seenKey) nextWorkoutCommentKeys.add(alert.seenKey);
-        if (workoutAlert?.seenKey) nextWorkoutCommentKeys.add(workoutAlert.seenKey);
-      } else if (alert.kind === "inspiration") {
-        const inspirationId = alert.inspirationItemId ?? alert.id.replace(/^member-inspiration-/, "");
-        if (inspirationId) nextInspirationIds.add(inspirationId);
-      } else if (alert.kind === "check-in") {
-        const monthKey = alert.id.replace(/^member-check-in-/, "");
-        if (monthKey) nextDismissedCheckInMonths.add(monthKey);
-      } else if (alert.kind === "period-plan") {
-        const periodAlert = memberPeriodPlanAlerts.find((item) => item.id === alert.id);
-        if (periodAlert?.seenKey) nextPeriodPlanKeys.add(periodAlert.seenKey);
-      } else if (alert.kind === "meal-plan") {
-        const mealAlert = memberMealPlanAlerts.find((item) => item.id === alert.id);
-        if (mealAlert?.seenKey) nextMealPlanKeys.add(mealAlert.seenKey);
-        if (alert.seenKey) nextMealPlanKeys.add(alert.seenKey);
-      }
-    }
-
-    setMemberAlertsSeenAt(nextMemberAlertsSeenAt);
-    setOpenedMemberAlertIds(Array.from(nextOpenedIds));
-    setSeenMemberProgramIds(Array.from(nextProgramIds));
-    setSeenMemberWorkoutCommentKeys(Array.from(nextWorkoutCommentKeys));
-    setSeenMemberInspirationIds(Array.from(nextInspirationIds));
-    setSeenMemberPeriodPlanKeys(Array.from(nextPeriodPlanKeys));
-    setSeenMemberMealPlanKeys(Array.from(nextMealPlanKeys));
-    setDismissedMemberCheckInMonths(Array.from(nextDismissedCheckInMonths));
-  }, [
-    dismissedMemberCheckInMonths,
-    memberAlertsSeenAt,
-    memberPeriodPlanAlerts,
-    memberMealPlanAlerts,
-    memberUnreadAlerts,
-    memberWorkoutCommentAlerts,
-    openedMemberAlertIds,
-    seenMemberInspirationIds,
-    seenMemberPeriodPlanKeys,
-    seenMemberMealPlanKeys,
-    seenMemberProgramIds,
-    seenMemberWorkoutCommentKeys,
-  ]);
+    const newestTimestamp = memberUnreadAlerts.reduce((latest, alert) => {
+      return Number.isFinite(alert.timestamp) ? Math.max(latest, alert.timestamp) : latest;
+    }, memberAlertsSeenAt);
+    setMemberNotificationsOpen(false);
+    setMemberAlertsSeenAt(Math.max(newestTimestamp, Date.now()));
+  }, [memberAlertsSeenAt, memberUnreadAlerts]);
 
   function openAlert(alert: MemberAlert) {
     setMemberAlertsSeenAt((prev) => Math.max(prev, alert.timestamp));
