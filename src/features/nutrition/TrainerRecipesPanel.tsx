@@ -88,14 +88,14 @@ export function TrainerRecipesPanel({
     const result = await setInspirationRecipeAvailability(item, available);
     if (!result.ok) {
       setStatus(result.error ?? "Kunne ikke oppdatere tilgjengeligheten.");
-      return;
+      return false;
     }
     setStatus(
       available
         ? `«${item.title}» er tilgjengelig for kunder uten matplan.`
         : `«${item.title}» er skjult for kunder uten matplan.`,
     );
-    setReloadKey((n) => n + 1);
+    return true;
   }
 
   return (
@@ -117,7 +117,7 @@ export function TrainerRecipesPanel({
         onEdit={openEdit}
         onDuplicate={openDuplicate}
         onDelete={requestDelete}
-        onAvailabilityChange={(item, available) => void changeAvailability(item, available)}
+        onAvailabilityChange={changeAvailability}
       />
       <TrainerRecipeComposer
         open={composerVisible}

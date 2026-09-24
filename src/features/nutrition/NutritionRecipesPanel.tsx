@@ -321,7 +321,7 @@ type NutritionRecipesPanelProps = {
   onEdit?: (item: InspirationRecipeItem) => void;
   onDuplicate?: (item: InspirationRecipeItem) => void;
   onDelete?: (item: InspirationRecipeItem) => void;
-  onAvailabilityChange?: (item: InspirationRecipeItem, available: boolean) => void;
+  onAvailabilityChange?: (item: InspirationRecipeItem, available: boolean) => Promise<boolean>;
   hasMealPlan?: boolean;
 };
 
@@ -340,10 +340,49 @@ export function NutritionRecipesPanel({
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [mealTab, setMealTab] = useState<RecipeMealListTab>("all");
   const [proteinFilter, setProteinFilter] = useState<RecipeProteinCategoryFilter>("all");
+  const [availabilityOverrides, setAvailabilityOverrides] = useState<Record<string, boolean>>({});
+
+  useEffect(() => {
+    setAvailabilityOverrides((current) => {
+      const next = { ...current };
+      let changed = false;
+      for (const item of items) {
+        if (item.id in next && item.availableWithoutMealPlan === next[item.id]) {
+          delete next[item.id];
+          changed = true;
+        }
+      }
+      return changed ? next : current;
+    });
+  }, [items]);
+
+  const displayedItems = useMemo(
+    () => items.map((item) => (
+      item.id in availabilityOverrides
+        ? { ...item, availableWithoutMealPlan: availabilityOverrides[item.id] }
+        : item
+    )),
+    [availabilityOverrides, items],
+  );
+
+  async function changeAvailability(item: InspirationRecipeItem, available: boolean) {
+    if (!onAvailabilityChange) return;
+    setAvailabilityOverrides((current) => ({ ...current, [item.id]: available }));
+    const saved = await onAvailabilityChange(item, available);
+    if (!saved) {
+      setAvailabilityOverrides((current) => {
+        const next = { ...current };
+        delete next[item.id];
+        return next;
+      });
+    }
+  }
 
   const accessibleItems = useMemo(
-    () => (canManage || hasMealPlan ? items : items.filter((item) => item.availableWithoutMealPlan === true)),
-    [canManage, hasMealPlan, items],
+    () => (canManage || hasMealPlan
+      ? displayedItems
+      : displayedItems.filter((item) => item.availableWithoutMealPlan === true)),
+    [canManage, displayedItems, hasMealPlan],
   );
 
   const scaledById = useMemo(() => {
@@ -518,7 +557,9 @@ export function NutritionRecipesPanel({
                 onEdit={onEdit}
                 onDuplicate={onDuplicate}
                 onDelete={onDelete}
-                onAvailabilityChange={onAvailabilityChange}
+                onAvailabilityChange={onAvailabilityChange
+                  ? (recipe, available) => void changeAvailability(recipe, available)
+                  : undefined}
               />
             </li>
           ))}
