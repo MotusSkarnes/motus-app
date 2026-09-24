@@ -352,6 +352,10 @@ export function NutritionRecipesPanel({
     }
     return grouped;
   }, [items]);
+  const categoryMembershipCount = useMemo(
+    () => RECIPE_MEAL_SLOTS.reduce((sum, slot) => sum + (itemsByMeal.get(slot.id)?.length ?? 0), 0),
+    [itemsByMeal],
+  );
 
   const selected = items.find((item) => item.id === selectedId) ?? null;
   const supportsProteinFilter = mealTab === "lunsj" || mealTab === "middag";
@@ -418,7 +422,7 @@ export function NutritionRecipesPanel({
           }}
         >
           Alle
-          {items.length > 0 ? ` (${items.length})` : ""}
+          {items.length > 0 ? ` (${items.length} unike)` : ""}
         </PillButton>
         {RECIPE_MEAL_SLOTS.map((slot) => {
           const count = itemsByMeal.get(slot.id)?.length ?? 0;
@@ -437,6 +441,11 @@ export function NutritionRecipesPanel({
           );
         })}
       </div>
+      {categoryMembershipCount !== items.length ? (
+        <p className="text-xs text-slate-500">
+          {items.length} unike måltider · {categoryMembershipCount} kategoriplasseringer. Et måltid kan være med i flere kategorier.
+        </p>
+      ) : null}
       {supportsProteinFilter ? (
         <div className="flex flex-wrap gap-2">
           {RECIPE_PROTEIN_CATEGORY_FILTERS.map((filter) => {
