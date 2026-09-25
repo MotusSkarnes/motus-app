@@ -1,5 +1,5 @@
 import { parseStoredLogDate } from "./dateFormat";
-import { WEEKDAY_PLAN_ORDER } from "./periodPlanSwaps";
+import { parsePeriodPlanDayEntries, WEEKDAY_PLAN_ORDER } from "./periodPlanSwaps";
 import type { PeriodSchedulePlan, TrainingProgram } from "./types";
 
 /** Planlagt periodeplan-dato er etter dagens dato (lokal kalenderdag). */
@@ -19,6 +19,8 @@ export function isGroupPeriodPlanEntry(entry: string): boolean {
 }
 
 export function isPassivePeriodPlanEntry(entry: string): boolean {
+  const sessions = parsePeriodPlanDayEntries(entry);
+  if (sessions.length > 1) return sessions.every((session) => isPassivePeriodPlanEntry(session));
   const normalized = entry.trim().toLowerCase();
   return (
     !normalized ||
@@ -29,6 +31,8 @@ export function isPassivePeriodPlanEntry(entry: string): boolean {
 }
 
 export function isRestPeriodPlanEntry(entry: string): boolean {
+  const sessions = parsePeriodPlanDayEntries(entry);
+  if (sessions.length > 1) return sessions.every((session) => isRestPeriodPlanEntry(session));
   const normalized = entry.trim().toLowerCase();
   return normalized.includes("hvile") || normalized.includes("restitusjon");
 }
@@ -98,6 +102,8 @@ export function findProgramForPeriodPlanEntry(
 ): TrainingProgram | null {
   const trimmed = entry.trim();
   if (!trimmed || isGroupPeriodPlanEntry(entry) || isPassivePeriodPlanEntry(entry)) return null;
+  // Several sessions share one day string. Matching the blob picks the longer title and starts the wrong workout.
+  if (parsePeriodPlanDayEntries(trimmed).length > 1) return null;
 
   const entryNorm = normalizePlanEntryLabel(trimmed);
   let best: { program: TrainingProgram; score: number } | null = null;
@@ -132,6 +138,7 @@ export function resolvePeriodPlanEntryAction(
   if (!trimmed || isPassivePeriodPlanEntry(trimmed)) {
     return { kind: "none" };
   }
+  if (parsePeriodPlanDayEntries(trimmed).length > 1) return { kind: "none" };
   if (isGroupPeriodPlanEntry(trimmed)) {
     return {
       kind: "log-group",
@@ -188,6 +195,24 @@ export function findPeriodPlanForProgram(
     }
   }
   return null;
+}
+
+export type PeriodPlanSessionChoice = {
+  entry: string;
+  action: PeriodPlanEntryAction;
+  label: string;
+};
+
+/** Én rad per økt, også når flere økter er lagret på samme dag. */
+export function listPeriodPlanSessionChoices(entry: string, programs: TrainingProgram[]): PeriodPlanSessionChoice[] {
+  return parsePeriodPlanDayEntries(entry).map((session) => {
+    const action = resolvePeriodPlanEntryAction(session, programs);
+    return {
+      entry: session,
+      action,
+      label: getPeriodPlanDayListLabel(session, action),
+    };
+  });
 }
 
 /** Kort etikett i periodeplan-listen — full øktinfo vises først ved trykk inn. */

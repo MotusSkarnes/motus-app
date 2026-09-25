@@ -6,10 +6,13 @@ import {
   findProgramForPeriodPlanEntry,
   isGroupPeriodPlanEntry,
   isPeriodPlanEntryDateInFuture,
+  isRestPeriodPlanEntry,
+  listPeriodPlanSessionChoices,
   resolveGroupClassNameFromPeriodEntry,
   resolvePeriodPlanEntryAction,
   getPeriodPlanDayListLabel,
 } from "./periodPlanEntryActions";
+import { joinPeriodPlanDayEntries } from "./periodPlanSwaps";
 
 const programs: TrainingProgram[] = [
   {
@@ -64,6 +67,18 @@ describe("periodPlanEntryActions", () => {
       memberLibraryStatus: "hidden",
     };
     expect(findProgramForPeriodPlanEntry("Styrke A", [hiddenProgram])?.id).toBe("p-hidden");
+  });
+
+  it("does not treat two sessions on one day as a single program", () => {
+    const mobility: TrainingProgram = { ...programs[0], id: "p2", title: "Mobilitet" };
+    const encoded = joinPeriodPlanDayEntries(["Styrke A", "Mobilitet"]);
+    expect(findProgramForPeriodPlanEntry(encoded, [...programs, mobility])).toBeNull();
+    expect(resolvePeriodPlanEntryAction(encoded, [...programs, mobility]).kind).toBe("none");
+    expect(listPeriodPlanSessionChoices(encoded, [...programs, mobility]).map((choice) => choice.label)).toEqual([
+      "Styrke A",
+      "Mobilitet",
+    ]);
+    expect(isRestPeriodPlanEntry(joinPeriodPlanDayEntries(["Hvile / restitusjon", "Styrke A"]))).toBe(false);
   });
 
   it("resolves start vs log actions", () => {

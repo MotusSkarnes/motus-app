@@ -15,6 +15,8 @@ import {
   buildPeriodPlanWeekOverride,
   getSwapsForWeek,
   mergePeriodPlanSwapsIntoPersonalGoals,
+  movePeriodPlanDayEntries,
+  parsePeriodPlanDayEntries,
   readPeriodPlanSwapsFromPersonalGoals,
   setSwapsForWeek,
   togglePeriodPlanMove,
@@ -174,7 +176,7 @@ export function TrainerPeriodPlanAssignedView({
     const week = resolvePeriodPlanWeek(plan, weekNumber);
     const current = getSwapsForWeek(swapsByPlan, planId, weekNumber);
     const currentDays = week ? applyPeriodPlanSwaps(week.days, current) : null;
-    const nextDays = currentDays ? { ...currentDays, [dayB]: currentDays[dayA] ?? "", [dayA]: "" } : null;
+    const nextDays = currentDays ? movePeriodPlanDayEntries(currentDays, dayA, dayB) : null;
     const nextSwaps =
       week && nextDays ? buildPeriodPlanWeekOverride(week.days, nextDays, dayA, dayB) : togglePeriodPlanMove(current, dayA, dayB);
     commitSwaps(
@@ -183,7 +185,7 @@ export function TrainerPeriodPlanAssignedView({
       nextSwaps,
       nextSwaps.length === 0
         ? `Flytting fra ${WEEKDAY_PLAN_LABELS[dayA]} til ${WEEKDAY_PLAN_LABELS[dayB]} er angret.`
-        : `Flyttet plan fra ${WEEKDAY_PLAN_LABELS[dayA]} til ${WEEKDAY_PLAN_LABELS[dayB]}.`,
+        : `Flyttet plan fra ${WEEKDAY_PLAN_LABELS[dayA]} til ${WEEKDAY_PLAN_LABELS[dayB]}. Begge øktene beholdes hvis dagen allerede var opptatt.`,
     );
   }
 
@@ -199,7 +201,8 @@ export function TrainerPeriodPlanAssignedView({
     const currentDays = applyPeriodPlanSwaps(week.days, current);
     const nextDays = { ...currentDays, [day]: nextEntry };
     const nextSwaps = buildPeriodPlanWeekOverride(week.days, nextDays, day, day);
-    commitSwaps(planId, weekNumber, nextSwaps, `Planen på ${WEEKDAY_PLAN_LABELS[day].toLowerCase()} er byttet til «${nextEntry}».`);
+    const entryLabel = parsePeriodPlanDayEntries(nextEntry).join(" + ");
+    commitSwaps(planId, weekNumber, nextSwaps, `Planen på ${WEEKDAY_PLAN_LABELS[day].toLowerCase()} er byttet til «${entryLabel}».`);
   }
 
   function resetSwaps(planId: string, weekNumber: number) {

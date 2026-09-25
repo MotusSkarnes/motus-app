@@ -1,6 +1,7 @@
 import { storedLogDatesMatch } from "./dateFormat";
-import { findProgramForPeriodPlanEntry } from "./periodPlanEntryActions";
+import { findProgramForPeriodPlanEntry, isPassivePeriodPlanEntry } from "./periodPlanEntryActions";
 import { periodPlanEntryMatchesCompletedProgram } from "./periodPlanMerge";
+import { parsePeriodPlanDayEntries } from "./periodPlanSwaps";
 import type { TrainingProgram, WorkoutLog } from "./types";
 
 export type PeriodPlanDayCompletion = "none" | "partial" | "complete";
@@ -99,6 +100,16 @@ export function resolvePeriodPlanDayCompletion(input: {
   programs: TrainingProgram[];
   markedComplete: boolean;
 }): PeriodPlanDayCompletion {
+  const sessions = parsePeriodPlanDayEntries(input.entry).filter((session) => !isPassivePeriodPlanEntry(session));
+  if (sessions.length > 1) {
+    const statuses = sessions.map((session) =>
+      resolvePeriodPlanDayCompletion({ ...input, entry: session, markedComplete: false }),
+    );
+    if (statuses.every((status) => status === "complete")) return "complete";
+    if (statuses.some((status) => status !== "none")) return "partial";
+    return input.markedComplete ? "complete" : "none";
+  }
+
   const entry = input.entry.trim();
   if (!entry) return "none";
   const matches = matchingPeriodPlanLogsForDay(input);

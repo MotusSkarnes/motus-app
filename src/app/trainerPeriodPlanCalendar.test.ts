@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { buildTrainerPeriodPlanCalendarByMonth, summarizeTrainerCalendarDay } from "./trainerPeriodPlanCalendar";
 import type { Member, PeriodSchedulePlan } from "./types";
-import { mergePeriodPlanSwapsIntoPersonalGoals } from "./periodPlanSwaps";
+import { joinPeriodPlanDayEntries, mergePeriodPlanSwapsIntoPersonalGoals } from "./periodPlanSwaps";
 
 const member: Member = {
   id: "m1",
@@ -72,6 +72,31 @@ describe("buildTrainerPeriodPlanCalendarByMonth", () => {
 
     const entries = Array.from(byDay.values()).flat();
     expect(entries.some((entry) => entry.memberName === "Kari Nord" && entry.entry === "Styrke A")).toBe(true);
+  });
+
+  it("shows each session on a shared day without the storage separator", () => {
+    const shared: PeriodSchedulePlan = {
+      ...plan,
+      weeklyPlans: [
+        {
+          ...plan.weeklyPlans[0],
+          days: {
+            ...plan.weeklyPlans[0].days,
+            monday: joinPeriodPlanDayEntries(["Styrke A", "Mobilitet"]),
+          },
+        },
+      ],
+    };
+    const { byDay } = buildTrainerPeriodPlanCalendarByMonth({
+      members: [member],
+      periodPlansByMemberId: { m1: [shared] },
+      logs: [],
+      calendarMonth: new Date(2026, 4, 1),
+      today: new Date(2026, 4, 10),
+    });
+    const monday = byDay.get(4) ?? [];
+    expect(monday.map((entry) => entry.entryLabel)).toEqual(["Styrke A", "Mobilitet"]);
+    expect(monday.some((entry) => entry.entryLabel.includes("__motus_period_session__"))).toBe(false);
   });
 });
 
