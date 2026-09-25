@@ -28,6 +28,7 @@ import {
   mergeTrainerPeriodPlansFromRemote,
   mergedPeriodPlanListForMember,
 } from "./periodPlanMerge";
+import { joinPeriodPlanDayEntries } from "./periodPlanSwaps";
 import type { PeriodSchedulePlan, TrainingProgram, WeeklySchedulePlan } from "./types";
 
 const empty = { monday: "", tuesday: "", wednesday: "", thursday: "", friday: "", saturday: "", sunday: "" };
@@ -222,6 +223,23 @@ describe("buildPeriodPlanPlannedEntriesByMonth", () => {
     });
     expect(onlyB.get(19)).toEqual(["Plan B tirsdag"]);
   });
+
+  it("lists each session when a day stores several workouts", () => {
+    const plan = makePlan([
+      {
+        id: "w1",
+        weekNumber: 1,
+        days: { ...empty, monday: joinPeriodPlanDayEntries(["Styrke A", "Mobilitet"]) },
+      },
+    ]);
+    plan.startDate = "2026-05-18";
+    const byDay = buildPeriodPlanPlannedEntriesByMonth({
+      plans: [plan],
+      swapsByPlan: {},
+      calendarMonth: new Date(2026, 4, 1),
+    });
+    expect(byDay.get(18)).toEqual(["Styrke A", "Mobilitet"]);
+  });
 });
 
 describe("findPeriodPlanEntryForCalendarDate", () => {
@@ -407,6 +425,15 @@ describe("period plan auto-complete", () => {
     expect(periodPlanEntryMatchesCompletedProgram("Styrke A", "Styrke A", programs)).toBe(true);
     expect(periodPlanEntryMatchesCompletedProgram("  styrke a ", "Styrke A", programs)).toBe(true);
     expect(periodPlanEntryMatchesCompletedProgram("Kondisjon", "Styrke A", programs)).toBe(false);
+  });
+
+  it("matches either session when two workouts share a day", () => {
+    const mobility: TrainingProgram = { ...programs[0], id: "p2", title: "Mobilitet" };
+    const encoded = joinPeriodPlanDayEntries(["Styrke A", "Mobilitet"]);
+    const both = [...programs, mobility];
+    expect(periodPlanEntryMatchesCompletedProgram(encoded, "Styrke A", both, "p1")).toBe(true);
+    expect(periodPlanEntryMatchesCompletedProgram(encoded, "Mobilitet", both, "p2")).toBe(true);
+    expect(periodPlanEntryMatchesCompletedProgram(encoded, "Kondisjon", both)).toBe(false);
   });
 
   it("matches logged group workouts to group entries", () => {
@@ -642,6 +669,32 @@ describe("period plan auto-complete", () => {
         logsForDate: [{ programTitle: "Annet program", status: "Fullført" }],
       }),
     ).toBe(false);
+    const encoded = joinPeriodPlanDayEntries(["Styrke A", "Mobilitet"]);
+    expect(
+      isPeriodPlanDayComplete({
+        planId: "plan-1",
+        weekNumber: 1,
+        day: "monday",
+        entry: encoded,
+        completedKeys: [],
+        programs: [...programs, { ...programs[0], id: "p2", title: "Mobilitet" }],
+        logsForDate: [{ programTitle: "Styrke A", status: "Fullført" }],
+      }),
+    ).toBe(false);
+    expect(
+      isPeriodPlanDayComplete({
+        planId: "plan-1",
+        weekNumber: 1,
+        day: "monday",
+        entry: encoded,
+        completedKeys: [],
+        programs: [...programs, { ...programs[0], id: "p2", title: "Mobilitet" }],
+        logsForDate: [
+          { programTitle: "Styrke A", status: "Fullført" },
+          { programTitle: "Mobilitet", status: "Fullført" },
+        ],
+      }),
+    ).toBe(true);
   });
 });
 

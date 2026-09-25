@@ -1,7 +1,7 @@
 import { formatDateDdMmYyyy, getDefaultPeriodPlanStartMondayISO, parseStoredLogDate } from "./dateFormat";
 import { logsAttributedToMember } from "./memberActivity";
 import { findProgramForPeriodPlanEntry, isPassivePeriodPlanEntry, isGroupPeriodPlanEntry, groupWorkoutLogTitle, resolveGroupClassNameFromPeriodEntry } from "./periodPlanEntryActions";
-import { applyPeriodPlanSwaps, getSwapsForWeek, WEEKDAY_PLAN_ORDER, type PeriodPlanSwapsByPlan } from "./periodPlanSwaps";
+import { applyPeriodPlanSwaps, getSwapsForWeek, parsePeriodPlanDayEntries, WEEKDAY_PLAN_ORDER, type PeriodPlanSwapsByPlan } from "./periodPlanSwaps";
 import type { Member, PeriodSchedulePlan, TrainingProgram, WeekdayPlanKey, WeeklyDayPlan, WeeklySchedulePlan, WorkoutLog } from "./types";
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
@@ -134,14 +134,14 @@ export function buildPeriodPlanPlannedEntriesByMonth(input: {
       for (const weekdayKey of WEEKDAY_PLAN_ORDER) {
         const swaps = getSwapsForWeek(input.swapsByPlan, plan.id, week.weekNumber);
         const effectiveDays = applyPeriodPlanSwaps(week.days, swaps);
-        const plannedEntry = effectiveDays[weekdayKey]?.trim() ?? "";
-        if (!plannedEntry) continue;
+        const plannedEntries = parsePeriodPlanDayEntries(effectiveDays[weekdayKey]);
+        if (plannedEntries.length === 0) continue;
         const plannedDate = resolvePeriodPlanPlannedDate(plan, week.weekNumber, weekdayKey);
         if (!plannedDate) continue;
         if (plannedDate.getMonth() !== month || plannedDate.getFullYear() !== year) continue;
         const day = plannedDate.getDate();
         const previous = byDay.get(day) ?? [];
-        byDay.set(day, [...previous, plannedEntry]);
+        byDay.set(day, [...previous, ...plannedEntries]);
       }
     }
   }
@@ -272,6 +272,12 @@ export function periodPlanEntryMatchesCompletedProgram(
   programs: TrainingProgram[],
   programId?: string,
 ): boolean {
+  const sessions = parsePeriodPlanDayEntries(entry);
+  if (sessions.length > 1) {
+    return sessions.some((session) =>
+      periodPlanEntryMatchesCompletedProgram(session, programTitle, programs, programId),
+    );
+  }
   const trimmedEntry = entry.trim();
   const trimmedTitle = programTitle.trim();
   if (!trimmedEntry || !trimmedTitle || isPassivePeriodPlanEntry(trimmedEntry)) return false;
@@ -329,13 +335,15 @@ export function isPeriodPlanDayComplete(input: {
 
   if (!input.logsForDate) return input.completedKeys.includes(key);
 
-  const hasMatchingLog = input.logsForDate.some(
-    (log) =>
-      log.status.toLowerCase().replace(/ø/g, "o") === "fullfort" &&
-      periodPlanEntryMatchesCompletedProgram(trimmedEntry, log.programTitle, input.programs),
+  const sessions = parsePeriodPlanDayEntries(trimmedEntry).filter((session) => !isPassivePeriodPlanEntry(session));
+  const sessionsToMatch = sessions.length > 0 ? sessions : [trimmedEntry];
+  return sessionsToMatch.every((session) =>
+    input.logsForDate!.some(
+      (log) =>
+        log.status.toLowerCase().replace(/ø/g, "o") === "fullfort" &&
+        periodPlanEntryMatchesCompletedProgram(session, log.programTitle, input.programs),
+    ),
   );
-  if (input.completedKeys.includes(key)) return hasMatchingLog;
-  return hasMatchingLog;
 }
 
 /** Finn periodeplan-rader som skal hakkes av når et program er fullført på en kalenderdag. */

@@ -156,6 +156,7 @@ import {
   findPeriodPlanForProgram,
   findProgramForPeriodPlanEntry,
   getPeriodPlanDayListLabel,
+  listPeriodPlanSessionChoices,
   groupWorkoutLogTitle,
   isGroupPeriodPlanEntry,
   isPassivePeriodPlanEntry,
@@ -2738,6 +2739,58 @@ export function MemberPortal(props: MemberPortalProps) {
     return matches >= Math.min(2, Math.max(1, program.exercises.length));
   }
 
+  const todayPlanLaunch = useMemo(() => {
+    const rawSessions = parsePeriodPlanDayEntries(todayPlanEntry);
+    const choices = listPeriodPlanSessionChoices(todayPlanEntry, memberProgramsForPeriodPlan).map((choice) => {
+      if (choice.action.kind !== "log-generic") return choice;
+      const rescuedProgram = findProgramForPeriodPlanEntry(choice.entry, memberPrograms);
+      if (!rescuedProgram) return choice;
+      return {
+        ...choice,
+        action: { kind: "start-program" as const, program: rescuedProgram },
+        label: rescuedProgram.title.trim() || choice.entry,
+      };
+    });
+    const actionable = choices.filter(
+      (choice) => choice.action.kind === "start-program" || choice.action.kind === "log-group",
+    );
+    const logsForToday = calendarLogsByDateKey.get(toCalendarDateKey(nowDate)) ?? [];
+    const sessionComplete = (choice: (typeof choices)[number]) => {
+      if (choice.action.kind === "start-program") {
+        const program = choice.action.program;
+        if (logsForToday.some((log) => completedLogMatchesProgramForPeriodEntry(log, program, choice.entry))) {
+          return true;
+        }
+      }
+      if (!todayPlanPeriodPlan || !todayPeriodPlanMatch) return false;
+      return isPeriodPlanDayComplete({
+        planId: todayPlanPeriodPlan.id,
+        weekNumber: todayPeriodPlanMatch.weekNumber,
+        day: todayPeriodPlanMatch.day,
+        entry: choice.entry,
+        completedKeys: completedPeriodPlanEntryKeys,
+        dismissedKeys: dismissedPeriodPlanEntryKeys,
+        programs: memberProgramsForPeriodPlan,
+        logsForDate: logsForToday,
+      });
+    };
+    const open = actionable.find((choice) => !sessionComplete(choice));
+    return {
+      choices,
+      launch: open ?? actionable[0] ?? null,
+      multiple: rawSessions.length > 1,
+    };
+  }, [
+    todayPlanEntry,
+    memberProgramsForPeriodPlan,
+    memberPrograms,
+    calendarLogsByDateKey,
+    nowDate,
+    todayPlanPeriodPlan,
+    todayPeriodPlanMatch,
+    completedPeriodPlanEntryKeys,
+    dismissedPeriodPlanEntryKeys,
+  ]);
   const todayPeriodPlanCompleted = useMemo(() => {
     if (!todayPlanPeriodPlan || !todayPeriodPlanMatch || !todayPlanEntry) return false;
     const todayKey = toCalendarDateKey(nowDate);
@@ -2935,7 +2988,7 @@ export function MemberPortal(props: MemberPortalProps) {
     if (!selectedCalendarDate || !activePeriodPlan) return [];
     const match = findPeriodPlanEntryForCalendarDate(activePeriodPlan, selectedCalendarDate, periodPlanSwapsByPlan);
     if (!match?.entry.trim()) return [];
-    return [match.entry.trim()];
+    return parsePeriodPlanDayEntries(match.entry);
   }, [selectedCalendarDate, activePeriodPlan, periodPlanSwapsByPlan]);
   const selectedCalendarPeriodMatch = useMemo(() => {
     if (!selectedCalendarDate || !activePeriodPlan) return null;
@@ -2943,39 +2996,6 @@ export function MemberPortal(props: MemberPortalProps) {
     if (!match?.entry.trim()) return null;
     return { plan: activePeriodPlan, ...match };
   }, [selectedCalendarDate, activePeriodPlan, periodPlanSwapsByPlan]);
-  const selectedCalendarPlanEntry = selectedCalendarPeriodMatch?.entry?.trim() ?? selectedCalendarPlannedEntries[0]?.trim() ?? "";
-  const selectedCalendarPlanAction = useMemo(
-    () =>
-      selectedCalendarPlanEntry
-        ? resolvePeriodPlanEntryAction(selectedCalendarPlanEntry, memberProgramsForPeriodPlan)
-        : { kind: "none" as const },
-    [selectedCalendarPlanEntry, memberProgramsForPeriodPlan],
-  );
-  const selectedCalendarPeriodPlanCompleted = useMemo(() => {
-    if (!selectedCalendarPeriodMatch || !selectedCalendarPlanEntry) return false;
-    if (selectedCalendarDate && getStartOfDay(selectedCalendarDate).getTime() > getStartOfDay(nowDate).getTime()) {
-      return false;
-    }
-    return isPeriodPlanDayComplete({
-      planId: selectedCalendarPeriodMatch.plan.id,
-      weekNumber: selectedCalendarPeriodMatch.weekNumber,
-      day: selectedCalendarPeriodMatch.day,
-      entry: selectedCalendarPlanEntry,
-      completedKeys: completedPeriodPlanEntryKeys,
-      dismissedKeys: dismissedPeriodPlanEntryKeys,
-      programs: memberProgramsForPeriodPlan,
-      logsForDate: selectedCalendarLogs,
-    });
-  }, [
-    selectedCalendarPeriodMatch,
-    selectedCalendarPlanEntry,
-    completedPeriodPlanEntryKeys,
-    dismissedPeriodPlanEntryKeys,
-    memberProgramsForPeriodPlan,
-    selectedCalendarLogs,
-    selectedCalendarDate,
-    nowDate,
-  ]);
   const selectedCalendarLog = useMemo(() => {
     if (!selectedCalendarLogs.length) return null;
     if (!selectedCalendarLogId) return selectedCalendarLogs[0];
@@ -5043,18 +5063,24 @@ export function MemberPortal(props: MemberPortalProps) {
   }, [homeWorkoutHydrationPending, todayPlanIsPassiveDay, todayPlanAction, todayPlanEntry]);
   const homeWorkoutProgram = useMemo(() => {
     if (homeWorkoutHydrationPending || !homeHasPlannedWorkoutToday) return null;
+    if (todayPlanLaunch.launch?.action.kind === "start-program") return todayPlanLaunch.launch.action.program;
     if (todayPlanAction.kind === "start-program") return todayPlanAction.program;
-    if (todayPlanEntry.trim()) {
+    if (todayPlanEntry.trim() && !todayPlanLaunch.multiple) {
       return findProgramForPeriodPlanEntry(todayPlanEntry, memberPrograms) ?? null;
     }
     return null;
-  }, [homeWorkoutHydrationPending, homeHasPlannedWorkoutToday, todayPlanAction, todayPlanEntry, memberPrograms]);
+  }, [homeWorkoutHydrationPending, homeHasPlannedWorkoutToday, todayPlanLaunch, todayPlanAction, todayPlanEntry, memberPrograms]);
   const homePrimaryFocus = useMemo(() => {
+    if (todayPlanLaunch.multiple) {
+      return todayPlanLaunch.choices.map((choice) => choice.label).filter(Boolean).join(" + ") || "Ingen plan i dag";
+    }
     if (todayPlanEntry && homeWorkoutProgram?.title && todayPlanEntry !== homeWorkoutProgram.title) {
       return `${homeWorkoutProgram.title} · ${todayPlanEntry}`;
     }
     return todayPlanEntry || homeWorkoutProgram?.title || "Ingen plan i dag";
-  }, [todayPlanEntry, homeWorkoutProgram]);
+  }, [todayPlanLaunch, todayPlanEntry, homeWorkoutProgram]);
+  const homePlanAction = todayPlanLaunch.launch?.action ?? todayPlanAction;
+  const homePlanEntry = todayPlanLaunch.launch?.entry || todayPlanEntry;
   const homeWorkoutDuration = useMemo(() => {
     if (!homeWorkoutProgram) return null;
     const minutes = Math.max(20, Math.round(estimateProgramMinutes(homeWorkoutProgram) / 5) * 5);
@@ -5120,8 +5146,9 @@ export function MemberPortal(props: MemberPortalProps) {
         memberPtOwnerUserId || undefined,
       );
     }
+    const coverEntry = todayPlanLaunch.launch?.entry || todayPlanEntry;
     return (
-      resolvePeriodPlanEntryCoverImage(todayPlanEntry, {
+      resolvePeriodPlanEntryCoverImage(coverEntry, {
         activityTemplates: activityTemplatesForPeriodPlan,
         memberPrograms: memberProgramsForPeriodPlan,
         exercises,
@@ -5132,6 +5159,7 @@ export function MemberPortal(props: MemberPortalProps) {
   }, [
     isNoPlanHomeDay,
     todayPlanEntry,
+    todayPlanLaunch.launch?.entry,
     programs,
     noPlanDayCoverTemplate,
     memberHydratedNoPlanCoverUrl,
@@ -6067,7 +6095,8 @@ export function MemberPortal(props: MemberPortalProps) {
     });
     unmarkPeriodPlanDayCompleted(planId, weekNumber, day);
     dismissPeriodPlanDay(planId, weekNumber, day);
-    setPeriodPlanActionStatus(`Planen på ${WEEKDAY_PLAN_LABELS[day].toLowerCase()} er byttet til «${nextEntry}».`);
+    const entryLabel = parsePeriodPlanDayEntries(nextEntry).join(" + ");
+    setPeriodPlanActionStatus(`Planen på ${WEEKDAY_PLAN_LABELS[day].toLowerCase()} er byttet til «${entryLabel}».`);
   }
 
   function resetPeriodPlanSwapsForWeek(planId: string, weekNumber: number) {
@@ -6102,18 +6131,15 @@ export function MemberPortal(props: MemberPortalProps) {
 
   function resolvePeriodPlanContextForProgram(program: TrainingProgram): PeriodPlanWorkoutStartContext | null {
     if (todayPeriodPlanMatch && todayPlanEntry.trim()) {
-      const matchesToday = periodPlanEntryMatchesCompletedProgram(
-        todayPlanEntry,
-        program.title,
-        memberProgramsForPeriodPlan,
-        program.id,
+      const matchedSession = parsePeriodPlanDayEntries(todayPlanEntry).find((session) =>
+        periodPlanEntryMatchesCompletedProgram(session, program.title, memberProgramsForPeriodPlan, program.id),
       );
-      if (matchesToday) {
+      if (matchedSession) {
         return {
           planId: todayPeriodPlanMatch.plan.id,
           weekNumber: todayPeriodPlanMatch.weekNumber,
           day: todayPeriodPlanMatch.day,
-          entry: todayPlanEntry,
+          entry: matchedSession,
         };
       }
     }
@@ -6134,11 +6160,15 @@ export function MemberPortal(props: MemberPortalProps) {
     if (!plan || !week) return null;
     const swaps = getSwapsForWeek(periodPlanSwapsByPlan, plan.id, week.weekNumber);
     const entry = applyPeriodPlanSwaps(week.days, swaps)[target.day]?.trim() ?? "";
+    const matchedSession =
+      parsePeriodPlanDayEntries(entry).find((session) =>
+        periodPlanEntryMatchesCompletedProgram(session, program.title, memberProgramsForPeriodPlan, program.id),
+      ) ?? parsePeriodPlanDayEntries(entry)[0] ?? "";
     return {
       planId: target.planId,
       weekNumber: target.weekNumber,
       day: target.day,
-      entry,
+      entry: matchedSession,
     };
   }
 
@@ -6759,51 +6789,64 @@ export function MemberPortal(props: MemberPortalProps) {
                         {selectedCalendarPlannedEntries.length > 0 ? (
                           <div className="motus-brand-muted motus-brand-muted-border rounded-lg px-3 py-2 text-xs">
                             <div className="font-semibold">Planlagt økt</div>
-                            {selectedCalendarPlannedEntries.map((entry, entryIndex) => (
-                              <div key={`${selectedCalendarDateKey}-planned-${entryIndex}`} className="mt-1">
-                                {entry}
-                              </div>
-                            ))}
-                            <div className="mt-3 flex flex-wrap gap-2">
-                              {selectedCalendarPlanAction.kind === "start-program" ? (
-                                <GradientButton
-                                  disabled={selectedCalendarPeriodPlanCompleted}
-                                  onClick={() => {
-                                    if (selectedCalendarPeriodPlanCompleted || !selectedCalendarPeriodMatch) return;
-                                    handlePeriodPlanStartProgram(selectedCalendarPlanAction.program.id, {
-                                      planId: selectedCalendarPeriodMatch.plan.id,
-                                      weekNumber: selectedCalendarPeriodMatch.weekNumber,
-                                      day: selectedCalendarPeriodMatch.day,
-                                      entry: selectedCalendarPlanEntry,
-                                    });
-                                  }}
-                                  className="w-full sm:w-auto disabled:cursor-default disabled:opacity-100"
-                                >
-                                  {selectedCalendarPeriodPlanCompleted ? "Fullført" : "Start økt"}
-                                </GradientButton>
-                              ) : null}
-                              {selectedCalendarPlanAction.kind === "log-group" && selectedCalendarPeriodMatch ? (
-                                <GradientButton
-                                  disabled={selectedCalendarPeriodPlanCompleted}
-                                  onClick={() =>
-                                    handlePeriodPlanLogGroup({
-                                      entry: selectedCalendarPlanEntry,
-                                      plannedDate: resolvePeriodPlanEntryDate(
-                                        selectedCalendarPeriodMatch.plan,
-                                        selectedCalendarPeriodMatch.weekNumber,
-                                        selectedCalendarPeriodMatch.day,
-                                      ),
-                                      planId: selectedCalendarPeriodMatch.plan.id,
-                                      weekNumber: selectedCalendarPeriodMatch.weekNumber,
-                                      day: selectedCalendarPeriodMatch.day,
-                                    })
-                                  }
-                                  className="w-full sm:w-auto disabled:cursor-default disabled:opacity-100"
-                                >
-                                  {selectedCalendarPeriodPlanCompleted ? "Gruppetime logget" : "Logg gruppetime"}
-                                </GradientButton>
-                              ) : null}
-                            </div>
+                            {selectedCalendarPlannedEntries.map((entry, entryIndex) => {
+                              const action = resolvePeriodPlanEntryAction(entry, memberProgramsForPeriodPlan);
+                              const sessionComplete = selectedCalendarPeriodMatch
+                                ? isPeriodPlanDayComplete({
+                                    planId: selectedCalendarPeriodMatch.plan.id,
+                                    weekNumber: selectedCalendarPeriodMatch.weekNumber,
+                                    day: selectedCalendarPeriodMatch.day,
+                                    entry,
+                                    completedKeys: completedPeriodPlanEntryKeys,
+                                    dismissedKeys: dismissedPeriodPlanEntryKeys,
+                                    programs: memberProgramsForPeriodPlan,
+                                    logsForDate: selectedCalendarLogs,
+                                  })
+                                : false;
+                              return (
+                                <div key={`${selectedCalendarDateKey}-planned-${entryIndex}`} className="mt-2">
+                                  <div>{getPeriodPlanDayListLabel(entry, action)}</div>
+                                  {action.kind === "start-program" && selectedCalendarPeriodMatch ? (
+                                    <GradientButton
+                                      disabled={sessionComplete}
+                                      onClick={() => {
+                                        if (sessionComplete) return;
+                                        handlePeriodPlanStartProgram(action.program.id, {
+                                          planId: selectedCalendarPeriodMatch.plan.id,
+                                          weekNumber: selectedCalendarPeriodMatch.weekNumber,
+                                          day: selectedCalendarPeriodMatch.day,
+                                          entry,
+                                        });
+                                      }}
+                                      className="mt-2 w-full sm:w-auto disabled:cursor-default disabled:opacity-100"
+                                    >
+                                      {sessionComplete ? "Fullført" : "Start økt"}
+                                    </GradientButton>
+                                  ) : null}
+                                  {action.kind === "log-group" && selectedCalendarPeriodMatch ? (
+                                    <GradientButton
+                                      disabled={sessionComplete}
+                                      onClick={() =>
+                                        handlePeriodPlanLogGroup({
+                                          entry,
+                                          plannedDate: resolvePeriodPlanEntryDate(
+                                            selectedCalendarPeriodMatch.plan,
+                                            selectedCalendarPeriodMatch.weekNumber,
+                                            selectedCalendarPeriodMatch.day,
+                                          ),
+                                          planId: selectedCalendarPeriodMatch.plan.id,
+                                          weekNumber: selectedCalendarPeriodMatch.weekNumber,
+                                          day: selectedCalendarPeriodMatch.day,
+                                        })
+                                      }
+                                      className="mt-2 w-full sm:w-auto disabled:cursor-default disabled:opacity-100"
+                                    >
+                                      {sessionComplete ? "Gruppetime logget" : "Logg gruppetime"}
+                                    </GradientButton>
+                                  ) : null}
+                                </div>
+                              );
+                            })}
                           </div>
                         ) : null}
                         {selectedCalendarLogs.length === 0 ? (
@@ -7094,7 +7137,7 @@ export function MemberPortal(props: MemberPortalProps) {
                     >
                       Lag ukeplan
                     </GradientButton>
-                  ) : todayPlanAction.kind === "start-program" ? (
+                  ) : homePlanAction.kind === "start-program" ? (
                     todayPeriodPlanCompleted ? (
                       <GradientButton
                         type="button"
@@ -7109,22 +7152,22 @@ export function MemberPortal(props: MemberPortalProps) {
                         label="Start dagens økt"
                         onClick={() => {
                           if (!todayPlanPeriodPlan || !todayPeriodPlanMatch) return;
-                          handlePeriodPlanStartProgram(todayPlanAction.program.id, {
+                          handlePeriodPlanStartProgram(homePlanAction.program.id, {
                             planId: todayPlanPeriodPlan.id,
                             weekNumber: todayPeriodPlanMatch.weekNumber,
                             day: todayPeriodPlanMatch.day,
-                            entry: todayPlanEntry,
+                            entry: homePlanEntry,
                           });
                         }}
                       />
                     )
-                  ) : todayPlanAction.kind === "log-group" && todayPlanPeriodPlan && todayPeriodPlanMatch ? (
+                  ) : homePlanAction.kind === "log-group" && todayPlanPeriodPlan && todayPeriodPlanMatch ? (
                     <GradientButton
                       type="button"
                       disabled={todayPeriodPlanCompleted}
                       onClick={() =>
                         handlePeriodPlanLogGroup({
-                          entry: todayPlanEntry,
+                          entry: homePlanEntry,
                           plannedDate: resolvePeriodPlanEntryDate(
                             todayPlanPeriodPlan,
                             todayPeriodPlanMatch.weekNumber,
@@ -7365,29 +7408,29 @@ export function MemberPortal(props: MemberPortalProps) {
                           label: "Lag ukeplan",
                           onClick: openMemberWeekPlanBuilderFromHome,
                         }
-                      : todayPlanAction.kind === "start-program"
+                      : homePlanAction.kind === "start-program"
                       ? {
                           label: todayPeriodPlanCompleted ? "Fullført" : "Start økt",
                           disabled: todayPeriodPlanCompleted,
                           completed: todayPeriodPlanCompleted,
                           onClick: () => {
                             if (!todayPlanPeriodPlan || !todayPeriodPlanMatch) return;
-                            handlePeriodPlanStartProgram(todayPlanAction.program.id, {
+                            handlePeriodPlanStartProgram(homePlanAction.program.id, {
                               planId: todayPlanPeriodPlan.id,
                               weekNumber: todayPeriodPlanMatch.weekNumber,
                               day: todayPeriodPlanMatch.day,
-                              entry: todayPlanEntry,
+                              entry: homePlanEntry,
                             });
                           },
                         }
-                      : todayPlanAction.kind === "log-group" && todayPlanPeriodPlan && todayPeriodPlanMatch
+                      : homePlanAction.kind === "log-group" && todayPlanPeriodPlan && todayPeriodPlanMatch
                         ? {
                             label: todayPeriodPlanCompleted ? "Fullført" : "Logg gruppetime",
                             disabled: todayPeriodPlanCompleted,
                             completed: todayPeriodPlanCompleted,
                             onClick: () =>
                               handlePeriodPlanLogGroup({
-                                entry: todayPlanEntry,
+                                entry: homePlanEntry,
                                 plannedDate: resolvePeriodPlanEntryDate(
                                   todayPlanPeriodPlan,
                                   todayPeriodPlanMatch.weekNumber,

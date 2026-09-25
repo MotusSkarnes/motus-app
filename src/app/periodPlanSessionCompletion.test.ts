@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { pickBestPeriodPlanDayLog, resolvePeriodPlanDayCompletion, workoutLogSessionCompletion } from "./periodPlanSessionCompletion";
+import { joinPeriodPlanDayEntries } from "./periodPlanSwaps";
 import type { TrainingProgram, WorkoutLog } from "./types";
 
 function result(exerciseId: string, completed: boolean): NonNullable<WorkoutLog["results"]>[number] {
@@ -102,6 +103,31 @@ describe("resolvePeriodPlanDayCompletion", () => {
         logs: [log()],
         programs: [program()],
         markedComplete: false,
+      }),
+    ).toBe("complete");
+  });
+
+  it("stays partial until every session on the day is logged", () => {
+    const mobility = program();
+    mobility.id = "p2";
+    mobility.title = "Mobilitet";
+    const encoded = joinPeriodPlanDayEntries(["Styrke A", "Mobilitet"]);
+    const shared = {
+      entry: encoded,
+      plannedDate: "21.09.2026",
+      programs: [program(), mobility],
+      markedComplete: false,
+    };
+    expect(
+      resolvePeriodPlanDayCompletion({
+        ...shared,
+        logs: [log()],
+      }),
+    ).toBe("partial");
+    expect(
+      resolvePeriodPlanDayCompletion({
+        ...shared,
+        logs: [log(), log({ id: "log-2", programTitle: "Mobilitet" })],
       }),
     ).toBe("complete");
   });

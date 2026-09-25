@@ -1,7 +1,7 @@
 import { computeRelatedMemberIdSet, logsAttributedToMember } from "./memberActivity";
 import { toCalendarDateKey, type TrainingCalendarDayStatus } from "./memberTrainingCalendar";
 import { dedupePeriodPlansById, findPeriodPlanEntryForCalendarDate } from "./periodPlanMerge";
-import { readPeriodPlanSwapsFromPersonalGoals, type PeriodPlanSwapsByPlan } from "./periodPlanSwaps";
+import { parsePeriodPlanDayEntries, readPeriodPlanSwapsFromPersonalGoals, type PeriodPlanSwapsByPlan } from "./periodPlanSwaps";
 import {
   getPeriodPlanDayListLabel,
   isPassivePeriodPlanEntry,
@@ -106,23 +106,25 @@ export function buildTrainerPeriodPlanCalendarByMonth(input: {
 
       for (const plan of plans) {
         const match = findPeriodPlanEntryForCalendarDate(plan, date, swapsByPlan);
-        const entry = match?.entry.trim() ?? "";
-        if (!entry) continue;
+        const dayEntries = parsePeriodPlanDayEntries(match?.entry);
+        if (dayEntries.length === 0) continue;
 
-        const action = resolvePeriodPlanEntryAction(entry, []);
-        const entryLabel = getPeriodPlanDayListLabel(entry, action);
-        const isPassive = isPassivePeriodPlanEntry(entry);
+        for (const entry of dayEntries) {
+          const action = resolvePeriodPlanEntryAction(entry, []);
+          const entryLabel = getPeriodPlanDayListLabel(entry, action);
+          const isPassive = isPassivePeriodPlanEntry(entry);
 
-        entries.push({
-          memberId: member.id,
-          memberName: member.name.trim() || "Kunde",
-          planId: plan.id,
-          planTitle: plan.title.trim() || "Periodeplan",
-          entry,
-          entryLabel,
-          status: resolveEntryStatus(member, input.members, input.logs, date, entry, todayStart),
-          isPassive,
-        });
+          entries.push({
+            memberId: member.id,
+            memberName: member.name.trim() || "Kunde",
+            planId: plan.id,
+            planTitle: plan.title.trim() || "Periodeplan",
+            entry,
+            entryLabel,
+            status: resolveEntryStatus(member, input.members, input.logs, date, entry, todayStart),
+            isPassive,
+          });
+        }
       }
     }
 
