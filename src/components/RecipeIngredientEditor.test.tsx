@@ -77,6 +77,13 @@ function LinseedHarness() {
 }
 
 describe("RecipeIngredientEditor", () => {
+  it("viser bare søk i matvarebanken, ikke et separat fritekstfelt", () => {
+    render(<EditorHarness />);
+
+    expect(screen.getByLabelText("Søk matvare")).toBeInTheDocument();
+    expect(screen.queryByLabelText("Egen ingrediens")).toBeNull();
+  });
+
   it("viser bare enheter med vekt, og vekt-knappen åpner enheter uten vekt", async () => {
     const user = userEvent.setup();
     render(<EditorHarness />);

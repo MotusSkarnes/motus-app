@@ -146,7 +146,6 @@ export function RecipeIngredientEditor({
   const [selectedFood, setSelectedFood] = useState<FoodItem | null>(null);
   const [quantity, setQuantity] = useState("");
   const [unit, setUnit] = useState("g");
-  const [customName, setCustomName] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [weightPrompt, setWeightPrompt] = useState<WeightPrompt | null>(null);
 
@@ -162,7 +161,6 @@ export function RecipeIngredientEditor({
     setSelectedFood(null);
     setQuantity("");
     setUnit("g");
-    setCustomName("");
     setError(null);
     setWeightPrompt(null);
   }
@@ -170,7 +168,6 @@ export function RecipeIngredientEditor({
   function selectFood(food: FoodItem) {
     setSelectedFood(food);
     setSearch("");
-    setCustomName("");
     setUnit("g");
     setQuantity(String(defaultPortionGramsForFood(food) || 100));
     setError(null);
@@ -222,11 +219,11 @@ export function RecipeIngredientEditor({
   }
 
   function addIngredient() {
-    const name = suggestRecipeDisplayName((selectedFoodLive?.name ?? customName).trim());
-    if (!name) {
-      setError("Søk opp en matvare, eller skriv inn navn på ingrediensen.");
+    if (!selectedFoodLive) {
+      setError("Søk opp og velg en matvare først.");
       return;
     }
+    const name = suggestRecipeDisplayName(selectedFoodLive.name);
     const qty = quantity.trim();
     if (selectedFoodLive && !qty) {
       setError("Skriv inn mengde.");
@@ -288,7 +285,9 @@ export function RecipeIngredientEditor({
           {search.trim() ? (
             <div className="motus-recipe-ingredient-editor__results" role="listbox" aria-label="Matvarer">
               {filteredFoods.length === 0 ? (
-                <p className="motus-recipe-ingredient-editor__hint">Ingen treff. Skriv navnet under og legg til likevel.</p>
+                <p className="motus-recipe-ingredient-editor__hint">
+                  Ingen treff i matvarebanken. Opprett matvaren i matvarebanken før du legger den til i måltidet.
+                </p>
               ) : (
                 filteredFoods.map((food) => (
                   <button
@@ -305,16 +304,6 @@ export function RecipeIngredientEditor({
               )}
             </div>
           ) : null}
-          <TextInput
-            value={customName}
-            onChange={(event) => {
-              setCustomName(event.target.value);
-              setError(null);
-            }}
-            placeholder="Eller skriv ingrediens, f.eks. salt og pepper"
-            disabled={disabled}
-            aria-label="Egen ingrediens"
-          />
         </div>
       )}
 
