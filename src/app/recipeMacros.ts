@@ -443,7 +443,7 @@ function lookupSynthetic(searchText: string): SyntheticFood | null {
 function lookupFoodBankItem(searchText: string, foodItems: FoodItem[]): FoodItem | null {
   const key = normalizeFoodKey(searchText);
 
-  if (key.includes("eller")) {
+  if (/\s+eller\s+/i.test(searchText)) {
     for (const part of searchText.split(/\s+eller\s+/i)) {
       const hit = lookupFoodBankItem(part.trim(), foodItems);
       if (hit) return hit;
