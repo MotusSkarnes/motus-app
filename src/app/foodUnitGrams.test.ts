@@ -116,6 +116,7 @@ describe("foodUnitGrams", () => {
     expect(lookupUnitGramsForFoodName("Avokado")?.["stk stor"]).toBe(220);
     expect(lookupUnitGramsForFoodName("Havregryn")?.ss).toBe(6);
     expect(lookupUnitGramsForFoodName("Havregryn")?.dl).toBe(40);
+    expect(lookupUnitGramsForFoodName("Linfrø, knuste")?.ts).toBe(3);
     const oats = enrichFoodItemUnitGrams(
       food({
         name: "Havregryn",

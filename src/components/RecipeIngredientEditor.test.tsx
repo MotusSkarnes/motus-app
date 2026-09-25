@@ -57,6 +57,25 @@ function EditorHarness() {
   );
 }
 
+function LinseedHarness() {
+  const [ingredients, setIngredients] = useState([]);
+  const linseed: FoodItem = {
+    ...avocado(),
+    id: "linseed-1",
+    name: "Linfrø, knuste",
+    unitGrams: { ss: 8, ts: 3, dl: 60 },
+  };
+
+  return (
+    <RecipeIngredientEditor
+      ingredients={ingredients}
+      foodItems={[linseed]}
+      onChange={setIngredients}
+      onRegisterUnitGrams={() => undefined}
+    />
+  );
+}
+
 describe("RecipeIngredientEditor", () => {
   it("viser bare enheter med vekt, og vekt-knappen åpner enheter uten vekt", async () => {
     const user = userEvent.setup();
@@ -68,9 +87,9 @@ describe("RecipeIngredientEditor", () => {
     const unitSelect = screen.getByLabelText("Enhet");
     expect(optionValues(unitSelect)).toEqual(["g", "kg", "stk liten", "stk", "stk stor"]);
 
-    await user.click(screen.getByRole("button", { name: /enheter uten vekt/i }));
+    await user.click(screen.getByRole("button", { name: /enhetsvekt/i }));
 
-    const missingSelect = screen.getByLabelText("Enhet uten vekt for Avokado");
+    const missingSelect = screen.getByLabelText("Enhet for vekt på Avokado");
     expect(optionValues(missingSelect)).toContain("ss");
     expect(optionValues(missingSelect)).not.toContain("g");
     expect(optionValues(missingSelect)).not.toContain("stk liten");
@@ -80,9 +99,23 @@ describe("RecipeIngredientEditor", () => {
     await user.click(screen.getByRole("button", { name: "Lagre vekt" }));
 
     expect(optionValues(screen.getByLabelText("Enhet"))).toEqual(["g", "kg", "ss", "stk liten", "stk", "stk stor"]);
-    expect(screen.queryByLabelText("Enhet uten vekt for Avokado")).toBeNull();
+    expect(screen.queryByLabelText("Enhet for vekt på Avokado")).toBeNull();
 
-    await user.click(screen.getByRole("button", { name: /enheter uten vekt/i }));
-    expect(optionValues(screen.getByLabelText("Enhet uten vekt for Avokado"))).not.toContain("ss");
+    await user.click(screen.getByRole("button", { name: /enhetsvekt/i }));
+    expect(screen.getByLabelText("Enhet for vekt på Avokado")).toHaveValue("ss");
+    expect(screen.getByLabelText("Gram per 1 ss Avokado")).toHaveValue("15");
+  });
+
+  it("åpner valgt ts med eksisterende vekt for knuste linfrø", async () => {
+    const user = userEvent.setup();
+    render(<LinseedHarness />);
+
+    await user.type(screen.getByLabelText("Søk matvare"), "linfrø");
+    await user.click(screen.getByRole("button", { name: "Linfrø, knuste" }));
+    await user.selectOptions(screen.getByLabelText("Enhet"), "ts");
+    await user.click(screen.getByRole("button", { name: /enhetsvekt/i }));
+
+    expect(screen.getByLabelText("Enhet for vekt på Linfrø, knuste")).toHaveValue("ts");
+    expect(screen.getByLabelText("Gram per 1 ts Linfrø, knuste")).toHaveValue("3");
   });
 });
