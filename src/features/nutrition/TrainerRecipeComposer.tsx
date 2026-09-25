@@ -78,7 +78,7 @@ function buildRecipeDraftFromSource(
     tag: source?.tag && source.tag.trim() !== "Oppskrift" ? source.tag : "Måltid",
     mealSlots: source ? recipeMealSlotsFor(source) : [],
     proteinCategory: source?.proteinCategory ?? "",
-    servings: String(source?.servings ?? (body ? parseRecipeBaseServings(body) : "2")),
+    servings: String(source?.servings ?? (body ? parseRecipeBaseServings(body) : "1")),
     method: extractRecipeMethodSection(body),
     tips: extractRecipeTipsSection(body),
     ingredients,
@@ -162,7 +162,7 @@ export function TrainerRecipeComposer({
   const [proteinCategory, setProteinCategory] = useState<RecipeProteinCategory | "">(
     sourceItem?.proteinCategory ?? "",
   );
-  const [servings, setServings] = useState(String(sourceItem?.servings ?? "2"));
+  const [servings, setServings] = useState(String(sourceItem?.servings ?? "1"));
   const [method, setMethod] = useState(extractRecipeMethodSection(sourceItem?.body ?? ""));
   const [tips, setTips] = useState(extractRecipeTipsSection(sourceItem?.body ?? ""));
   const [ingredients, setIngredients] = useState<RecipeIngredientDraft[]>(

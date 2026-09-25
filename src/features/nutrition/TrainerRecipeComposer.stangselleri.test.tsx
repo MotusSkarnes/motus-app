@@ -30,6 +30,14 @@ vi.mock("../../app/useFoodBankItems", () => ({ useFoodBankItems: () => foods }))
 afterEach(cleanup);
 
 describe("TrainerRecipeComposer stangselleri", () => {
+  it("starter nye måltider med én porsjon", () => {
+    render(
+      <TrainerRecipeComposer open members={[]} existingItems={[]} onClose={vi.fn()} onSaved={vi.fn()} />,
+    );
+
+    expect(screen.getByRole("spinbutton", { name: /antall porsjoner/i })).toHaveValue(1);
+  });
+
   it("legger til pære, banan, kiwi og én stilk stangselleri", async () => {
     const user = userEvent.setup();
     render(
