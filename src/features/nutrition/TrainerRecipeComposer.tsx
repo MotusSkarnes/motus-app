@@ -11,7 +11,11 @@ import {
   persistInspirationItems,
 } from "../../app/inspirationStorage";
 import { isInspirationRecipeItem } from "../../app/inspirationHubItems";
-import { persistedRecipeAvailability, type InspirationRecipeItem } from "../../app/inspirationRecipeItems";
+import {
+  persistedRecipeAvailability,
+  resolveInspirationFeedForWrite,
+  type InspirationRecipeItem,
+} from "../../app/inspirationRecipeItems";
 import { prepareRecipePhotoDataUrl, resolveInspirationImageForStorage } from "../../app/inspirationRecipeImage";
 import { readImageFileAsDataUrl } from "../../app/imageCompress";
 import {
@@ -351,10 +355,16 @@ export function TrainerRecipeComposer({
       ...persistedRecipeAvailability(editItem, duplicateFromItem != null),
     };
 
-    const latestItems =
-      (await fetchInspirationItemsForHub<unknown>()) ??
-      loadInspirationItemsFromLocalStorage<unknown>() ??
-      existingItems;
+    const storedLocal = loadInspirationItemsFromLocalStorage<unknown>();
+    const latestItems = resolveInspirationFeedForWrite(
+      await fetchInspirationItemsForHub<unknown>(),
+      storedLocal ?? (existingItems.length > 0 ? existingItems : null),
+    );
+    if (!latestItems) {
+      setSaving(false);
+      setStatus("Kunne ikke laste måltidene. Prøv igjen.");
+      return;
+    }
 
     const nonRecipe = (latestItems as Array<{ id: string; category?: string }>).filter(
       (item) => !isInspirationRecipeItem(item),
