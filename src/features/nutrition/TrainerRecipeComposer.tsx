@@ -11,7 +11,7 @@ import {
   persistInspirationItems,
 } from "../../app/inspirationStorage";
 import { isInspirationRecipeItem } from "../../app/inspirationHubItems";
-import type { InspirationRecipeItem } from "../../app/inspirationRecipeItems";
+import { persistedRecipeAvailability, type InspirationRecipeItem } from "../../app/inspirationRecipeItems";
 import { prepareRecipePhotoDataUrl, resolveInspirationImageForStorage } from "../../app/inspirationRecipeImage";
 import { readImageFileAsDataUrl } from "../../app/imageCompress";
 import {
@@ -316,8 +316,6 @@ export function TrainerRecipeComposer({
     const saveOverrides = overridesFromIngredientDrafts(ingredientsToSave);
     const body = buildRecipeBody({
       servings: servingsNumber,
-      availableWithoutMealPlan:
-        editItem && !duplicateFromItem ? editItem.availableWithoutMealPlan === true : false,
       ingredients: ingredientsToSave,
       method,
       tips,
@@ -350,6 +348,7 @@ export function TrainerRecipeComposer({
       ...(proteinCategory ? { proteinCategory } : {}),
       servings: servingsNumber,
       ...(Object.keys(saveOverrides).length ? { ingredientFoodOverrides: saveOverrides } : {}),
+      ...persistedRecipeAvailability(editItem, duplicateFromItem != null),
     };
 
     const latestItems =

@@ -103,14 +103,43 @@ function normalizeRecipeItem(raw: unknown): InspirationRecipeItem | null {
   };
 }
 
+/**
+ * Snapshot that is safe to persist. An empty array counts only when the remote
+ * fetch actually returned one. Falling through to `[]` would replace the shared
+ * Utforsk feed with whatever single meal was being updated.
+ */
+export function resolveInspirationFeedForWrite(
+  remote: unknown[] | null | undefined,
+  local: unknown[] | null | undefined,
+): unknown[] | null {
+  if (Array.isArray(remote)) return remote;
+  if (Array.isArray(local) && local.length > 0) return local;
+  return null;
+}
+
+/** Keep "available without a meal plan" when a trainer edits that meal. */
+export function persistedRecipeAvailability(
+  editItem: { availableWithoutMealPlan?: boolean } | null | undefined,
+  isDuplicate: boolean,
+): { availableWithoutMealPlan: true } | Record<string, never> {
+  if (!isDuplicate && editItem?.availableWithoutMealPlan === true) {
+    return { availableWithoutMealPlan: true };
+  }
+  return {};
+}
+
 export async function setInspirationRecipeAvailability(
   recipe: InspirationRecipeItem,
   availableWithoutMealPlan: boolean,
 ): Promise<InspirationSaveResult> {
-  const latestItems =
-    (await fetchInspirationItemsForHub<Record<string, unknown>>()) ??
-    loadInspirationItemsFromLocalStorage<Record<string, unknown>>() ??
-    [];
+  const remote = await fetchInspirationItemsForHub<Record<string, unknown>>();
+  const latestItems = resolveInspirationFeedForWrite(
+    remote,
+    loadInspirationItemsFromLocalStorage<Record<string, unknown>>(),
+  );
+  if (!latestItems) {
+    return { ok: false, error: "Kunne ikke laste måltidene. Prøv igjen." };
+  }
   let found = false;
   const nextFeed = latestItems.map((item) => {
     if (String(item.id ?? "") !== recipe.id) return item;
